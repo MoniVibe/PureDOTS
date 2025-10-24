@@ -1,7 +1,7 @@
 Pure DOTS Project Kickoff
 ==========================
 
-This file captures the first wave of work for the new PureDOTS Unity project. The goals are to establish a clean DOTS-first architecture while salvaging useful pieces from the legacy `godgame` repository where practical.
+This file captures the first wave of work for the new PureDOTS Unity project. The goals are to establish a clean DOTS-first architecture while salvaging useful pieces from the legacy `godgame` repository where practical. When referencing legacy behaviour, always document the desired end-state and confirm with leads before mirroring old code paths—never assume a 1:1 port is acceptable without clarification.
 
 1. Project Foundation
    - [x] Create DOTS-only assembly definitions (Runtime, Systems, Authoring) mirroring `GodGame.ECS` but scoped for the new project.
@@ -19,9 +19,23 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
        - [x] Rewind coordinator and command processing for pause/playback/catch-up paths.
        - [x] Resource gathering, storehouse inventory, withdrawal, and deposition loops.
        - [x] Villager job assignment, needs, and status systems.
-   - [ ] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters.
+  - [ ] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters. For each legacy system, note any deviations required for the new architecture before implementation begins.
    - [ ] Ensure each domain has deterministic update groups and clear scheduling.
    - [ ] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration.
+   
+   Vegetation Growth Loop (Agent Alpha & Beta):
+   - [x] Scaffold vegetation lifecycle components (`VegetationComponents.cs`) with lifecycle stages, health, production, consumption, reproduction, and seasonal effects.
+   - [x] Create vegetation authoring (`VegetationAuthoring.cs`) with baker stubs for runtime component conversion.
+   - [x] Implement `VegetationGrowthSystem` - updates lifecycle stages using data-driven `VegetationSpeciesCatalog` blob for stage durations and thresholds.
+   - [x] Create `VegetationSpeciesCatalog` ScriptableObject and blob baker for data-driven species configuration.
+   - [x] Add comprehensive test suite with multi-species validation (`VegetationGrowthSystemTests.cs`).
+   - [x] Implement `VegetationHealthSystem` - process environmental effects (water level, light, soil quality).
+     - Uses species catalog blob for environmental thresholds
+     - Adds `VegetationStressedTag` and `VegetationDyingTag` based on health
+     - Runs before growth system to ensure health affects lifecycle
+   - [ ] Implement `VegetationReproductionSystem` - handle spreading and new growth based on reproduction timers. [Beta: reproduction parameters]
+   - [x] Implement `VegetationHarvestSystem` - allow villagers to gather resources from fruiting vegetation. (Villager inventory receives harvest yield; resource deposit flow handles downstream storage.)
+   - [ ] Implement `VegetationDecaySystem` - cleanup dead vegetation after decay period. [Beta: decay rates]
 
 4. Service/Registry Replacement
    - [ ] Replace `WorldServices`/`RegistrySystems` patterns with DOTS singletons and buffer queries from the start.
