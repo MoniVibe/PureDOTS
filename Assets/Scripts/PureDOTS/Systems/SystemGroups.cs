@@ -18,6 +18,12 @@ namespace PureDOTS.Systems
     public partial class HistorySystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Fixed-step job systems for villagers. Runs inside FixedStepSimulation before high-level AI.
+    /// </summary>
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    public partial class VillagerJobFixedStepGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// System group for villager AI and behavior.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]

@@ -10,7 +10,8 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup))]
-    [UpdateAfter(typeof(VillagerNeedsSystem))]
+    [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
+    [UpdateBefore(typeof(VillagerTargetingSystem))]
     public partial struct VillagerAISystem : ISystem
     {
         private EntityQuery _villagerQuery;
@@ -19,7 +20,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob>()
+                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket>()
                 .WithNone<VillagerDeadTag, PlaybackGuardTag>()
                 .Build();
 
@@ -64,7 +65,7 @@ namespace PureDOTS.Systems
             public float EnergyThreshold;
             public float FleeHealthThreshold;
 
-            public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job)
+            public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket)
             {
                 aiState.StateTimer += DeltaTime;
 
@@ -82,7 +83,9 @@ namespace PureDOTS.Systems
                 {
                     desiredGoal = VillagerAIState.Goal.Rest;
                 }
-                else if (job.Type != VillagerJob.JobType.None && job.WorksiteEntity != Entity.Null)
+                else if (job.Type != VillagerJob.JobType.None &&
+                         (VillagerJob.JobPhase)ticket.Phase != VillagerJob.JobPhase.Idle &&
+                         ticket.ResourceEntity != Entity.Null)
                 {
                     desiredGoal = VillagerAIState.Goal.Work;
                 }
@@ -103,7 +106,7 @@ namespace PureDOTS.Systems
                 switch (aiState.CurrentState)
                 {
                     case VillagerAIState.State.Working:
-                        if (job.WorksiteEntity == Entity.Null)
+                        if (ticket.ResourceEntity == Entity.Null)
                         {
                             SetIdle(ref aiState);
                         }
@@ -132,9 +135,9 @@ namespace PureDOTS.Systems
                 {
                     aiState.TargetEntity = Entity.Null;
                 }
-                else if (job.WorksiteEntity != Entity.Null)
+                else if (ticket.ResourceEntity != Entity.Null)
                 {
-                    aiState.TargetEntity = job.WorksiteEntity;
+                    aiState.TargetEntity = ticket.ResourceEntity;
                 }
             }
 

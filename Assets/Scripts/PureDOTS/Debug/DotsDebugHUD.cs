@@ -6,10 +6,15 @@ using UnityEngine;
 namespace PureDOTS.Debugging
 {
     /// <summary>
-    /// Simple on-screen HUD that displays key DOTS singleton data for debugging.
-    /// Attach this to any GameObject in a scene when runtime diagnostics are desired.
+    /// DEPRECATED: Runtime hybrid MonoBehaviour that queries ECS world directly.
+    /// See Docs/DeprecationList.md for migration to pure DOTS debug flow.
+    /// 
+    /// This component violates the pure DOTS architecture by running simulation queries
+    /// from GameObject/MonoBehaviour space. Use DebugDisplaySystem and DebugDisplayData
+    /// singleton instead.
     /// </summary>
     [DisallowMultipleComponent]
+    [System.Obsolete("This MonoBehaviour violates pure DOTS architecture. See Docs/DeprecationList.md for the replacement pattern using DebugDisplaySystem and DebugDisplayData singleton.")]
     public sealed class DotsDebugHUD : MonoBehaviour
     {
         public bool showTime = true;

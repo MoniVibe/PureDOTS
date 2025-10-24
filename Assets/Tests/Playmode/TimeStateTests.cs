@@ -15,6 +15,7 @@ namespace PureDOTS.Tests
         {
             _world = new World("PureDOTS Test World");
             _entityManager = _world.EntityManager;
+            EnsureCoreSingletons();
         }
 
         [TearDown]
@@ -26,8 +27,7 @@ namespace PureDOTS.Tests
         [Test]
         public void CoreSingletonBootstrapSystem_CreatesTimeHistoryAndRewindSingletons()
         {
-            var bootstrap = _world.GetOrCreateSystemManaged<CoreSingletonBootstrapSystem>();
-            bootstrap.Update();
+            EnsureCoreSingletons();
 
             Assert.IsTrue(_entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()).TryGetSingleton(out TimeState _));
             Assert.IsTrue(_entityManager.CreateEntityQuery(ComponentType.ReadOnly<HistorySettings>()).TryGetSingleton(out HistorySettings _));
@@ -60,6 +60,11 @@ namespace PureDOTS.Tests
             Assert.AreEqual(0.1f, updated.FixedDeltaTime);
             Assert.AreEqual(2f, updated.CurrentSpeedMultiplier);
             Assert.IsTrue(updated.IsPaused);
+        }
+
+        private void EnsureCoreSingletons()
+        {
+            CoreSingletonBootstrapSystem.EnsureSingletons(_entityManager);
         }
     }
 }

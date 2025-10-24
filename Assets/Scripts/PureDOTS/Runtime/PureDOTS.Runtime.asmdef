@@ -5,11 +5,12 @@
         "Unity.Entities",
         "Unity.Mathematics",
         "Unity.Collections",
-        "Unity.Transforms"
+        "Unity.Transforms",
+        "Unity.Burst"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

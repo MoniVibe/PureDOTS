@@ -23,56 +23,40 @@ namespace PureDOTS.Systems
 
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(RecordSimulationSystemGroup))]
-    public partial class RewindModeRoutingSystem : SystemBase
+    public partial struct RewindModeRoutingSystem : ISystem
     {
-        private RecordSimulationSystemGroup _recordGroup;
-        private CatchUpSimulationSystemGroup _catchUpGroup;
-        private PlaybackSimulationSystemGroup _playbackGroup;
+        private RewindMode _lastMode;
+        private bool _initialized;
 
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            RequireForUpdate<RewindState>();
-
-            _recordGroup = World.GetExistingSystemManaged<RecordSimulationSystemGroup>();
-            _catchUpGroup = World.GetExistingSystemManaged<CatchUpSimulationSystemGroup>();
-            _playbackGroup = World.GetExistingSystemManaged<PlaybackSimulationSystemGroup>();
+            state.RequireForUpdate<RewindState>();
+            _lastMode = RewindMode.Record;
+            _initialized = false;
         }
 
-        protected override void OnUpdate()
+        public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            if (!SystemAPI.TryGetSingleton(out RewindState rewindState))
             {
                 return;
             }
 
-            switch (rewindState.Mode)
+            if (_initialized && rewindState.Mode == _lastMode)
             {
-                case RewindMode.Record:
-                    EnableGroup(_recordGroup, true);
-                    EnableGroup(_catchUpGroup, false);
-                    EnableGroup(_playbackGroup, false);
-                    break;
-
-                case RewindMode.CatchUp:
-                    EnableGroup(_recordGroup, false);
-                    EnableGroup(_catchUpGroup, true);
-                    EnableGroup(_playbackGroup, false);
-                    break;
-
-                case RewindMode.Playback:
-                    EnableGroup(_recordGroup, false);
-                    EnableGroup(_catchUpGroup, false);
-                    EnableGroup(_playbackGroup, true);
-                    break;
+                return;
             }
-        }
 
-        private static void EnableGroup(ComponentSystemGroup group, bool enabled)
-        {
-            if (group != null)
-            {
-                group.Enabled = enabled;
-            }
+            _initialized = true;
+            _lastMode = rewindState.Mode;
+
+            var recordGroup = state.World.GetOrCreateSystemManaged<RecordSimulationSystemGroup>();
+            var catchUpGroup = state.World.GetOrCreateSystemManaged<CatchUpSimulationSystemGroup>();
+            var playbackGroup = state.World.GetOrCreateSystemManaged<PlaybackSimulationSystemGroup>();
+
+            recordGroup.Enabled = rewindState.Mode == RewindMode.Record;
+            catchUpGroup.Enabled = rewindState.Mode == RewindMode.CatchUp;
+            playbackGroup.Enabled = rewindState.Mode == RewindMode.Playback;
         }
     }
 }

@@ -9,19 +9,6 @@ using UnityEngine;
 
 namespace PureDOTS.Authoring
 {
-    public static class ResourceAuthoringUtility
-    {
-        public static FixedString64Bytes ToFixedString(string value)
-        {
-            FixedString64Bytes str = default;
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                str = value.Trim();
-            }
-            return str;
-        }
-    }
-
     [DisallowMultipleComponent]
     public sealed class ResourceSourceAuthoring : MonoBehaviour
     {
@@ -56,7 +43,7 @@ namespace PureDOTS.Authoring
         public override void Bake(ResourceSourceAuthoring authoring)
         {
             var entity = GetEntity(authoring, TransformUsageFlags.Dynamic);
-            var resourceType = ResourceAuthoringUtility.ToFixedString(authoring.resourceTypeId);
+            var resourceType = ToFixedString(authoring.resourceTypeId);
             if (!resourceType.IsEmpty)
             {
                 AddComponent(entity, new ResourceTypeId { Value = resourceType });
@@ -89,6 +76,16 @@ namespace PureDOTS.Authoring
                 OverrideStrideSeconds = 0f
             });
             AddBuffer<ResourceHistorySample>(entity);
+
+            static FixedString64Bytes ToFixedString(string value)
+            {
+                FixedString64Bytes str = default;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    str = new FixedString64Bytes(value.Trim());
+                }
+                return str;
+            }
         }
     }
 
@@ -153,7 +150,7 @@ namespace PureDOTS.Authoring
                     continue;
                 }
 
-                var resourceType = ResourceAuthoringUtility.ToFixedString(entry.resourceTypeId);
+                var resourceType = ToFixedString(entry.resourceTypeId);
                 if (resourceType.IsEmpty)
                 {
                     continue;
@@ -184,6 +181,16 @@ namespace PureDOTS.Authoring
                 OverrideStrideSeconds = 0f
             });
             AddBuffer<StorehouseHistorySample>(entity);
+
+            static FixedString64Bytes ToFixedString(string value)
+            {
+                FixedString64Bytes str = default;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    str = new FixedString64Bytes(value.Trim());
+                }
+                return str;
+            }
         }
     }
 
@@ -203,7 +210,7 @@ namespace PureDOTS.Authoring
         public override void Bake(ResourceChunkAuthoring authoring)
         {
             var entity = GetEntity(authoring, TransformUsageFlags.Dynamic);
-            var resourceType = ResourceAuthoringUtility.ToFixedString(authoring.resourceTypeId);
+            var resourceType = ToFixedString(authoring.resourceTypeId);
             if (!resourceType.IsEmpty)
             {
                 AddComponent(entity, new ResourceTypeId { Value = resourceType });
@@ -216,6 +223,16 @@ namespace PureDOTS.Authoring
                 MaxScale = math.max(authoring.minScale, authoring.maxScale),
                 DefaultUnits = math.max(0f, authoring.defaultUnits)
             });
+
+            static FixedString64Bytes ToFixedString(string value)
+            {
+                FixedString64Bytes str = default;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    str = new FixedString64Bytes(value.Trim());
+                }
+                return str;
+            }
         }
     }
 
@@ -260,7 +277,7 @@ namespace PureDOTS.Authoring
                     continue;
                 }
 
-                var resourceType = ResourceAuthoringUtility.ToFixedString(entry.resourceTypeId);
+                var resourceType = ToFixedString(entry.resourceTypeId);
                 if (resourceType.IsEmpty)
                 {
                     continue;
@@ -286,6 +303,16 @@ namespace PureDOTS.Authoring
                 Prefab = prefabEntity,
                 DestroySiteEntity = authoring.destroySiteOnComplete
             });
+
+            static FixedString64Bytes ToFixedString(string value)
+            {
+                FixedString64Bytes str = default;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    str = new FixedString64Bytes(value.Trim());
+                }
+                return str;
+            }
         }
     }
 }

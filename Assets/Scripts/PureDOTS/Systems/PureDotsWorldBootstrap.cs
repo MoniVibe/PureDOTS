@@ -35,6 +35,9 @@ namespace PureDOTS.Systems
             // Force creation of our custom groups early so ordering attributes are respected.
             ConfigureRootGroups(world);
             world.GetOrCreateSystemManaged<TimeSystemGroup>();
+            var recordGroup = world.GetOrCreateSystemManaged<RecordSimulationSystemGroup>();
+            var catchUpGroup = world.GetOrCreateSystemManaged<CatchUpSimulationSystemGroup>();
+            var playbackGroup = world.GetOrCreateSystemManaged<PlaybackSimulationSystemGroup>();
             world.GetOrCreateSystemManaged<VillagerSystemGroup>();
             world.GetOrCreateSystemManaged<ResourceSystemGroup>();
             world.GetOrCreateSystemManaged<CombatSystemGroup>();
@@ -42,6 +45,14 @@ namespace PureDOTS.Systems
             world.GetOrCreateSystemManaged<VegetationSystemGroup>();
             world.GetOrCreateSystemManaged<ConstructionSystemGroup>();
             world.GetOrCreateSystemManaged<HistorySystemGroup>();
+
+            recordGroup.Enabled = true;
+            catchUpGroup.Enabled = false;
+            playbackGroup.Enabled = false;
+
+            recordGroup.SortSystems();
+            catchUpGroup.SortSystems();
+            playbackGroup.SortSystems();
 
             // Make sure everything ends up in the player loop.
             ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);

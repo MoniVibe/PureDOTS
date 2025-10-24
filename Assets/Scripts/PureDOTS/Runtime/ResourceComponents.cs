@@ -1,5 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Components
 {
@@ -113,5 +114,89 @@ namespace PureDOTS.Runtime.Components
     {
         public int SiteId;
         public float Delta;
+    }
+
+    // Resource Registry Components
+    public struct ResourceTypeIndex : IComponentData
+    {
+        public BlobAssetReference<ResourceTypeIndexBlob> Catalog;
+    }
+
+    public struct ResourceRegistry : IComponentData
+    {
+        public int TotalResources;
+        public int TotalActiveResources;
+        public uint LastUpdateTick;
+    }
+
+    public struct ResourceRegistryEntry : IBufferElementData
+    {
+        public ushort ResourceTypeIndex;
+        public Entity SourceEntity;
+        public float3 Position;
+        public float UnitsRemaining;
+        public byte ActiveTickets;
+        public byte ClaimFlags;
+        public uint LastMutationTick;
+    }
+
+    public struct StorehouseRegistry : IComponentData
+    {
+        public int TotalStorehouses;
+        public float TotalCapacity;
+        public float TotalStored;
+        public uint LastUpdateTick;
+    }
+
+    public struct StorehouseRegistryCapacitySummary
+    {
+        public ushort ResourceTypeIndex;
+        public float Capacity;
+        public float Stored;
+        public float Reserved;
+    }
+
+    public struct StorehouseRegistryEntry : IBufferElementData
+    {
+        public Entity StorehouseEntity;
+        public float3 Position;
+        public float TotalCapacity;
+        public float TotalStored;
+        public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
+        public uint LastMutationTick;
+    }
+
+    public struct ResourceJobReservation : IComponentData
+    {
+        public byte ActiveTickets;
+        public byte PendingTickets;
+        public float ReservedUnits;
+        public uint LastMutationTick;
+        public byte ClaimFlags;
+    }
+
+    public struct ResourceActiveTicket : IBufferElementData
+    {
+        public Entity Villager;
+        public uint TicketId;
+        public float ReservedUnits;
+    }
+
+    public struct StorehouseJobReservation : IComponentData
+    {
+        public float ReservedCapacity;
+        public uint LastMutationTick;
+    }
+
+    public struct StorehouseReservationItem : IBufferElementData
+    {
+        public ushort ResourceTypeIndex;
+        public float Reserved;
+    }
+
+    public static class ResourceRegistryClaimFlags
+    {
+        public const byte PlayerClaim = 1 << 0;
+        public const byte VillagerReserved = 1 << 1;
     }
 }

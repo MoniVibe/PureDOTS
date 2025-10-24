@@ -20,7 +20,7 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
        - [x] Resource gathering, storehouse inventory, withdrawal, and deposition loops.
        - [x] Villager job assignment, needs, and status systems.
   - [ ] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters. For each legacy system, note any deviations required for the new architecture before implementation begins.
-   - [ ] Ensure each domain has deterministic update groups and clear scheduling.
+  - [x] Ensure each domain has deterministic update groups and clear scheduling.
    - [ ] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration.
    
    Vegetation Growth Loop (Agent Alpha & Beta):
@@ -33,9 +33,9 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
      - Uses species catalog blob for environmental thresholds
      - Adds `VegetationStressedTag` and `VegetationDyingTag` based on health
      - Runs before growth system to ensure health affects lifecycle
-   - [ ] Implement `VegetationReproductionSystem` - handle spreading and new growth based on reproduction timers. [Beta: reproduction parameters]
+   - [x] Implement `VegetationReproductionSystem` - handle spreading and new growth based on reproduction timers. [Beta: reproduction parameters]
    - [x] Implement `VegetationHarvestSystem` - allow villagers to gather resources from fruiting vegetation. (Villager inventory receives harvest yield; resource deposit flow handles downstream storage.)
-   - [ ] Implement `VegetationDecaySystem` - cleanup dead vegetation after decay period. [Beta: decay rates]
+   - [x] Implement `VegetationDecaySystem` - cleanup dead vegetation after decay period. [Beta: decay rates]
 
 4. Service/Registry Replacement
    - [ ] Replace `WorldServices`/`RegistrySystems` patterns with DOTS singletons and buffer queries from the start.

@@ -128,10 +128,21 @@ namespace PureDOTS.Runtime.Components
             Crafter = 8
         }
 
+        public enum JobPhase : byte
+        {
+            Idle = 0,
+            Assigned = 1,
+            Gathering = 2,
+            Delivering = 3,
+            Completed = 4,
+            Interrupted = 5
+        }
+
         public JobType Type;
-        public Entity WorksiteEntity;
-        public float WorkProgress;
+        public JobPhase Phase;
+        public uint ActiveTicketId;
         public float Productivity; // 0-1, affected by needs and morale
+        public uint LastStateChangeTick;
     }
 
     /// <summary>

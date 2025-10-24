@@ -8,49 +8,66 @@ namespace PureDOTS.Systems
     /// Runs once at startup so downstream systems can safely require these components.
     /// </summary>
     [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
-    public partial class CoreSingletonBootstrapSystem : SystemBase
+    public partial struct CoreSingletonBootstrapSystem : ISystem
     {
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            base.OnCreate();
-            var entityManager = EntityManager;
+            EnsureSingletons(state.EntityManager);
+            state.Enabled = false;
+        }
 
-            if (!SystemAPI.HasSingleton<TimeState>())
+        public void OnUpdate(ref SystemState state)
+        {
+            // No-op; this system only seeds singleton entities on create.
+        }
+
+        public static void EnsureSingletons(EntityManager entityManager)
+        {
+            using (var timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()))
             {
-                var entity = entityManager.CreateEntity(typeof(TimeState));
-                entityManager.SetComponentData(entity, new TimeState
+                if (timeQuery.IsEmptyIgnoreFilter)
                 {
-                    FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
-                    CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
-                    Tick = 0,
-                    IsPaused = TimeSettingsDefaults.PauseOnStart
-                });
+                    var entity = entityManager.CreateEntity(typeof(TimeState));
+                    entityManager.SetComponentData(entity, new TimeState
+                    {
+                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                        CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                        Tick = 0,
+                        IsPaused = TimeSettingsDefaults.PauseOnStart
+                    });
+                }
             }
 
-            if (!SystemAPI.HasSingleton<HistorySettings>())
+            using (var historyQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<HistorySettings>()))
             {
-                var entity = entityManager.CreateEntity(typeof(HistorySettings));
-                entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
+                if (historyQuery.IsEmptyIgnoreFilter)
+                {
+                    var entity = entityManager.CreateEntity(typeof(HistorySettings));
+                    entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
+                }
             }
 
             Entity rewindEntity;
-            if (!SystemAPI.HasSingleton<RewindState>())
+            using (var rewindQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()))
             {
-                rewindEntity = entityManager.CreateEntity(typeof(RewindState));
-                entityManager.SetComponentData(rewindEntity, new RewindState
+                if (rewindQuery.IsEmptyIgnoreFilter)
                 {
-                    Mode = RewindMode.Record,
-                    StartTick = 0,
-                    TargetTick = 0,
-                    PlaybackTick = 0,
-                    PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
-                    ScrubDirection = 0,
-                    ScrubSpeedMultiplier = 1f
-                });
-            }
-            else
-            {
-                rewindEntity = SystemAPI.GetSingletonEntity<RewindState>();
+                    rewindEntity = entityManager.CreateEntity(typeof(RewindState));
+                    entityManager.SetComponentData(rewindEntity, new RewindState
+                    {
+                        Mode = RewindMode.Record,
+                        StartTick = 0,
+                        TargetTick = 0,
+                        PlaybackTick = 0,
+                        PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
+                        ScrubDirection = 0,
+                        ScrubSpeedMultiplier = 1f
+                    });
+                }
+                else
+                {
+                    rewindEntity = rewindQuery.GetSingletonEntity();
+                }
             }
 
             if (!entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
@@ -58,12 +75,7 @@ namespace PureDOTS.Systems
                 entityManager.AddBuffer<TimeControlCommand>(rewindEntity);
             }
 
-            Enabled = false;
-        }
-
-        protected override void OnUpdate()
-        {
-            // No-op; this system only seeds singleton entities on create.
+            // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
     }
 }

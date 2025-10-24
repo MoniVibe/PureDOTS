@@ -253,11 +253,19 @@ namespace PureDOTS.Systems
             _storeItemsLookup = state.GetBufferLookup<StorehouseInventoryItem>(false);
 
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
             _storehouseLookup.Update(ref state);
             _transformLookup.Update(ref state);
             _storeInventoryLookup.Update(ref state);
@@ -268,6 +276,7 @@ namespace PureDOTS.Systems
 
             foreach (var tuple in
                      SystemAPI.Query<DynamicBuffer<VillagerWithdrawRequest>, DynamicBuffer<VillagerInventoryItem>, VillagerAIState, LocalTransform>()
+                         .WithNone<PlaybackGuardTag, VillagerDeadTag>()
                          .WithEntityAccess())
             {
                 var requests = tuple.Item1;

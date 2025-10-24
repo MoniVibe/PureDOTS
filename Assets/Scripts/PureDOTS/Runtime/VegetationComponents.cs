@@ -82,6 +82,8 @@ namespace PureDOTS.Runtime.Components
         public float SpreadRange; // Maximum distance for spreading
         public float SpreadChance; // Probability of spreading on timer
         public int MaxOffspringRadius; // Grid radius for offspring placement
+        public ushort ActiveOffspring; // Number of currently alive offspring spawned by this entity
+        public uint SpawnSequence; // Monotonic sequence used to derive deterministic offspring ids
     }
 
     /// <summary>
@@ -153,6 +155,33 @@ namespace PureDOTS.Runtime.Components
         public int InitialCount;
         public int MaxCount;
         public float SpawnDensity; // Vegetation per unit area
+    }
+
+    /// <summary>
+    /// Singleton marker for queued vegetation spawn commands.
+    /// </summary>
+    public struct VegetationSpawnCommandQueue : IComponentData { }
+
+    /// <summary>
+    /// Command describing a vegetation spawn request.
+    /// </summary>
+    public struct VegetationSpawnCommand : IBufferElementData
+    {
+        public ushort SpeciesIndex;
+        public float3 Position;
+        public Entity Parent;
+        public uint ParentId;
+        public uint IssuedTick;
+        public uint SequenceId;
+        public FixedString64Bytes ResourceTypeId;
+    }
+
+    /// <summary>
+    /// Links a vegetation entity to the parent that spawned it.
+    /// </summary>
+    public struct VegetationParent : IComponentData
+    {
+        public Entity Value;
     }
 
     /// <summary>

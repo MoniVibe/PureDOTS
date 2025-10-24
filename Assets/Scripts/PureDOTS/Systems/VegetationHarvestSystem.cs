@@ -15,6 +15,7 @@ namespace PureDOTS.Systems
     public partial struct VegetationHarvestSystem : ISystem
     {
         private BufferLookup<VillagerInventoryItem> _villagerInventoryLookup;
+        private BufferLookup<VillagerJobCarryItem> _villagerCarryLookup;
         private BufferLookup<VegetationHistoryEvent> _historyLookup;
         private ComponentLookup<VegetationProduction> _productionLookup;
         private ComponentLookup<VegetationReadyToHarvestTag> _readyTagLookup;
@@ -24,6 +25,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerInventoryLookup = state.GetBufferLookup<VillagerInventoryItem>(false);
+            _villagerCarryLookup = state.GetBufferLookup<VillagerJobCarryItem>(false);
             _historyLookup = state.GetBufferLookup<VegetationHistoryEvent>(false);
             _productionLookup = state.GetComponentLookup<VegetationProduction>(false);
             _readyTagLookup = state.GetComponentLookup<VegetationReadyToHarvestTag>(false);
@@ -60,6 +62,7 @@ namespace PureDOTS.Systems
             receipts.Clear();
 
             _villagerInventoryLookup.Update(ref state);
+            _villagerCarryLookup.Update(ref state);
             _historyLookup.Update(ref state);
             _productionLookup.Update(ref state);
             _readyTagLookup.Update(ref state);
@@ -67,6 +70,13 @@ namespace PureDOTS.Systems
 
             var speciesLookup = SystemAPI.GetSingleton<VegetationSpeciesLookup>();
             ref var catalog = ref speciesLookup.CatalogBlob.Value;
+
+            var resourceCatalogRef = SystemAPI.GetSingleton<ResourceTypeIndex>();
+            if (!resourceCatalogRef.Catalog.IsCreated)
+            {
+                return;
+            }
+            ref var resourceCatalog = ref resourceCatalogRef.Catalog.Value;
 
             var deltaSeconds = timeState.FixedDeltaTime;
             var currentSeconds = timeState.Tick * deltaSeconds;
@@ -98,6 +108,14 @@ namespace PureDOTS.Systems
                 var production = _productionLookup[command.Vegetation];
                 var resourceTypeId = production.ResourceTypeId;
                 if (resourceTypeId.IsEmpty)
+                {
+                    result = VegetationHarvestResult.InvalidEntities;
+                    receipts.Add(CreateReceipt(command, resourceTypeId, 0f, result, timeState.Tick));
+                    continue;
+                }
+
+                var resourceTypeIndex = resourceCatalog.LookupIndex(resourceTypeId);
+                if (resourceTypeIndex < 0)
                 {
                     result = VegetationHarvestResult.InvalidEntities;
                     receipts.Add(CreateReceipt(command, resourceTypeId, 0f, result, timeState.Tick));
@@ -176,6 +194,32 @@ namespace PureDOTS.Systems
                 var inventory = _villagerInventoryLookup[command.Villager];
                 var delivered = TryAddToInventory(ref inventory, resourceTypeId, harvestedAmount);
                 harvestedAmount = delivered;
+
+                if (harvestedAmount > 0f && _villagerCarryLookup.HasBuffer(command.Villager))
+                {
+                    var carry = _villagerCarryLookup[command.Villager];
+                    var added = false;
+                    for (int c = 0; c < carry.Length; c++)
+                    {
+                        if (carry[c].ResourceTypeIndex == (ushort)resourceTypeIndex)
+                        {
+                            var item = carry[c];
+                            item.Amount += harvestedAmount;
+                            carry[c] = item;
+                            added = true;
+                            break;
+                        }
+                    }
+
+                    if (!added)
+                    {
+                        carry.Add(new VillagerJobCarryItem
+                        {
+                            ResourceTypeIndex = (ushort)resourceTypeIndex,
+                            Amount = harvestedAmount
+                        });
+                    }
+                }
 
                 if (harvestedAmount > 0f)
                 {

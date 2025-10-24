@@ -3,6 +3,7 @@
     "rootNamespace": "PureDOTS.Authoring",
     "references": [
         "PureDOTS.Runtime",
+        "PureDOTS.Config",
         "PureDOTS.Systems",
         "Unity.Entities",
         "Unity.Entities.Hybrid",

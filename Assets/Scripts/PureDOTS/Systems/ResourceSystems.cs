@@ -8,6 +8,53 @@ using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
+    [BurstCompile]
+    [UpdateInGroup(typeof(ResourceSystemGroup), OrderFirst = true)]
+    public partial struct ResourceReservationBootstrapSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+
+            foreach (var (config, entity) in SystemAPI.Query<RefRO<ResourceSourceConfig>>()
+                         .WithNone<ResourceJobReservation>()
+                         .WithEntityAccess())
+            {
+                ecb.AddComponent(entity, new ResourceJobReservation
+                {
+                    ActiveTickets = 0,
+                    PendingTickets = 0,
+                    ReservedUnits = 0f,
+                    LastMutationTick = 0,
+                    ClaimFlags = 0
+                });
+                ecb.AddBuffer<ResourceActiveTicket>(entity);
+            }
+
+            foreach (var (config, entity) in SystemAPI.Query<RefRO<StorehouseConfig>>()
+                         .WithNone<StorehouseJobReservation>()
+                         .WithEntityAccess())
+            {
+                ecb.AddComponent(entity, new StorehouseJobReservation
+                {
+                    ReservedCapacity = 0f,
+                    LastMutationTick = 0
+                });
+                ecb.AddBuffer<StorehouseReservationItem>(entity);
+            }
+        }
+    }
+
     /// <summary>
     /// Handles villagers gathering resources from sources during normal simulation.
     /// </summary>
@@ -52,120 +99,8 @@ namespace PureDOTS.Systems
             _transformLookup.Update(ref state);
             _resourceTypeLookup.Update(ref state);
 
-            var gatherJob = new GatherResourcesJob
-            {
-                DeltaTime = timeState.FixedDeltaTime,
-                SourceStateLookup = _sourceStateLookup,
-                TransformLookup = _transformLookup,
-                ResourceTypeLookup = _resourceTypeLookup,
-                GatherDistance = 3f,
-                BaseGatherRate = 10f
-            };
-
-            state.Dependency = gatherJob.ScheduleParallel(state.Dependency);
-        }
-
-        [BurstCompile]
-        public partial struct GatherResourcesJob : IJobEntity
-        {
-            public float DeltaTime;
-            public ComponentLookup<ResourceSourceState> SourceStateLookup;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
-            [ReadOnly] public ComponentLookup<ResourceTypeId> ResourceTypeLookup;
-            public float GatherDistance;
-            public float BaseGatherRate;
-
-            public void Execute(
-                ref VillagerJob job,
-                ref DynamicBuffer<VillagerInventoryItem> inventory,
-                in VillagerAIState aiState,
-                in LocalTransform transform,
-                in VillagerNeeds needs)
-            {
-                if (job.Type != VillagerJob.JobType.Gatherer ||
-                    aiState.CurrentState != VillagerAIState.State.Working ||
-                    job.WorksiteEntity == Entity.Null)
-                {
-                    return;
-                }
-
-                if (!SourceStateLookup.HasComponent(job.WorksiteEntity) ||
-                    !TransformLookup.HasComponent(job.WorksiteEntity) ||
-                    !ResourceTypeLookup.HasComponent(job.WorksiteEntity))
-                {
-                    job.WorksiteEntity = Entity.Null;
-                    return;
-                }
-
-                var sourceTransform = TransformLookup[job.WorksiteEntity];
-                var distance = math.distance(transform.Position, sourceTransform.Position);
-                if (distance > GatherDistance)
-                {
-                    return;
-                }
-
-                var sourceState = SourceStateLookup[job.WorksiteEntity];
-                var sourceTypeId = ResourceTypeLookup[job.WorksiteEntity].Value;
-                if (sourceTypeId.IsEmpty || sourceState.UnitsRemaining <= 0f)
-                {
-                    job.WorksiteEntity = Entity.Null;
-                    return;
-                }
-
-                var gatherAmount = BaseGatherRate * job.Productivity * DeltaTime;
-                var energyMultiplier = math.saturate(needs.Energy / 50f);
-                gatherAmount *= energyMultiplier;
-                gatherAmount = math.min(gatherAmount, sourceState.UnitsRemaining);
-
-                if (gatherAmount <= 0f)
-                {
-                    return;
-                }
-
-                sourceState.UnitsRemaining -= gatherAmount;
-                SourceStateLookup[job.WorksiteEntity] = sourceState;
-
-                var storedAmount = 0f;
-                var foundInInventory = false;
-                for (var i = 0; i < inventory.Length; i++)
-                {
-                    var item = inventory[i];
-                    if (!item.ResourceTypeId.Equals(sourceTypeId))
-                    {
-                        continue;
-                    }
-
-                    var maxCarry = item.MaxCarryCapacity > 0f ? item.MaxCarryCapacity : 50f;
-                    var capacityRemaining = math.max(0f, maxCarry - item.Amount);
-                    var toStore = math.min(gatherAmount, capacityRemaining);
-                    if (toStore > 0f)
-                    {
-                        item.Amount += toStore;
-                        inventory[i] = item;
-                        storedAmount += toStore;
-                    }
-
-                    foundInInventory = true;
-                    break;
-                }
-
-                if (!foundInInventory && storedAmount < gatherAmount)
-                {
-                    var toStore = math.min(gatherAmount - storedAmount, 50f);
-                    if (toStore > 0f)
-                    {
-                        inventory.Add(new VillagerInventoryItem
-                        {
-                            ResourceTypeId = sourceTypeId,
-                            Amount = toStore,
-                            MaxCarryCapacity = 50f
-                        });
-                        storedAmount += toStore;
-                    }
-                }
-
-                job.WorkProgress += storedAmount / 100f;
-            }
+            // Gathering handled by VillagerJobExecutionSystem in the fixed-step job loop.
+            // This system remains for compatibility but no longer mutates state.
         }
     }
 
@@ -194,13 +129,19 @@ namespace PureDOTS.Systems
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<VillagerJobTicket>();
+            state.RequireForUpdate<VillagerJobCarryItem>();
+            state.RequireForUpdate<ResourceTypeIndex>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton(out TimeState timeState) ||
+                !SystemAPI.TryGetSingleton(out RewindState rewindState))
+            {
+                return;
+            }
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
             {
                 return;
@@ -212,6 +153,12 @@ namespace PureDOTS.Systems
             _storeInventoryLookup.Update(ref state);
             _transformLookup.Update(ref state);
 
+            var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
+            if (!resourceCatalog.Catalog.IsCreated)
+            {
+                return;
+            }
+
             var depositJob = new DepositResourcesJob
             {
                 StorehouseLookup = _storehouseLookup,
@@ -220,7 +167,8 @@ namespace PureDOTS.Systems
                 StoreInventoryLookup = _storeInventoryLookup,
                 TransformLookup = _transformLookup,
                 DepositDistance = 5f,
-                CurrentTick = timeState.Tick
+                CurrentTick = timeState.Tick,
+                ResourceCatalog = resourceCatalog.Catalog
             };
 
             state.Dependency = depositJob.ScheduleParallel(state.Dependency);
@@ -236,22 +184,25 @@ namespace PureDOTS.Systems
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             public float DepositDistance;
             public uint CurrentTick;
+            [ReadOnly] public BlobAssetReference<ResourceTypeIndexBlob> ResourceCatalog;
 
             public void Execute(
-                ref DynamicBuffer<VillagerInventoryItem> inventory,
+                ref DynamicBuffer<VillagerJobCarryItem> carry,
                 ref VillagerJob job,
-                in VillagerAIState aiState,
+                ref VillagerJobTicket ticket,
+                ref VillagerJobProgress progress,
+                ref VillagerAIState aiState,
                 in LocalTransform transform)
             {
-                if (inventory.Length == 0)
+                if (carry.Length == 0)
                 {
                     return;
                 }
 
                 var totalCarried = 0f;
-                for (var i = 0; i < inventory.Length; i++)
+                for (var i = 0; i < carry.Length; i++)
                 {
-                    totalCarried += inventory[i].Amount;
+                    totalCarried += carry[i].Amount;
                 }
 
                 if (totalCarried <= 0f)
@@ -259,14 +210,12 @@ namespace PureDOTS.Systems
                     return;
                 }
 
-                // Simple heuristic: drop-off when idle (no active goal) and heavily loaded.
-                var shouldDeposit = aiState.CurrentGoal == VillagerAIState.Goal.None && totalCarried >= 40f;
-                if (!shouldDeposit)
+                if (job.Phase != VillagerJob.JobPhase.Delivering || ticket.StorehouseEntity == Entity.Null)
                 {
                     return;
                 }
 
-                var target = aiState.TargetEntity;
+                var target = ticket.StorehouseEntity;
                 if (target == Entity.Null ||
                     !StorehouseLookup.HasComponent(target) ||
                     !TransformLookup.HasComponent(target) ||
@@ -279,6 +228,7 @@ namespace PureDOTS.Systems
                 var storehousePos = TransformLookup[target].Position;
                 if (math.distance(transform.Position, storehousePos) > DepositDistance)
                 {
+                    aiState.TargetEntity = target;
                     return;
                 }
 
@@ -288,19 +238,25 @@ namespace PureDOTS.Systems
                 var storeInventory = hasInventoryComponent ? StoreInventoryLookup[target] : default;
                 var inventoryModified = false;
 
-                for (var i = inventory.Length - 1; i >= 0; i--)
+                for (var i = carry.Length - 1; i >= 0; i--)
                 {
-                    var carried = inventory[i];
+                    var carried = carry[i];
                     if (carried.Amount <= 0f)
                     {
-                        inventory.RemoveAt(i);
+                        carry.RemoveAt(i);
+                        continue;
+                    }
+
+                    var resourceId = ResolveResourceId(ResourceCatalog, carried.ResourceTypeIndex);
+                    if (resourceId.Length == 0)
+                    {
                         continue;
                     }
 
                     var maxCapacity = 0f;
                     for (var c = 0; c < capacities.Length; c++)
                     {
-                        if (capacities[c].ResourceTypeId.Equals(carried.ResourceTypeId))
+                        if (capacities[c].ResourceTypeId.Equals(resourceId))
                         {
                             maxCapacity = capacities[c].MaxCapacity;
                             break;
@@ -315,7 +271,7 @@ namespace PureDOTS.Systems
                     var storeIndex = -1;
                     for (var s = 0; s < storeItems.Length; s++)
                     {
-                        if (storeItems[s].ResourceTypeId.Equals(carried.ResourceTypeId))
+                        if (storeItems[s].ResourceTypeId.Equals(resourceId))
                         {
                             storeIndex = s;
                             break;
@@ -341,7 +297,7 @@ namespace PureDOTS.Systems
                         {
                             storeItems.Add(new StorehouseInventoryItem
                             {
-                                ResourceTypeId = carried.ResourceTypeId,
+                                ResourceTypeId = resourceId,
                                 Amount = accepted,
                                 Reserved = 0f
                             });
@@ -357,11 +313,11 @@ namespace PureDOTS.Systems
 
                     if (carried.Amount <= 0f)
                     {
-                        inventory.RemoveAt(i);
+                        carry.RemoveAt(i);
                     }
                     else
                     {
-                        inventory[i] = carried;
+                        carry[i] = carried;
                     }
 
                     if (hasInventoryComponent)
@@ -370,6 +326,9 @@ namespace PureDOTS.Systems
                         storeInventory.LastUpdateTick = CurrentTick;
                         inventoryModified = true;
                     }
+
+                    // Extension point: broadcast partial deliveries for future analytics/event systems.
+                    progress.Delivered += accepted;
                 }
 
                 if (hasInventoryComponent && inventoryModified)
@@ -377,6 +336,44 @@ namespace PureDOTS.Systems
                     storeInventory.ItemTypeCount = storeItems.Length;
                     StoreInventoryLookup[target] = storeInventory;
                 }
+
+                if (carry.Length == 0)
+                {
+                    job.Phase = VillagerJob.JobPhase.Completed;
+                    job.ActiveTicketId = 0;
+                    job.LastStateChangeTick = CurrentTick;
+
+                    ticket.ResourceEntity = Entity.Null;
+                    ticket.StorehouseEntity = Entity.Null;
+                    ticket.TicketId = 0;
+                    ticket.ReservedUnits = 0f;
+                    ticket.Phase = (byte)VillagerJob.JobPhase.Completed;
+                    ticket.LastProgressTick = CurrentTick;
+
+                    progress.Gathered = 0f;
+                    progress.TimeInPhase = 0f;
+                    progress.LastUpdateTick = CurrentTick;
+
+                    aiState.TargetEntity = Entity.Null;
+                    aiState.CurrentGoal = VillagerAIState.Goal.None;
+                    aiState.CurrentState = VillagerAIState.State.Idle;
+                }
+            }
+
+            private static FixedString64Bytes ResolveResourceId(BlobAssetReference<ResourceTypeIndexBlob> catalog, ushort resourceTypeIndex)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return default;
+                }
+
+                ref var blob = ref catalog.Value;
+                if (resourceTypeIndex >= blob.Ids.Length)
+                {
+                    return default;
+                }
+
+                return blob.Ids[resourceTypeIndex];
             }
         }
     }
@@ -403,8 +400,11 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton(out TimeState timeState) ||
+                !SystemAPI.TryGetSingleton(out RewindState rewindState))
+            {
+                return;
+            }
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
             {
                 return;

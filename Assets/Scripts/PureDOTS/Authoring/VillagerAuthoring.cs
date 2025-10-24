@@ -76,16 +76,35 @@ namespace PureDOTS.Authoring
                 StateStartTick = 0
             });
 
-            Entity worksiteEntity = authoring.initialWorksite != null
-                ? GetEntity(authoring.initialWorksite, TransformUsageFlags.Dynamic)
-                : Entity.Null;
-
             AddComponent(entity, new VillagerJob
             {
                 Type = authoring.initialJob,
-                WorksiteEntity = worksiteEntity,
-                WorkProgress = 0f,
-                Productivity = 1f
+                Phase = VillagerJob.JobPhase.Idle,
+                ActiveTicketId = 0,
+                Productivity = 1f,
+                LastStateChangeTick = 0
+            });
+
+            AddComponent(entity, new VillagerJobTicket
+            {
+                TicketId = 0,
+                JobType = authoring.initialJob,
+                ResourceTypeIndex = ushort.MaxValue,
+                ResourceEntity = Entity.Null,
+                StorehouseEntity = Entity.Null,
+                Priority = 0,
+                Phase = (byte)VillagerJob.JobPhase.Idle,
+                ReservedUnits = 0f,
+                AssignedTick = 0,
+                LastProgressTick = 0
+            });
+
+            AddComponent(entity, new VillagerJobProgress
+            {
+                Gathered = 0f,
+                Delivered = 0f,
+                TimeInPhase = 0f,
+                LastUpdateTick = 0
             });
 
             AddComponent(entity, new VillagerDisciplineState
@@ -167,10 +186,12 @@ namespace PureDOTS.Authoring
 
             AddBuffer<VillagerCommand>(entity);
             AddBuffer<VillagerInventoryItem>(entity);
+            AddBuffer<VillagerJobCarryItem>(entity);
             AddBuffer<VillagerRelationship>(entity);
             AddBuffer<VillagerPathWaypoint>(entity);
             AddBuffer<VillagerMemoryEvent>(entity);
             AddBuffer<VillagerHistorySample>(entity);
+            AddBuffer<VillagerJobHistorySample>(entity);
 
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier
