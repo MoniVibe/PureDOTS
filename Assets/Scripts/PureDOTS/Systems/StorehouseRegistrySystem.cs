@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -18,7 +19,6 @@ namespace PureDOTS.Systems
     public partial struct StorehouseRegistrySystem : ISystem
     {
         private EntityQuery _storehouseQuery;
-        private EntityQuery _registryQuery;
         private ComponentLookup<StorehouseJobReservation> _reservationLookup;
         private BufferLookup<StorehouseReservationItem> _reservationItemsLookup;
 
@@ -29,13 +29,10 @@ namespace PureDOTS.Systems
                 .WithAll<StorehouseConfig, StorehouseInventory>()
                 .Build();
 
-            _registryQuery = SystemAPI.QueryBuilder()
-                .WithAll<StorehouseRegistry>()
-                .Build();
-
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ResourceTypeIndex>();
+            state.RequireForUpdate<StorehouseRegistry>();
 
             _reservationLookup = state.GetComponentLookup<StorehouseJobReservation>(true);
             _reservationItemsLookup = state.GetBufferLookup<StorehouseReservationItem>(true);
@@ -51,19 +48,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            // Ensure registry singleton exists
-            if (!SystemAPI.HasSingleton<StorehouseRegistry>())
-            {
-                var registryEntity = state.EntityManager.CreateEntity();
-                state.EntityManager.AddComponent<StorehouseRegistry>(registryEntity);
-                state.EntityManager.AddBuffer<StorehouseRegistryEntry>(registryEntity);
-            }
-
             var registryEntity = SystemAPI.GetSingletonEntity<StorehouseRegistry>();
             var registry = SystemAPI.GetComponentRW<StorehouseRegistry>(registryEntity);
-            var entries = SystemAPI.GetBufferRW<StorehouseRegistryEntry>(registryEntity);
-
-            entries.Clear();
+            var entries = state.EntityManager.GetBuffer<StorehouseRegistryEntry>(registryEntity);
+            ref var registryMetadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
 
             var totalStorehouses = 0;
             var totalCapacity = 0f;
@@ -79,6 +67,9 @@ namespace PureDOTS.Systems
 
             _reservationLookup.Update(ref state);
             _reservationItemsLookup.Update(ref state);
+
+            var expectedCount = math.max(16, _storehouseQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<StorehouseRegistryEntry>(expectedCount, Allocator.Temp);
 
             // Query all storehouses
             foreach (var (inventory, transform, entity) in SystemAPI.Query<RefRO<StorehouseInventory>, RefRO<LocalTransform>>()
@@ -178,7 +169,7 @@ namespace PureDOTS.Systems
                     }
                 }
 
-                entries.Add(new StorehouseRegistryEntry
+                builder.Add(new StorehouseRegistryEntry
                 {
                     StorehouseEntity = entity,
                     Position = transform.ValueRO.Position,
@@ -192,6 +183,10 @@ namespace PureDOTS.Systems
                 totalCapacity += inventory.ValueRO.TotalCapacity;
                 totalStored += inventory.ValueRO.TotalStored;
             }
+
+            builder.ApplyTo(ref entries);
+            registryMetadata.MarkUpdated(entries.Length, timeState.Tick);
+            registryMetadata.MarkUpdated(entries.Length, timeState.Tick);
 
             registry.ValueRW = new StorehouseRegistry
             {
@@ -216,4 +211,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-

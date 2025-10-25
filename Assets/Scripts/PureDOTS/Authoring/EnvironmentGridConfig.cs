@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -15,6 +16,13 @@ namespace PureDOTS.Authoring
         [SerializeField] GridSettings _sunlight = GridSettings.CreateDefault(new Vector2Int(128, 128), 10f);
         [SerializeField] GridSettings _wind = GridSettings.CreateDefault(new Vector2Int(64, 64), 20f);
         [SerializeField] GridSettings _biome = GridSettings.CreateDefault(new Vector2Int(128, 128), 10f, enabled: false);
+
+        [Header("Channel Identifiers")]
+        [SerializeField] string _moistureChannelId = "moisture";
+        [SerializeField] string _temperatureChannelId = "temperature";
+        [SerializeField] string _sunlightChannelId = "sunlight";
+        [SerializeField] string _windChannelId = "wind";
+        [SerializeField] string _biomeChannelId = "biome";
 
         [Header("Moisture Defaults")]
         [SerializeField, Min(0f)] float _moistureDiffusion = 0.25f;
@@ -49,6 +57,11 @@ namespace PureDOTS.Authoring
                 Wind = _wind.ToMetadata(),
                 Biome = _biome.ToMetadata(),
                 BiomeEnabled = _biome.Enabled ? (byte)1 : (byte)0,
+                MoistureChannelId = ToFixedString(_moistureChannelId, "moisture"),
+                TemperatureChannelId = ToFixedString(_temperatureChannelId, "temperature"),
+                SunlightChannelId = ToFixedString(_sunlightChannelId, "sunlight"),
+                WindChannelId = ToFixedString(_windChannelId, "wind"),
+                BiomeChannelId = ToFixedString(_biomeChannelId, "biome"),
                 MoistureDiffusion = math.max(0f, _moistureDiffusion),
                 MoistureSeepage = math.max(0f, _moistureSeepage),
                 BaseSeasonTemperature = _baseSeasonTemperature,
@@ -69,8 +82,26 @@ namespace PureDOTS.Authoring
             _sunlight.Sanitize();
             _wind.Sanitize();
             _biome.Sanitize();
+
+            _moistureChannelId = SanitizeChannel(_moistureChannelId, "moisture");
+            _temperatureChannelId = SanitizeChannel(_temperatureChannelId, "temperature");
+            _sunlightChannelId = SanitizeChannel(_sunlightChannelId, "sunlight");
+            _windChannelId = SanitizeChannel(_windChannelId, "wind");
+            _biomeChannelId = SanitizeChannel(_biomeChannelId, "biome");
         }
 #endif
+
+        static FixedString64Bytes ToFixedString(string value, string fallback)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+            FixedString64Bytes fixedString = text;
+            return fixedString;
+        }
+
+        static string SanitizeChannel(string value, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        }
 
         static float3 NormalizeSunDirection(Vector3 direction)
         {

@@ -4,6 +4,7 @@
 - Define the ScriptableObject and blob layouts that drive vegetation growth, health, harvest, and reproduction systems.
 - Provide guidance for authoring workflows and data ownership before Alpha implements bakers.
 - Capture open questions around persistence and rewind serialization.
+- Ensure data contracts match runtime expectations in `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`, integration glue in `Docs/TODO/SystemIntegration_TODO.md`, and rewind guidance in `Docs/DesignNotes/RewindPatterns.md`.
 
 ## Asset Overview
 - **VegetationSpeciesCatalog.asset**

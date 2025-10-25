@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
@@ -60,8 +61,8 @@ namespace PureDOTS.Systems.Spatial
                          .WithEntityAccess())
             {
                 var position = transform.ValueRO.Position;
-                var coords = SpatialHash.Quantize(position, config);
-                var cellId = SpatialHash.Flatten(coords, config);
+                SpatialHash.Quantize(position, config, out var coords);
+                var cellId = SpatialHash.Flatten(in coords, in config);
 
                 if ((uint)cellId >= (uint)config.CellCount)
                 {
@@ -119,20 +120,55 @@ namespace PureDOTS.Systems.Spatial
                 stagingRanges[i] = tempRanges[i];
             }
 
-            SpatialGridBuildSystem.CopyStagingToActive(ref activeRanges, ref activeEntries, stagingRanges, stagingEntries);
+            SpatialGridBuildSystem.CopyStagingToActive(ref activeRanges, ref activeEntries, in stagingRanges, in stagingEntries);
 
+            var lastTick = SystemAPI.HasSingleton<TimeState>() ? SystemAPI.GetSingleton<TimeState>().Tick : 0u;
             stateRW.ValueRW = new SpatialGridState
             {
                 ActiveBufferIndex = stateRW.ValueRO.ActiveBufferIndex,
                 TotalEntries = gatherList.Length,
-                Version = stateRW.ValueRO.Version + 1
+                Version = stateRW.ValueRO.Version + 1,
+                LastUpdateTick = lastTick
             };
+
+            if (SystemAPI.HasComponent<SpatialRegistryMetadata>(gridEntity))
+            {
+                var metadata = SystemAPI.GetComponentRW<SpatialRegistryMetadata>(gridEntity);
+                var value = metadata.ValueRO;
+                value.ResetHandles();
+
+                AppendHandlesFromDirectory(ref state, ref value);
+
+                metadata.ValueRW = value;
+            }
 
             gatherList.Dispose();
             tempRanges.Dispose();
 
             // Only need the initial build once during initialization.
             state.Enabled = false;
+        }
+
+        private static void AppendHandlesFromDirectory(ref SystemState state, ref SpatialRegistryMetadata metadata)
+        {
+            var directoryQuery = state.GetEntityQuery(ComponentType.ReadOnly<RegistryDirectory>());
+            if (directoryQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var directoryEntity = directoryQuery.GetSingletonEntity();
+
+            if (!state.EntityManager.HasBuffer<RegistryDirectoryEntry>(directoryEntity))
+            {
+                return;
+            }
+
+            var entries = state.EntityManager.GetBuffer<RegistryDirectoryEntry>(directoryEntity);
+            for (var i = 0; i < entries.Length; i++)
+            {
+                metadata.SetHandle(entries[i].Handle);
+            }
         }
     }
 }

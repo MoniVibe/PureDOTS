@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -16,7 +17,6 @@ namespace PureDOTS.Systems
     public partial struct ResourceRegistrySystem : ISystem
     {
         private EntityQuery _resourceQuery;
-        private EntityQuery _registryQuery;
         private ComponentLookup<ResourceJobReservation> _reservationLookup;
 
         [BurstCompile]
@@ -26,13 +26,10 @@ namespace PureDOTS.Systems
                 .WithAll<ResourceSourceConfig, ResourceTypeId>()
                 .Build();
 
-            _registryQuery = SystemAPI.QueryBuilder()
-                .WithAll<ResourceRegistry>()
-                .Build();
-
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ResourceTypeIndex>();
+            state.RequireForUpdate<ResourceRegistry>();
 
             _reservationLookup = state.GetComponentLookup<ResourceJobReservation>(true);
         }
@@ -47,19 +44,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            // Ensure registry singleton exists
-            if (!SystemAPI.HasSingleton<ResourceRegistry>())
-            {
-                var createdEntity = state.EntityManager.CreateEntity();
-                state.EntityManager.AddComponent<ResourceRegistry>(createdEntity);
-                state.EntityManager.AddBuffer<ResourceRegistryEntry>(createdEntity);
-            }
-
             var registryEntity = SystemAPI.GetSingletonEntity<ResourceRegistry>();
             var registry = SystemAPI.GetComponentRW<ResourceRegistry>(registryEntity);
             var entries = state.EntityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
-
-            entries.Clear();
+            ref var registryMetadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
 
             var totalResources = 0;
             var totalActiveResources = 0;
@@ -72,6 +60,9 @@ namespace PureDOTS.Systems
             }
 
             _reservationLookup.Update(ref state);
+
+            var expectedCount = math.max(16, _resourceQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<ResourceRegistryEntry>(expectedCount, Allocator.Temp);
 
             // Query all resource sources
             foreach (var (sourceState, resourceTypeId, transform, entity) in SystemAPI.Query<RefRO<ResourceSourceState>, RefRO<ResourceTypeId>, RefRO<LocalTransform>>()
@@ -89,7 +80,7 @@ namespace PureDOTS.Systems
                     ? _reservationLookup[entity]
                     : default;
 
-                entries.Add(new ResourceRegistryEntry
+                builder.Add(new ResourceRegistryEntry
                 {
                     ResourceTypeIndex = (ushort)typeIndex,
                     SourceEntity = entity,
@@ -107,6 +98,9 @@ namespace PureDOTS.Systems
                 }
             }
 
+            builder.ApplyTo(ref entries);
+            registryMetadata.MarkUpdated(entries.Length, timeState.Tick);
+
             registry.ValueRW = new ResourceRegistry
             {
                 TotalResources = totalResources,
@@ -116,4 +110,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-

@@ -1,3 +1,5 @@
+using PureDOTS.Runtime.Registry;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -29,6 +31,7 @@ namespace PureDOTS.Runtime.Spatial
         public int ActiveBufferIndex;
         public int TotalEntries;
         public uint Version;
+        public uint LastUpdateTick;
     }
 
     /// <summary>
@@ -78,5 +81,103 @@ namespace PureDOTS.Runtime.Spatial
     {
         public int StartIndex;
         public int Count;
+    }
+
+    /// <summary>
+    /// Compact descriptor describing a radius-based spatial search.
+    /// Provides reusable configuration that can be shared between entity categories.
+    /// </summary>
+    public struct SpatialQueryDescriptor
+    {
+        public float3 Origin;
+        public float Radius;
+        public int MaxResults;
+        public SpatialQueryOptions Options;
+        public float Tolerance;
+        public Entity ExcludedEntity;
+    }
+
+    /// <summary>
+    /// Options that modify how spatial descriptors behave.
+    /// </summary>
+    [System.Flags]
+    public enum SpatialQueryOptions : byte
+    {
+        None = 0,
+        IgnoreSelf = 1 << 0,
+        ProjectToXZ = 1 << 1,
+        RequireDeterministicSorting = 1 << 2
+    }
+
+    /// <summary>
+    /// Result range metadata written by batched spatial jobs.
+    /// </summary>
+    public struct SpatialQueryRange
+    {
+        public int Start;
+        public int Capacity;
+        public int Count;
+    }
+
+    /// <summary>
+    /// References to domain registries that consume spatial data.
+    /// Updated by the spatial rebuild systems each time the grid refreshes.
+    /// </summary>
+    public struct SpatialRegistryMetadata : IComponentData
+    {
+        public FixedList128Bytes<RegistryHandle> Handles;
+        public uint Version;
+
+        public void ResetHandles()
+        {
+            if (Handles.Length > 0)
+            {
+                Handles.Clear();
+                Version++;
+            }
+        }
+
+        public bool TryGetHandle(RegistryKind kind, out RegistryHandle handle)
+        {
+            for (var i = 0; i < Handles.Length; i++)
+            {
+                var candidate = Handles[i];
+                if (candidate.Kind == kind)
+                {
+                    handle = candidate;
+                    return true;
+                }
+            }
+
+            handle = default;
+            return false;
+        }
+
+        public void SetHandle(RegistryHandle handle)
+        {
+            for (var i = 0; i < Handles.Length; i++)
+            {
+                var existing = Handles[i];
+                if (existing.RegistryEntity != handle.RegistryEntity)
+                {
+                    continue;
+                }
+
+                Handles[i] = handle;
+                Version++;
+                return;
+            }
+
+            if (Handles.Length < Handles.Capacity)
+            {
+                Handles.Add(handle);
+            }
+            else
+            {
+                Handles[Handles.Length - 1] = handle;
+            }
+
+            Version++;
+        }
     }
 }

@@ -1,3 +1,5 @@
+using System;
+using PureDOTS.Runtime.Registry;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -345,6 +347,72 @@ namespace PureDOTS.Runtime.Components
         public float AverageHunger;
         public float AverageMorale;
         public uint LastUpdateTick;
+    }
+
+    /// <summary>
+    /// Registry summary for the villager domain.
+    /// </summary>
+    public struct VillagerRegistry : IComponentData
+    {
+        public int TotalVillagers;
+        public int AvailableVillagers;
+        public uint LastUpdateTick;
+    }
+
+    /// <summary>
+    /// Registry entry snapshot describing a villager's current state.
+    /// </summary>
+    public struct VillagerRegistryEntry : IBufferElementData, IComparable<VillagerRegistryEntry>, IRegistryEntry, IRegistryFlaggedEntry
+    {
+        public Entity VillagerEntity;
+        public int VillagerId;
+        public int FactionId;
+        public float3 Position;
+        public VillagerJob.JobType JobType;
+        public VillagerJob.JobPhase JobPhase;
+        public uint ActiveTicketId;
+        public ushort CurrentResourceTypeIndex;
+        public byte AvailabilityFlags;
+        public byte Discipline;
+
+        public int CompareTo(VillagerRegistryEntry other)
+        {
+            return VillagerEntity.Index.CompareTo(other.VillagerEntity.Index);
+        }
+
+        public Entity RegistryEntity => VillagerEntity;
+
+        public byte RegistryFlags => AvailabilityFlags;
+    }
+
+    public static class VillagerAvailabilityFlags
+    {
+        public const byte Available = 1 << 0;
+        public const byte Reserved = 1 << 1;
+
+        public static byte FromAvailability(in VillagerAvailability availability)
+        {
+            byte flags = 0;
+            if (availability.IsAvailable != 0)
+            {
+                flags |= Available;
+            }
+
+            if (availability.IsReserved != 0)
+            {
+                flags |= Reserved;
+            }
+
+            return flags;
+        }
+    }
+
+    /// <summary>
+    /// Optional binding that maps shared AI action indices to villager goals.
+    /// </summary>
+    public struct VillagerAIUtilityBinding : IComponentData
+    {
+        public FixedList32Bytes<VillagerAIState.Goal> Goals;
     }
 
 }

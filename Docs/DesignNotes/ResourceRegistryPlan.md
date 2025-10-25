@@ -2,19 +2,19 @@
 
 ## Overview
 
-Replace legacy resource/storehouse registries with DOTS-native singletons and buffers to provide clean, queryable data for the simulation. This eliminates EntityManager-based lookups and provides efficient indexed access to resources and storehouses.
+Replace legacy resource/storehouse registries with DOTS-native singletons and buffers to provide clean, queryable data for the simulation. This eliminates EntityManager-based lookups and provides efficient indexed access to resources and storehouses. Keep behaviour aligned with `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`, `Docs/TODO/SystemIntegration_TODO.md`, and honour rewind guidance in `Docs/DesignNotes/RewindPatterns.md`.
 
 ## Current State Analysis
 
 ### Existing Patterns
 - **Resource IDs**: Currently use `FixedString64Bytes` via `ResourceTypeId.Value` component
-- **Storehouse Access**: Static `StorehouseAPI` class with manual `EntityManager` queries
+- **Storehouse Access**: Static `StorehouseAPI` class with manual `EntityManager` queries *(legacy; removed in favour of registry buffers)*
 - **Resource Types**: `ResourceTypeCatalog` ScriptableObject exists but lacks a baker to DOTS data
 - **Query Pattern**: Systems query entities directly via `EntityQuery` and component lookups
 
 ### Problems Addressed
 1. No centralized resource type catalog available at runtime
-2. StorehouseAPI uses EntityManager (not Burst-compatible, requires main thread)
+2. StorehouseAPI uses EntityManager (not Burst-compatible, requires main thread) *(resolved by removing the helper and reading reservation components directly)*
 3. No efficient index for looking up resources by type or storehouses by capacity
 4. Resource type validation happens only at authoring time
 
@@ -64,6 +64,11 @@ public struct ResourceRegistryEntry : IBufferElementData
 - By type: Filter by `ResourceTypeIndex`
 - Active only: Filter by `UnitsRemaining > 0`
 - Spatial: Use `Position` for distance calculations
+
+**Registry Metadata & Handles**  
+- Each registry singleton carries a `RegistryMetadata` component describing its semantic kind, archetype id, and latest version.  
+- `CoreSingletonBootstrapSystem` seeds this metadata and the runtime refreshes it alongside buffer rebuilds.  
+- Systems can request typed discovery via `SpatialRegistryMetadata` handles, allowing shared AI modules and pathfinding to resolve villager/resource/storehouse registries without hard-coded entity references.
 
 ### 3. StorehouseRegistry (Singleton Component + Buffer)
 
@@ -167,20 +172,9 @@ ResourceSystemGroup
 - Create baker for `ResourceTypeCatalog`
 - Add registry systems (update buffers, don't break existing code)
 
-### Phase 2: Update StorehouseAPI
-Replace static methods with system-based queries:
-
-**Before**:
-```csharp
-StorehouseAPI.TryDeposit(entityManager, storehouse, typeId, amount, out accepted);
-```
-
-**After**:
-```csharp
-var registry = SystemAPI.GetSingletonRW<StorehouseRegistry>();
-ref var storehouseEntry = ref registry.ValueRW.Entries[index];
-// Direct buffer access, Burst-compatible
-```
+### Phase 2: Update StorehouseAPI *(COMPLETED)*
+- Static helpers removed. Consumers should query `StorehouseRegistryEntry.TypeSummaries` and mutate `StorehouseJobReservation` / `StorehouseReservationItem` for capacity claims.
+- History: initial plan targeted method replacement; Beta finalized the migration by deleting the helper and documenting buffer-based usage in `VillagerJobs_DOTS.md`.
 
 ### Phase 3: Migrate Consumer Systems
 - Update `ResourceGatheringSystem` to use `ResourceRegistry` buffer

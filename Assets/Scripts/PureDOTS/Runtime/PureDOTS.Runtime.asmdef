@@ -6,7 +6,9 @@
         "Unity.Mathematics",
         "Unity.Collections",
         "Unity.Transforms",
-        "Unity.Burst"
+        "Unity.Burst",
+        "Unity.InputSystem",
+        "PureDOTS.Input"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

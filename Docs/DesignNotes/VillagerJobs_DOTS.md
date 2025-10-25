@@ -1,8 +1,8 @@
 # Villager Job Loop – Pure DOTS Design
 
 **Owner:** Agent Beta  
-**TruthSources:** `godgame/truthsources/Villagers_Jobs.md`, `VillagerTruth.md`, `TimeTruth.md`, `TimeEngine_Contract.md`  
-**Related Plans:** `ResourceRegistryPlan.md`
+**TruthSources:** `godgame/truthsources/Villagers_Jobs.md`, `VillagerTruth.md`, `TimeTruth.md`, `TimeEngine_Contract.md`, `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`, `Docs/DesignNotes/RewindPatterns.md`  
+**Related Plans:** `ResourceRegistryPlan.md`, `Docs/TODO/SystemIntegration_TODO.md`, `Docs/DesignNotes/SystemExecutionOrder.md`
 
 ---
 
@@ -103,15 +103,60 @@ Ordering Summary:
 - **Consumption**
   - `VillagerJobAssignmentSystem` reads `ResourceRegistry` buffer (including new `ActiveTickets`, `ClaimFlags`, `LastMutationTick`).  
   - `VillagerJobDeliverySystem` reads `StorehouseRegistry` buffer (`TypeSummaries`, `LastMutationTick`) to choose capacity-aware drop-off targets without querying `EntityManager` directly.
+  - `VillagerAISystem`/future gameplay systems can query the new `VillagerRegistry` buffer for availability, job phase, and ticket data without touching `EntityManager`.
+  - Shared AI pipeline (`AISystemGroup`) exposes sensor/utility/steering modules; villagers opt-in via `AISensorConfig` + `VillagerAIUtilityBinding` to translate generic actions into villager-specific goals.
 
 - **Reservation Updates**
   - Resource reservations mutate `ResourceJobReservation` & `ResourceActiveTicket` components; `ResourceRegistrySystem` mirrors them into buffer fields (`ActiveTickets`, `ClaimFlags`, `LastMutationTick`) during its scan.
   - Storehouse reservations update `StorehouseReservationItem` buffers; `StorehouseRegistrySystem` aggregates into `TypeSummaries` and updates `LastMutationTick`.
+  - Villager availability updates automatically populate `VillagerRegistryEntry.AvailabilityFlags` (bitmask defined in `VillagerAvailabilityFlags`).
 
 - **TruthSource Invariants**
   - Single write path: all storehouse totals modified through existing `StorehouseInventoryItem` buffers. Deliveries are emitted as `VillagerJobDeliveryCommand` dispatches consumed by `ResourceDepositSystem`, ensuring no direct mutation from job systems.
   - Player priority: `ClaimFlags` ensure villagers yield immediately when a storehouse/resource is claimed by player interactions (Interrupt system releases ticket and emits event).
   - Virtual carry: only `VillagerJobCarryItem` changes until deposit confirms via `ResourceDepositSystem`; no piles or resource totals mutated directly.
+  - Legacy `StorehouseAPI` helpers are removed; consumers must use the registries + reservation components for Burst-safe interactions.
+
+### Query & Reservation APIs
+
+- **ResourceRegistry** (`ResourceRegistryEntry`)
+  - `ActiveTickets` / `ClaimFlags` surface reservations. `ResourceJobReservation` is the authoritative component; mutate it and the registry buffer updates next frame.
+  - `LastMutationTick` identifies latest structural change for deterministic tie-breaking.
+- **StorehouseRegistry** (`StorehouseRegistryEntry`)
+  - `TypeSummaries` (per-storehouse `FixedList32Bytes`) summarize capacity / stored / reserved units per resource type.
+  - `StorehouseJobReservation` + `StorehouseReservationItem` hold the authoritative reservation totals. Update these components to reserve or release capacity.
+- **VillagerRegistry** (`VillagerRegistryEntry`)
+  - Provides `VillagerId`, `FactionId`, world position, job type/phase, ticket id, current target resource type (`CurrentResourceTypeIndex`), and availability flags.
+  - Use `VillagerAvailabilityFlags.Available/Reserved` to filter workers without rereading component data.
+
+#### Reserving Capacity Example
+
+```csharp
+// Reserve 10 wood units at a storehouse
+var reservation = SystemAPI.GetComponentRW<StorehouseJobReservation>(storehouseEntity);
+reservation.ValueRW.ReservedCapacity += 10f;
+reservation.ValueRW.LastMutationTick = timeState.Tick;
+
+var items = SystemAPI.GetBuffer<StorehouseReservationItem>(storehouseEntity);
+var found = false;
+for (int i = 0; i < items.Length; i++)
+{
+    if (items[i].ResourceTypeIndex == woodIndex)
+    {
+        var item = items[i];
+        item.Reserved += 10f;
+        items[i] = item;
+        found = true;
+        break;
+    }
+}
+if (!found)
+{
+    items.Add(new StorehouseReservationItem { ResourceTypeIndex = woodIndex, Reserved = 10f });
+}
+```
+
+Registry systems fold these component changes into their buffers automatically on the next update, so consumer systems only need to read from the buffers for fast Burst-compatible queries.
 
 ---
 

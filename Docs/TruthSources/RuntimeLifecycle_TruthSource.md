@@ -22,9 +22,12 @@
    - Construct custom system groups (`EnvironmentSystemGroup`, `SpatialSystemGroup`, etc.) and insert into update order.
    - Optionally execute one-off jobs (e.g., preloading streaming assets).
 3. **Initialisation Group Phase (`InitializationSystemGroup`)**
-   - `TimeStateSetupSystem`: sets `TimeState`, `GameplayFixedStep`, resets tick counters.
+   - `CoreSingletonBootstrapSystem`: guarantees `TimeState`, `GameplayFixedStep`, rewind, and registry singletons exist.
+   - `TimeSettingsConfigSystem`: applies authoring overrides to `TimeState`.
+   - `GameplayFixedStepSyncSystem`: mirrors `TimeState.FixedDeltaTime` into the `GameplayFixedStep` singleton and drives `FixedStepSimulationSystemGroup.Timestep` to keep Unity's fixed loop aligned.
    - `RewindBootstrapSystem`: initialises `RewindState`, clears history buffers.
-   - `EnvironmentGridBuildSystem`: writes base grid values (moisture, temperature, wind, sunlight) from config.
+   - `EnvironmentGridBootstrapSystem`: writes base grid values (moisture, temperature, wind, sunlight) from config.
+   - `EnvironmentEffectBootstrapSystem`: converts `EnvironmentEffectCatalogData` into runtime channel descriptors and zeroed contribution buffers.
    - `SpatialGridInitialBuildSystem`: first deterministic rebuild using existing entities.
    - `RegistryBootstrapSystem`: populates registries with zeroed entries.
 4. **Simulation Phase**
@@ -45,17 +48,12 @@
 
 ### EnvironmentSystemGroup (NEW)
 - Runs every tick before gameplay; houses deterministic world-state updates.
-- Update order (example):
-  1. `ClimateStateUpdateSystem`
-  2. `SunlightGridUpdateSystem`
-  3. `TemperatureGridUpdateSystem`
-  4. `WindFieldUpdateSystem`
-  5. `MoistureEvaporationSystem`
-  6. `MoistureSeepageSystem`
-  7. `MoistureRainSystem`
-  8. `BiomeDeterminationSystem`
+- Update order:
+  1. `EnvironmentEffectUpdateSystem` (evaluates scalar/vector/pulse effects defined in `EnvironmentEffectCatalogData`)
+  2. Additional derivations (`BiomeDeterminationSystem`, rainfall accumulation, etc.) consume the refreshed channels.
 - Group budgets: <2ms per frame aggregated.
 - All systems check `RewindState.Mode` and skip logic during playback.
+- Effect dispatcher writes additive contributions into channel buffers; consumers must read via `EnvironmentSampling` helpers to obtain base + contributions without mutating blobs.
 
 ### SpatialSystemGroup
 - Maintains spatial indices and nav data.
@@ -67,8 +65,17 @@
 
 ### GameplaySystemGroup
 - Houses core simulation (villagers, vegetation, resources, miracles, AI).
-- Sub-groups recommended: `VillagerSystemGroup`, `VegetationSystemGroup`, `ResourceSystemGroup`, `MiracleSystemGroup`.
+- Sub-groups recommended: `AISystemGroup`, `VillagerSystemGroup`, `VegetationSystemGroup`, `ResourceSystemGroup`, `MiracleSystemGroup`.
 - Each sub-group respects `RewindState` and uses double-buffering for writes where required.
+
+### AISystemGroup (NEW)
+- Runs inside `GameplaySystemGroup` immediately after spatial rebuilds and before villager/resource domain logic.
+- Hosts reusable AI modules:
+  1. `AISensorUpdateSystem` (spatial sampling + category filters)
+  2. `AIUtilityScoringSystem` (blob-driven action evaluation)
+  3. `AISteeringSystem` (SOA steering state updates)
+  4. `AITaskResolutionSystem` (writes pooled commands to `AICommand` queue)
+- Consumers opt-in by authoring `AISensorConfig`, `AIBehaviourArchetype`, `AISteeringConfig`, and reading from the shared `AICommandQueueTag` buffer.
 
 ### PresentationSystemGroup
 - Post-simulation translators to rendering/UI (hand visuals, grid overlays).
@@ -100,8 +107,16 @@
   - `EnvironmentRewindGuardSystem`
   - `SpatialRewindGuardSystem`
   - `GameplayRewindGuardSystem`
+  - `PresentationRewindGuardSystem`
 - History snapshot cadence defined centrally (see `RewindPatterns.md`).
 - Bootstrap ensures history buffers are cleared on fresh load and restored on save load.
+
+## Platform & Burst Considerations
+- Target IL2CPP/AOT: avoid reflection in Burst jobs, use static registries and `[Preserve]` attributes where required.
+- Enforce `BurstCompilerOptions.CompileSynchronously` in development to surface compile errors early.
+- Document job worker policies (default `JobsUtility.JobWorkerCount`, main-thread vs. jobs) and scheduling expectations.
+- Separate hot vs. cold execution paths; throttle background systems to keep critical loops responsive.
+- Link to `Docs/TruthSources/PlatformPerformance_TruthSource.md` (to be authored) for detailed platform/IL2CPP/Burst guidelines.
 
 ## Testing Expectations
 - **Playmode smoke**: Boot + 10s simulation without assertions.
@@ -116,6 +131,7 @@ When adding a new system:
 3. Update this truth-source if group ordering or contracts change.
 4. Add integration tests covering boot + runtime behaviour.
 5. Update relevant TODO/design docs to reference this truth-source.
+- Use shared pooling/spawn framework (`SpawnerFramework_TODO.md`) instead of ad-hoc entity instantiation.
 
 ## References
 - `Docs/TODO/SystemIntegration_TODO.md`

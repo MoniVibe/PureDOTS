@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
 
 namespace PureDOTS.Runtime.Spatial
 {
@@ -13,16 +16,16 @@ namespace PureDOTS.Runtime.Spatial
     public static class SpatialHash
     {
         [BurstCompile]
-        public static int3 Quantize(float3 position, in SpatialGridConfig config)
+        public static void Quantize(in float3 position, in SpatialGridConfig config, out int3 cell)
         {
             var local = (position - config.WorldMin) / math.max(config.CellSize, 1e-3f);
             var maxCell = (float3)(config.CellCounts - 1);
             var wrapped = math.clamp(local, float3.zero, maxCell);
-            return (int3)math.floor(wrapped + 1e-4f);
+            cell = (int3)math.floor(wrapped + 1e-4f);
         }
 
         [BurstCompile]
-        public static int Flatten(int3 cell, in SpatialGridConfig config)
+        public static int Flatten(in int3 cell, in SpatialGridConfig config)
         {
             return cell.x * config.CellCounts.y * config.CellCounts.z
                 + cell.y * config.CellCounts.z
@@ -30,7 +33,7 @@ namespace PureDOTS.Runtime.Spatial
         }
 
         [BurstCompile]
-        public static uint MortonKey(int3 cell, uint seed = 0u)
+        public static uint MortonKey(in int3 cell, uint seed = 0u)
         {
             var x = (uint)cell.x;
             var y = (uint)cell.y;
@@ -85,6 +88,43 @@ namespace PureDOTS.Runtime.Spatial
     }
 
     /// <summary>
+    /// Generic filter contract used by spatial batch queries.
+    /// </summary>
+    public interface ISpatialQueryFilter
+    {
+        bool Accept(int descriptorIndex, in SpatialQueryDescriptor descriptor, in SpatialGridEntry entry);
+    }
+
+    /// <summary>
+    /// Fallback filter that accepts all entities.
+    /// </summary>
+    public struct SpatialAcceptAllFilter : ISpatialQueryFilter
+    {
+        public bool Accept(int descriptorIndex, in SpatialQueryDescriptor descriptor, in SpatialGridEntry entry)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Filter that limits results to a whitelist of entities.
+    /// </summary>
+    public struct SpatialWhitelistFilter : ISpatialQueryFilter
+    {
+        public NativeParallelHashSet<Entity> Whitelist;
+
+        public bool Accept(int descriptorIndex, in SpatialQueryDescriptor descriptor, in SpatialGridEntry entry)
+        {
+            if (!Whitelist.IsCreated)
+            {
+                return true;
+            }
+
+            return Whitelist.Contains(entry.Entity);
+        }
+    }
+
+    /// <summary>
     /// Burst-friendly helpers for common spatial queries.
     /// </summary>
     public static class SpatialQueryHelper
@@ -117,15 +157,86 @@ namespace PureDOTS.Runtime.Spatial
             in DynamicBuffer<SpatialGridEntry> entries,
             ref NativeList<Entity> results)
         {
-            var cellCoords = SpatialHash.Quantize(position, config);
-            var maxOffset = (int)math.ceil(radius / math.max(config.CellSize, 1e-3f));
-            var radiusSq = radius * radius;
-
-            var entryArray = entries.AsNativeArray();
-
-            for (var dx = -maxOffset; dx <= maxOffset; dx++)
+            var descriptor = new SpatialQueryDescriptor
             {
-                for (var dy = -maxOffset; dy <= maxOffset; dy++)
+                Origin = position,
+                Radius = radius,
+                MaxResults = int.MaxValue,
+                Options = SpatialQueryOptions.RequireDeterministicSorting,
+                Tolerance = 1e-4f,
+                ExcludedEntity = Entity.Null
+            };
+
+            var filter = new SpatialAcceptAllFilter();
+            CollectEntities(in descriptor, in config, in ranges, in entries, ref results, ref filter, 0);
+        }
+
+        public static void CollectEntitiesInRadiusFiltered(
+            float3 position,
+            float radius,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results,
+            NativeParallelHashSet<Entity> whitelist)
+        {
+            var descriptor = new SpatialQueryDescriptor
+            {
+                Origin = position,
+                Radius = radius,
+                MaxResults = int.MaxValue,
+                Options = SpatialQueryOptions.RequireDeterministicSorting,
+                Tolerance = 1e-4f,
+                ExcludedEntity = Entity.Null
+            };
+
+            if (!whitelist.IsCreated)
+            {
+                var filterAll = new SpatialAcceptAllFilter();
+                CollectEntities(in descriptor, in config, in ranges, in entries, ref results, ref filterAll, 0);
+                return;
+            }
+
+            var filter = new SpatialWhitelistFilter
+            {
+                Whitelist = whitelist
+            };
+            CollectEntities(in descriptor, in config, in ranges, in entries, ref results, ref filter, 0);
+        }
+
+        public static void CollectEntities<TFilter>(
+            in SpatialQueryDescriptor descriptor,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results,
+            ref TFilter filter,
+            int descriptorIndex = 0)
+            where TFilter : struct, ISpatialQueryFilter
+        {
+            var rangesArray = ranges.AsNativeArray();
+            var entryArray = entries.AsNativeArray();
+            if (rangesArray.Length == 0 || entryArray.Length == 0)
+            {
+                return;
+            }
+
+            var tolerance = math.max(1e-5f, descriptor.Tolerance);
+            var radiusSq = descriptor.Radius > 0f
+                ? descriptor.Radius * descriptor.Radius + tolerance
+                : float.MaxValue;
+            var limit = descriptor.MaxResults > 0 ? descriptor.MaxResults : int.MaxValue;
+            var added = 0;
+            var continueSearch = true;
+
+            SpatialHash.Quantize(descriptor.Origin, config, out var cellCoords);
+            var maxOffset = descriptor.Radius > 0f
+                ? (int)math.ceil(descriptor.Radius / math.max(config.CellSize, 1e-3f))
+                : math.max(math.max(config.CellCounts.x, config.CellCounts.y), config.CellCounts.z);
+
+            for (var dx = -maxOffset; dx <= maxOffset && continueSearch; dx++)
+            {
+                for (var dy = -maxOffset; dy <= maxOffset && continueSearch; dy++)
                 {
                     for (var dz = -maxOffset; dz <= maxOffset; dz++)
                     {
@@ -135,13 +246,13 @@ namespace PureDOTS.Runtime.Spatial
                             continue;
                         }
 
-                        var cellId = SpatialHash.Flatten(neighbor, config);
-                        if ((uint)cellId >= ranges.Length)
+                        var cellId = SpatialHash.Flatten(in neighbor, in config);
+                        if ((uint)cellId >= rangesArray.Length)
                         {
                             continue;
                         }
 
-                        var range = ranges[cellId];
+                        var range = rangesArray[cellId];
                         if (range.Count <= 0)
                         {
                             continue;
@@ -149,18 +260,53 @@ namespace PureDOTS.Runtime.Spatial
 
                         for (var i = 0; i < range.Count; i++)
                         {
-                            var entry = entryArray[range.StartIndex + i];
-                            var distSq = math.lengthsq(entry.Position - position);
-                            if (distSq <= radiusSq)
+                            var entryIndex = range.StartIndex + i;
+                            if ((uint)entryIndex >= entryArray.Length)
                             {
-                                results.Add(entry.Entity);
+                                continue;
                             }
+
+                            var entry = entryArray[entryIndex];
+
+                            if ((descriptor.Options & SpatialQueryOptions.IgnoreSelf) != 0 &&
+                                entry.Entity == descriptor.ExcludedEntity)
+                            {
+                                continue;
+                            }
+
+                            if (!filter.Accept(descriptorIndex, in descriptor, in entry))
+                            {
+                                continue;
+                            }
+
+                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, descriptor.Options);
+                            if (distanceSq > radiusSq)
+                            {
+                                continue;
+                            }
+
+                            results.Add(entry.Entity);
+                            added++;
+
+                            if (added >= limit)
+                            {
+                                continueSearch = false;
+                                break;
+                            }
+                        }
+
+                        if (!continueSearch)
+                        {
+                            break;
                         }
                     }
                 }
             }
 
-            results.Sort(new EntityDeterministicComparer());
+            if ((descriptor.Options & SpatialQueryOptions.RequireDeterministicSorting) != 0 && added > 0)
+            {
+                results.Sort(new EntityDeterministicComparer());
+            }
         }
 
         public static void GetCellEntities(
@@ -175,7 +321,7 @@ namespace PureDOTS.Runtime.Spatial
                 return;
             }
 
-            var cellId = SpatialHash.Flatten(cellCoords, config);
+            var cellId = SpatialHash.Flatten(in cellCoords, in config);
             if ((uint)cellId >= ranges.Length)
             {
                 return;
@@ -202,8 +348,8 @@ namespace PureDOTS.Runtime.Spatial
             in DynamicBuffer<SpatialGridEntry> entries,
             ref NativeList<Entity> results)
         {
-            var minCell = SpatialHash.Quantize(aabbMin, config);
-            var maxCell = SpatialHash.Quantize(aabbMax, config);
+            SpatialHash.Quantize(aabbMin, config, out var minCell);
+            SpatialHash.Quantize(aabbMax, config, out var maxCell);
 
             minCell = math.clamp(minCell, int3.zero, config.CellCounts - 1);
             maxCell = math.clamp(maxCell, int3.zero, config.CellCounts - 1);
@@ -222,7 +368,7 @@ namespace PureDOTS.Runtime.Spatial
                     for (var z = minCell.z; z <= maxCell.z; z++)
                     {
                         var coords = new int3(x, y, z);
-                        var cellId = SpatialHash.Flatten(coords, config);
+                        var cellId = SpatialHash.Flatten(in coords, in config);
                         if ((uint)cellId >= ranges.Length)
                         {
                             continue;
@@ -262,7 +408,7 @@ namespace PureDOTS.Runtime.Spatial
             out float closestDistanceSq)
         {
             var maxOffset = 1;
-            var cellCoords = SpatialHash.Quantize(position, config);
+            SpatialHash.Quantize(position, config, out var cellCoords);
             var entryArray = entries.AsNativeArray();
 
             closestEntity = Entity.Null;
@@ -284,7 +430,7 @@ namespace PureDOTS.Runtime.Spatial
                                 continue;
                             }
 
-                            var cellId = SpatialHash.Flatten(neighbor, config);
+                            var cellId = SpatialHash.Flatten(in neighbor, in config);
                             if ((uint)cellId >= ranges.Length)
                             {
                                 continue;
@@ -317,12 +463,341 @@ namespace PureDOTS.Runtime.Spatial
             return closestEntity != Entity.Null;
         }
 
+        public static int CollectKNearest<TFilter>(
+            int descriptorIndex,
+            in SpatialQueryDescriptor descriptor,
+            in SpatialGridConfig config,
+            NativeArray<SpatialGridCellRange> ranges,
+            NativeArray<SpatialGridEntry> entries,
+            NativeSlice<KNearestResult> results,
+            in TFilter filter)
+            where TFilter : struct, ISpatialQueryFilter
+        {
+            if (!ranges.IsCreated || !entries.IsCreated || results.Length == 0)
+            {
+                return 0;
+            }
+
+            if (ranges.Length == 0 || entries.Length == 0)
+            {
+                return 0;
+            }
+
+            var capacity = descriptor.MaxResults > 0
+                ? math.min(descriptor.MaxResults, results.Length)
+                : results.Length;
+
+            if (capacity <= 0)
+            {
+                return 0;
+            }
+
+            var options = descriptor.Options;
+            var tolerance = math.max(1e-5f, descriptor.Tolerance);
+            var radius = descriptor.Radius;
+            var radiusSq = radius > 0f && !float.IsInfinity(radius)
+                ? radius * radius + tolerance
+                : float.MaxValue;
+
+            var maxOffset = radius > 0f && !float.IsInfinity(radius)
+                ? (int)math.ceil(radius / math.max(config.CellSize, 1e-3f))
+                : math.max(math.max(config.CellCounts.x, config.CellCounts.y), config.CellCounts.z);
+
+            var count = 0;
+
+            if (radiusSq >= float.MaxValue * 0.5f)
+            {
+                for (var i = 0; i < entries.Length; i++)
+                {
+                    var entry = entries[i];
+                    if ((options & SpatialQueryOptions.IgnoreSelf) != 0 && entry.Entity == descriptor.ExcludedEntity)
+                    {
+                        continue;
+                    }
+
+                    if (!filter.Accept(descriptorIndex, in descriptor, in entry))
+                    {
+                        continue;
+                    }
+
+                    var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, options);
+                    InsertKNearest(results, ref count, capacity, entry.Entity, distanceSq);
+                }
+
+                return math.min(count, capacity);
+            }
+
+            SpatialHash.Quantize(descriptor.Origin, config, out var cellCoords);
+            var maxCellSpan = math.max(math.max(config.CellCounts.x, config.CellCounts.y), config.CellCounts.z);
+            maxOffset = math.min(maxOffset, maxCellSpan);
+
+            for (var dx = -maxOffset; dx <= maxOffset; dx++)
+            {
+                for (var dy = -maxOffset; dy <= maxOffset; dy++)
+                {
+                    for (var dz = -maxOffset; dz <= maxOffset; dz++)
+                    {
+                        var neighbor = cellCoords + new int3(dx, dy, dz);
+                        if (!IsWithinBounds(neighbor, config.CellCounts))
+                        {
+                            continue;
+                        }
+
+                        var cellId = SpatialHash.Flatten(in neighbor, in config);
+                        if ((uint)cellId >= ranges.Length)
+                        {
+                            continue;
+                        }
+
+                        var range = ranges[cellId];
+                        if (range.Count <= 0)
+                        {
+                            continue;
+                        }
+
+                        for (var i = 0; i < range.Count; i++)
+                        {
+                            var entryIndex = range.StartIndex + i;
+                            if ((uint)entryIndex >= entries.Length)
+                            {
+                                continue;
+                            }
+
+                            var entry = entries[entryIndex];
+                            if ((options & SpatialQueryOptions.IgnoreSelf) != 0 && entry.Entity == descriptor.ExcludedEntity)
+                            {
+                                continue;
+                            }
+
+                            if (!filter.Accept(descriptorIndex, in descriptor, in entry))
+                            {
+                                continue;
+                            }
+
+                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, options);
+                            if (distanceSq > radiusSq)
+                            {
+                                continue;
+                            }
+
+                            InsertKNearest(results, ref count, capacity, entry.Entity, distanceSq);
+                        }
+                    }
+                }
+            }
+
+            return math.min(count, capacity);
+        }
+
+        public static void FindKNearest(
+            float3 position,
+            int k,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<KNearestResult> results)
+        {
+            results.Clear();
+            if (k <= 0)
+            {
+                return;
+            }
+
+            var entryArray = entries.AsNativeArray();
+            if (entryArray.Length == 0)
+            {
+                return;
+            }
+
+            var descriptor = new SpatialQueryDescriptor
+            {
+                Origin = position,
+                Radius = float.MaxValue,
+                MaxResults = k,
+                Options = SpatialQueryOptions.RequireDeterministicSorting,
+                Tolerance = 1e-4f,
+                ExcludedEntity = Entity.Null
+            };
+
+            var filter = new SpatialAcceptAllFilter();
+            var capacity = math.min(k, entryArray.Length);
+            if (capacity <= 0)
+            {
+                return;
+            }
+
+            results.ResizeUninitialized(capacity);
+
+            var slice = new NativeSlice<KNearestResult>(results.AsArray(), 0, capacity);
+            var count = CollectKNearest(0, in descriptor, in config, ranges.AsNativeArray(), entryArray, slice, in filter);
+            results.ResizeUninitialized(count);
+        }
+
+        public static void BatchOverlapAABB(
+            NativeArray<MinMaxAABB> queries,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<BatchOverlapResult> results)
+        {
+            results.Clear();
+            if (!queries.IsCreated || queries.Length == 0)
+            {
+                return;
+            }
+
+            var entryArray = entries.AsNativeArray();
+            if (entryArray.Length == 0)
+            {
+                return;
+            }
+
+            for (var qi = 0; qi < queries.Length; qi++)
+            {
+                var query = queries[qi];
+                SpatialHash.Quantize(query.Min, config, out var minCell);
+                SpatialHash.Quantize(query.Max, config, out var maxCell);
+
+                minCell = math.clamp(minCell, int3.zero, config.CellCounts - 1);
+                maxCell = math.clamp(maxCell, int3.zero, config.CellCounts - 1);
+
+                if (math.any(maxCell < minCell))
+                {
+                    continue;
+                }
+
+                for (var x = minCell.x; x <= maxCell.x; x++)
+                {
+                    for (var y = minCell.y; y <= maxCell.y; y++)
+                    {
+                        for (var z = minCell.z; z <= maxCell.z; z++)
+                        {
+                            var coords = new int3(x, y, z);
+                            var cellId = SpatialHash.Flatten(in coords, in config);
+                            if ((uint)cellId >= ranges.Length)
+                            {
+                                continue;
+                            }
+
+                            var range = ranges[cellId];
+                            if (range.Count <= 0)
+                            {
+                                continue;
+                            }
+
+                            for (var i = 0; i < range.Count; i++)
+                            {
+                                var entry = entryArray[range.StartIndex + i];
+                                if (!query.Contains(entry.Position))
+                                {
+                                    continue;
+                                }
+
+                                results.Add(new BatchOverlapResult
+                                {
+                                    Entity = entry.Entity,
+                                    QueryIndex = qi
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            results.Sort();
+        }
+
+        /// <summary>
+        /// Parallel batch job that resolves multiple k-nearest queries against the shared grid.
+        /// </summary>
+        [BurstCompile]
+        public struct SpatialKNearestBatchJob<TFilter> : IJobParallelFor
+            where TFilter : struct, ISpatialQueryFilter
+        {
+            [ReadOnly] public SpatialGridConfig Config;
+            [ReadOnly, NativeDisableParallelForRestriction] public NativeArray<SpatialGridCellRange> CellRanges;
+            [ReadOnly, NativeDisableParallelForRestriction] public NativeArray<SpatialGridEntry> Entries;
+            [ReadOnly] public NativeArray<SpatialQueryDescriptor> Descriptors;
+            public NativeArray<SpatialQueryRange> Ranges;
+            [NativeDisableParallelForRestriction] public NativeArray<KNearestResult> Results;
+            public TFilter Filter;
+
+            public void Execute(int index)
+            {
+                var descriptor = Descriptors[index];
+                var range = Ranges[index];
+                var slice = new NativeSlice<KNearestResult>(Results, range.Start, range.Capacity);
+                var filter = Filter;
+                var count = CollectKNearest(index, in descriptor, in Config, CellRanges, Entries, slice, in filter);
+                range.Count = count;
+                Ranges[index] = range;
+            }
+        }
+
+        private static float ComputeDistanceSq(float3 position, float3 origin, SpatialQueryOptions options)
+        {
+            var delta = position - origin;
+            if ((options & SpatialQueryOptions.ProjectToXZ) != 0)
+            {
+                delta.y = 0f;
+            }
+
+            return math.lengthsq(delta);
+        }
+
         private static bool IsWithinBounds(int3 coords, int3 maxCounts)
         {
             return coords.x >= 0 && coords.y >= 0 && coords.z >= 0
                 && coords.x < maxCounts.x
                 && coords.y < maxCounts.y
                 && coords.z < maxCounts.z;
+        }
+
+        private static void InsertKNearest(NativeSlice<KNearestResult> results, ref int count, int capacity, Entity entity, float distanceSq)
+        {
+            if (capacity <= 0 || results.Length == 0)
+            {
+                return;
+            }
+
+            var candidate = new KNearestResult
+            {
+                Entity = entity,
+                DistanceSq = distanceSq
+            };
+
+            var limit = math.min(capacity, results.Length);
+            var currentCount = math.min(count, limit);
+
+            if (currentCount < limit)
+            {
+                var insertIndex = currentCount;
+                while (insertIndex > 0 && candidate.CompareTo(results[insertIndex - 1]) < 0)
+                {
+                    results[insertIndex] = results[insertIndex - 1];
+                    insertIndex--;
+                }
+
+                results[insertIndex] = candidate;
+                count = currentCount + 1;
+                return;
+            }
+
+            var furthest = results[limit - 1];
+            if (candidate.CompareTo(furthest) >= 0)
+            {
+                return;
+            }
+
+            var idx = limit - 1;
+            while (idx > 0 && candidate.CompareTo(results[idx - 1]) < 0)
+            {
+                results[idx] = results[idx - 1];
+                idx--;
+            }
+
+            results[idx] = candidate;
+            count = limit;
         }
     }
 
@@ -334,6 +809,46 @@ namespace PureDOTS.Runtime.Spatial
         public int Compare(Entity x, Entity y)
         {
             return x.Index.CompareTo(y.Index);
+        }
+    }
+
+    /// <summary>
+    /// Result entry describing a nearest-neighbour query.
+    /// </summary>
+    public struct KNearestResult : System.IComparable<KNearestResult>
+    {
+        public Entity Entity;
+        public float DistanceSq;
+
+        public int CompareTo(KNearestResult other)
+        {
+            var distanceCompare = DistanceSq.CompareTo(other.DistanceSq);
+            if (distanceCompare != 0)
+            {
+                return distanceCompare;
+            }
+
+            return Entity.Index.CompareTo(other.Entity.Index);
+        }
+    }
+
+    /// <summary>
+    /// Result entry emitted when batching AABB overlaps.
+    /// </summary>
+    public struct BatchOverlapResult : System.IComparable<BatchOverlapResult>
+    {
+        public Entity Entity;
+        public int QueryIndex;
+
+        public int CompareTo(BatchOverlapResult other)
+        {
+            var indexCompare = QueryIndex.CompareTo(other.QueryIndex);
+            if (indexCompare != 0)
+            {
+                return indexCompare;
+            }
+
+            return Entity.Index.CompareTo(other.Entity.Index);
         }
     }
 }

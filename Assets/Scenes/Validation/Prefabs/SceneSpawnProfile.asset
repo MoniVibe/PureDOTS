@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e429a9ec48e68b64da7f9b52d2b0898b, type: 3}
+  m_Name: SceneSpawnProfile
+  m_EditorClassIdentifier: PureDOTS.Authoring::PureDOTS.Authoring.SceneSpawnProfileAsset
+  seed: 12345
+  entries:
+  - category: 0
+    prefab: {fileID: 100000, guid: 2ce797cb7f2f4e7aa20b3d9d37cf8b23, type: 3}
+    count: 6
+    placement: 1
+    rotation: 1
+    localOffset: {x: 0, y: 0, z: 0}
+    radius: 10
+    innerRadius: 0
+    gridDimensions: {x: 3, y: 3}
+    gridSpacing: {x: 2, y: 2}
+    heightRange: {x: 0, y: 0}
+    fixedYawDegrees: 0
+    randomizeSeedOffset: 0
+    explicitSeedOffset: 0
+    customPoints: []
+    payloadId: peasant
+    payloadValue: 0
+  - category: 1
+    prefab: {fileID: 1852608527418171406, guid: 83bfa1cbfb753e1489f104a718e99767, type: 3}
+    count: 20
+    placement: 3
+    rotation: 1
+    localOffset: {x: 0, y: 0, z: 0}
+    radius: 5
+    innerRadius: 0
+    gridDimensions: {x: 5, y: 4}
+    gridSpacing: {x: 2.5, y: 2.5}
+    heightRange: {x: 0, y: 0}
+    fixedYawDegrees: 0
+    randomizeSeedOffset: 0
+    explicitSeedOffset: 0
+    customPoints: []
+    payloadId: sprout
+    payloadValue: 0
+  - category: 3
+    prefab: {fileID: 8345371656599074782, guid: bdcb1d395514d9240a658ce439600a3f, type: 3}
+    count: 2
+    placement: 2
+    rotation: 0
+    localOffset: {x: 0, y: 0, z: 0}
+    radius: 8
+    innerRadius: 4
+    gridDimensions: {x: 3, y: 3}
+    gridSpacing: {x: 2, y: 2}
+    heightRange: {x: 0, y: 0}
+    fixedYawDegrees: 0
+    randomizeSeedOffset: 0
+    explicitSeedOffset: 0
+    customPoints: []
+    payloadId: blessing
+    payloadValue: 0

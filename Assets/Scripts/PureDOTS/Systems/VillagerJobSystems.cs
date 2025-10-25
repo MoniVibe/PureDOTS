@@ -1,4 +1,6 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -288,6 +290,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VillagerJobEventStream>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<SpatialGridConfig>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -305,7 +308,7 @@ namespace PureDOTS.Systems
             _storehouseReservationLookup.Update(ref state);
             _storehouseReservationItems.Update(ref state);
             _resourceConfigLookup.Update(ref state);
-            
+
             var requestEntity = SystemAPI.GetSingletonEntity<VillagerJobRequestQueue>();
             var requests = state.EntityManager.GetBuffer<VillagerJobRequest>(requestEntity);
             if (requests.Length == 0)
@@ -313,8 +316,12 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var registryEntity = SystemAPI.GetSingletonEntity<ResourceRegistry>();
-            var resourceEntries = state.EntityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            if (!RegistryDirectoryLookup.TryGetRegistryBuffer<ResourceRegistryEntry>(ref state, RegistryKind.Resource, out var resourceEntries))
+            {
+                requests.Clear();
+                return;
+            }
+
             if (resourceEntries.Length == 0)
             {
                 requests.Clear();
@@ -324,6 +331,15 @@ namespace PureDOTS.Systems
             var eventEntity = SystemAPI.GetSingletonEntity<VillagerJobEventStream>();
             var events = state.EntityManager.GetBuffer<VillagerJobEvent>(eventEntity);
             var ticketSequence = SystemAPI.GetComponentRW<VillagerJobTicketSequence>(eventEntity);
+
+            var spatialConfig = SystemAPI.GetSingleton<SpatialGridConfig>();
+            var spatialEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+            var gridRanges = state.EntityManager.GetBuffer<SpatialGridCellRange>(spatialEntity);
+            var gridEntries = state.EntityManager.GetBuffer<SpatialGridEntry>(spatialEntity);
+            var hasSpatialData = gridEntries.Length > 0 && gridRanges.Length == spatialConfig.CellCount;
+
+            var candidateEntities = new NativeList<Entity>(Allocator.Temp);
+            var candidateEntryIndices = new NativeList<int>(Allocator.Temp);
 
             for (int i = 0; i < requests.Length; i++)
             {
@@ -339,56 +355,88 @@ namespace PureDOTS.Systems
                 var bestReservation = default(ResourceJobReservation);
                 var targetConfig = default(ResourceSourceConfig);
 
-                for (int r = 0; r < resourceEntries.Length; r++)
+                if (hasSpatialData)
                 {
-                    var entry = resourceEntries[r];
-                    if (entry.UnitsRemaining <= 0f)
+                    candidateEntryIndices.Clear();
+                    var searchRadius = math.max(8f, spatialConfig.CellSize * 2f);
+
+                    for (int attempt = 0; attempt < 3 && candidateEntryIndices.Length == 0; attempt++)
                     {
-                        continue;
+                        candidateEntities.Clear();
+                        SpatialQueryHelper.CollectEntitiesInRadius(
+                            villagerPos,
+                            searchRadius,
+                            spatialConfig,
+                            gridRanges,
+                            gridEntries,
+                            ref candidateEntities);
+
+                        for (int c = 0; c < candidateEntities.Length; c++)
+                        {
+                            var candidate = candidateEntities[c];
+                            if (candidate == request.Villager)
+                            {
+                                continue;
+                            }
+
+                            if (!_resourceConfigLookup.HasComponent(candidate))
+                            {
+                                continue;
+                            }
+
+                            if (TryFindResourceEntryIndex(resourceEntries, candidate, out var entryIndex))
+                            {
+                                var alreadyAdded = false;
+                                for (int existing = 0; existing < candidateEntryIndices.Length; existing++)
+                                {
+                                    if (candidateEntryIndices[existing] == entryIndex)
+                                    {
+                                        alreadyAdded = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!alreadyAdded)
+                                {
+                                    candidateEntryIndices.Add(entryIndex);
+                                }
+                            }
+                        }
+
+                        searchRadius *= 2f;
                     }
 
-                    if (!_transformLookup.HasComponent(entry.SourceEntity))
+                    for (int c = 0; c < candidateEntryIndices.Length; c++)
                     {
-                        continue;
+                        TryScoreResourceCandidate(
+                            candidateEntryIndices[c],
+                            resourceEntries,
+                            villagerPos,
+                            ref _transformLookup,
+                            ref _resourceReservationLookup,
+                            ref _resourceConfigLookup,
+                            ref bestIndex,
+                            ref bestScore,
+                            ref bestReservation,
+                            ref targetConfig);
                     }
+                }
 
-                    var reservation = _resourceReservationLookup.HasComponent(entry.SourceEntity)
-                        ? _resourceReservationLookup[entry.SourceEntity]
-                        : new ResourceJobReservation();
-
-                    var config = _resourceConfigLookup.HasComponent(entry.SourceEntity)
-                        ? _resourceConfigLookup[entry.SourceEntity]
-                        : new ResourceSourceConfig { GatherRatePerWorker = 10f, MaxSimultaneousWorkers = 1 };
-
-                    if (config.MaxSimultaneousWorkers <= 0)
+                if (bestIndex < 0)
+                {
+                    for (int r = 0; r < resourceEntries.Length; r++)
                     {
-                        continue;
-                    }
-
-                    if (reservation.ActiveTickets >= config.MaxSimultaneousWorkers)
-                    {
-                        continue;
-                    }
-
-                    if ((reservation.ClaimFlags & ResourceRegistryClaimFlags.PlayerClaim) != 0)
-                    {
-                        continue;
-                    }
-
-                    var availableUnits = entry.UnitsRemaining - reservation.ReservedUnits;
-                    if (availableUnits <= 0f)
-                    {
-                        continue;
-                    }
-
-                    var distSq = math.distancesq(villagerPos, entry.Position);
-                    var score = distSq + (reservation.ActiveTickets * 5f);
-                    if (score < bestScore)
-                    {
-                        bestScore = score;
-                        bestIndex = r;
-                        bestReservation = reservation;
-                        targetConfig = config;
+                        TryScoreResourceCandidate(
+                            r,
+                            resourceEntries,
+                            villagerPos,
+                            ref _transformLookup,
+                            ref _resourceReservationLookup,
+                            ref _resourceConfigLookup,
+                            ref bestIndex,
+                            ref bestScore,
+                            ref bestReservation,
+                            ref targetConfig);
                     }
                 }
 
@@ -456,7 +504,136 @@ namespace PureDOTS.Systems
                 });
             }
 
+            candidateEntryIndices.Dispose();
+            candidateEntities.Dispose();
+
             requests.Clear();
+        }
+
+        private static bool TryFindResourceEntryIndex(DynamicBuffer<ResourceRegistryEntry> entries, Entity candidate, out int index)
+        {
+            var targetIndex = candidate.Index;
+            int low = 0;
+            int high = entries.Length - 1;
+
+            while (low <= high)
+            {
+                var mid = (low + high) >> 1;
+                var midEntity = entries[mid].SourceEntity;
+
+                if (midEntity.Index == targetIndex)
+                {
+                    if (midEntity == candidate)
+                    {
+                        index = mid;
+                        return true;
+                    }
+
+                    var left = mid - 1;
+                    while (left >= low && entries[left].SourceEntity.Index == targetIndex)
+                    {
+                        if (entries[left].SourceEntity == candidate)
+                        {
+                            index = left;
+                            return true;
+                        }
+                        left--;
+                    }
+
+                    var right = mid + 1;
+                    while (right <= high && entries[right].SourceEntity.Index == targetIndex)
+                    {
+                        if (entries[right].SourceEntity == candidate)
+                        {
+                            index = right;
+                            return true;
+                        }
+                        right++;
+                    }
+
+                    break;
+                }
+
+                if (midEntity.Index < targetIndex)
+                {
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid - 1;
+                }
+            }
+
+            index = -1;
+            return false;
+        }
+
+        private static void TryScoreResourceCandidate(
+            int entryIndex,
+            DynamicBuffer<ResourceRegistryEntry> entries,
+            float3 villagerPos,
+            ref ComponentLookup<LocalTransform> transformLookup,
+            ref ComponentLookup<ResourceJobReservation> reservationLookup,
+            ref ComponentLookup<ResourceSourceConfig> configLookup,
+            ref int bestIndex,
+            ref float bestScore,
+            ref ResourceJobReservation bestReservation,
+            ref ResourceSourceConfig targetConfig)
+        {
+            if ((uint)entryIndex >= (uint)entries.Length)
+            {
+                return;
+            }
+
+            var entry = entries[entryIndex];
+            if (entry.UnitsRemaining <= 0f)
+            {
+                return;
+            }
+
+            if (!transformLookup.HasComponent(entry.SourceEntity))
+            {
+                return;
+            }
+
+            var reservation = reservationLookup.HasComponent(entry.SourceEntity)
+                ? reservationLookup[entry.SourceEntity]
+                : new ResourceJobReservation();
+
+            var config = configLookup.HasComponent(entry.SourceEntity)
+                ? configLookup[entry.SourceEntity]
+                : new ResourceSourceConfig { GatherRatePerWorker = 10f, MaxSimultaneousWorkers = 1 };
+
+            if (config.MaxSimultaneousWorkers <= 0)
+            {
+                return;
+            }
+
+            if (reservation.ActiveTickets >= config.MaxSimultaneousWorkers)
+            {
+                return;
+            }
+
+            if ((reservation.ClaimFlags & ResourceRegistryClaimFlags.PlayerClaim) != 0)
+            {
+                return;
+            }
+
+            var availableUnits = entry.UnitsRemaining - reservation.ReservedUnits;
+            if (availableUnits <= 0f)
+            {
+                return;
+            }
+
+            var distSq = math.distancesq(villagerPos, entry.Position);
+            var score = distSq + (reservation.ActiveTickets * 5f);
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestIndex = entryIndex;
+                bestReservation = reservation;
+                targetConfig = config;
+            }
         }
     }
 
@@ -667,6 +844,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VillagerJobEventStream>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<SpatialGridConfig>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -694,6 +872,15 @@ namespace PureDOTS.Systems
             var eventEntity = SystemAPI.GetSingletonEntity<VillagerJobEventStream>();
             var events = state.EntityManager.GetBuffer<VillagerJobEvent>(eventEntity);
 
+            var spatialConfig = SystemAPI.GetSingleton<SpatialGridConfig>();
+            var spatialEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+            var gridRanges = state.EntityManager.GetBuffer<SpatialGridCellRange>(spatialEntity);
+            var gridEntries = state.EntityManager.GetBuffer<SpatialGridEntry>(spatialEntity);
+            var hasSpatialData = gridEntries.Length > 0 && gridRanges.Length == spatialConfig.CellCount;
+
+            var storehouseCandidateEntities = new NativeList<Entity>(Allocator.Temp);
+            var storehouseCandidateIndices = new NativeList<int>(Allocator.Temp);
+
             foreach (var (job, ticket, progress, carry, aiState, transform, entity) in SystemAPI.Query<RefRW<VillagerJob>, RefRW<VillagerJobTicket>, RefRW<VillagerJobProgress>, DynamicBuffer<VillagerJobCarryItem>, RefRW<VillagerAIState>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
             {
@@ -720,7 +907,85 @@ namespace PureDOTS.Systems
 
                 if (ticket.ValueRO.StorehouseEntity == Entity.Null)
                 {
-                    var bestStorehouse = SelectStorehouse(storehouseEntries, ticket.ValueRO.ResourceTypeIndex, transform.ValueRO.Position);
+                    var bestStorehouse = Entity.Null;
+                    var bestScore = float.MaxValue;
+                    var villagerPos = transform.ValueRO.Position;
+                    var resourceTypeIndex = ticket.ValueRO.ResourceTypeIndex;
+
+                    if (hasSpatialData)
+                    {
+                        storehouseCandidateIndices.Clear();
+                        var searchRadius = math.max(10f, spatialConfig.CellSize * 2f);
+
+                        for (int attempt = 0; attempt < 3 && storehouseCandidateIndices.Length == 0; attempt++)
+                        {
+                            storehouseCandidateEntities.Clear();
+                            SpatialQueryHelper.CollectEntitiesInRadius(
+                                villagerPos,
+                                searchRadius,
+                                spatialConfig,
+                                gridRanges,
+                                gridEntries,
+                                ref storehouseCandidateEntities);
+
+                            for (int c = 0; c < storehouseCandidateEntities.Length; c++)
+                            {
+                                var candidate = storehouseCandidateEntities[c];
+                                if (candidate == entity)
+                                {
+                                    continue;
+                                }
+
+                                if (TryFindStorehouseEntryIndex(storehouseEntries, candidate, out var entryIndex))
+                                {
+                                    var alreadyAdded = false;
+                                    for (int existing = 0; existing < storehouseCandidateIndices.Length; existing++)
+                                    {
+                                        if (storehouseCandidateIndices[existing] == entryIndex)
+                                        {
+                                            alreadyAdded = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (!alreadyAdded)
+                                    {
+                                        storehouseCandidateIndices.Add(entryIndex);
+                                    }
+                                }
+                            }
+
+                            searchRadius *= 2f;
+                        }
+
+                        for (int c = 0; c < storehouseCandidateIndices.Length; c++)
+                        {
+                            TryScoreStorehouseCandidate(
+                                storehouseCandidateIndices[c],
+                                storehouseEntries,
+                                villagerPos,
+                                resourceTypeIndex,
+                                ref _transformLookup,
+                                ref bestStorehouse,
+                                ref bestScore);
+                        }
+                    }
+
+                    if (bestStorehouse == Entity.Null)
+                    {
+                        for (int s = 0; s < storehouseEntries.Length; s++)
+                        {
+                            TryScoreStorehouseCandidate(
+                                s,
+                                storehouseEntries,
+                                villagerPos,
+                                resourceTypeIndex,
+                                ref _transformLookup,
+                                ref bestStorehouse,
+                                ref bestScore);
+                        }
+                    }
+
                     ticket.ValueRW.StorehouseEntity = bestStorehouse;
                     aiState.ValueRW.TargetEntity = bestStorehouse;
                     aiState.ValueRW.CurrentState = VillagerAIState.State.Working;
@@ -732,41 +997,113 @@ namespace PureDOTS.Systems
                     }
                 }
             }
+
+            storehouseCandidateIndices.Dispose();
+            storehouseCandidateEntities.Dispose();
         }
 
-        private static Entity SelectStorehouse(DynamicBuffer<StorehouseRegistryEntry> entries, ushort resourceTypeIndex, float3 villagerPos)
+        private static bool TryFindStorehouseEntryIndex(DynamicBuffer<StorehouseRegistryEntry> entries, Entity candidate, out int index)
         {
-            var best = Entity.Null;
-            var bestScore = float.MaxValue;
+            var targetIndex = candidate.Index;
+            int low = 0;
+            int high = entries.Length - 1;
 
-            for (int i = 0; i < entries.Length; i++)
+            while (low <= high)
             {
-                var entry = entries[i];
-                float available = 0f;
-                for (int t = 0; t < entry.TypeSummaries.Length; t++)
+                var mid = (low + high) >> 1;
+                var midEntity = entries[mid].StorehouseEntity;
+
+                if (midEntity.Index == targetIndex)
                 {
-                    var summary = entry.TypeSummaries[t];
-                    if (summary.ResourceTypeIndex == resourceTypeIndex)
+                    if (midEntity == candidate)
                     {
-                        available = summary.Capacity - (summary.Stored + summary.Reserved);
-                        break;
+                        index = mid;
+                        return true;
                     }
+
+                    var left = mid - 1;
+                    while (left >= low && entries[left].StorehouseEntity.Index == targetIndex)
+                    {
+                        if (entries[left].StorehouseEntity == candidate)
+                        {
+                            index = left;
+                            return true;
+                        }
+                        left--;
+                    }
+
+                    var right = mid + 1;
+                    while (right <= high && entries[right].StorehouseEntity.Index == targetIndex)
+                    {
+                        if (entries[right].StorehouseEntity == candidate)
+                        {
+                            index = right;
+                            return true;
+                        }
+                        right++;
+                    }
+
+                    break;
                 }
 
-                if (available <= 0f)
+                if (midEntity.Index < targetIndex)
                 {
-                    continue;
+                    low = mid + 1;
                 }
-
-                var dist = math.distancesq(villagerPos, entry.Position);
-                if (dist < bestScore)
+                else
                 {
-                    bestScore = dist;
-                    best = entry.StorehouseEntity;
+                    high = mid - 1;
                 }
             }
 
-            return best;
+            index = -1;
+            return false;
+        }
+
+        private static void TryScoreStorehouseCandidate(
+            int entryIndex,
+            DynamicBuffer<StorehouseRegistryEntry> entries,
+            float3 villagerPos,
+            ushort resourceTypeIndex,
+            ref ComponentLookup<LocalTransform> transformLookup,
+            ref Entity bestStorehouse,
+            ref float bestScore)
+        {
+            if ((uint)entryIndex >= (uint)entries.Length)
+            {
+                return;
+            }
+
+            var entry = entries[entryIndex];
+            if (!transformLookup.HasComponent(entry.StorehouseEntity))
+            {
+                return;
+            }
+
+            float available = 0f;
+            for (int t = 0; t < entry.TypeSummaries.Length; t++)
+            {
+                var summary = entry.TypeSummaries[t];
+                if (summary.ResourceTypeIndex == resourceTypeIndex)
+                {
+                    available = summary.Capacity - (summary.Stored + summary.Reserved);
+                    break;
+                }
+            }
+
+            if (available <= 0f)
+            {
+                return;
+            }
+
+            var storehousePos = transformLookup[entry.StorehouseEntity].Position;
+            var score = math.distancesq(villagerPos, storehousePos);
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestStorehouse = entry.StorehouseEntity;
+            }
         }
 
         private void CompleteJob(ref VillagerJob job, ref VillagerJobTicket ticket, ref VillagerJobProgress progress, DynamicBuffer<VillagerJobCarryItem> carry, uint currentTick)

@@ -26,9 +26,12 @@ namespace PureDOTS.Authoring
 
             var time = authoring.config.Time.ToComponent();
             var history = authoring.config.History.ToComponent();
+            var pooling = authoring.config.Pooling.ToComponent();
 
             AddComponent(entity, time);
             AddComponent(entity, history);
+            AddComponent(entity, pooling);
+            AddComponent(entity, new PoolingSettings { Value = pooling });
 
             // Bake ResourceTypeIndex blob asset
             if (authoring.config.ResourceTypes != null && authoring.config.ResourceTypes.entries.Count > 0)

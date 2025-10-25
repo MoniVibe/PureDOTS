@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Hand;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace PureDOTS.Debugging
         public bool showTime = true;
         public bool showVillagerCounts = true;
         public bool showStorehouseTotals = true;
+        public bool showHand = true;
         public Vector2 padding = new Vector2(10f, 10f);
 
         private World _world;
@@ -27,6 +29,11 @@ namespace PureDOTS.Debugging
         private EntityQuery _rewindQuery;
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
+        private DivineHandEventBridge _handBridge;
+        private HandState _handState = HandState.Empty;
+        private int _handAmount;
+        private int _handCapacity;
+        private ushort _handType = DivineHandConstants.NoResourceType;
 
         private void Awake()
         {
@@ -43,6 +50,23 @@ namespace PureDOTS.Debugging
             _rewindQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>());
             _villagerQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<VillagerId>());
             _storehouseQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<StorehouseInventory>());
+
+            AttachHandBridge();
+        }
+
+        private void OnEnable()
+        {
+            AttachHandBridge();
+        }
+
+        private void OnDisable()
+        {
+            DetachHandBridge();
+        }
+
+        private void OnDestroy()
+        {
+            DetachHandBridge();
         }
 
         private void OnGUI()
@@ -97,6 +121,15 @@ namespace PureDOTS.Debugging
                 inventories.Dispose();
             }
 
+            if (showHand && _handBridge != null)
+            {
+                GUILayout.Space(6f);
+                GUILayout.Label("Divine Hand", HudStyles.BoldLabel);
+                GUILayout.Label($"State: {_handState}");
+                GUILayout.Label($"Held: {_handAmount}/{Mathf.Max(1, _handCapacity)}");
+                GUILayout.Label($"Resource: {(_handType == DivineHandConstants.NoResourceType ? "None" : _handType.ToString())}");
+            }
+
             GUILayout.EndArea();
         }
 
@@ -114,5 +147,41 @@ namespace PureDOTS.Debugging
             public static readonly GUIStyle BoldLabel = GUI.skin.label;
         }
 #endif
+
+        void AttachHandBridge()
+        {
+            if (_handBridge != null) return;
+            _handBridge = FindObjectOfType<DivineHandEventBridge>();
+            if (_handBridge == null) return;
+
+            _handBridge.HandStateChanged += HandleHandStateChanged;
+            _handBridge.HandAmountChanged += HandleHandAmountChanged;
+            _handBridge.HandTypeChanged += HandleHandTypeChanged;
+        }
+
+        void DetachHandBridge()
+        {
+            if (_handBridge == null) return;
+            _handBridge.HandStateChanged -= HandleHandStateChanged;
+            _handBridge.HandAmountChanged -= HandleHandAmountChanged;
+            _handBridge.HandTypeChanged -= HandleHandTypeChanged;
+            _handBridge = null;
+        }
+
+        void HandleHandStateChanged(HandState from, HandState to)
+        {
+            _handState = to;
+        }
+
+        void HandleHandAmountChanged(int amount, int capacity)
+        {
+            _handAmount = amount;
+            _handCapacity = capacity;
+        }
+
+        void HandleHandTypeChanged(ushort resourceTypeIndex)
+        {
+            _handType = resourceTypeIndex;
+        }
     }
 }

@@ -1,5 +1,14 @@
 # PureDOTS Progress Log
 
+## 2025-03-XX
+- Added climate authoring pipeline: `ClimateProfile` ScriptableObject, baker, and runtime `ClimateProfileData` with sensible fallbacks when no asset is present.
+- Implemented `ClimateStateUpdateSystem` (EnvironmentSystemGroup) to advance seasons, day/night cycle, wind, and humidity based on profile + deterministic tick cadence.
+- Introduced climate foundation tests (`ClimateStateUpdateSystemTests`) covering fallback defaults and authored profile overrides to keep regressions visible in CI.
+- Updated `PureDOTS_TODO.md` meta foundations section to reflect baseline climate cadence progress.
+- Extended environment foundation with mutable moisture runtime buffers plus `MoistureEvaporationSystem`/`MoistureSeepageSystem`, wiring deterministic update cadence and coverage via `MoistureGridSystemsTests`.
+- Established registry discovery infrastructure: `RegistryDirectorySystem` builds a deterministic handle catalog each frame, with tests ensuring metadata mutations propagate (`RegistryDirectorySystemTests`).
+- Added `RegistryDirectoryLookup` helpers and wired villager job queries + spatial rebuilds through the directory so future games can resolve registries generically without hard-coded singleton access.
+
 ## 2025-10-23
 - Established runtime/system/authoring assembly definitions (`PureDOTS.Runtime`, `PureDOTS.Systems`, `PureDOTS.Authoring`).
 - Ported core DOTS data components for time, history/rewind, resources, villager domains, and time control commands.

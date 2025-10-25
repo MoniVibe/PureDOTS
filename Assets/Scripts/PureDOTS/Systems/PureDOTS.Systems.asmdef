@@ -8,7 +8,12 @@
         "Unity.Mathematics",
         "Unity.Transforms",
         "Unity.Collections",
-        "Unity.Physics"
+        "Unity.Physics",
+        "Unity.NetCode",
+        "Unity.Entities.Graphics",
+        "Unity.Rendering",
+        "Unity.Rendering.Entities",
+        "Unity.Rendering.Universal"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

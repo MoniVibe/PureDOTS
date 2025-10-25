@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -68,6 +69,7 @@ namespace PureDOTS.Authoring
             });
 
             AddComponent(entity, new LastRecordedTick { Tick = 0 });
+            AddComponent<SpatialIndexedTag>(entity);
 
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier
@@ -174,6 +176,7 @@ namespace PureDOTS.Authoring
             });
 
             AddBuffer<StorehouseInventoryItem>(entity);
+            AddComponent<SpatialIndexedTag>(entity);
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier
             {

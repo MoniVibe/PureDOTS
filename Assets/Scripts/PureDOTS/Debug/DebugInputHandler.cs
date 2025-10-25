@@ -121,15 +121,15 @@ namespace PureDOTS.Debugging
             var commands = entityManager.GetBuffer<DebugCommand>(entity);
 
             // Check for keyboard input
-            if (Input.GetKeyDown(toggleHUDKey))
+            if (UnityEngine.Input.GetKeyDown(toggleHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ToggleHUD });
             }
-            else if (Input.GetKeyDown(showHUDKey))
+            else if (UnityEngine.Input.GetKeyDown(showHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ShowHUD });
             }
-            else if (Input.GetKeyDown(hideHUDKey))
+            else if (UnityEngine.Input.GetKeyDown(hideHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.HideHUD });
             }

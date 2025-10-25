@@ -99,6 +99,11 @@ namespace PureDOTS.Environment
         public EnvironmentGridMetadata Wind;
         public EnvironmentGridMetadata Biome;
         public byte BiomeEnabled; // 0 = false, 1 = true
+        public FixedString64Bytes MoistureChannelId;
+        public FixedString64Bytes TemperatureChannelId;
+        public FixedString64Bytes SunlightChannelId;
+        public FixedString64Bytes WindChannelId;
+        public FixedString64Bytes BiomeChannelId;
 
         public float MoistureDiffusion;
         public float MoistureSeepage;
@@ -127,12 +132,34 @@ namespace PureDOTS.Environment
     }
 
     /// <summary>
+    /// Runtime per-cell data for the moisture grid. Stored in a dynamic buffer so systems can mutate
+    /// moisture values deterministically without reallocating blob data each frame.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct MoistureGridRuntimeCell : IBufferElementData
+    {
+        public float Moisture;
+        public float EvaporationRate;
+        public uint LastRainTick;
+    }
+
+    /// <summary>
+    /// Tracks per-system cadence for the moisture simulation.
+    /// </summary>
+    public struct MoistureGridSimulationState : IComponentData
+    {
+        public uint LastEvaporationTick;
+        public uint LastSeepageTick;
+    }
+
+    /// <summary>
     /// Singleton component providing access to the world moisture map.
     /// </summary>
     public struct MoistureGrid : IComponentData
     {
         public EnvironmentGridMetadata Metadata;
         public BlobAssetReference<MoistureGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
         public float DiffusionCoefficient;
         public float SeepageCoefficient;
         public uint LastUpdateTick;
@@ -178,6 +205,7 @@ namespace PureDOTS.Environment
     {
         public EnvironmentGridMetadata Metadata;
         public BlobAssetReference<TemperatureGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
         public float BaseSeasonTemperature;
         public float TimeOfDaySwing;
         public float SeasonalSwing;
@@ -247,6 +275,7 @@ namespace PureDOTS.Environment
     {
         public EnvironmentGridMetadata Metadata;
         public BlobAssetReference<SunlightGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
         public float3 SunDirection; // Normalised world direction
         public float SunIntensity;  // Lux or relative units
         public uint LastUpdateTick;
@@ -315,6 +344,7 @@ namespace PureDOTS.Environment
     {
         public EnvironmentGridMetadata Metadata;
         public BlobAssetReference<WindFieldBlob> Blob;
+        public FixedString64Bytes ChannelId;
         public float2 GlobalWindDirection; // Normalised XZ
         public float GlobalWindStrength;   // m/s
         public uint LastUpdateTick;
@@ -359,6 +389,7 @@ namespace PureDOTS.Environment
     {
         public EnvironmentGridMetadata Metadata;
         public BlobAssetReference<BiomeGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
         public uint LastUpdateTick;
         public uint LastTerrainVersion;
 
@@ -405,6 +436,40 @@ namespace PureDOTS.Environment
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int2 GetCellCoordinates(in EnvironmentGridMetadata metadata, int index)
+        {
+            var width = math.max(1, metadata.Resolution.x);
+            var y = index / width;
+            var x = index - y * width;
+            return new int2(x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryGetNeighborIndex(in EnvironmentGridMetadata metadata, int index, int2 offset, out int neighborIndex)
+        {
+            var coords = GetCellCoordinates(metadata, index);
+            coords += offset;
+
+            if (coords.x < 0 || coords.y < 0 || coords.x > metadata.MaxCellIndex.x || coords.y > metadata.MaxCellIndex.y)
+            {
+                neighborIndex = -1;
+                return false;
+            }
+
+            neighborIndex = GetCellIndex(metadata, coords);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 GetCellCenter(in EnvironmentGridMetadata metadata, int index)
+        {
+            var coords = GetCellCoordinates(metadata, index);
+            var x = metadata.WorldMin.x + (coords.x + 0.5f) * metadata.CellSize;
+            var z = metadata.WorldMin.z + (coords.y + 0.5f) * metadata.CellSize;
+            return new float3(x, 0f, z);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryWorldToCell(in EnvironmentGridMetadata metadata, float3 worldPosition, out int2 baseCell, out float2 fractional)
         {
             var local = new float2(
@@ -446,6 +511,50 @@ namespace PureDOTS.Environment
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SampleBilinear(in EnvironmentGridMetadata metadata, NativeArray<float> values, float3 worldPosition, float defaultValue)
+        {
+            if (!TryWorldToCell(metadata, worldPosition, out var baseCell, out var frac))
+            {
+                return defaultValue;
+            }
+
+            var right = baseCell + new int2(1, 0);
+            var up = baseCell + new int2(0, 1);
+            var upRight = baseCell + new int2(1, 1);
+
+            var c00 = values[GetCellIndex(metadata, baseCell)];
+            var c10 = values[GetCellIndex(metadata, right)];
+            var c01 = values[GetCellIndex(metadata, up)];
+            var c11 = values[GetCellIndex(metadata, upRight)];
+
+            var x0 = math.lerp(c00, c10, frac.x);
+            var x1 = math.lerp(c01, c11, frac.x);
+            return math.lerp(x0, x1, frac.y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SampleBilinear(in EnvironmentGridMetadata metadata, NativeArray<MoistureGridRuntimeCell> values, float3 worldPosition, float defaultValue)
+        {
+            if (!TryWorldToCell(metadata, worldPosition, out var baseCell, out var frac))
+            {
+                return defaultValue;
+            }
+
+            var right = baseCell + new int2(1, 0);
+            var up = baseCell + new int2(0, 1);
+            var upRight = baseCell + new int2(1, 1);
+
+            var c00 = values[GetCellIndex(metadata, baseCell)].Moisture;
+            var c10 = values[GetCellIndex(metadata, right)].Moisture;
+            var c01 = values[GetCellIndex(metadata, up)].Moisture;
+            var c11 = values[GetCellIndex(metadata, upRight)].Moisture;
+
+            var x0 = math.lerp(c00, c10, frac.x);
+            var x1 = math.lerp(c01, c11, frac.x);
+            return math.lerp(x0, x1, frac.y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SunlightSample SampleBilinear(in EnvironmentGridMetadata metadata, ref BlobArray<SunlightSample> values, float3 worldPosition, SunlightSample defaultValue)
         {
             if (!TryWorldToCell(metadata, worldPosition, out var baseCell, out var frac))
@@ -465,6 +574,28 @@ namespace PureDOTS.Environment
             var x0 = SunlightSample.Lerp(c00, c10, frac.x);
             var x1 = SunlightSample.Lerp(c01, c11, frac.x);
             return SunlightSample.Lerp(x0, x1, frac.y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 SampleBilinearVector(in EnvironmentGridMetadata metadata, NativeArray<float3> values, float3 worldPosition, float3 defaultValue)
+        {
+            if (!TryWorldToCell(metadata, worldPosition, out var baseCell, out var frac))
+            {
+                return defaultValue;
+            }
+
+            var right = baseCell + new int2(1, 0);
+            var up = baseCell + new int2(0, 1);
+            var upRight = baseCell + new int2(1, 1);
+
+            var c00 = values[GetCellIndex(metadata, baseCell)];
+            var c10 = values[GetCellIndex(metadata, right)];
+            var c01 = values[GetCellIndex(metadata, up)];
+            var c11 = values[GetCellIndex(metadata, upRight)];
+
+            var x0 = math.lerp(c00, c10, frac.x);
+            var x1 = math.lerp(c01, c11, frac.x);
+            return math.lerp(x0, x1, frac.y);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -512,5 +643,35 @@ namespace PureDOTS.Environment
         {
             values[GetCellIndex(metadata, cell)] = value;
         }
+    }
+
+    /// <summary>
+    /// Accumulated additive contribution for scalar environment channels.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct EnvironmentScalarContribution : IBufferElementData
+    {
+        public float Value;
+    }
+
+    /// <summary>
+    /// Accumulated additive contribution for vector environment channels.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct EnvironmentVectorContribution : IBufferElementData
+    {
+        public float3 Value;
+    }
+
+    /// <summary>
+    /// Runtime event pulse emitted by environment effects (e.g., storms, radiation bursts).
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct EnvironmentEventPulse : IBufferElementData
+    {
+        public FixedString64Bytes EffectId;
+        public FixedString64Bytes ChannelId;
+        public float Intensity;
+        public uint Tick;
     }
 }

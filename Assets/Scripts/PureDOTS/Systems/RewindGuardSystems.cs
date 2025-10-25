@@ -1,0 +1,123 @@
+using PureDOTS.Runtime.Components;
+using Unity.Entities;
+
+namespace PureDOTS.Systems
+{
+    /// <summary>
+    /// Enables or disables <see cref="EnvironmentSystemGroup"/> based on the active rewind mode.
+    /// Environment updates are skipped while replaying history to keep the simulation deterministic.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    [UpdateBefore(typeof(EnvironmentSystemGroup))]
+    public partial struct EnvironmentRewindGuardSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<RewindState>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var targetGroup = state.World.GetExistingSystemManaged<EnvironmentSystemGroup>();
+            if (targetGroup == null)
+            {
+                return;
+            }
+
+            var rewind = SystemAPI.GetSingleton<RewindState>();
+            var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
+            if (targetGroup.Enabled != shouldRun)
+            {
+                targetGroup.Enabled = shouldRun;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Guards the spatial rebuild pipeline during rewind modes.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(EnvironmentRewindGuardSystem))]
+    [UpdateBefore(typeof(SpatialSystemGroup))]
+    public partial struct SpatialRewindGuardSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<RewindState>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var targetGroup = state.World.GetExistingSystemManaged<SpatialSystemGroup>();
+            if (targetGroup == null)
+            {
+                return;
+            }
+
+            var rewind = SystemAPI.GetSingleton<RewindState>();
+            var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
+            if (targetGroup.Enabled != shouldRun)
+            {
+                targetGroup.Enabled = shouldRun;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Disables the high-level gameplay systems while the simulation is replaying history.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(SpatialRewindGuardSystem))]
+    [UpdateBefore(typeof(GameplaySystemGroup))]
+    public partial struct GameplayRewindGuardSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<RewindState>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var targetGroup = state.World.GetExistingSystemManaged<GameplaySystemGroup>();
+            if (targetGroup == null)
+            {
+                return;
+            }
+
+            var rewind = SystemAPI.GetSingleton<RewindState>();
+            var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
+            if (targetGroup.Enabled != shouldRun)
+            {
+                targetGroup.Enabled = shouldRun;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Presentation runs during normal play and while reviewing playback, but is disabled during catch-up rewinds.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
+    public partial struct PresentationRewindGuardSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<RewindState>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var targetGroup = state.World.GetExistingSystemManaged<PresentationSystemGroup>();
+            if (targetGroup == null)
+            {
+                return;
+            }
+
+            var rewind = SystemAPI.GetSingleton<RewindState>();
+            var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.Playback;
+            if (targetGroup.Enabled != shouldRun)
+            {
+                targetGroup.Enabled = shouldRun;
+            }
+        }
+    }
+}

@@ -3,17 +3,20 @@
     "rootNamespace": "PureDOTS.Authoring",
     "references": [
         "PureDOTS.Runtime",
+        "PureDOTS.Input",
         "PureDOTS.Config",
         "PureDOTS.Systems",
         "Unity.Entities",
         "Unity.Entities.Hybrid",
         "Unity.Mathematics",
         "Unity.Transforms",
-        "Unity.Collections"
+        "Unity.Collections",
+        "Unity.Entities.Graphics",
+        "Unity.Rendering",
+        "Unity.Rendering.Entities",
+        "Unity.Rendering.Universal"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

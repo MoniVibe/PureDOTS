@@ -1,3 +1,5 @@
+using System;
+using PureDOTS.Runtime.Registry;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -56,6 +58,45 @@ namespace PureDOTS.Runtime.Components
         public float MinScale;
         public float MaxScale;
         public float DefaultUnits;
+    }
+
+    [System.Flags]
+    public enum ResourceChunkFlags : byte
+    {
+        None = 0,
+        Carried = 1 << 0,
+        Thrown = 1 << 1,
+        PendingDestroy = 1 << 2
+    }
+
+    public struct ResourceChunkState : IComponentData
+    {
+        public ushort ResourceTypeIndex;
+        public float Units;
+        public Entity SourceEntity;
+        public Entity Carrier;
+        public ResourceChunkFlags Flags;
+        public float3 Velocity;
+        public float Age;
+    }
+
+    [System.Flags]
+    public enum ResourceChunkSpawnFlags : byte
+    {
+        None = 0,
+        AttachToRequester = 1 << 0,
+        InheritVelocity = 1 << 1
+    }
+
+    public struct ResourceChunkSpawnCommand : IBufferElementData
+    {
+        public ushort ResourceTypeIndex;
+        public float Units;
+        public Entity Requester;
+        public float3 SpawnPosition;
+        public float3 LocalOffset;
+        public float3 InitialVelocity;
+        public ResourceChunkSpawnFlags Flags;
     }
 
     public struct ConstructionSiteProgress : IComponentData
@@ -129,7 +170,7 @@ namespace PureDOTS.Runtime.Components
         public uint LastUpdateTick;
     }
 
-    public struct ResourceRegistryEntry : IBufferElementData
+    public struct ResourceRegistryEntry : IBufferElementData, IComparable<ResourceRegistryEntry>, IRegistryEntry, IRegistryFlaggedEntry
     {
         public ushort ResourceTypeIndex;
         public Entity SourceEntity;
@@ -138,6 +179,15 @@ namespace PureDOTS.Runtime.Components
         public byte ActiveTickets;
         public byte ClaimFlags;
         public uint LastMutationTick;
+
+        public int CompareTo(ResourceRegistryEntry other)
+        {
+            return SourceEntity.Index.CompareTo(other.SourceEntity.Index);
+        }
+
+        public Entity RegistryEntity => SourceEntity;
+
+        public byte RegistryFlags => ClaimFlags;
     }
 
     public struct StorehouseRegistry : IComponentData
@@ -156,7 +206,7 @@ namespace PureDOTS.Runtime.Components
         public float Reserved;
     }
 
-    public struct StorehouseRegistryEntry : IBufferElementData
+    public struct StorehouseRegistryEntry : IBufferElementData, IComparable<StorehouseRegistryEntry>, IRegistryEntry
     {
         public Entity StorehouseEntity;
         public float3 Position;
@@ -164,6 +214,13 @@ namespace PureDOTS.Runtime.Components
         public float TotalStored;
         public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
         public uint LastMutationTick;
+
+        public int CompareTo(StorehouseRegistryEntry other)
+        {
+            return StorehouseEntity.Index.CompareTo(other.StorehouseEntity.Index);
+        }
+
+        public Entity RegistryEntity => StorehouseEntity;
     }
 
     public struct ResourceJobReservation : IComponentData

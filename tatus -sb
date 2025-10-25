@@ -1,0 +1,148 @@
+warning: in the working copy of 'Assets/Scripts/PureDOTS/Systems/SystemGroups.cs', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/Assets/Scripts/PureDOTS/Systems/SystemGroups.cs b/Assets/Scripts/PureDOTS/Systems/SystemGroups.cs[m
+[1mindex 79acc75..6c273f7 100644[m
+[1m--- a/Assets/Scripts/PureDOTS/Systems/SystemGroups.cs[m
+[1m+++ b/Assets/Scripts/PureDOTS/Systems/SystemGroups.cs[m
+[36m@@ -1,8 +1,8 @@[m
+[31m-using Unity.Entities;[m
+[31m-using Unity.Physics.Systems;[m
+[31m-[m
+[32m+[m[32musing Unity.Entities;[m
+[32m+[m[32musing Unity.Physics.Systems;[m
+[32m+[m
+ namespace PureDOTS.Systems[m
+[31m-{[m
+[32m+[m[32m{[m
+     /// <summary>[m
+     /// Custom system group for time management systems.[m
+     /// Runs first in InitializationSystemGroup.[m
+[36m@@ -10,6 +10,28 @@[m [mnamespace PureDOTS.Systems[m
+     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)][m
+     public partial class TimeSystemGroup : ComponentSystemGroup { }[m
+ [m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// Environment simulation group; runs after physics and before spatial indexing.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(BuildPhysicsWorld))][m
+[32m+[m[32m    public partial class EnvironmentSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// Spatial systems run after environment state updates and before gameplay logic.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(EnvironmentSystemGroup))][m
+[32m+[m[32m    [UpdateBefore(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    public partial class SpatialSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// High level gameplay simulation group containing domain-specific subgroups.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(SpatialSystemGroup))][m
+[32m+[m[32m    public partial class GameplaySystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+     /// <summary>[m
+     /// System group for rewind/history recording.[m
+     /// Runs after simulation to capture state.[m
+[36m@@ -26,50 +48,57 @@[m [mnamespace PureDOTS.Systems[m
+     /// <summary>[m
+     /// System group for villager AI and behavior.[m
+     /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(FixedStepSimulationSystemGroup))][m
+[32m+[m[32m    public partial class VillagerSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for resource management.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(VillagerSystemGroup))][m
+[32m+[m[32m    public partial class ResourceSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for miracle effect processing.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(ResourceSystemGroup))][m
+[32m+[m[32m    public partial class MiracleEffectSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for combat systems.[m
+[32m+[m[32m    /// </summary>[m
+     [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(FixedStepSimulationSystemGroup))][m
+[31m-    public partial class VillagerSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// System group for resource management.[m
+[31m-    /// </summary>[m
+[31m-    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(VillagerSystemGroup))][m
+[31m-    public partial class ResourceSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// System group for combat systems.[m
+[31m-    /// </summary>[m
+[31m-    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(BuildPhysicsWorld))][m
+[31m-    [UpdateBefore(typeof(ExportPhysicsWorld))][m
+[31m-    public partial class CombatSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// System group for divine hand interaction.[m
+[31m-    /// </summary>[m
+[31m-    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(BuildPhysicsWorld))][m
+[31m-    [UpdateBefore(typeof(ExportPhysicsWorld))][m
+[31m-    public partial class HandSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// System group for vegetation systems.[m
+[31m-    /// </summary>[m
+[31m-    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(FixedStepSimulationSystemGroup))][m
+[31m-    public partial class VegetationSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// System group for construction systems.[m
+[31m-    /// </summary>[m
+[31m-    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[31m-    [UpdateAfter(typeof(ResourceSystemGroup))][m
+[31m-    public partial class ConstructionSystemGroup : ComponentSystemGroup { }[m
+[31m-[m
+[31m-    /// <summary>[m
+[31m-    /// Late simulation group for cleanup and state recording.[m
+[31m-    /// </summary>[m
+[32m+[m[32m    [UpdateAfter(typeof(BuildPhysicsWorld))][m
+[32m+[m[32m    [UpdateBefore(typeof(ExportPhysicsWorld))][m
+[32m+[m[32m    public partial class CombatSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for divine hand interaction.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(SimulationSystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(BuildPhysicsWorld))][m
+[32m+[m[32m    [UpdateBefore(typeof(ExportPhysicsWorld))][m
+[32m+[m[32m    public partial class HandSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for vegetation systems.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(FixedStepSimulationSystemGroup))][m
+[32m+[m[32m    public partial class VegetationSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// System group for construction systems.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    [UpdateInGroup(typeof(GameplaySystemGroup))][m
+[32m+[m[32m    [UpdateAfter(typeof(ResourceSystemGroup))][m
+[32m+[m[32m    public partial class ConstructionSystemGroup : ComponentSystemGroup { }[m
+[32m+[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// Late simulation group for cleanup and state recording.[m
+[32m+[m[32m    /// </summary>[m
+     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)][m
+     public partial class LateSimulationSystemGroup : ComponentSystemGroup { }[m
+ }[m

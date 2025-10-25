@@ -1,5 +1,9 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Spatial;
+using PureDOTS.Runtime.Transport;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -25,18 +29,40 @@ namespace PureDOTS.Systems
 
         public static void EnsureSingletons(EntityManager entityManager)
         {
+            Entity timeEntity;
             using (var timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()))
             {
                 if (timeQuery.IsEmptyIgnoreFilter)
                 {
-                    var entity = entityManager.CreateEntity(typeof(TimeState));
-                    entityManager.SetComponentData(entity, new TimeState
+                    timeEntity = entityManager.CreateEntity(typeof(TimeState));
+                    entityManager.SetComponentData(timeEntity, new TimeState
                     {
                         FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
                         CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
                         Tick = 0,
                         IsPaused = TimeSettingsDefaults.PauseOnStart
                     });
+                }
+                else
+                {
+                    timeEntity = timeQuery.GetSingletonEntity();
+                }
+            }
+
+            if (!entityManager.HasComponent<GameplayFixedStep>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, new GameplayFixedStep
+                {
+                    FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime
+                });
+            }
+            else
+            {
+                var fixedStep = entityManager.GetComponentData<GameplayFixedStep>(timeEntity);
+                if (fixedStep.FixedDeltaTime <= 0f)
+                {
+                    fixedStep.FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime;
+                    entityManager.SetComponentData(timeEntity, fixedStep);
                 }
             }
 
@@ -77,16 +103,24 @@ namespace PureDOTS.Systems
                 entityManager.AddBuffer<TimeControlCommand>(rewindEntity);
             }
 
-            EnsureRegistry<ResourceRegistry, ResourceRegistryEntry>(entityManager);
-            EnsureRegistry<StorehouseRegistry, StorehouseRegistryEntry>(entityManager);
-            EnsureRegistry<VillagerRegistry, VillagerRegistryEntry>(entityManager);
+            EnsureRegistry<ResourceRegistry, ResourceRegistryEntry>(entityManager, RegistryKind.Resource, "ResourceRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureRegistry<StorehouseRegistry, StorehouseRegistryEntry>(entityManager, RegistryKind.Storehouse, "StorehouseRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureRegistry<VillagerRegistry, VillagerRegistryEntry>(entityManager, RegistryKind.Villager, "VillagerRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureRegistry<MinerVesselRegistry, MinerVesselRegistryEntry>(entityManager, RegistryKind.MinerVessel, "MinerVesselRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<HaulerRegistry, HaulerRegistryEntry>(entityManager, RegistryKind.Hauler, "HaulerRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<FreighterRegistry, FreighterRegistryEntry>(entityManager, RegistryKind.Freighter, "FreighterRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<WagonRegistry, WagonRegistryEntry>(entityManager, RegistryKind.Wagon, "WagonRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+
+            EnsureAICommandQueue(entityManager);
 
             EnsureSpatialGridSingleton(entityManager);
+
+            EnsureRegistryDirectory(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
 
-        private static void EnsureRegistry<TComponent, TBuffer>(EntityManager entityManager)
+        private static void EnsureRegistry<TComponent, TBuffer>(EntityManager entityManager, RegistryKind kind, FixedString64Bytes label, RegistryHandleFlags flags)
             where TComponent : unmanaged, IComponentData
             where TBuffer : unmanaged, IBufferElementData
         {
@@ -106,6 +140,42 @@ namespace PureDOTS.Systems
             {
                 entityManager.AddBuffer<TBuffer>(registryEntity);
             }
+
+            if (!entityManager.HasComponent<RegistryMetadata>(registryEntity))
+            {
+                var metadata = new RegistryMetadata();
+                metadata.Initialise(kind, 0, flags, label);
+                entityManager.AddComponentData(registryEntity, metadata);
+            }
+            else
+            {
+                var metadata = entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+                if (metadata.Kind == RegistryKind.Unknown && metadata.Version == 0 && metadata.EntryCount == 0)
+                {
+                    metadata.Initialise(kind, metadata.ArchetypeId, flags, label);
+                    entityManager.SetComponentData(registryEntity, metadata);
+                }
+            }
+        }
+
+        private static void EnsureAICommandQueue(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<AICommandQueueTag>());
+            Entity queueEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                queueEntity = entityManager.CreateEntity(typeof(AICommandQueueTag));
+            }
+            else
+            {
+                queueEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<AICommand>(queueEntity))
+            {
+                entityManager.AddBuffer<AICommand>(queueEntity);
+            }
         }
 
         private static void EnsureSpatialGridSingleton(EntityManager entityManager)
@@ -121,7 +191,8 @@ namespace PureDOTS.Systems
                     {
                         ActiveBufferIndex = 0,
                         TotalEntries = 0,
-                        Version = 0
+                        Version = 0,
+                        LastUpdateTick = 0
                     });
                 }
                 else
@@ -133,7 +204,8 @@ namespace PureDOTS.Systems
                         {
                             ActiveBufferIndex = 0,
                             TotalEntries = 0,
-                            Version = 0
+                            Version = 0,
+                            LastUpdateTick = 0
                         });
                     }
                 }
@@ -143,6 +215,37 @@ namespace PureDOTS.Systems
             EnsureBuffer<SpatialGridEntry>(entityManager, gridEntity);
             EnsureBuffer<SpatialGridStagingEntry>(entityManager, gridEntity);
             EnsureBuffer<SpatialGridStagingCellRange>(entityManager, gridEntity);
+
+            if (!entityManager.HasComponent<SpatialRegistryMetadata>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, default(SpatialRegistryMetadata));
+            }
+        }
+
+        private static void EnsureRegistryDirectory(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RegistryDirectory>());
+            Entity directoryEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                directoryEntity = entityManager.CreateEntity(typeof(RegistryDirectory));
+                entityManager.SetComponentData(directoryEntity, new RegistryDirectory
+                {
+                    Version = 0,
+                    LastUpdateTick = 0,
+                    AggregateHash = 0
+                });
+            }
+            else
+            {
+                directoryEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<RegistryDirectoryEntry>(directoryEntity))
+            {
+                entityManager.AddBuffer<RegistryDirectoryEntry>(directoryEntity);
+            }
         }
 
         private static SpatialGridConfig CreateDefaultSpatialConfig()

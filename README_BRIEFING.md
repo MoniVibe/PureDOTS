@@ -40,3 +40,34 @@ Welcome to the PureDOTS migration effort. This repository is a fresh Unity proje
 - [ ] Create a simple DOTS-only test SubScene to validate the loop.
 
 Coordinate with TruthSources and the legacy repo for reference data and design constraints. The focus is laying a clean foundation—future agents can expand gameplay domains once the base is solid.
+
+## How to Adopt This Runtime in a New Game
+
+1. **Read the Truth Sources**  
+   - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` – system groups, determinism contracts.  
+   - `Docs/TruthSources/PlatformPerformance_TruthSource.md` – IL2CPP, Burst, worker policy.  
+   - `Docs/TODO/SystemIntegration_TODO.md` – active integration tasks and shared components.  
+   - Review domain TODOs (Spatial, Climate, Villagers, Resources, Miracles) for feature-specific expectations.
+
+2. **Authoring Assets Required**  
+   - `EnvironmentGridConfig` ScriptableObject (terrain bounds, grid resolution, climate defaults).  
+   - `SpatialPartitionProfile` ScriptableObject (cell size, provider selection).  
+   - `HandCameraInputProfile`, `ResourceTypeCatalog`, `VegetationSpeciesCatalog`, and registry-related profiles as needed.  
+   - Bake these via SubScenes/Bakers; see asset validation notes in `Docs/Guides/Authoring/` (added below).
+
+3. **Bootstrap Steps**  
+   - Add `PureDotsWorldBootstrap` to the project; ensure `CoreSingletonBootstrapSystem` seeds time/rewind/environment/spatial singletons.  
+   - Register environment and spatial groups (`EnvironmentSystemGroup`, `SpatialSystemGroup`, `GameplaySystemGroup`).  
+   - Hook `FixedStepSimulationSystemGroup` to `TimeState` where deterministic fixed-step is required.  
+   - Include `link.xml` and Burst options per Platform Performance truth-source when creating builds.
+
+4. **Project Setup Checklist**  
+   - Enable Burst, Entities Collections, and Jobs packages (already in manifest).  
+   - Set Player Settings → Scripting Backend to IL2CPP for release builds; verify Managed Stripping Level is compatible with `link.xml`.  
+   - Import core TODO files into your workflow (`PureDOTS_TODO.md`, domain TODOs) to track remaining work.  
+   - Configure CI build/validation following `Docs/TODO/Utilities_TODO.md` guidelines (debug overlay, integration harness, deterministic replay).
+
+5. **Where to Ask Questions**  
+   - Start with `Docs/INDEX.md` (navigation hub) once present.  
+   - Domain-specific questions: check design notes (`Docs/DesignNotes/*.md`) and QA checklists (`Docs/QA/*.md`).  
+   - Update TODO checkboxes and design notes when new features land to keep the runtime reusable.

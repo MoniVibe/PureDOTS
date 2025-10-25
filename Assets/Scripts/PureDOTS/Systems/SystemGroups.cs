@@ -26,6 +26,14 @@ namespace PureDOTS.Systems
     public partial class SpatialSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Shared AI systems that feed data into gameplay domains.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(SpatialSystemGroup))]
+    [UpdateBefore(typeof(VillagerSystemGroup))]
+    public partial class AISystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// High level gameplay simulation group containing domain-specific subgroups.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -50,6 +58,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateAfter(typeof(AISystemGroup))]
     public partial class VillagerSystemGroup : ComponentSystemGroup { }
 
     /// <summary>

@@ -24,6 +24,7 @@ namespace PureDOTS.Tests.Playmode
             _world = World.DefaultGameObjectInjectionWorld;
             Assert.IsNotNull(_world, "DefaultGameObjectInjectionWorld must be created before running StorehouseRegistryTests.");
             _entityManager = _world.EntityManager;
+            CoreSingletonBootstrapSystem.EnsureSingletons(_entityManager);
             _catalogEntity = Entity.Null;
             _catalogBlob = default;
         }
@@ -295,3 +296,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+

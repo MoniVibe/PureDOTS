@@ -15,6 +15,15 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
+    /// Mirrors the simulation fixed-step cadence used by <see cref="FixedStepSimulationSystemGroup"/>.
+    /// Updated alongside <see cref="TimeState"/> to keep deterministic systems in sync.
+    /// </summary>
+    public struct GameplayFixedStep : IComponentData
+    {
+        public float FixedDeltaTime;
+    }
+
+    /// <summary>
     /// Optional authoring/config singleton that sets up <see cref="TimeState"/> at runtime.
     /// </summary>
     public struct TimeSettingsConfig : IComponentData

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
 
@@ -17,15 +18,20 @@ namespace PureDOTS.Authoring
         [SerializeField]
         private ResourceTypeCatalog _resourceTypes;
 
+        [SerializeField]
+        private PoolingSettingsData _pooling = PoolingSettingsData.CreateDefault();
+
         public TimeSettingsData Time => _time;
         public HistorySettingsData History => _history;
         public ResourceTypeCatalog ResourceTypes => _resourceTypes;
+        public PoolingSettingsData Pooling => _pooling;
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
             _time.Clamp();
             _history.Clamp();
+            _pooling.Clamp();
         }
 #endif
     }
@@ -74,6 +80,71 @@ namespace PureDOTS.Authoring
     {
         public string id;
         public Color displayColor;
+    }
+
+    [Serializable]
+    public struct PoolingSettingsData
+    {
+        [Tooltip("Default capacity for pooled NativeList allocations.")]
+        public int nativeListCapacity;
+
+        [Tooltip("Default capacity for pooled NativeQueue allocations.")]
+        public int nativeQueueCapacity;
+
+        [Tooltip("Number of entity instances to prewarm per registered prefab.")]
+        public int defaultEntityPrewarmCount;
+
+        [Tooltip("Maximum pooled instances retained per prefab before extra releases are destroyed.")]
+        public int entityPoolMaxReserve;
+
+        [Tooltip("Maximum number of pooled command buffers kept alive per frame.")]
+        public int ecbPoolCapacity;
+
+        [Tooltip("Maximum number of pooled command buffer writers kept alive per frame.")]
+        public int ecbWriterPoolCapacity;
+
+        [Tooltip("Whether pools should reset deterministically when rewind playback begins.")]
+        public bool resetOnRewind;
+
+        public static PoolingSettingsData CreateDefault()
+        {
+            return new PoolingSettingsData
+            {
+                nativeListCapacity = 64,
+                nativeQueueCapacity = 64,
+                defaultEntityPrewarmCount = 0,
+                entityPoolMaxReserve = 128,
+                ecbPoolCapacity = 32,
+                ecbWriterPoolCapacity = 32,
+                resetOnRewind = true
+            };
+        }
+
+        public PoolingSettingsConfig ToComponent()
+        {
+            return new PoolingSettingsConfig
+            {
+                NativeListCapacity = math.max(4, nativeListCapacity),
+                NativeQueueCapacity = math.max(4, nativeQueueCapacity),
+                DefaultEntityPrewarmCount = math.max(0, defaultEntityPrewarmCount),
+                EntityPoolMaxReserve = math.max(0, entityPoolMaxReserve),
+                EcbPoolCapacity = math.max(1, ecbPoolCapacity),
+                EcbWriterPoolCapacity = math.max(1, ecbWriterPoolCapacity),
+                ResetOnRewind = resetOnRewind
+            };
+        }
+
+#if UNITY_EDITOR
+        public void Clamp()
+        {
+            nativeListCapacity = Mathf.Max(4, nativeListCapacity);
+            nativeQueueCapacity = Mathf.Max(4, nativeQueueCapacity);
+            defaultEntityPrewarmCount = Mathf.Max(0, defaultEntityPrewarmCount);
+            entityPoolMaxReserve = Mathf.Max(0, entityPoolMaxReserve);
+            ecbPoolCapacity = Mathf.Max(1, ecbPoolCapacity);
+            ecbWriterPoolCapacity = Mathf.Max(1, ecbWriterPoolCapacity);
+        }
+#endif
     }
 
     [Serializable]
