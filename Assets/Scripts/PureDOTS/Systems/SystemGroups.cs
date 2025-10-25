@@ -11,6 +11,28 @@ namespace PureDOTS.Systems
     public partial class TimeSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Environment simulation group; runs after physics and before spatial indexing.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(BuildPhysicsWorld))]
+    public partial class EnvironmentSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Spatial systems run after environment state updates and before gameplay logic.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(EnvironmentSystemGroup))]
+    [UpdateBefore(typeof(GameplaySystemGroup))]
+    public partial class SpatialSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// High level gameplay simulation group containing domain-specific subgroups.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(SpatialSystemGroup))]
+    public partial class GameplaySystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// System group for rewind/history recording.
     /// Runs after simulation to capture state.
     /// </summary>
@@ -26,16 +48,23 @@ namespace PureDOTS.Systems
     /// <summary>
     /// System group for villager AI and behavior.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
     public partial class VillagerSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
     /// System group for resource management.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(VillagerSystemGroup))]
     public partial class ResourceSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// System group for miracle effect processing.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(ResourceSystemGroup))]
+    public partial class MiracleEffectSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
     /// System group for combat systems.
@@ -56,14 +85,14 @@ namespace PureDOTS.Systems
     /// <summary>
     /// System group for vegetation systems.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(FixedStepSimulationSystemGroup))]
     public partial class VegetationSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
     /// System group for construction systems.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
     public partial class ConstructionSystemGroup : ComponentSystemGroup { }
 

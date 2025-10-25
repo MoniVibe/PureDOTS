@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
@@ -59,6 +60,23 @@ namespace PureDOTS.Runtime.Time
             var value = arr[0];
             _offset += size;
             return value;
+        }
+    }
+
+    public static class TimeAwareUtility
+    {
+        private struct EntityComparer : IComparer<Entity>
+        {
+            public int Compare(Entity x, Entity y)
+            {
+                var indexCompare = x.Index.CompareTo(y.Index);
+                return indexCompare != 0 ? indexCompare : x.Version.CompareTo(y.Version);
+            }
+        }
+
+        public static void SortEntities(NativeArray<Entity> entities)
+        {
+            NativeSortExtension.Sort(entities, new EntityComparer());
         }
     }
 }

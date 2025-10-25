@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 
 namespace PureDOTS.Systems
@@ -8,9 +9,9 @@ namespace PureDOTS.Systems
     /// Establishes the root system groups and appends the world to the player loop so no
     /// MonoBehaviour bootstrap is required.
     /// </summary>
-    public sealed class PureDotsWorldBootstrap : ICustomBootstrap
+    public sealed class PureDotsWorldBootstrap : ClientServerBootstrap
     {
-        public bool Initialize(string defaultWorldName)
+        public override bool Initialize(string defaultWorldName)
         {
             // Always run a single game world for now; presentation happens through system groups.
             var world = new World(defaultWorldName, WorldFlags.Game);
@@ -34,17 +35,26 @@ namespace PureDOTS.Systems
 
             // Force creation of our custom groups early so ordering attributes are respected.
             ConfigureRootGroups(world);
+            var environmentGroup = world.GetOrCreateSystemManaged<EnvironmentSystemGroup>();
+            var spatialGroup = world.GetOrCreateSystemManaged<SpatialSystemGroup>();
+            var gameplayGroup = world.GetOrCreateSystemManaged<GameplaySystemGroup>();
+
             world.GetOrCreateSystemManaged<TimeSystemGroup>();
             var recordGroup = world.GetOrCreateSystemManaged<RecordSimulationSystemGroup>();
             var catchUpGroup = world.GetOrCreateSystemManaged<CatchUpSimulationSystemGroup>();
             var playbackGroup = world.GetOrCreateSystemManaged<PlaybackSimulationSystemGroup>();
             world.GetOrCreateSystemManaged<VillagerSystemGroup>();
             world.GetOrCreateSystemManaged<ResourceSystemGroup>();
+            world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
             world.GetOrCreateSystemManaged<CombatSystemGroup>();
             world.GetOrCreateSystemManaged<HandSystemGroup>();
             world.GetOrCreateSystemManaged<VegetationSystemGroup>();
             world.GetOrCreateSystemManaged<ConstructionSystemGroup>();
             world.GetOrCreateSystemManaged<HistorySystemGroup>();
+
+            environmentGroup.SortSystems();
+            spatialGroup.SortSystems();
+            gameplayGroup.SortSystems();
 
             recordGroup.Enabled = true;
             catchUpGroup.Enabled = false;

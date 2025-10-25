@@ -182,6 +182,26 @@ namespace PureDOTS.Runtime.Components
         public uint GrabStartTick;
     }
 
+    public struct InteractionHistorySample : IBufferElementData
+    {
+        public uint Tick;
+        public HandState HandState;
+        public DivineHandCommandType Command;
+        public ushort ResourceTypeIndex;
+        public int HeldAmount;
+        public byte Flags;
+    }
+
+    public struct GridHistorySample : IBufferElementData
+    {
+        public uint Tick;
+        public uint TerrainVersion;
+        public int CellSampleCount;
+        public float AverageValue;
+        public float MinValue;
+        public float MaxValue;
+    }
+
     public struct CombatHistorySample : IBufferElementData
     {
         public uint Tick;
