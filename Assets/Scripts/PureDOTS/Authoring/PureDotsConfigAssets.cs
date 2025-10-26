@@ -9,6 +9,11 @@ namespace PureDOTS.Authoring
     [CreateAssetMenu(fileName = "PureDotsRuntimeConfig", menuName = "PureDOTS/Runtime Config", order = 0)]
     public sealed class PureDotsRuntimeConfig : ScriptableObject
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [SerializeField]
         private TimeSettingsData _time = TimeSettingsData.CreateDefault();
 
@@ -21,12 +26,18 @@ namespace PureDOTS.Authoring
         [SerializeField]
         private PoolingSettingsData _pooling = PoolingSettingsData.CreateDefault();
 
+        public int SchemaVersion => _schemaVersion;
         public TimeSettingsData Time => _time;
         public HistorySettingsData History => _history;
         public ResourceTypeCatalog ResourceTypes => _resourceTypes;
         public PoolingSettingsData Pooling => _pooling;
 
 #if UNITY_EDITOR
+        public void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+
         private void OnValidate()
         {
             _time.Clamp();
@@ -39,9 +50,21 @@ namespace PureDOTS.Authoring
     [CreateAssetMenu(fileName = "PureDotsResourceTypes", menuName = "PureDOTS/Resource Type Catalog", order = 1)]
     public sealed class ResourceTypeCatalog : ScriptableObject
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         public List<ResourceTypeDefinition> entries = new();
 
+        public int SchemaVersion => _schemaVersion;
+
 #if UNITY_EDITOR
+        public void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+
         private void OnValidate()
         {
             for (int i = entries.Count - 1; i >= 0; i--)

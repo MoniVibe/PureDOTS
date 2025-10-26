@@ -7,6 +7,7 @@ namespace PureDOTS.Systems
     /// Enables or disables <see cref="EnvironmentSystemGroup"/> based on the active rewind mode.
     /// Environment updates are skipped while replaying history to keep the simulation deterministic.
     /// </summary>
+    /// <remarks>Order and behaviour documented in Docs/TruthSources/RuntimeLifecycle_TruthSource.md.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     [UpdateBefore(typeof(EnvironmentSystemGroup))]
     public partial struct EnvironmentRewindGuardSystem : ISystem
@@ -36,6 +37,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Guards the spatial rebuild pipeline during rewind modes.
     /// </summary>
+    /// <remarks>Order and behaviour documented in Docs/TruthSources/RuntimeLifecycle_TruthSource.md.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(EnvironmentRewindGuardSystem))]
     [UpdateBefore(typeof(SpatialSystemGroup))]
@@ -66,6 +68,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Disables the high-level gameplay systems while the simulation is replaying history.
     /// </summary>
+    /// <remarks>Order and behaviour documented in Docs/TruthSources/RuntimeLifecycle_TruthSource.md.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpatialRewindGuardSystem))]
     [UpdateBefore(typeof(GameplaySystemGroup))]
@@ -96,6 +99,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Presentation runs during normal play and while reviewing playback, but is disabled during catch-up rewinds.
     /// </summary>
+    /// <remarks>Order and behaviour documented in Docs/TruthSources/RuntimeLifecycle_TruthSource.md.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct PresentationRewindGuardSystem : ISystem
     {

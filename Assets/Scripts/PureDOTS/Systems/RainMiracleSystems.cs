@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -41,6 +42,7 @@ namespace PureDOTS.Systems
     public partial struct RainMiracleSystem : ISystem
     {
         private EntityQuery _commandQuery;
+        private TimeAwareController _controller;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -50,11 +52,29 @@ namespace PureDOTS.Systems
                 .WithAllRW<RainMiracleCommand>());
 
             state.RequireForUpdate(_commandQuery);
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
+            _controller = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
+                TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+
+            if (!_controller.TryBegin(timeState, rewindState, out var context))
+            {
+                return;
+            }
+
+            if (!(context.IsRecordPhase || context.IsCatchUpPhase))
+            {
+                return;
+            }
+
             if (_commandQuery.IsEmptyIgnoreFilter)
             {
                 return;

@@ -43,7 +43,7 @@
 - Consume environment grid cadence (moisture/temperature/wind/sunlight + sampling helpers) from `EnvironmentSystemGroup`; never roll bespoke samplers.
 - Use spatial registry utilities (`RegistryUtilities.cs`) + spatial grid query helpers for all proximity lookups (villagers, haulers, wagons, miracles).
 - Plug villager behaviour into shared `AISystemGroup` modules (sensors, utility scoring, steering, task emitter) via `AISensorConfig`, `AIBehaviourArchetype`, and `VillagerAIUtilityBinding`.
-- Integrate with central hand/RMB router (`HandCameraInputRouter`, `HandInteractionState`) to respect shared interaction priorities and rewind guards.
+- Integrate with central hand/RMB router (`HandInputRouterSystem`, `HandInteractionState`) to respect shared interaction priorities and rewind guards.
 
 ## Workstreams & Tasks
 

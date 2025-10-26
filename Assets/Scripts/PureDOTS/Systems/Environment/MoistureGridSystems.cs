@@ -1,5 +1,6 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -17,6 +18,7 @@ namespace PureDOTS.Systems.Environment
     public partial struct MoistureEvaporationSystem : ISystem
     {
         const uint kStrideTicks = 10u;
+        private TimeAwareController _timeAware;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -27,19 +29,18 @@ namespace PureDOTS.Systems.Environment
             state.RequireForUpdate<EnvironmentGridConfigData>();
             state.RequireForUpdate<MoistureGrid>();
             state.RequireForUpdate<MoistureGridSimulationState>();
+            _timeAware = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
+                TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused)
-            {
-                return;
-            }
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
-            if (rewind.Mode != RewindMode.Record && rewind.Mode != RewindMode.CatchUp)
+            if (!_timeAware.TryBegin(timeState, rewindState, out var context))
             {
                 return;
             }
@@ -140,6 +141,7 @@ namespace PureDOTS.Systems.Environment
     public partial struct MoistureSeepageSystem : ISystem
     {
         const uint kStrideTicks = 10u;
+        private TimeAwareController _timeAware;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -148,23 +150,23 @@ namespace PureDOTS.Systems.Environment
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<MoistureGrid>();
             state.RequireForUpdate<MoistureGridSimulationState>();
+            _timeAware = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
+                TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused)
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+
+            if (!_timeAware.TryBegin(timeState, rewindState, out var context))
             {
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
-            if (rewind.Mode != RewindMode.Record && rewind.Mode != RewindMode.CatchUp)
-            {
-                return;
-            }
-
+            timeState = context.Time;
             var gridState = SystemAPI.GetSingletonRW<MoistureGridSimulationState>();
             var currentTick = timeState.Tick;
             if (!EnvironmentEffectUtility.ShouldUpdate(currentTick, gridState.ValueRO.LastSeepageTick, kStrideTicks))

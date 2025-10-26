@@ -9,6 +9,11 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class DivineHandAuthoring : MonoBehaviour
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [Header("Hand Settings")]
         [Min(0.1f)] public float pickupRadius = 8f;
         [Min(0.1f)] public float maxGrabDistance = 60f;
@@ -31,6 +36,15 @@ namespace PureDOTS.Authoring
         [Header("Initial State")]
         public Vector3 initialCursorWorldPosition = new(0f, 12f, 0f);
         public Vector3 initialAimDirection = new(0f, -1f, 0f);
+
+#if UNITY_EDITOR
+        public int SchemaVersion => _schemaVersion;
+
+        public void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+#endif
     }
 
     public sealed class DivineHandBaker : Baker<DivineHandAuthoring>
@@ -130,6 +144,8 @@ namespace PureDOTS.Authoring
             });
 
             AddBuffer<DivineHandEvent>(entity);
+            AddBuffer<HandInputRouteRequest>(entity);
+            AddComponent(entity, HandInputRouteResult.None);
         }
     }
 }

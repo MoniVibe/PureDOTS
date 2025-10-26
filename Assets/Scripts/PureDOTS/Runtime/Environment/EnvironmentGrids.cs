@@ -77,6 +77,8 @@ namespace PureDOTS.Environment
 
         public readonly int CellCount => math.max(Resolution.x * Resolution.y, 1);
 
+        public readonly int2 CellCounts => Resolution;
+
         public readonly int2 MaxCellIndex => math.max(Resolution - 1, new int2(0, 0));
 
         public readonly float2 WorldSizeXZ => new float2(WorldMax.x - WorldMin.x, WorldMax.z - WorldMin.z);

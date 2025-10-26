@@ -1,5 +1,12 @@
 # PureDOTS Progress Log
 
+## 2025-10-30
+- Delivered the first observability bundle: `FrameTimingRecorderSystem` captures per-group timings + allocation diagnostics, with instrumentation injected into every custom system group and surfaced through `DebugDisplaySystem`.
+- Added replay capture hooks via `ReplayCaptureSystem`/`ReplayCaptureStream`, enabling overlay + telemetry consumers to review the latest deterministic events ahead of rewind tooling.
+- Extended HUD/telemetry output with frame timing, memory, and replay summaries; updated `DebugDisplayReader` bindings so designers can wire the data into UI layouts.
+- Hardened coverage with new playmode suites for frame timing recorder, replay capture stream, and expanded `DebugDisplaySystem` assertions.
+- Unified rewind gating via `TimeAwareController`, added `MoistureGridTimeAdapterSystem` + `StorehouseInventoryTimeAdapterSystem`, migrated `VillagerJobTimeAdapterSystem`, and validated the cross-domain rewind flow with `RewindIntegrationTests` (rain → moisture → villager gather/dump → rewind).
+
 ## 2025-03-XX
 - Added climate authoring pipeline: `ClimateProfile` ScriptableObject, baker, and runtime `ClimateProfileData` with sensible fallbacks when no asset is present.
 - Implemented `ClimateStateUpdateSystem` (EnvironmentSystemGroup) to advance seasons, day/night cycle, wind, and humidity based on profile + deterministic tick cadence.

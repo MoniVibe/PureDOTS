@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,15 +13,30 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(TimeSystemGroup))]
     public partial struct RainCloudMovementSystem : ISystem
     {
+        private TimeAwareController _controller;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RainCloudTag>();
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
+            _controller = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
+                TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+
+            if (!_controller.TryBegin(timeState, rewindState, out var context))
+            {
+                return;
+            }
+
             float deltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (cloudState, cloudConfig, transform, entity) in
@@ -85,14 +101,20 @@ namespace PureDOTS.Systems
     public partial struct RainCloudMoistureSystem : ISystem
     {
         private EntityQuery _vegetationQuery;
+        private TimeAwareController _controller;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RainCloudTag>();
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
             _vegetationQuery = SystemAPI.QueryBuilder()
                 .WithAllRW<VegetationHealth, LocalTransform>()
                 .Build();
+            _controller = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
+                TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
         private struct RainCloudCache
@@ -104,9 +126,17 @@ namespace PureDOTS.Systems
             public float Falloff;
         }
 
-        [BurstCompile]
-        public void OnUpdate(ref SystemState state)
-        {
+       [BurstCompile]
+       public void OnUpdate(ref SystemState state)
+       {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+
+            if (!_controller.TryBegin(timeState, rewindState, out var context))
+            {
+                return;
+            }
+
             if (_vegetationQuery.IsEmpty)
             {
                 return;
@@ -197,7 +227,7 @@ namespace PureDOTS.Systems
 
             var rainCloudStateLookup = state.GetComponentLookup<RainCloudState>(false);
             var rainHistoryLookup = state.GetBufferLookup<RainCloudMoistureHistory>(false);
-            uint tick = unchecked((uint)SystemAPI.Time.ElapsedTime.GetHashCode());
+            uint tick = context.Time.Tick;
 
             for (int i = 0; i < cloudCache.Length; i++)
             {

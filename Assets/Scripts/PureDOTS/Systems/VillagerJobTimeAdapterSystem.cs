@@ -12,14 +12,16 @@ namespace PureDOTS.Systems
     public partial struct VillagerJobTimeAdapterSystem : ISystem, ITimeAware
     {
         private NativeList<byte> _serializedState;
-        private RewindMode _lastMode;
         private uint _lastSavedTick;
+        private TimeAwareController _timeAware;
 
         public void OnCreate(ref SystemState state)
         {
             _serializedState = new NativeList<byte>(Allocator.Persistent);
-            _lastMode = RewindMode.Record;
-            _lastSavedTick = 0;
+            _lastSavedTick = uint.MaxValue;
+            _timeAware = new TimeAwareController(
+                TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp | TimeAwareExecutionPhase.Playback,
+                TimeAwareExecutionOptions.SkipWhenPaused);
 
             state.RequireForUpdate<VillagerJob>();
             state.RequireForUpdate<VillagerJobTicket>();
@@ -42,32 +44,43 @@ namespace PureDOTS.Systems
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
 
-            if (rewindState.Mode == RewindMode.Record && timeState.Tick != _lastSavedTick)
+            if (!_timeAware.TryBegin(timeState, rewindState, out var context))
             {
-                var writer = new TimeStreamWriter(ref _serializedState);
-                Save(ref state, ref writer);
-                _lastSavedTick = timeState.Tick;
+                return;
             }
-            else if (rewindState.Mode == RewindMode.Playback)
+
+            if (context.IsRecordPhase)
             {
+                if (context.Time.Tick != _lastSavedTick)
+                {
+                    var writer = new TimeStreamWriter(ref _serializedState);
+                    Save(ref state, ref writer);
+                    _lastSavedTick = context.Time.Tick;
+                }
+            }
+            else if (context.IsPlaybackPhase || context.IsCatchUpPhase)
+            {
+                if (_serializedState.Length == 0)
+                {
+                    return;
+                }
+
                 using var tempArray = new NativeArray<byte>(_serializedState.AsArray(), Allocator.Temp);
                 var reader = new TimeStreamReader(tempArray);
                 Load(ref state, ref reader);
             }
 
-            if (_lastMode != rewindState.Mode)
+            if (context.ModeChangedThisFrame)
             {
-                if (rewindState.Mode == RewindMode.Playback)
+                if (context.IsPlaybackPhase)
                 {
                     OnRewindStart();
                 }
-                else if (_lastMode == RewindMode.Playback && rewindState.Mode == RewindMode.Record)
+                else if (context.PreviousMode == RewindMode.Playback && context.IsRecordPhase)
                 {
                     OnRewindEnd();
                 }
             }
-
-            _lastMode = rewindState.Mode;
         }
 
         public void OnTick(uint tick)
@@ -157,7 +170,7 @@ namespace PureDOTS.Systems
         public void OnRewindEnd()
         {
             // Ensure latest record reflects resumed state
-            _lastSavedTick = 0;
+            _lastSavedTick = uint.MaxValue;
         }
 
         private struct VillagerJobCarrySnapshot

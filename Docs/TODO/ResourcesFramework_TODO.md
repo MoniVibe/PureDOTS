@@ -103,7 +103,7 @@ All systems respect `RewindState.Mode` and skip updates during playback.
 - Use environment grid cadence (moisture/temperature/wind/sunlight sampling) when resource systems react to climate (e.g., drying piles, rain-soaked wood).
 - Adopt shared registry utilities (`DeterministicRegistryBuilder`, resource/storehouse registries) and spatial query helpers for all proximity lookups.
 - Feed hauler/miner agents through the shared `AISystemGroup` pipeline; author resource-specific behaviour by supplying `AISensorConfig` ranges and utility blobs rather than bespoke AI systems.
-- Integrate with the central hand/router (`HandCameraInputRouter`, `HandInteractionState`) for siphon priorities, cooldowns, and rewind guards.
+- Integrate with the central hand/router (`HandInputRouterSystem`, `HandInteractionState`) for siphon priorities, cooldowns, and rewind guards.
 
 ## Workstreams & Tasks
 
@@ -431,7 +431,7 @@ Assets/Scripts/PureDOTS/
 - **Villager job systems** (see `VillagerSystems_TODO.md`) - gathering, carrying, delivering chunks
 - **Storehouse registry** - inventory management, capacity checks, float storage
 - **Spatial grid** (see `SpatialServices_TODO.md`) - pile discovery, merge detection, chunk settlement
-- **Divine hand system** (see `DivineHandCamera_TODO.md`) - siphon, pickup, dump mechanics, RMB router
+- **Divine hand system** (see `DivineHandCamera_TODO.md`) - siphon, pickup, dump mechanics, `HandInputRouterSystem`
 - **Construction system** - material requirements, progress tracking, completion
 - **Miracles framework** (see `MiraclesFramework_TODO.md`) - miracle-spawned resource chunks
 - **Physics system** - Unity Physics or custom deterministic physics for tumbling

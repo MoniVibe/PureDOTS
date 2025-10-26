@@ -84,7 +84,7 @@ Add **Entity** conversion (`Convert and Destroy`) if the prefab/authoring object
 - Drop a `RainMiracleAuthoring` in the scene (or convert it into a prefab/config singleton). The config stores which rain-cloud prefab to instantiate and how many clouds the miracle should create.
 - Rain miracles are queued via the global `RainMiracleCommand` buffer (`RainMiracleCommandQueue`). Gameplay systems—or Coplay for debugging—append commands; `RainMiracleSystem` instantiates clouds around the target position, and `RainCloudMoistureSystem` hydrates vegetation under them.
 - `DivineHandAuthoring` now exposes cooldown/charge and capacity fields—keep defaults aligned with `Hand_StateMachine.md` unless balancing a prototype.
-- Add `HandCameraInputRouter` + `DivineHandInputBridge` on the camera rig (or a dedicated GameObject) so right-click routing, cursor rays, and camera/hand actions flow through `Assets/InputSystem_Actions.inputactions`. Configure `interactionMask` / `groundMask` according to `Layers_Tags_Physics.md`.
+- Add `HandCameraInputRouter` + `DivineHandInputBridge` on the camera rig (or a dedicated GameObject) so right-click routing, cursor rays, and camera/hand actions flow through `Assets/InputSystem_Actions.inputactions`. The bridge now feeds the DOTS `HandInputRouterSystem`, which resolves priorities before `DivineHandSystem` runs. Configure `interactionMask` / `groundMask` according to `Layers_Tags_Physics.md`.
 - Optional: attach `DivineHandEventBridge` to surface hand state/type/amount events to HUD/UI. `DotsDebugHUD` subscribes automatically and shows the latest state/amount snapshot.
 
 ---
@@ -99,7 +99,7 @@ Add **Entity** conversion (`Convert and Destroy`) if the prefab/authoring object
 | VillagerAuthoring / Prefab          | Adds villager data & conversion pipeline.       |
 | DebugDisplayReader                  | HUD for time/registry data.                     |
 | RewindTimelineDebug                 | Displays current record/playback/catch-up state.|
-| HandCameraInputRouter               | Centralises pointer/right-click routing for hand + camera. |
+| HandCameraInputRouter               | Hybrid pointer/right-click router feeding DOTS `HandInputRouterSystem`. |
 | DivineHandInputBridge               | Pushes router signals into `DivineHandInput` and manages RMB phases. |
 | DivineHandEventBridge               | Bridges DOTS hand events to UnityEvents/HUD listeners. |
 | Optional: OverrideAutomaticNetcodeBootstrap | Disable NetCode bootstrap when using our custom world. |

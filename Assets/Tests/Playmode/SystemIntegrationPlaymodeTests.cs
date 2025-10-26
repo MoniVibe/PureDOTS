@@ -102,5 +102,65 @@ namespace PureDOTS.Tests
             Assert.IsTrue(gameplayGroup.Enabled);
             Assert.IsFalse(presentationGroup.Enabled);
         }
+
+        [Test]
+        public void HandInputRouterSystem_ResolvesHighestPriorityRequest()
+        {
+            using var world = new World("HandInputRouterTest");
+            var entityManager = world.EntityManager;
+
+            var hand = entityManager.CreateEntity();
+            entityManager.AddComponentData(hand, HandInputRouteResult.None);
+            entityManager.AddComponentData(hand, new DivineHandCommand
+            {
+                Type = DivineHandCommandType.None,
+                TargetEntity = Entity.Null,
+                TargetPosition = float3.zero,
+                TargetNormal = new float3(0f, 1f, 0f),
+                TimeSinceIssued = 0f
+            });
+            var requests = entityManager.AddBuffer<HandInputRouteRequest>(hand);
+
+            requests.Add(HandInputRouteRequest.Create(
+                HandRouteSource.AuthoringBridge,
+                HandRoutePhase.Started,
+                HandRoutePriority.DumpToStorehouse,
+                DivineHandCommandType.DumpToStorehouse,
+                Entity.Null,
+                new float3(1f, 0f, 0f),
+                new float3(0f, 1f, 0f)));
+
+            requests.Add(HandInputRouteRequest.Create(
+                HandRouteSource.ResourceSystem,
+                HandRoutePhase.Started,
+                HandRoutePriority.ResourceSiphon,
+                DivineHandCommandType.SiphonPile,
+                Entity.Null,
+                new float3(2f, 0f, 0f),
+                new float3(0f, 1f, 0f)));
+
+            var router = world.GetOrCreateSystem<HandInputRouterSystem>();
+            router.Update(world.Unmanaged);
+
+            var command = entityManager.GetComponentData<DivineHandCommand>(hand);
+            Assert.AreEqual(DivineHandCommandType.SiphonPile, command.Type);
+            Assert.That(command.TargetPosition.x, Is.EqualTo(2f).Within(1e-5f));
+
+            // Clear buffer automatically, then enqueue cancel to ensure command resets.
+            requests.Add(HandInputRouteRequest.Create(
+                HandRouteSource.ResourceSystem,
+                HandRoutePhase.Canceled,
+                HandRoutePriority.ResourceSiphon,
+                DivineHandCommandType.SiphonPile,
+                Entity.Null,
+                float3.zero,
+                new float3(0f, 1f, 0f)));
+
+            router.Update(world.Unmanaged);
+
+            command = entityManager.GetComponentData<DivineHandCommand>(hand);
+            Assert.AreEqual(DivineHandCommandType.None, command.Type);
+            Assert.AreEqual(0f, command.TimeSinceIssued);
+        }
     }
 }

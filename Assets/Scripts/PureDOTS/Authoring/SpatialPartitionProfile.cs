@@ -14,6 +14,11 @@ namespace PureDOTS.Authoring
     [CreateAssetMenu(fileName = "SpatialPartitionProfile", menuName = "PureDOTS/Spatial Partition Profile", order = 20)]
     public sealed class SpatialPartitionProfile : ScriptableObject
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [Header("World Bounds")]
         [SerializeField] private Vector3 _worldMin = new(-512f, -64f, -512f);
         [SerializeField] private Vector3 _worldMax = new(512f, 64f, 512f);
@@ -22,6 +27,13 @@ namespace PureDOTS.Authoring
         [SerializeField] private float _cellSize = 4f;
         [SerializeField] private SpatialProviderType _provider = SpatialProviderType.HashedGrid;
         [SerializeField] private uint _hashSeed = 0;
+
+        public Vector3 WorldMin => _worldMin;
+        public Vector3 WorldMax => _worldMax;
+        public float CellSize => _cellSize;
+        public SpatialProviderType Provider => _provider;
+        public uint HashSeed => _hashSeed;
+        public int SchemaVersion => _schemaVersion;
 
         public SpatialGridConfig ToComponent()
         {
@@ -46,6 +58,11 @@ namespace PureDOTS.Authoring
         }
 
 #if UNITY_EDITOR
+        internal void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+
         private void OnValidate()
         {
             _cellSize = Mathf.Max(0.5f, _cellSize);

@@ -1,76 +1,65 @@
 # Environment & Spatial Profile Authoring Guide
 
-Updated: 2025-10-25
+Updated: 2025-10-26
 
 This guide documents the expected fields, recommended defaults, validation warnings, and downstream consumers for the two core authoring assets anchoring environment cadence and spatial queries.
 
 ## EnvironmentGridConfig (ScriptableObject)
 
-Location: Assets/Data/Environment/EnvironmentGridConfig.asset
+Location: `Assets/PureDOTS/Config/EnvironmentGridConfig.asset`
 
 ### Fields
-- World Bounds (Min/Max, float3): Defines the simulation space covered by moisture/temperature/wind grids.
-  - Default: Min (-512, -64, -512), Max (512, 64, 512).
-- Cell Size (float): Resolution of moisture/temperature grids. Smaller values increase fidelity but cost memory.
-  - Default: 5.0 (meters).
-- Moisture Diffusion Rate (float): Percentage of moisture transferred per update step.
-  - Default: 0.1.
-- Evaporation Base Rate (float): Base units removed per second before temperature/wind modifiers.
-  - Default: 0.5.
-- Wind Cell Size (float): Resolution for wind field calculations.
-  - Default: 40.0.
-- Sunlight Resolution (int2): Grid resolution for sunlight calculations.
-  - Default: 128 x 128.
-- Seasonal Temperature Offsets (float[4]): Spring/Summer/Autumn/Winter adjustments.
-  - Default: {0, +5, -5, -15}.
-- Magnetic Storm Cadence (float): Seconds between magnetic storm refreshes (future feature).
-  - Default: 120.0.
-- Solar Radiation Multiplier (float): Scalar for miracles/vegetation stress.
-  - Default: 1.0.
+- World Bounds (`Vector3 _worldMin/_worldMax`): Simulation space for each channel. Defaults: Min (-512, 0, -512), Max (512, 256, 512). Must define positive volume.
+- Grid Settings (`GridSettings` per channel): Resolution (`Vector2Int`), cell size, bounds, enabled flag per channel (moisture/temperature/sunlight/wind/biome). Defaults range 256x256 @5m (moisture) down to 64x64 @20m (wind).
+- Channel Identifiers (`string`): Unique IDs consumed by downstream systems. Must be non-empty and unique.
+- Moisture Coefficients (`_moistureDiffusion`, `_moistureSeepage`): Defaults 0.25 / 0.1.
+- Temperature Defaults (`_baseSeasonTemperature`, `_timeOfDaySwing`, `_seasonalSwing`): Defaults 18°C, 6°C diurnal swing, 12°C seasonal swing.
+- Sunlight Defaults (`_sunDirection`, `_sunIntensity`): Normalized direction (0.25, -0.9, 0.35) and scalar intensity (1.0).
+- Wind Defaults (`_globalWindDirection`, `_globalWindStrength`): Normalized direction (0.7, 0.5) and scalar strength (8.0).
+- Optional Biome Grid (`GridSettings _biome`): Disabled by default; enable when biome-driven systems land.
 
-### Validation Warnings
-- World bounds must be non-zero volume. Log a warning if WorldMax <= WorldMin on any axis.
-- Cell size must be ≥ 0.5 and divide evenly into world extent; warn when mismatched.
-- Diffusion/Evaporation rates should be within [0, 1]; log if outside range.
-- Ensure grid resolutions are powers of two when possible (sunlight/wind) for performance notes.
-- Magnetic storm cadence (once enabled) should be ≥ 10 seconds; warn when configured lower.
+### Validation Coverage (PureDOTS/Validation)
+- Errors when channel IDs are empty/duplicated, grid resolution ≤ 0, cell size ≤ 0, or bounds collapse.
+- Warnings for resolutions > 2048 per axis, disabled required grids, sun/wind vectors near zero, or extreme cell sizes.
+- Editor `OnValidate` clamps guard obvious mistakes; validation surfaces risky authoring choices before runtime.
 
 ## SpatialPartitionProfile (ScriptableObject)
 
-Location: Assets/Data/Spatial/SpatialPartitionProfile.asset
+Location: `Assets/PureDOTS/Config/SpatialPartitionProfile.asset`
+- **Tooling Integration**
+  - Unity menu: `PureDOTS/Validation/Run Asset Validation` (full log) and `PureDOTS/Validation/Run Validation (Quiet Log)`.
+  - CLI: `-executeMethod PureDOTS.Editor.PureDotsAssetValidator.RunValidationFromCommandLine` returns non-zero exit on errors for CI.
+  - Inspectors: runtime config, resource catalog, environment grid, and spatial profile each expose a “Validate …” button.
 
 ### Fields
-- Provider Type (enum): UniformGrid or HashedGrid (default HashedGrid).
-- Cell Size (float): Spatial grid resolution (meters). Should roughly match average entity spacing.
-  - Default: 4.0.
-- World Min/Max (float3): Bounds for spatial indexing. Align with EnvironmentGridConfig where possible.
-  - Default: (-512, -64, -512) / (512, 64, 512).
-- Hash Seed (uint): Seed for hashed grid distribution.
-  - Default: 0.
-- Logistics Layers (enum flags): Registries included in spatial indexing (Villager, MinerVessel, HaulerFreighter, Wagon, ResourceNeutral, MiracleNeutral).
-  - Default: Villager | ResourceNeutral.
+- Provider (`_provider`): UniformGrid or HashedGrid (default hashed for scalability).
+- Cell Size (`_cellSize`): Spatial resolution in meters (default 4.0). Balance fidelity vs. runtime cost.
+- World Bounds (`_worldMin/_worldMax`): Bounds used for spatial indexing (defaults -512/-64/-512 to 512/64/512). Keep aligned with environment config.
+- Hash Seed (`_hashSeed`): Deterministic seed for hashed grids.
+- Future work: logistics layer masks move into shared registry metadata—update when feature lands.
 
-### Validation Warnings
-- Cell size must be ≥ 1.0; warn and clamp if below.
-- World bounds should match environment config; emit info message if mismatch > cell size.
-- Hash seed should be deterministic; warn if changed at runtime.
-- When provider == UniformGrid, ensure (WorldMax - WorldMin) is divisible by CellSize; otherwise log adjustments.
-- Logistics layer mask must include at least one consumer (villager/resource/miracle); warn if zero.
+### Validation Coverage
+- Errors when world bounds collapse or cell size < 0.5 m.
+- Warnings for cell size > 32 m, total cell count > 4 M, or uniform grid bounds not divisible by cell size.
+- Info when hashed seed remains 0 (nudge teams to pick deterministic seed).
 
 ## Authoring & Bake Checklist
-- Ensure both assets are referenced in bootstrap SubScene (e.g., via SpatialPartitionAuthoring, EnvironmentGridConfigAuthoring).
-- Playmode validation script should scan for these assets and log warnings at startup.
-- Update this guide when new fields are introduced (e.g., magnetic storm cadence, debris grid parameters).
+- Reference both assets via `EnvironmentGridConfigAuthoring` / `SpatialPartitionAuthoring` inside the bootstrap SubScene.
+- Store canonical assets under `Assets/PureDOTS/Config` (or documented alternative) for project consistency.
+- Run `PureDOTS/Validation/Run Asset Validation` (or CLI equivalent) before committing or exporting builds to catch misconfigurations.
+- Keep environment and spatial bounds/cell sizes aligned to avoid mismatched sampling.
+- Update this guide and validation tooling when new fields land (magnetic storms, debris grids, logistics masks, etc.).
 
 ## Domain Integration Notes
-- **Climate & Weather**: Environment grids drive temperature, moisture, wind, sunlight, magnetic storms, solar radiation. Keep bounds matching Terra/Scene size to avoid clipping miracles or weather effects.
-- **Vegetation & Resources**: Vegetation growth/health and resource drying reference moisture/temperature cells. Finer cell sizes (<5m) yield smoother gradients for forests and farmland.
-- **Villager Logistics**: Spatial partition logistics mask should include registries used by job assignment, freighters, wagons, and neutral miracles. Missing flags result in linear scans.
-- **Miracle Targeting**: Rain/fireball/shield miracles sample environment cells and spatial grid entries. Misconfigured bounds cause truncated effects or incorrect alignment.
-- **Performance Profiling**: Adjust cell sizes and provider type per platform; capture frame timings per settings in `Docs/QA/PerformanceProfiles.md` (update when instrumentation lands).
+- **Climate & Weather**: Environment grids feed climate cadence, rewind guards, and miracle effects. Misaligned bounds clip samples at edges.
+- **Vegetation & Resources**: Moisture/temperature channels drive growth and resource drying. Smaller cell sizes (<5 m) provide smoother gradients but increase memory use.
+- **Villager Logistics**: Spatial partition powers nearest-neighbour queries for registries. Ensure cell size roughly matches agent spacing to avoid collisions/overflow.
+- **Miracle Targeting**: Miracles consume channel IDs and spatial data. Keep identifiers unique and grids covering the play area.
+- **Performance Profiling**: As telemetry lands, capture frame timings (`Docs/QA/PerformanceProfiles.md`) and revisit grid resolutions per platform budget.
 
 ## References
 - Docs/TruthSources/RuntimeLifecycle_TruthSource.md
 - Docs/TODO/ClimateSystems_TODO.md
 - Docs/TODO/SpatialServices_TODO.md
+- Docs/TODO/Utilities_TODO.md
 - Docs/QA/PerformanceProfiles.md

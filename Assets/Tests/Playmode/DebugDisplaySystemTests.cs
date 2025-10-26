@@ -1,7 +1,10 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
 using Unity.Entities;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace PureDOTS.Tests
@@ -139,6 +142,77 @@ namespace PureDOTS.Tests
         }
 
         [Test]
+        public void DebugDisplaySystem_PopulatesRegistryDiagnostics()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            var registryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RegistryDirectory>()).GetSingletonEntity();
+            var entries = _entityManager.GetBuffer<RegistryDirectoryEntry>(registryEntity);
+            entries.Clear();
+
+            var resourceRegistryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceRegistry>()).GetSingletonEntity();
+            var metadata = _entityManager.GetComponentData<RegistryMetadata>(resourceRegistryEntity);
+            metadata.MarkUpdated(12, 5);
+            _entityManager.SetComponentData(resourceRegistryEntity, metadata);
+
+            entries.Add(new RegistryDirectoryEntry
+            {
+                Kind = RegistryKind.Resource,
+                Handle = metadata.ToHandle(resourceRegistryEntity),
+                Label = metadata.Label
+            });
+
+            var directory = _entityManager.GetComponentData<RegistryDirectory>(registryEntity);
+            directory.MarkUpdated(metadata.LastUpdateTick, 1);
+            _entityManager.SetComponentData(registryEntity, directory);
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.AreEqual(1, debugData.RegisteredRegistryCount);
+            Assert.AreEqual(12, debugData.RegisteredEntryCount);
+            Assert.Greater(debugData.RegistryStateText.Length, 0);
+            Assert.AreEqual(directory.Version, debugData.RegistryDirectoryVersion);
+        }
+
+        [Test]
+        public void DebugDisplaySystem_WritesTelemetryMetrics()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            var timeEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()).GetSingletonEntity();
+            var timeState = _entityManager.GetComponentData<TimeState>(timeEntity);
+            timeState.Tick = 123;
+            _entityManager.SetComponentData(timeEntity, timeState);
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var telemetryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>()).GetSingletonEntity();
+            var telemetry = _entityManager.GetComponentData<TelemetryStream>(telemetryEntity);
+            Assert.AreEqual(123u, telemetry.LastTick);
+            Assert.Greater(telemetry.Version, 0u);
+
+            var buffer = _entityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+            Assert.IsTrue(buffer.Length > 0);
+
+            bool foundTickMetric = false;
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                if (metric.Key.ToString() == "tick.current")
+                {
+                    foundTickMetric = true;
+                    Assert.AreEqual(123f, metric.Value);
+                    break;
+                }
+            }
+
+            Assert.IsTrue(foundTickMetric, "Tick telemetry metric should be present.");
+        }
+
+        [Test]
         public void DebugDisplaySystem_HandlesEmptyEntityQuery()
         {
             var handle = CreateDebugSystem();
@@ -149,6 +223,39 @@ namespace PureDOTS.Tests
             var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
             Assert.AreEqual(0, debugData.VillagerCount);
             Assert.AreEqual(0f, debugData.TotalResourcesStored);
+        }
+
+        [Test]
+        public void DebugDisplaySystem_PresentsFrameTimingSummary()
+        {
+            var recorder = _world.CreateSystemManaged<FrameTimingRecorderSystem>();
+            recorder.RecordGroupTiming(FrameTimingGroup.Environment, 1.2f, 2, false);
+            recorder.Update();
+
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.Greater(debugData.FrameTimingSampleCount, 0);
+            Assert.IsTrue(debugData.FrameTimingText.ToString().Contains("Environment"));
+        }
+
+        [Test]
+        public void DebugDisplaySystem_PresentsReplayDiagnostics()
+        {
+            var captureSystem = _world.CreateSystemManaged<ReplayCaptureSystem>();
+            var label = new FixedString64Bytes("SpawnVillager");
+            ReplayCaptureSystem.RecordEvent(_world, ReplayableEvent.EventType.Spawn, 5u, label, 1f);
+            captureSystem.Update();
+
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.AreEqual(1, debugData.ReplayEventCount);
+            Assert.IsTrue(debugData.ReplayStateText.ToString().Contains("SpawnVillager"));
         }
 
         private void EnsureCoreSingletons()

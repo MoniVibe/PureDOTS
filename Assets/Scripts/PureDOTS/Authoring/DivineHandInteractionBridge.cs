@@ -147,13 +147,13 @@ namespace PureDOTS.Authoring
             }
         }
 
-        void HandleStorehouseRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.DumpToStorehouse, context, phase);
+        void HandleStorehouseRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.DumpToStorehouse, context, phase, storehouseHandler != null ? storehouseHandler.Priority : HandRoutePriority.DumpToStorehouse);
 
-        void HandlePileRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.SiphonPile, context, phase);
+        void HandlePileRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.SiphonPile, context, phase, pileHandler != null ? pileHandler.Priority : HandRoutePriority.ResourceSiphon);
 
-        void HandleGroundRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.GroundDrip, context, phase);
+        void HandleGroundRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.GroundDrip, context, phase, groundHandler != null ? groundHandler.Priority : HandRoutePriority.GroundDrip);
 
-        void HandleCommand(DivineHandCommandType type, in RmbContext context, RmbPhase phase)
+        void HandleCommand(DivineHandCommandType type, in RmbContext context, RmbPhase phase, int requestedPriority)
         {
             if (!EnsureWorld() || !_queryValid || _handQuery.IsEmptyIgnoreFilter)
             {
@@ -184,41 +184,34 @@ namespace PureDOTS.Authoring
                 return;
             }
 
-            var command = entityManager.GetComponentData<DivineHandCommand>(handEntity);
-
-            switch (phase)
+            if (!entityManager.HasBuffer<HandInputRouteRequest>(handEntity))
             {
-                case RmbPhase.Started:
-                    command.Type = type;
-                    command.TargetEntity = Entity.Null;
-                    command.TargetPosition = context.WorldPoint;
-                    command.TargetNormal = context.HasWorldHit ? (float3)context.WorldHit.normal : new float3(0f, 1f, 0f);
-                    command.TimeSinceIssued = 0f;
-                    entityManager.SetComponentData(handEntity, command);
-                    break;
-
-                case RmbPhase.Performed:
-                    if (command.Type == type)
-                    {
-                        command.TargetPosition = context.WorldPoint;
-                        if (context.HasWorldHit)
-                        {
-                            command.TargetNormal = (float3)context.WorldHit.normal;
-                        }
-                        entityManager.SetComponentData(handEntity, command);
-                    }
-                    break;
-
-                case RmbPhase.Canceled:
-                    if (command.Type == type)
-                    {
-                        command.Type = DivineHandCommandType.None;
-                        command.TargetEntity = Entity.Null;
-                        command.TimeSinceIssued = 0f;
-                        entityManager.SetComponentData(handEntity, command);
-                    }
-                    break;
+                return;
             }
+
+            var requests = entityManager.GetBuffer<HandInputRouteRequest>(handEntity);
+            var position = new float3(context.WorldPoint.x, context.WorldPoint.y, context.WorldPoint.z);
+            var normal = context.HasWorldHit
+                ? new float3(context.WorldHit.normal.x, context.WorldHit.normal.y, context.WorldHit.normal.z)
+                : new float3(0f, 1f, 0f);
+
+            var phaseConverted = phase switch
+            {
+                RmbPhase.Started => HandRoutePhase.Started,
+                RmbPhase.Performed => HandRoutePhase.Performed,
+                RmbPhase.Canceled => HandRoutePhase.Canceled,
+                _ => HandRoutePhase.Performed
+            };
+
+            var priority = (byte)math.clamp(requestedPriority, 0, 255);
+            requests.Add(HandInputRouteRequest.Create(
+                HandRouteSource.AuthoringBridge,
+                phaseConverted,
+                priority,
+                type,
+                Entity.Null,
+                position,
+                normal));
         }
 
         void LateUpdate()

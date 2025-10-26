@@ -10,6 +10,11 @@ namespace PureDOTS.Authoring
     [CreateAssetMenu(fileName = "EnvironmentGridConfig", menuName = "PureDOTS/Environment/Grid Config", order = 5)]
     public sealed class EnvironmentGridConfig : ScriptableObject
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [Header("Grid Settings")]
         [SerializeField] GridSettings _moisture = GridSettings.CreateDefault(new Vector2Int(256, 256), 5f);
         [SerializeField] GridSettings _temperature = GridSettings.CreateDefault(new Vector2Int(128, 128), 10f);
@@ -46,6 +51,15 @@ namespace PureDOTS.Authoring
         public GridSettings Sunlight => _sunlight;
         public GridSettings Wind => _wind;
         public GridSettings Biome => _biome;
+        public int SchemaVersion => _schemaVersion;
+
+        public string MoistureChannelId() => _moistureChannelId;
+        public string TemperatureChannelId() => _temperatureChannelId;
+        public string SunlightChannelId() => _sunlightChannelId;
+        public string WindChannelId() => _windChannelId;
+        public string BiomeChannelId() => _biomeChannelId;
+        public Vector3 RawSunDirection() => _sunDirection;
+        public Vector2 RawWindDirection() => _globalWindDirection;
 
         public EnvironmentGridConfigData ToComponent()
         {
@@ -75,6 +89,11 @@ namespace PureDOTS.Authoring
         }
 
 #if UNITY_EDITOR
+        internal void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+
         private void OnValidate()
         {
             _moisture.Sanitize();

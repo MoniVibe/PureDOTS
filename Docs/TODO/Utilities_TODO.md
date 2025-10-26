@@ -8,14 +8,14 @@
 ## Workstreams & Tasks
 
 ### 0. Tooling & Observability
-- [ ] Deliver first-pass tooling bundle (debug overlay, telemetry hooks, integration harness bootstrap, deterministic replay capture, CI pipeline stubs) to unblock meta schedule.
-- [ ] Implement in-game debug overlay aggregator (grids, hand state, villager stats, resource piles).
+- [x] Deliver first-pass tooling bundle (debug overlay, telemetry hooks, integration harness bootstrap, deterministic replay capture, CI pipeline stubs) to unblock meta schedule. (See `FrameTimingRecorderSystem`, `ReplayCaptureSystem`, and overlay updates in `DebugDisplaySystem`.)
+- [x] Implement in-game debug overlay aggregator (grids, hand state, villager stats, resource piles).
 - [ ] Add editor gizmos + scene view tools for moisture/temperature/light grids.
-- [ ] Build telemetry hooks logging per-group frame time, entity counts, job completion stats.
-- [ ] Create replay recorder (input + events) for deterministic bug repro.
+- [x] Build telemetry hooks logging per-group frame time and entity counts (pending: job completion stats feed). (`FrameTimingStream` + telemetry export).
+- [ ] Create replay recorder (input + events) for deterministic bug repro. *(ReplayCapture stream in place; input capture + diffing harness remains.)*
 - [ ] Integrate runtime console commands (toggle systems, force rain, spawn villagers).
 - [ ] Expose metrics to external dashboard (Grafana/Influx or equivalent).
-- [ ] Add allocation/pooling diagnostics (track pooled buffers usage, highlight leaks) in debug overlay.
+- [x] Add allocation/pooling diagnostics (track pooled buffers usage, highlight leaks) in debug overlay. (`AllocationDiagnostics` surfaced through `DebugDisplaySystem`.)
 
 ### 1. Testing & Validation Infrastructure
 - [ ] Define testing pyramid: unit, integration, playmode, performance, rewind.
@@ -37,16 +37,16 @@
 - [x] Expose pooling capacities via shared config (`PoolingSettingsData` → `PoolingSettingsConfig` component baked from runtime config asset). `[Data Authoring]`
 - [x] Surface pooling diagnostics (borrowed counts, peak usage, leaks per tick) through `DebugDisplayData` for tooling hooks). `[Tooling/Telemetry]`
 - [x] Document pool usage patterns and lifetime contract in `Docs/DesignNotes/SystemIntegration.md` section 10 (Data Layout, Pooling & Spawn Policy). `[Documentation]`
-- [ ] Document thematic-neutral naming/data conventions for pooled utilities so alternate content modules (crystals, vehicles, etc.) reuse them without code changes. `[Runtime Core + Documentation]`
+- [x] Document thematic-neutral naming/data conventions for pooled utilities so alternate content modules (crystals, vehicles, etc.) reuse them without code changes. `[Runtime Core + Documentation]`
 
 ### 2. Authoring Pipeline & Data Governance
-- [ ] Audit existing bakers; ensure authoring components map cleanly to runtime data.
-- [ ] Document ScriptableObject conventions (naming, versioning, validation).
-- [ ] Implement asset validation tools (e.g., ensure profiles reference valid prefabs).
-- [ ] Build data migration scripts for evolving blobs/configs.
-- [ ] Create designer-friendly editors for key assets (SpatialProfile, ClimateProfile, VillagerArchetype, MiracleProfile).
-- [ ] Add lint checks verifying default values and units (meters, seconds, degrees).
-- [ ] Document pooling-related authoring (e.g., per-type pool capacities, spawn profiles) for designers.
+- [x] Audit existing bakers; ensure authoring components map cleanly to runtime data.
+- [x] Document ScriptableObject conventions (naming, versioning, validation).
+- [x] Implement asset validation tools (e.g., ensure profiles reference valid prefabs).
+- [x] Build data migration scripts for evolving blobs/configs.
+- [x] Create designer-friendly editors for key assets (SpatialProfile, ClimateProfile, VillagerArchetype, MiracleProfile).
+- [x] Add lint checks verifying default values and units (meters, seconds, degrees).
+- [x] Document pooling-related authoring (e.g., per-type pool capacities, spawn profiles) for designers.
 
 ### 3. Performance & Memory Budgets
 - [ ] Define per-system/frame budgets (Environment <2ms, Spatial <1ms, etc.) and publish in docs.
@@ -86,7 +86,8 @@
 - [ ] Flesh out `EnvironmentAndSpatialValidation` guide with screenshots/examples once validation scripts land.
 - [ ] Expand `GettingStarted.md` with domain-specific onboarding (villagers/resources/miracles) when systems stabilise.
 - [ ] Author "PureDOTS Adoption" guide/README detailing bootstrap setup, required assets, and references to truth-sources.
-- [ ] Document authoring workflows for `EnvironmentGridConfig`, `SpatialPartitionProfile`, and registries (validation rules, recommended defaults).
+- [x] Document authoring workflows for `EnvironmentGridConfig`, `SpatialPartitionProfile`, and registries (validation rules, recommended defaults).
+- [x] Add `PureDOTS/Validation` menu (full and quiet) + custom inspectors for runtime config, resource catalog, and environment grid assets.
 - [ ] Create `Docs/INDEX.md` or equivalent navigation page linking truth-sources, TODOs, guides, QA docs.
 - [ ] Capture editor validation tasks (ScriptableObject inspectors, link.xml maintenance) as future backlog items when discovered.
 - [ ] Align onboarding/docs with `SpawnerFramework_TODO.md` once framework stabilises.
@@ -113,4 +114,3 @@
 - Documentation/truth-sources remain authoritative and up to date.
 
 Update this TODO as utilities land and new gaps appear.
-

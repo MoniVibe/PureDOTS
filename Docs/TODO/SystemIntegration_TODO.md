@@ -1,4 +1,4 @@
-# System Integration TODO (Cross-System Glue)
+﻿# System Integration TODO (Cross-System Glue)
 
 ## Goal
 - Align spatial, environment, simulation, and interaction systems so implementation teams share consistent data contracts, execution order, and rewind semantics.
@@ -39,35 +39,35 @@
 - [x] Define dedicated `EnvironmentSystemGroup` (runs before gameplay simulation):
   1. `EnvironmentEffectUpdateSystem`
   2. `BiomeDeterminationSystem`
-- [ ] Schedule `VegetationNeedsSystem`, `VegetationGrowthModifierSystem`, `ResourceNodeUpdateSystem`, `MiracleEffectSystemGroup` to run **after** environment group to consume fresh data. (_Pending concrete system implementations; ordering captured in `SystemExecutionOrder.md`_)
+- [x] Schedule `VegetationNeedsSystem`, `VegetationGrowthModifierSystem`, `ResourceNodeUpdateSystem`, `MiracleEffectSystemGroup` to run **after** environment group to consume fresh data. (_Enforced via `SystemGroups.cs` ordering: GameplaySystemGroup → VegetationSystemGroup/MiracleEffectSystemGroup run after Spatial & Environment groups._)
 - [x] Explicitly register `SpatialGridBuildSystem` ahead of consumer groups (`VillagerSensorUpdateSystem`, `ResourceHandSiphonSystem`, `MiracleTargetingSystem`). (`SpatialGridBuildSystem` now `OrderFirst` under `SpatialSystemGroup`)
 - [x] Insert shared `AISystemGroup` between spatial and villager gameplay groups; hosts reusable sensor/utility/steering/task modules consumed by villagers/resources/miracles.
 - [x] Write `Docs/DesignNotes/SystemExecutionOrder.md` summarising ordering for future contributors.
 - [x] Hook `FixedStepSimulationSystemGroup` to `TimeState`/`GameplayFixedStep` so deterministic ticks use Unity's fixed-step loop rather than manual timing. (`GameplayFixedStepSyncSystem` + playmode coverage in `TimeStateTests`)
-- [ ] Document fixed-step linkage and group ordering in `SystemExecutionOrder.md` + `RuntimeLifecycle_TruthSource.md`.
-- [ ] Publish `Docs/DesignNotes/RewindPatterns.md` and wire guard systems (`EnvironmentRewindGuardSystem`, `SpatialRewindGuardSystem`, `GameplayRewindGuardSystem`, `PresentationRewindGuardSystem`) so every group honours `RewindState`.
-- [ ] Ensure all TODOs that describe system order link back to `RuntimeLifecycle_TruthSource.md` and this document (breadcrumb at top of each TODO).
+- [x] Document fixed-step linkage and group ordering in `SystemExecutionOrder.md` + `RuntimeLifecycle_TruthSource.md`.
+- [x] Publish `Docs/DesignNotes/RewindPatterns.md` and wire guard systems (`EnvironmentRewindGuardSystem`, `SpatialRewindGuardSystem`, `GameplayRewindGuardSystem`, `PresentationRewindGuardSystem`) so every group honours `RewindState`.
+- [x] Ensure all TODOs that describe system order link back to `RuntimeLifecycle_TruthSource.md` and this document (breadcrumb at top of each TODO).
 
 ### 3. Input & Interaction Cohesion
-- [ ] Unify RMB router priority table in one place (`HandInputRouterSystem`), referencing both resource and miracle flows.
-- [x] Ensure Divine Hand, Resources, Miracles share `HandInteractionState`/`ResourceSiphonState` data so they can’t diverge. (`HandInteractionComponents.cs` + `DivineHandSystem` sync)
+- [x] Unify RMB router priority table in one place (`HandInputRouterSystem`), referencing both resource and miracle flows.
+- [x] Ensure Divine Hand, Resources, Miracles share `HandInteractionState`/`ResourceSiphonState` data so they canג€™t diverge. (`HandInteractionComponents.cs` + `DivineHandSystem` sync)
 - [ ] Add integration tests covering: hand holding resource + miracle token (ensure deterministic resolver), hand dumps to storehouse after miracle charge, etc.
 - [ ] Centralise gesture & siphon feedback events within `HandPresentationBridge` so VFX/audio subscribe to single stream.
-- [ ] Update `DivineHandCamera_TODO`, `MiraclesFramework_TODO`, `ResourcesFramework_TODO` to reference shared router + state components.
+- [x] Update `DivineHandCamera_TODO`, `MiraclesFramework_TODO`, `ResourcesFramework_TODO` to reference shared router + state components.
 
 ### 4. Registries & Spatial Queries
 - [ ] Standardise registry component format: `struct RegistryEntry<TTag>` with `Entity`, `float3 Position`, `int CellIndex`, `NativeBitField Flags` for eligibility.
 - [ ] Ensure `ResourcePileRegistry`, `VegetationRegistry`, `StorehouseRegistry`, `MiracleEffectRegistry` share base utilities (`RegistryCommon.cs`).
 - [x] Publish `RegistryMetadata`/`RegistryHandle` pattern so spatial systems and AI modules resolve registries generically (`CoreSingletonBootstrapSystem` seeds handles; `SpatialRegistryMetadata` caches them per grid rebuild).
 - [x] Add reusable spatial query descriptors, filters, and Burst `SpatialKNearestBatchJob` so villager/resource/miracle sensors consume a shared pipeline.
-- [ ] Add stress tests verifying combined spatial queries (villager sensors + miracles + resource merging) stay within frame budget.
+- [x] Add stress tests verifying combined spatial queries (villager sensors + miracles + resource merging) stay within frame budget. (_See `Assets/Tests/Playmode/SpatialRegistryPerformanceTests.cs` for baseline coverage._)
 
 ### 5. Rewind & History Alignment
 - [x] Create `RewindPatterns.md` describing approved strategies (Snapshot Cadence, Command Replay, Deterministic Rebuild).
 - [x] Enforce shared history sample structures: `struct GridHistorySample`, `struct InteractionHistorySample`, etc. (`HistoryComponents.cs`)
 - [x] Implement shared utility for deterministically sorting entity sets before applying state (use `Entity.Index`, `Entity.Version`). (`TimeAwareUtility.SortEntities`)
-- [ ] Require each major system to expose `Record`, `Playback`, `CatchUp` behaviours via common interface (e.g., `ITimeAware` extension helpers).
-- [ ] Add cross-system rewind playmode test: cast miracle (rain) → increases moisture → villagers gather wood → dump resources → rewind; verify all subsystems restore correctly.
+- [x] Require each major system to expose `Record`, `Playback`, `CatchUp` behaviours via common interface (e.g., `ITimeAware` extension helpers). (Implemented `TimeAwareController` gating + new adapters in `MoistureGridTimeAdapterSystem` and `StorehouseInventoryTimeAdapterSystem`; `VillagerJobTimeAdapterSystem` now uses the shared flow.)
+- [x] Add cross-system rewind playmode test: cast miracle (rain) ג†’ increases moisture ג†’ villagers gather wood ג†’ dump resources ג†’ rewind; verify all subsystems restore correctly. (`RewindIntegrationTests` exercises miracle moisture, resource delivery, and rewind playback.)
 
 ### 6. Terraforming Hooks Propagation
 - [ ] Confirm `TerrainVersion` increment triggers:
@@ -128,7 +128,7 @@
 - **VillagerSystems_TODO**: reference `EnvironmentSystemGroup` for climate/moisture sampling; ensure sensor refresh respects `EnvironmentGrids.LastUpdateTick`.
 - **DivineHandCamera_TODO**: replace local router definitions with pointer to shared `HandInputRouterSystem`; include dependency on `HandInteractionState`.
 - **VegetationSystems_TODO**: remove duplicate grid definitions once shared file exists; consume `BiomeGrid` for propagation logic.
-- **MiraclesFramework_TODO**: route area queries through shared spatial helper; document integration with `EnvironmentSystemGroup` (rain → moisture).
+- **MiraclesFramework_TODO**: route area queries through shared spatial helper; document integration with `EnvironmentSystemGroup` (rain ג†’ moisture).
 - **ResourcesFramework_TODO**: adopt registry/common structures; ensure siphon uses shared hand state and grid sampling helpers.
 - **ClimateSystems_TODO**: coordinate with shared environment grids; highlight that moisture/temperature data is authoritative source for vegetation/resources.
 - **TerraformingPrototype_TODO**: reference `TerrainChangeEventBuffer` & `TerrainVersion` contracts, avoid redefining moisture/climate structures.
@@ -150,4 +150,5 @@
 6. Iterate on documentation and cross-link existing TODOs.
 
 Keep this TODO up to date as integration tasks land. Treat it as the authoritative glue plan to prevent subsystem drift. Update referenced TODOs once shared contracts are implemented.
+
 

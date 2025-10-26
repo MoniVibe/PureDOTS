@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
 using Unity.Collections;
@@ -116,6 +117,10 @@ namespace PureDOTS.Systems
             EnsureSpatialGridSingleton(entityManager);
 
             EnsureRegistryDirectory(entityManager);
+
+            EnsureTelemetryStream(entityManager);
+            EnsureFrameTimingStream(entityManager);
+            EnsureReplayCaptureStream(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
@@ -245,6 +250,89 @@ namespace PureDOTS.Systems
             if (!entityManager.HasBuffer<RegistryDirectoryEntry>(directoryEntity))
             {
                 entityManager.AddBuffer<RegistryDirectoryEntry>(directoryEntity);
+            }
+        }
+
+        private static void EnsureTelemetryStream(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
+            Entity telemetryEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                telemetryEntity = entityManager.CreateEntity(typeof(TelemetryStream));
+                entityManager.SetComponentData(telemetryEntity, new TelemetryStream
+                {
+                    Version = 0,
+                    LastTick = 0
+                });
+            }
+            else
+            {
+                telemetryEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
+            {
+                entityManager.AddBuffer<TelemetryMetric>(telemetryEntity);
+            }
+        }
+
+        private static void EnsureFrameTimingStream(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<FrameTimingStream>());
+            Entity frameEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                frameEntity = entityManager.CreateEntity(typeof(FrameTimingStream));
+                entityManager.SetComponentData(frameEntity, new FrameTimingStream
+                {
+                    Version = 0,
+                    LastTick = 0
+                });
+            }
+            else
+            {
+                frameEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<FrameTimingSample>(frameEntity))
+            {
+                entityManager.AddBuffer<FrameTimingSample>(frameEntity);
+            }
+
+            if (!entityManager.HasComponent<AllocationDiagnostics>(frameEntity))
+            {
+                entityManager.AddComponentData(frameEntity, new AllocationDiagnostics());
+            }
+        }
+
+        private static void EnsureReplayCaptureStream(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ReplayCaptureStream>());
+            Entity replayEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                replayEntity = entityManager.CreateEntity(typeof(ReplayCaptureStream));
+                entityManager.SetComponentData(replayEntity, new ReplayCaptureStream
+                {
+                    Version = 0,
+                    LastTick = 0,
+                    EventCount = 0,
+                    LastEventType = ReplayableEvent.EventType.Custom,
+                    LastEventLabel = default
+                });
+            }
+            else
+            {
+                replayEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<ReplayCaptureEvent>(replayEntity))
+            {
+                entityManager.AddBuffer<ReplayCaptureEvent>(replayEntity);
             }
         }
 

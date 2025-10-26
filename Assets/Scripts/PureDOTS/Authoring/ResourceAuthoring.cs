@@ -13,6 +13,11 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class ResourceSourceAuthoring : MonoBehaviour
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [Header("Resource")]
         public string resourceTypeId;
         [Min(0f)] public float initialUnits = 100f;
@@ -28,6 +33,15 @@ namespace PureDOTS.Authoring
         public bool respawns;
         [Min(0f)] public float respawnSeconds = 60f;
         public bool handUprootAllowed;
+
+#if UNITY_EDITOR
+        public int SchemaVersion => _schemaVersion;
+
+        public void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+#endif
 
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
@@ -101,6 +115,11 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class StorehouseAuthoring : MonoBehaviour
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         [Header("Capacity & Flow")]
         [Min(0f)] public float shredRate = 1f;
         [Min(0)] public int maxShredQueueSize = 8;
@@ -111,6 +130,13 @@ namespace PureDOTS.Authoring
         public List<StorehouseCapacityEntry> capacities = new();
 
 #if UNITY_EDITOR
+        internal int SchemaVersion => _schemaVersion;
+
+        internal void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+
         private void OnValidate()
         {
             for (int i = capacities.Count - 1; i >= 0; i--)
@@ -200,12 +226,26 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class ResourceChunkAuthoring : MonoBehaviour
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         public string resourceTypeId;
         [Header("Chunk Values")]
         [Min(0f)] public float massPerUnit = 0.5f;
         [Min(0f)] public float minScale = 0.3f;
         [Min(0f)] public float maxScale = 1.2f;
         [Min(0f)] public float defaultUnits = 50f;
+
+#if UNITY_EDITOR
+        internal int SchemaVersion => _schemaVersion;
+
+        internal void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+#endif
     }
 
     public sealed class ResourceChunkBaker : Baker<ResourceChunkAuthoring>
@@ -249,12 +289,26 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class ConstructionSiteAuthoring : MonoBehaviour
     {
+        public const int LatestSchemaVersion = 1;
+
+        [SerializeField, HideInInspector]
+        private int _schemaVersion = LatestSchemaVersion;
+
         public List<ConstructionCostEntry> cost = new();
         [Min(0f)] public float requiredProgress = 100f;
         [Min(0f)] public float currentProgress;
         public GameObject completionPrefab;
         public bool destroySiteOnComplete = true;
         public int siteIdOverride;
+
+#if UNITY_EDITOR
+        internal int SchemaVersion => _schemaVersion;
+
+        internal void SetSchemaVersion(int value)
+        {
+            _schemaVersion = value;
+        }
+#endif
     }
 
     public sealed class ConstructionSiteBaker : Baker<ConstructionSiteAuthoring>

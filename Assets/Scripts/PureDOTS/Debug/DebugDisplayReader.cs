@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Text;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Telemetry;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,6 +29,28 @@ namespace PureDOTS.Debugging
         [Tooltip("Text component displaying resource totals (optional)")]
         public Text resourceTotalText;
 
+        [Tooltip("Text component displaying registry summary (optional)")]
+        public Text registryStateText;
+
+        [Tooltip("Text component displaying pooling summary (optional)")]
+        public Text poolingStateText;
+
+        [Tooltip("Text component displaying frame timing summary (optional)")]
+        public Text frameTimingText;
+
+        [Tooltip("Text component displaying allocation diagnostics (optional)")]
+        public Text allocationStateText;
+
+        [Tooltip("Text component displaying replay capture summary (optional)")]
+        public Text replayStateText;
+
+        [Header("Telemetry")]
+        [Tooltip("Capture ECS telemetry metrics and expose them through this bridge (optional)")]
+        public bool captureTelemetry = true;
+
+        [Tooltip("Text component displaying condensed telemetry metrics (optional)")]
+        public Text telemetrySummaryText;
+
         [Header("Update Settings")]
         [Tooltip("Update frequency in seconds (0 = every frame)")]
         public float updateInterval = 0.1f;
@@ -38,8 +63,13 @@ namespace PureDOTS.Debugging
         private Canvas _canvas;
         private EntityQuery _commandQuery;
         private EntityQuery _debugDataQuery;
+        private EntityQuery _telemetryQuery;
         private bool _hasCommandQuery;
         private bool _hasDebugDataQuery;
+        private bool _hasTelemetryQuery;
+        private readonly List<TelemetryMetricSnapshot> _telemetrySnapshots = new List<TelemetryMetricSnapshot>(16);
+        private uint _telemetryVersion;
+        private StringBuilder _telemetryBuilder;
 
         private void Awake()
         {
@@ -52,6 +82,8 @@ namespace PureDOTS.Debugging
             // Reinitialize on world reload
             InitializeWorld();
         }
+
+        public IReadOnlyList<TelemetryMetricSnapshot> LatestTelemetry => _telemetrySnapshots;
 
         private void InitializeWorld()
         {
@@ -73,6 +105,11 @@ namespace PureDOTS.Debugging
                     _debugDataQuery.Dispose();
                     _hasDebugDataQuery = false;
                 }
+                if (_hasTelemetryQuery)
+                {
+                    _telemetryQuery.Dispose();
+                    _hasTelemetryQuery = false;
+                }
                 _world = null;
                 enabled = false;
                 return;
@@ -91,6 +128,11 @@ namespace PureDOTS.Debugging
                     _debugDataQuery.Dispose();
                     _hasDebugDataQuery = false;
                 }
+                if (_hasTelemetryQuery)
+                {
+                    _telemetryQuery.Dispose();
+                    _hasTelemetryQuery = false;
+                }
             }
 
             _world = newWorld;
@@ -99,8 +141,12 @@ namespace PureDOTS.Debugging
             var entityManager = _world.EntityManager;
             _commandQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugCommandSingletonTag>());
             _debugDataQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>());
+            _telemetryQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
             _hasCommandQuery = true;
             _hasDebugDataQuery = true;
+            _hasTelemetryQuery = true;
+            _telemetrySnapshots.Clear();
+            _telemetryVersion = 0;
 
             // Set initial visibility
             if (_canvas != null)
@@ -121,6 +167,11 @@ namespace PureDOTS.Debugging
             {
                 _debugDataQuery.Dispose();
                 _hasDebugDataQuery = false;
+            }
+            if (_hasTelemetryQuery)
+            {
+                _telemetryQuery.Dispose();
+                _hasTelemetryQuery = false;
             }
         }
 
@@ -144,6 +195,7 @@ namespace PureDOTS.Debugging
 
             // Update UI from ECS singleton
             UpdateUI();
+            UpdateTelemetrySnapshot();
         }
 
         private void ProcessDebugCommands()
@@ -220,6 +272,147 @@ namespace PureDOTS.Debugging
             if (resourceTotalText != null)
             {
                 resourceTotalText.text = $"Resources: {debugData.TotalResourcesStored:F1}";
+            }
+
+            if (registryStateText != null)
+            {
+                registryStateText.text = debugData.RegistryStateText.ToString();
+            }
+
+            if (poolingStateText != null)
+            {
+                poolingStateText.text = debugData.PoolingStateText.ToString();
+            }
+
+            if (frameTimingText != null)
+            {
+                frameTimingText.text = debugData.FrameTimingText.ToString();
+            }
+
+            if (allocationStateText != null)
+            {
+                allocationStateText.text = debugData.AllocationStateText.ToString();
+            }
+
+            if (replayStateText != null)
+            {
+                replayStateText.text = debugData.ReplayStateText.ToString();
+            }
+        }
+
+        private void UpdateTelemetrySnapshot()
+        {
+            if (!captureTelemetry)
+            {
+                if (_telemetrySnapshots.Count > 0)
+                {
+                    _telemetrySnapshots.Clear();
+                }
+
+                _telemetryVersion = 0;
+
+                if (telemetrySummaryText != null && !string.IsNullOrEmpty(telemetrySummaryText.text))
+                {
+                    telemetrySummaryText.text = string.Empty;
+                }
+
+                return;
+            }
+
+            if (!_hasTelemetryQuery || _world == null || !_world.IsCreated)
+            {
+                return;
+            }
+
+            var entityManager = _world.EntityManager;
+
+            if (_telemetryQuery.IsEmptyIgnoreFilter)
+            {
+                if (_telemetrySnapshots.Count > 0)
+                {
+                    _telemetrySnapshots.Clear();
+                    _telemetryVersion = 0;
+                }
+
+                if (telemetrySummaryText != null)
+                {
+                    telemetrySummaryText.text = string.Empty;
+                }
+
+                return;
+            }
+
+            var telemetryEntity = _telemetryQuery.GetSingletonEntity();
+            if (!entityManager.HasComponent<TelemetryStream>(telemetryEntity))
+            {
+                return;
+            }
+
+            var stream = entityManager.GetComponentData<TelemetryStream>(telemetryEntity);
+            if (_telemetryVersion == stream.Version)
+            {
+                return;
+            }
+
+            _telemetryVersion = stream.Version;
+            _telemetrySnapshots.Clear();
+
+            if (!entityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
+            {
+                if (telemetrySummaryText != null)
+                {
+                    telemetrySummaryText.text = string.Empty;
+                }
+
+                return;
+            }
+
+            var buffer = entityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                _telemetrySnapshots.Add(new TelemetryMetricSnapshot(metric.Key.ToString(), metric.Value, metric.Unit));
+            }
+
+            if (telemetrySummaryText != null)
+            {
+                if (_telemetryBuilder == null)
+                {
+                    _telemetryBuilder = new StringBuilder(128);
+                }
+                else
+                {
+                    _telemetryBuilder.Clear();
+                }
+
+                for (int i = 0; i < _telemetrySnapshots.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        _telemetryBuilder.Append(" | ");
+                    }
+
+                    var snapshot = _telemetrySnapshots[i];
+                    _telemetryBuilder.Append(snapshot.Key);
+                    _telemetryBuilder.Append(": ");
+                    _telemetryBuilder.Append(snapshot.Value.ToString("0.##"));
+                }
+
+                telemetrySummaryText.text = _telemetryBuilder.ToString();
+            }
+        }
+
+        public readonly struct TelemetryMetricSnapshot
+        {
+            public readonly string Key;
+            public readonly float Value;
+            public readonly TelemetryMetricUnit Unit;
+
+            public TelemetryMetricSnapshot(string key, float value, TelemetryMetricUnit unit)
+            {
+                Key = key;
+                Value = value;
+                Unit = unit;
             }
         }
 

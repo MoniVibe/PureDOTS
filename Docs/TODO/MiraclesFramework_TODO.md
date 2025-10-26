@@ -114,7 +114,7 @@
   - `CastingMiracle` - Gesture recognition active
   - `HoldingMiracle` - Miracle token in hand, charging
   - `ChannelingMiracle` - Sustained miracle active (rain, heal)
-- [ ] Reference shared `HandInputRouterSystem` and `HandInteractionState` from integration TODO once centralised router lands.
+- [x] Reference shared `HandInputRouterSystem` and `HandInteractionState` from integration TODO once centralised router lands.
 - [ ] Integrate miracles with RMB router: add handlers for token pickup, sustain hold, release actions.
 - [ ] **Implement core miracle systems**:
   - `MiracleTokenSpawnSystem` - Creates tokens from gesture/hotkey commands
@@ -132,7 +132,7 @@
 - Sample environment grids (sunlight, temperature, wind, moisture, solar radiation) through shared helpers to drive miracle payloads (rain, fire, shield heat dissipation).
 - Use spatial grid registry entries for miracle targeting (neutral resource registry, villager registry, miracle neutral registry).
 - When miracles spawn autonomous agents (rain clouds, shields, drones), wire them through the shared `AISystemGroup` modules so sensors/utility/steering reuse the core pipeline instead of bespoke logic.
-- Follow central hand/router contracts (`HandCameraInputRouter`, `HandInteractionState`, `RmbContext`) and rewind guards when adding new miracle handlers.
+- Follow central hand/router contracts (`HandInputRouterSystem`, `HandInteractionState`, `RmbContext`) and rewind guards when adding new miracle handlers.
 
 ### 2.5. Gesture Recognition (NEW)
 - [ ] **Implement GestureRecognitionSystem**:
