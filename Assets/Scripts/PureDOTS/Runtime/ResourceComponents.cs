@@ -168,6 +168,10 @@ namespace PureDOTS.Runtime.Components
         public int TotalResources;
         public int TotalActiveResources;
         public uint LastUpdateTick;
+        public uint LastSpatialVersion;
+        public int SpatialResolvedCount;
+        public int SpatialFallbackCount;
+        public int SpatialUnmappedCount;
     }
 
     public struct ResourceRegistryEntry : IBufferElementData, IComparable<ResourceRegistryEntry>, IRegistryEntry, IRegistryFlaggedEntry
@@ -179,6 +183,8 @@ namespace PureDOTS.Runtime.Components
         public byte ActiveTickets;
         public byte ClaimFlags;
         public uint LastMutationTick;
+        public int CellId;
+        public uint SpatialVersion;
 
         public int CompareTo(ResourceRegistryEntry other)
         {
@@ -196,6 +202,10 @@ namespace PureDOTS.Runtime.Components
         public float TotalCapacity;
         public float TotalStored;
         public uint LastUpdateTick;
+        public uint LastSpatialVersion;
+        public int SpatialResolvedCount;
+        public int SpatialFallbackCount;
+        public int SpatialUnmappedCount;
     }
 
     public struct StorehouseRegistryCapacitySummary
@@ -214,6 +224,8 @@ namespace PureDOTS.Runtime.Components
         public float TotalStored;
         public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
         public uint LastMutationTick;
+        public int CellId;
+        public uint SpatialVersion;
 
         public int CompareTo(StorehouseRegistryEntry other)
         {
@@ -221,6 +233,107 @@ namespace PureDOTS.Runtime.Components
         }
 
         public Entity RegistryEntity => StorehouseEntity;
+    }
+
+    public struct ConstructionRegistry : IComponentData
+    {
+        public int ActiveSiteCount;
+        public int CompletedSiteCount;
+        public uint LastUpdateTick;
+        public uint LastSpatialVersion;
+        public int SpatialResolvedCount;
+        public int SpatialFallbackCount;
+        public int SpatialUnmappedCount;
+    }
+
+    public struct ConstructionRegistryEntry : IBufferElementData, IComparable<ConstructionRegistryEntry>, IRegistryEntry, IRegistryFlaggedEntry
+    {
+        public Entity SiteEntity;
+        public int SiteId;
+        public float3 Position;
+        public float RequiredProgress;
+        public float CurrentProgress;
+        public float NormalizedProgress;
+        public byte Flags;
+        public int CellId;
+        public uint SpatialVersion;
+
+        public int CompareTo(ConstructionRegistryEntry other)
+        {
+            var siteComparison = SiteId.CompareTo(other.SiteId);
+            if (siteComparison != 0)
+            {
+                return siteComparison;
+            }
+
+            return SiteEntity.Index.CompareTo(other.SiteEntity.Index);
+        }
+
+        public Entity RegistryEntity => SiteEntity;
+
+        public byte RegistryFlags => Flags;
+    }
+
+    public struct SpawnerRegistry : IComponentData
+    {
+        public int TotalSpawners;
+        public int ActiveSpawnerCount;
+        public uint LastUpdateTick;
+        public uint LastSpatialVersion;
+        public int SpatialResolvedCount;
+        public int SpatialFallbackCount;
+        public int SpatialUnmappedCount;
+    }
+
+    public struct SpawnerRegistryEntry : IBufferElementData, IComparable<SpawnerRegistryEntry>, IRegistryEntry, IRegistryFlaggedEntry
+    {
+        public Entity SpawnerEntity;
+        public FixedString64Bytes SpawnerTypeId;
+        public Entity OwnerFaction;
+        public int ActiveSpawnCount;
+        public int Capacity;
+        public float CooldownSeconds;
+        public float RemainingCooldown;
+        public byte Flags;
+        public float3 Position;
+        public int CellId;
+        public uint SpatialVersion;
+
+        public int CompareTo(SpawnerRegistryEntry other)
+        {
+            return SpawnerEntity.Index.CompareTo(other.SpawnerEntity.Index);
+        }
+
+        public Entity RegistryEntity => SpawnerEntity;
+
+        public byte RegistryFlags => Flags;
+    }
+
+    public struct SpawnerId : IComponentData
+    {
+        public int Value;
+    }
+
+    public struct SpawnerConfig : IComponentData
+    {
+        public FixedString64Bytes SpawnTypeId;
+        public Entity OwnerFaction;
+        public int Capacity;
+        public float CooldownSeconds;
+    }
+
+    public struct SpawnerState : IComponentData
+    {
+        public int ActiveSpawnCount;
+        public float RemainingCooldown;
+        public byte Flags;
+    }
+
+    public static class SpawnerStatusFlags
+    {
+        public const byte Active = 1 << 0;
+        public const byte Disabled = 1 << 1;
+        public const byte Pending = 1 << 2;
     }
 
     public struct ResourceJobReservation : IComponentData
