@@ -6,10 +6,10 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
 1. Project Foundation
    - [x] Create DOTS-only assembly definitions (Runtime, Systems, Authoring) mirroring `GodGame.ECS` but scoped for the new project.
    - [x] Define a custom bootstrap/world setup (FixedStepSimulation, Simulation, Presentation groups) referencing current best practices from the existing `PureDotsWorldBootstrap`.
-   - [ ] Set up core packages/environment parity (DONE via manifest copy; Unity will regenerate `packages-lock.json`).
+   - [x] Set up core packages/environment parity (DONE via manifest copy; Unity regenerates `packages-lock.json` on open).
    - [ ] **Pinned Advisory:** Lock documentation and onboarding notes to Entities 1.4.2 + NetCode 1.8 + Input System 1.7 baseline; highlight that NetCode integration stays on hold until single-player runtime is stable, and flag any attempts to pull 1.5+ APIs or legacy `UnityEngine.Input` usage in `Docs/Vision/core.md` so agents stop reintroducing incompatible patterns.
    - [ ] Publish PureDOTS as a Unity package (package.json, README, samples) so downstream games reference it via UPM/git instead of copying code into their repos.
-   - [ ] Document the consumer workflow: game projects (`../Godgame`, `../Space4x`, etc.) should keep gameplay code in their own asmdefs and reference template assemblies only. Add guidance in `Docs/Guides/SceneSetup.md` + new "Using PureDOTS in a Game Project" note.
+   - [x] Document the consumer workflow: game projects (`../Godgame`, `../Space4x`, etc.) should keep gameplay code in their own asmdefs and reference template assemblies only. Guidance now lives in `Docs/Guides/UsingPureDOTSInAGame.md`.
 
 2. Core Data & Authoring
    - [x] Port reusable ECS components and bakers (`ResourceComponents`, `VillagerComponents`, `ResourceAuthoring`, etc.) from `godgame` into the new assemblies.
@@ -26,7 +26,7 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
     - Update `Docs/TODO/DivineHandCamera_TODO.md` to flag orbit/visual parity as downstream work; PureDOTS baseline owns logical DOTS flow only.
   - [ ] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters. For each legacy system, note any deviations required for the new architecture before implementation begins.
   - [x] Ensure each domain has deterministic update groups and clear scheduling.
-   - [ ] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration.
+   - [x] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration. (Debug HUD + telemetry systems in place)
    
    Vegetation Growth Loop (Agent Alpha & Beta):
    - [x] Scaffold vegetation lifecycle components (`VegetationComponents.cs`) with lifecycle stages, health, production, consumption, reproduction, and seasonal effects.
