@@ -31,8 +31,21 @@ namespace PureDOTS.Authoring
         [SerializeField] private bool _lockYAxisToOne = true;
 
         [Header("Providers")]
-        [SerializeField] private SpatialProviderType _providerType = SpatialProviderType.HashedGrid;
+        [SerializeField, Tooltip("Provider type name (e.g., 'HashedGrid', 'UniformGrid'). Uses enum for backward compatibility, auto-migrates to string.")]
+        private SpatialProviderType _providerType = SpatialProviderType.HashedGrid;
+        [SerializeField, Tooltip("Provider name string (overrides enum if set). Use this for custom providers.")]
+        private string _providerName;
         [SerializeField] private uint _hashSeed = 0u;
+
+        [Header("Rebuild Thresholds")]
+        [SerializeField, Tooltip("Maximum dirty operations before forcing full rebuild (default: 1024)")]
+        private int _maxDirtyOpsForPartialRebuild = 1024;
+        [SerializeField, Tooltip("Maximum dirty ratio (0.0-1.0) before forcing full rebuild (default: 0.35)")]
+        [Range(0f, 1f)]
+        private float _maxDirtyRatioForPartialRebuild = 0.35f;
+        [SerializeField, Tooltip("Minimum entry count required for partial rebuild logic (default: 100)")]
+        [Min(0)]
+        private int _minEntryCountForPartialRebuild = 100;
 
         [Header("Gizmos")]
         [SerializeField] private bool _drawGizmo = true;
@@ -50,7 +63,27 @@ namespace PureDOTS.Authoring
         public bool OverrideCellCounts => _overrideCellCounts;
         public Vector3Int ManualCellCounts => _manualCellCounts;
         public SpatialProviderType Provider => _providerType;
+        public string ProviderName
+        {
+            get
+            {
+                // Auto-migrate: if provider name is set, use it; otherwise convert enum to string
+                if (!string.IsNullOrEmpty(_providerName))
+                {
+                    return _providerName;
+                }
+                return _providerType switch
+                {
+                    SpatialProviderType.HashedGrid => "HashedGrid",
+                    SpatialProviderType.UniformGrid => "UniformGrid",
+                    _ => "HashedGrid"
+                };
+            }
+        }
         public uint HashSeed => _hashSeed;
+        public int MaxDirtyOpsForPartialRebuild => Mathf.Max(0, _maxDirtyOpsForPartialRebuild);
+        public float MaxDirtyRatioForPartialRebuild => Mathf.Clamp01(_maxDirtyRatioForPartialRebuild);
+        public int MinEntryCountForPartialRebuild => Mathf.Max(0, _minEntryCountForPartialRebuild);
 
         private void OnValidate()
         {
@@ -105,18 +138,28 @@ namespace PureDOTS.Authoring
                 HashSeed = _hashSeed
             };
 
+            // Try to resolve provider by name first (supports custom providers)
+            // If not found, fall back to enum-based lookup for backward compatibility
+            var providerName = ProviderName;
+            var providerId = SpatialGridProviderIds.Hashed; // Default fallback
+
+            // In runtime, we'll resolve provider ID from registry by name
+            // For now, keep enum-based resolution for backward compatibility
+            // The baker/bootstrapper will handle name-to-ID resolution
             switch (_providerType)
             {
                 case SpatialProviderType.HashedGrid:
-                    config.ProviderId = SpatialGridProviderIds.Hashed;
+                    providerId = SpatialGridProviderIds.Hashed;
                     break;
                 case SpatialProviderType.UniformGrid:
-                    config.ProviderId = SpatialGridProviderIds.Uniform;
+                    providerId = SpatialGridProviderIds.Uniform;
                     break;
                 default:
-                    config.ProviderId = SpatialGridProviderIds.Hashed;
+                    providerId = SpatialGridProviderIds.Hashed;
                     break;
             }
+
+            config.ProviderId = providerId;
 
             return config;
         }
@@ -228,6 +271,12 @@ namespace PureDOTS.Authoring
 
             var config = authoring.profile.ToComponent();
             var state = CreateDefaultState();
+            var thresholds = new SpatialRebuildThresholds
+            {
+                MaxDirtyOpsForPartialRebuild = authoring.profile.MaxDirtyOpsForPartialRebuild,
+                MaxDirtyRatioForPartialRebuild = authoring.profile.MaxDirtyRatioForPartialRebuild,
+                MinEntryCountForPartialRebuild = authoring.profile.MinEntryCountForPartialRebuild
+            };
 
             if (World.DefaultGameObjectInjectionWorld != null)
             {
@@ -254,6 +303,15 @@ namespace PureDOTS.Authoring
                         EnsureBuffer<SpatialGridStagingCellRange>(entityManager, existingEntity);
                         EnsureBuffer<SpatialGridEntryLookup>(entityManager, existingEntity);
                         EnsureBuffer<SpatialGridDirtyOp>(entityManager, existingEntity);
+
+                        if (entityManager.HasComponent<SpatialRebuildThresholds>(existingEntity))
+                        {
+                            entityManager.SetComponentData(existingEntity, thresholds);
+                        }
+                        else
+                        {
+                            entityManager.AddComponentData(existingEntity, thresholds);
+                        }
                         return;
                     }
                 }
@@ -262,6 +320,7 @@ namespace PureDOTS.Authoring
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, config);
             AddComponent(entity, state);
+            AddComponent(entity, thresholds);
             AddBuffer<SpatialGridCellRange>(entity);
             AddBuffer<SpatialGridEntry>(entity);
             AddBuffer<SpatialGridStagingEntry>(entity);

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villager;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -43,10 +44,23 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Get villager behavior config or use defaults
+            var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
+                ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
+                : VillagerBehaviorConfig.CreateDefaults();
+
             var job = new UpdateVillagerStatusJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
-                CurrentTick = timeState.Tick
+                CurrentTick = timeState.Tick,
+                WellbeingHungerWeight = config.WellbeingHungerWeight,
+                WellbeingEnergyWeight = config.WellbeingEnergyWeight,
+                WellbeingHealthWeight = config.WellbeingHealthWeight,
+                ProductivityBase = config.ProductivityBase,
+                ProductivityEnergyWeight = config.ProductivityEnergyWeight,
+                ProductivityMoraleWeight = config.ProductivityMoraleWeight,
+                ProductivityMax = config.ProductivityMax,
+                AliveHealthThreshold = config.AliveHealthThreshold
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -57,6 +71,14 @@ namespace PureDOTS.Systems
         {
             public float DeltaTime;
             public uint CurrentTick;
+            public float WellbeingHungerWeight;
+            public float WellbeingEnergyWeight;
+            public float WellbeingHealthWeight;
+            public float ProductivityBase;
+            public float ProductivityEnergyWeight;
+            public float ProductivityMoraleWeight;
+            public float ProductivityMax;
+            public float AliveHealthThreshold;
 
             public void Execute(
                 ref VillagerAvailability availability,
@@ -66,7 +88,7 @@ namespace PureDOTS.Systems
                 in VillagerNeeds needs,
                 in VillagerAIState aiState)
             {
-                var alive = needs.Health > 0.1f;
+                var alive = needs.Health > AliveHealthThreshold;
                 var busy = aiState.CurrentState == VillagerAIState.State.Working || aiState.CurrentGoal == VillagerAIState.Goal.Work;
 
                 var newAvailable = (byte)(alive && !busy ? 1 : 0);
@@ -88,7 +110,7 @@ namespace PureDOTS.Systems
                     discipline.Value = MapJobToDiscipline(job.Type);
                 }
 
-                var wellbeing = math.clamp((100f - needs.Hunger) * 0.4f + needs.Energy * 0.4f + math.saturate(needs.Health / math.max(1f, needs.MaxHealth)) * 100f * 0.2f, 0f, 100f);
+                var wellbeing = math.clamp((100f - needs.Hunger) * WellbeingHungerWeight + needs.Energy * WellbeingEnergyWeight + math.saturate(needs.Health / math.max(1f, needs.MaxHealth)) * 100f * WellbeingHealthWeight, 0f, 100f);
                 mood.Wellbeing = wellbeing;
                 mood.TargetMood = wellbeing;
                 var adjust = math.clamp(DeltaTime * mood.MoodChangeRate, 0f, 1f);
@@ -96,7 +118,7 @@ namespace PureDOTS.Systems
 
                 var energyFactor = math.clamp(needs.Energy / 100f, 0f, 1f);
                 var moraleFactor = math.clamp(mood.Mood / 100f, 0f, 1f);
-                job.Productivity = math.clamp(0.25f + energyFactor * 0.5f + moraleFactor * 0.25f, 0f, 1.5f);
+                job.Productivity = math.clamp(ProductivityBase + energyFactor * ProductivityEnergyWeight + moraleFactor * ProductivityMoraleWeight, 0f, ProductivityMax);
             }
 
             private static VillagerDisciplineType MapJobToDiscipline(VillagerJob.JobType jobType)

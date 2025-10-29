@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -159,6 +160,11 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Get resource interaction config or use defaults
+            var config = SystemAPI.HasSingleton<ResourceInteractionConfig>()
+                ? SystemAPI.GetSingleton<ResourceInteractionConfig>()
+                : ResourceInteractionConfig.CreateDefaults();
+
             var depositJob = new DepositResourcesJob
             {
                 StorehouseLookup = _storehouseLookup,
@@ -166,7 +172,7 @@ namespace PureDOTS.Systems
                 StoreItemsLookup = _storeItemsLookup,
                 StoreInventoryLookup = _storeInventoryLookup,
                 TransformLookup = _transformLookup,
-                DepositDistance = 5f,
+                DepositDistance = config.DepositDistance,
                 CurrentTick = timeState.Tick,
                 ResourceCatalog = resourceCatalog.Catalog
             };
@@ -419,10 +425,16 @@ namespace PureDOTS.Systems
 
             _lastCheckTick = timeState.Tick;
 
+            // Get resource interaction config or use defaults
+            var interactionConfig = SystemAPI.HasSingleton<ResourceInteractionConfig>()
+                ? SystemAPI.GetSingleton<ResourceInteractionConfig>()
+                : ResourceInteractionConfig.CreateDefaults();
+
             var respawnJob = new RespawnResourcesJob
             {
                 CurrentTick = timeState.Tick,
-                FixedDeltaTime = timeState.FixedDeltaTime
+                FixedDeltaTime = timeState.FixedDeltaTime,
+                InteractionConfig = interactionConfig
             };
 
             state.Dependency = respawnJob.ScheduleParallel(state.Dependency);
@@ -433,6 +445,7 @@ namespace PureDOTS.Systems
         {
             public uint CurrentTick;
             public float FixedDeltaTime;
+            public ResourceInteractionConfig InteractionConfig;
 
             public void Execute(ref ResourceSourceState state, in ResourceSourceConfig config, ref LastRecordedTick lastRespawn)
             {
@@ -449,14 +462,18 @@ namespace PureDOTS.Systems
                     return;
                 }
 
+                // Use config passed from system
+                var interactionConfig = InteractionConfig;
+
                 var ticksSinceDepleted = CurrentTick - lastRespawn.Tick;
                 var secondsSinceDepleted = ticksSinceDepleted * FixedDeltaTime;
-                if (secondsSinceDepleted < math.max(0.01f, config.RespawnSeconds))
+                var minRespawnDelay = math.max(interactionConfig.MinRespawnDelaySeconds, config.RespawnSeconds);
+                if (secondsSinceDepleted < minRespawnDelay)
                 {
                     return;
                 }
 
-                state.UnitsRemaining = 100f;
+                state.UnitsRemaining = interactionConfig.DefaultRespawnUnits;
                 lastRespawn.Tick = CurrentTick;
             }
         }

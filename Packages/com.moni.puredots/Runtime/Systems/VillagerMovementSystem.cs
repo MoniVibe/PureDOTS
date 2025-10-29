@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villager;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -36,11 +37,21 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Get villager behavior config or use defaults
+            var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
+                ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
+                : VillagerBehaviorConfig.CreateDefaults();
+
             var job = new UpdateVillagerMovementJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
                 CurrentTick = timeState.Tick,
-                ArrivalDistance = 0.75f
+                ArrivalDistance = config.ArrivalDistance,
+                FleeSpeedMultiplier = config.FleeSpeedMultiplier,
+                LowEnergySpeedMultiplier = config.LowEnergySpeedMultiplier,
+                LowEnergyThreshold = config.LowEnergyThreshold,
+                VelocityThreshold = config.VelocityThreshold,
+                RotationSpeed = config.RotationSpeed
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -52,6 +63,11 @@ namespace PureDOTS.Systems
             public float DeltaTime;
             public uint CurrentTick;
             public float ArrivalDistance;
+            public float FleeSpeedMultiplier;
+            public float LowEnergySpeedMultiplier;
+            public float LowEnergyThreshold;
+            public float VelocityThreshold;
+            public float RotationSpeed;
 
             public void Execute(ref VillagerMovement movement, ref LocalTransform transform, in VillagerAIState aiState, in VillagerNeeds needs)
             {
@@ -77,21 +93,21 @@ namespace PureDOTS.Systems
 
                 if (aiState.CurrentState == VillagerAIState.State.Fleeing)
                 {
-                    speedMultiplier = 1.5f;
+                    speedMultiplier = FleeSpeedMultiplier;
                 }
-                else if (needs.Energy < 20f)
+                else if (needs.Energy < LowEnergyThreshold)
                 {
-                    speedMultiplier = 0.5f;
+                    speedMultiplier = LowEnergySpeedMultiplier;
                 }
 
                 movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
                 movement.Velocity = direction * movement.CurrentSpeed;
                 transform.Position += movement.Velocity * DeltaTime;
 
-                if (math.lengthsq(movement.Velocity) > 0.0001f)
+                if (math.lengthsq(movement.Velocity) > VelocityThreshold)
                 {
                     movement.DesiredRotation = quaternion.LookRotationSafe(direction, math.up());
-                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, DeltaTime * 4f);
+                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, DeltaTime * RotationSpeed);
                 }
 
                 movement.IsMoving = 1;

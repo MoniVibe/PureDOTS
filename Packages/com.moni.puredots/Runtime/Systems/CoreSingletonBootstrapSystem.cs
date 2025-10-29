@@ -1,9 +1,11 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
+using PureDOTS.Runtime.Villager;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -122,6 +124,7 @@ namespace PureDOTS.Systems
             EnsureAICommandQueue(entityManager);
 
             EnsureSpatialGridSingleton(entityManager);
+            EnsureSpatialProviderRegistry(entityManager);
 
             EnsureRegistryDirectory(entityManager);
             EnsureRegistrySpatialSyncState(entityManager);
@@ -269,6 +272,11 @@ namespace PureDOTS.Systems
                             LastStrategy = SpatialGridRebuildStrategy.None
                         });
                     }
+
+                    if (!entityManager.HasComponent<SpatialRebuildThresholds>(gridEntity))
+                    {
+                        entityManager.AddComponentData(gridEntity, SpatialRebuildThresholds.CreateDefaults());
+                    }
                 }
             }
 
@@ -402,6 +410,43 @@ namespace PureDOTS.Systems
             }
         }
 
+        private static void EnsureSpatialProviderRegistry(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialProviderRegistry>());
+            Entity registryEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                registryEntity = entityManager.CreateEntity(typeof(SpatialProviderRegistry));
+                entityManager.AddBuffer<SpatialProviderRegistryEntry>(registryEntity);
+                entityManager.SetComponentData(registryEntity, new SpatialProviderRegistry
+                {
+                    NextProviderId = 2,
+                    Version = 0
+                });
+            }
+        }
+
+        private static void EnsureVillagerBehaviorConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<VillagerBehaviorConfig>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(VillagerBehaviorConfig));
+                entityManager.SetComponentData(entity, VillagerBehaviorConfig.CreateDefaults());
+            }
+        }
+
+        private static void EnsureResourceInteractionConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceInteractionConfig>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(ResourceInteractionConfig));
+                entityManager.SetComponentData(entity, ResourceInteractionConfig.CreateDefaults());
+            }
+        }
+
         private static void EnsureRegistryHealthConfig(EntityManager entityManager)
         {
             using var monitoringQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RegistryHealthMonitoring>());
@@ -411,6 +456,12 @@ namespace PureDOTS.Systems
                 var entity = entityManager.CreateEntity(typeof(RegistryHealthMonitoring), typeof(RegistryHealthThresholds));
                 entityManager.SetComponentData(entity, RegistryHealthMonitoring.CreateDefaults());
                 entityManager.SetComponentData(entity, RegistryHealthThresholds.CreateDefaults());
+                
+                // Ensure villager behavior config singleton
+                EnsureVillagerBehaviorConfig(entityManager);
+                
+                // Ensure resource interaction config singleton
+                EnsureResourceInteractionConfig(entityManager);
                 return;
             }
 

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villager;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -43,13 +44,26 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Get villager behavior config or use defaults
+            var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
+                ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
+                : VillagerBehaviorConfig.CreateDefaults();
+
             var job = new UpdateNeedsJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
-                HungerIncreaseRate = 5f,
-                EnergyDecreaseRate = 3f,
-                HealthRegenRate = 1f,
-                StarvationDamageRate = 10f
+                HungerIncreaseRate = config.HungerIncreaseRate,
+                EnergyDecreaseRate = config.EnergyDecreaseRate,
+                HealthRegenRate = config.HealthRegenRate,
+                StarvationDamageRate = config.StarvationDamageRate,
+                EnergyRecoveryMultiplier = config.EnergyRecoveryMultiplier,
+                StarvationHungerThreshold = config.StarvationHungerThreshold,
+                RegenHungerThreshold = config.RegenHungerThreshold,
+                StarvationMoraleDecreaseRate = config.StarvationMoraleDecreaseRate,
+                SatisfactionHungerWeight = config.SatisfactionHungerWeight,
+                SatisfactionEnergyWeight = config.SatisfactionEnergyWeight,
+                SatisfactionHealthWeight = config.SatisfactionHealthWeight,
+                MoraleLerpRate = config.MoraleLerpRate
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -63,6 +77,14 @@ namespace PureDOTS.Systems
             public float EnergyDecreaseRate;
             public float HealthRegenRate;
             public float StarvationDamageRate;
+            public float EnergyRecoveryMultiplier;
+            public float StarvationHungerThreshold;
+            public float RegenHungerThreshold;
+            public float StarvationMoraleDecreaseRate;
+            public float SatisfactionHungerWeight;
+            public float SatisfactionEnergyWeight;
+            public float SatisfactionHealthWeight;
+            public float MoraleLerpRate;
 
             public void Execute(ref VillagerNeeds needs, in VillagerAIState aiState)
             {
@@ -72,24 +94,24 @@ namespace PureDOTS.Systems
                 {
                     needs.Energy = math.max(0f, needs.Energy - EnergyDecreaseRate * DeltaTime);
                 }
-                else if (aiState.CurrentState == VillagerAIState.State.Sleeping)
+                else                 if (aiState.CurrentState == VillagerAIState.State.Sleeping)
                 {
-                    needs.Energy = math.min(100f, needs.Energy + EnergyDecreaseRate * 2f * DeltaTime);
+                    needs.Energy = math.min(100f, needs.Energy + EnergyDecreaseRate * EnergyRecoveryMultiplier * DeltaTime);
                 }
 
-                if (needs.Hunger >= 90f)
+                if (needs.Hunger >= StarvationHungerThreshold)
                 {
                     needs.Health = math.max(0f, needs.Health - StarvationDamageRate * DeltaTime);
-                    needs.Morale = math.max(0f, needs.Morale - 5f * DeltaTime);
+                    needs.Morale = math.max(0f, needs.Morale - StarvationMoraleDecreaseRate * DeltaTime);
                 }
-                else if (needs.Hunger < 50f && needs.Health < needs.MaxHealth)
+                else if (needs.Hunger < RegenHungerThreshold && needs.Health < needs.MaxHealth)
                 {
                     needs.Health = math.min(needs.MaxHealth, needs.Health + HealthRegenRate * DeltaTime);
                 }
 
                 var maxHealthSafe = math.max(1f, needs.MaxHealth);
-                var satisfaction = (100f - needs.Hunger) * 0.5f + needs.Energy * 0.3f + (needs.Health / maxHealthSafe) * 100f * 0.2f;
-                needs.Morale = math.lerp(needs.Morale, satisfaction, DeltaTime * 0.1f);
+                var satisfaction = (100f - needs.Hunger) * SatisfactionHungerWeight + needs.Energy * SatisfactionEnergyWeight + (needs.Health / maxHealthSafe) * 100f * SatisfactionHealthWeight;
+                needs.Morale = math.lerp(needs.Morale, satisfaction, DeltaTime * MoraleLerpRate);
             }
         }
     }

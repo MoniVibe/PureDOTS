@@ -21,7 +21,9 @@ namespace PureDOTS.Systems.Spatial
         private ComponentTypeHandle<LocalTransform> _transformHandle;
         private EntityTypeHandle _entityTypeHandle;
         private BufferLookup<RegistryDirectoryEntry> _directoryEntriesLookup;
+        private ComponentLookup<SpatialRebuildThresholds> _thresholdsLookup;
         private EntityQuery _directoryQuery;
+        private EntityQuery _providerRegistryQuery;
         private SpatialGridConfig _cachedConfig;
         private bool _hasCachedConfig;
         private uint _lastDirtyVersionProcessed;
@@ -41,7 +43,9 @@ namespace PureDOTS.Systems.Spatial
             _transformHandle = state.GetComponentTypeHandle<LocalTransform>(true);
             _entityTypeHandle = state.GetEntityTypeHandle();
             _directoryEntriesLookup = state.GetBufferLookup<RegistryDirectoryEntry>(isReadOnly: true);
+            _thresholdsLookup = state.GetComponentLookup<SpatialRebuildThresholds>(isReadOnly: true);
             _directoryQuery = state.GetEntityQuery(ComponentType.ReadOnly<RegistryDirectory>());
+            _providerRegistryQuery = state.GetEntityQuery(ComponentType.ReadOnly<SpatialProviderRegistry>());
             _cachedConfig = default;
             _hasCachedConfig = false;
             _lastDirtyVersionProcessed = 0u;
@@ -55,6 +59,7 @@ namespace PureDOTS.Systems.Spatial
             _transformHandle.Update(ref state);
             _entityTypeHandle.Update(ref state);
             _directoryEntriesLookup.Update(ref state);
+            _thresholdsLookup.Update(ref state);
 
             var config = SystemAPI.GetSingleton<SpatialGridConfig>();
             if (config.CellCount <= 0 || config.CellSize <= 0f)
@@ -108,22 +113,55 @@ namespace PureDOTS.Systems.Spatial
             float rebuildMilliseconds = SystemAPI.Time.DeltaTime * 1000f;
 
             var providerId = config.ProviderId;
-            bool processed;
+            bool processed = false;
 
-            if (providerId == SpatialGridProviderIds.Uniform)
+            // Look up provider from registry
+            if (!_providerRegistryQuery.IsEmptyIgnoreFilter)
             {
-                var uniformProvider = new UniformSpatialGridProvider();
-                processed = ProcessProvider(ref uniformProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps);
+                var registryEntity = _providerRegistryQuery.GetSingletonEntity();
+                var registryEntries = state.EntityManager.GetBuffer<SpatialProviderRegistryEntry>(registryEntity);
+
+                if (SpatialProviderRegistryHelpers.TryGetProviderFactoryType(providerId, registryEntries, out var factoryTypeId))
+                {
+                    // Dispatch to appropriate provider type based on factory type ID
+                    if (SpatialProviderRegistryHelpers.TryCreateHashedProvider(factoryTypeId, providerId, out var hashedProvider))
+                    {
+                        processed = ProcessProvider(ref hashedProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
+                    }
+                    else if (SpatialProviderRegistryHelpers.TryCreateUniformProvider(factoryTypeId, providerId, out var uniformProvider))
+                    {
+                        processed = ProcessProvider(ref uniformProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
+                    }
+                    else
+                    {
+                        // Custom provider types would be handled here
+                        // For now, fall back to hashed provider
+                        Debug.LogWarning($"[SpatialGridBuildSystem] Unsupported factory type {factoryTypeId} for provider {providerId}; falling back to hashed provider.");
+                        var fallbackProvider = new HashedSpatialGridProvider();
+                        processed = ProcessProvider(ref fallbackProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
+                    }
+                }
+                else
+                {
+                    // Provider not found in registry; fallback to hashed provider
+                    Debug.LogWarning($"[SpatialGridBuildSystem] Provider id {providerId} not found in registry; falling back to hashed provider.");
+                    var fallbackProvider = new HashedSpatialGridProvider();
+                    processed = ProcessProvider(ref fallbackProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
+                }
             }
             else
             {
-                var hashedProvider = new HashedSpatialGridProvider();
-                if (providerId != SpatialGridProviderIds.Hashed)
+                // Registry not initialized; fallback to direct instantiation (backward compatibility)
+                if (providerId == SpatialGridProviderIds.Uniform)
                 {
-                    Debug.LogWarning($"[SpatialGridBuildSystem] Unsupported provider id {providerId}; falling back to hashed provider.");
+                    var uniformProvider = new UniformSpatialGridProvider();
+                    processed = ProcessProvider(ref uniformProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
                 }
-
-                processed = ProcessProvider(ref hashedProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps);
+                else
+                {
+                    var hashedProvider = new HashedSpatialGridProvider();
+                    processed = ProcessProvider(ref hashedProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
+                }
             }
 
             if (!processed)
@@ -233,7 +271,9 @@ namespace PureDOTS.Systems.Spatial
             ref DynamicBuffer<SpatialGridStagingEntry> stagingEntries,
             ref DynamicBuffer<SpatialGridStagingCellRange> stagingRanges,
             ref DynamicBuffer<SpatialGridEntryLookup> lookupBuffer,
-            ref DynamicBuffer<SpatialGridDirtyOp> dirtyOps)
+            ref DynamicBuffer<SpatialGridDirtyOp> dirtyOps,
+            Entity gridEntity,
+            in ComponentLookup<SpatialRebuildThresholds> thresholdsLookup)
             where TProvider : struct, ISpatialGridProvider
         {
             if (!selectedProvider.ValidateConfig(in config, out var validationError))
@@ -248,10 +288,22 @@ namespace PureDOTS.Systems.Spatial
 
             if (!requiresFullRebuild)
             {
+                // Get rebuild thresholds from config entity or use defaults
+                var thresholds = SpatialRebuildThresholds.CreateDefaults();
+                if (thresholdsLookup.HasComponent(gridEntity))
+                {
+                    thresholds = thresholdsLookup[gridEntity];
+                }
+
                 var activeCount = math.max(currentState.TotalEntries, 0);
                 var dirtyRatio = activeCount > 0 ? (float)dirtyCount / math.max(activeCount, 1) : 1f;
 
-                requiresFullRebuild = dirtyCount >= 1024 || dirtyRatio >= 0.35f;
+                // Use configurable thresholds instead of hard-coded values
+                var exceedsMaxOps = dirtyCount >= thresholds.MaxDirtyOpsForPartialRebuild;
+                var exceedsMaxRatio = dirtyRatio >= thresholds.MaxDirtyRatioForPartialRebuild;
+                var belowMinEntries = activeCount < thresholds.MinEntryCountForPartialRebuild;
+
+                requiresFullRebuild = exceedsMaxOps || exceedsMaxRatio || belowMinEntries;
 
                 if (!requiresFullRebuild)
                 {
@@ -279,7 +331,6 @@ namespace PureDOTS.Systems.Spatial
             return true;
         }
 
-        [BurstDiscard]
         private static void LogSpatialProviderValidationError(Unity.Collections.FixedString128Bytes validationError)
         {
             Debug.LogError("[SpatialGridBuildSystem] Invalid spatial grid config.");

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villager;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -43,13 +44,22 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Get villager behavior config or use defaults
+            var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
+                ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
+                : VillagerBehaviorConfig.CreateDefaults();
+
             var job = new EvaluateVillagerAIJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
                 CurrentTick = timeState.Tick,
-                HungerThreshold = 70f,
-                EnergyThreshold = 20f,
-                FleeHealthThreshold = 25f
+                HungerThreshold = config.HungerThreshold,
+                EnergyThreshold = config.EnergyThreshold,
+                FleeHealthThreshold = config.FleeHealthThreshold,
+                EatingHungerThresholdMultiplier = config.EatingHungerThresholdMultiplier,
+                EatingDuration = config.EatingDuration,
+                FleeDuration = config.FleeDuration,
+                RestEnergyThreshold = config.RestEnergyThreshold
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -63,6 +73,10 @@ namespace PureDOTS.Systems
             public float HungerThreshold;
             public float EnergyThreshold;
             public float FleeHealthThreshold;
+            public float EatingHungerThresholdMultiplier;
+            public float EatingDuration;
+            public float FleeDuration;
+            public float RestEnergyThreshold;
 
             public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket)
             {
@@ -111,19 +125,19 @@ namespace PureDOTS.Systems
                         }
                         break;
                     case VillagerAIState.State.Eating:
-                        if (needs.Hunger < HungerThreshold * 0.5f || aiState.StateTimer >= 3f)
+                        if (needs.Hunger < HungerThreshold * EatingHungerThresholdMultiplier || aiState.StateTimer >= EatingDuration)
                         {
                             SetIdle(ref aiState);
                         }
                         break;
                     case VillagerAIState.State.Sleeping:
-                        if (needs.Energy > 80f)
+                        if (needs.Energy > RestEnergyThreshold)
                         {
                             SetIdle(ref aiState);
                         }
                         break;
                     case VillagerAIState.State.Fleeing:
-                        if (aiState.StateTimer >= 5f)
+                        if (aiState.StateTimer >= FleeDuration)
                         {
                             SetIdle(ref aiState);
                         }

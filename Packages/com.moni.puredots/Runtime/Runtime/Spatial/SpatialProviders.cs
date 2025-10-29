@@ -440,6 +440,7 @@ namespace PureDOTS.Runtime.Spatial
         }
     }
 
+    [BurstCompile]
     internal static class SpatialGridFullRebuild
     {
         public static int Execute(ref SystemState state,

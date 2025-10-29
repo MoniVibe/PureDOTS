@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -272,7 +273,12 @@ namespace PureDOTS.Systems
             _capacityLookup.Update(ref state);
             _storeItemsLookup.Update(ref state);
 
-            const float WithdrawDistance = 5f;
+            // Get resource interaction config or use defaults
+            var config = SystemAPI.HasSingleton<ResourceInteractionConfig>()
+                ? SystemAPI.GetSingleton<ResourceInteractionConfig>()
+                : ResourceInteractionConfig.CreateDefaults();
+
+            var withdrawDistance = config.WithdrawDistance;
 
             foreach (var tuple in
                      SystemAPI.Query<DynamicBuffer<VillagerWithdrawRequest>, DynamicBuffer<VillagerInventoryItem>, VillagerAIState, LocalTransform>()
@@ -298,7 +304,7 @@ namespace PureDOTS.Systems
                 }
 
                 var storehouseTransform = _transformLookup[target];
-                if (math.distance(transform.Position, storehouseTransform.Position) > WithdrawDistance)
+                if (math.distance(transform.Position, storehouseTransform.Position) > withdrawDistance)
                 {
                     continue;
                 }
@@ -357,7 +363,7 @@ namespace PureDOTS.Systems
                     if (inventoryIndex >= 0)
                     {
                         var invItem = inventory[inventoryIndex];
-                        var capacity = invItem.MaxCarryCapacity > 0f ? invItem.MaxCarryCapacity : 50f;
+                        var capacity = invItem.MaxCarryCapacity > 0f ? invItem.MaxCarryCapacity : config.DefaultMaxCarryCapacity;
                         var capacityRemaining = math.max(0f, capacity - invItem.Amount);
                         var taken = math.min(toWithdraw, capacityRemaining);
                         if (taken > 0f)
@@ -374,14 +380,14 @@ namespace PureDOTS.Systems
                     }
                     else
                     {
-                        var taken = math.min(toWithdraw, 50f);
+                        var taken = math.min(toWithdraw, config.DefaultMaxCarryCapacity);
                         if (taken > 0f)
                         {
                             inventory.Add(new VillagerInventoryItem
                             {
                                 ResourceTypeId = request.ResourceTypeId,
                                 Amount = taken,
-                                MaxCarryCapacity = 50f
+                                MaxCarryCapacity = config.DefaultMaxCarryCapacity
                             });
                             storeItem.Amount -= taken;
                             request.Amount -= taken;
