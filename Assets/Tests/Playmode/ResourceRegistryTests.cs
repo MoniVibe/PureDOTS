@@ -1,5 +1,8 @@
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -27,6 +30,7 @@ namespace PureDOTS.Tests.Playmode
             CoreSingletonBootstrapSystem.EnsureSingletons(_entityManager);
             _catalogEntity = Entity.Null;
             _catalogBlob = default;
+            ConfigureSpatialGrid(42u);
         }
 
         [TearDown]
@@ -68,6 +72,7 @@ namespace PureDOTS.Tests.Playmode
                 Rotation = quaternion.identity,
                 Scale = 1f
             });
+            _entityManager.AddComponent<SpatialIndexedTag>(resourceEntity);
 
             // Create time/rewind singletons
             var timeEntity = _entityManager.CreateEntity();
@@ -83,6 +88,25 @@ namespace PureDOTS.Tests.Playmode
             var registry = _entityManager.GetSingleton<ResourceRegistry>();
             Assert.AreEqual(1, registry.TotalResources);
             Assert.AreEqual(1, registry.TotalActiveResources);
+            Assert.AreEqual(42u, registry.LastSpatialVersion);
+            Assert.AreEqual(1, registry.SpatialResolvedCount);
+            Assert.AreEqual(0, registry.SpatialFallbackCount);
+            Assert.AreEqual(0, registry.SpatialUnmappedCount);
+
+            var registryEntity = _entityManager.GetSingletonEntity<ResourceRegistry>();
+            var metadata = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+            Assert.AreEqual(1, metadata.EntryCount);
+            Assert.Greater(metadata.Version, 0u);
+            Assert.IsTrue(metadata.Continuity.HasSpatialData, "Metadata continuity snapshot should record spatial data.");
+            Assert.AreEqual(42u, metadata.Continuity.SpatialVersion);
+            Assert.AreEqual(1, metadata.Continuity.SpatialResolvedCount);
+            Assert.AreEqual(0, metadata.Continuity.SpatialFallbackCount);
+            Assert.AreEqual(0, metadata.Continuity.SpatialUnmappedCount);
+
+            var entries = _entityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            Assert.AreEqual(1, entries.Length);
+            Assert.AreEqual(0, entries[0].CellId, "Resource registry entry should record spatial cell id.");
+            Assert.AreEqual(42u, entries[0].SpatialVersion, "Resource registry entry should mirror spatial grid version.");
         }
 
         [UnityTest]
@@ -103,6 +127,7 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(resource1, new ResourceSourceConfig());
             _entityManager.AddComponentData(resource1, new ResourceSourceState { UnitsRemaining = 50f });
             _entityManager.AddComponentData(resource1, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(resource1);
 
             yield return null;
 
@@ -115,12 +140,99 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(resource2, new ResourceSourceConfig());
             _entityManager.AddComponentData(resource2, new ResourceSourceState { UnitsRemaining = 75f });
             _entityManager.AddComponentData(resource2, new LocalTransform { Position = new float3(10, 0, 0), Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(resource2);
 
             yield return null;
 
             var registry2 = _entityManager.GetSingleton<ResourceRegistry>();
             Assert.AreEqual(2, registry2.TotalResources);
             Assert.AreEqual(2, registry2.TotalActiveResources);
+            Assert.AreEqual(2, registry2.SpatialResolvedCount);
+            Assert.AreEqual(0, registry2.SpatialFallbackCount);
+            Assert.AreEqual(0, registry2.SpatialUnmappedCount);
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator ResourceRegistry_SkipsUpdateDuringPlayback()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var timeEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            var rewindEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            var resource = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(resource, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(resource, new ResourceSourceConfig());
+            _entityManager.AddComponentData(resource, new ResourceSourceState { UnitsRemaining = 10f });
+            _entityManager.AddComponentData(resource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(resource);
+
+            yield return null;
+
+            var registryEntity = _entityManager.GetSingletonEntity<ResourceRegistry>();
+            var metadataBefore = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+
+            _entityManager.SetComponentData(rewindEntity, new RewindState { Mode = RewindMode.Playback });
+            _entityManager.SetComponentData(timeEntity, new TimeState { Tick = 5, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            yield return null;
+
+            var metadataAfter = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+            Assert.AreEqual(metadataBefore.Version, metadataAfter.Version);
+            Assert.AreEqual(metadataBefore.EntryCount, metadataAfter.EntryCount);
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator ResourceRegistry_SpatialVersionUpdates()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var timeEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            var rewindEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            var resourceEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(resourceEntity, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(resourceEntity, new ResourceSourceConfig());
+            _entityManager.AddComponentData(resourceEntity, new ResourceSourceState { UnitsRemaining = 100f });
+            _entityManager.AddComponentData(resourceEntity, new LocalTransform
+            {
+                Position = new float3(1, 0, 1),
+                Rotation = quaternion.identity,
+                Scale = 1f
+            });
+            _entityManager.AddComponent<SpatialIndexedTag>(resourceEntity);
+
+            yield return null;
+
+            var registryEntity = _entityManager.GetSingletonEntity<ResourceRegistry>();
+            var entries = _entityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            Assert.AreEqual(42u, entries[0].SpatialVersion);
+            var registry = _entityManager.GetSingleton<ResourceRegistry>();
+            Assert.AreEqual(1, registry.SpatialResolvedCount);
+            Assert.AreEqual(0, registry.SpatialFallbackCount);
+            Assert.AreEqual(0, registry.SpatialUnmappedCount);
+
+            registry = _entityManager.GetSingleton<ResourceRegistry>();
+            Assert.AreEqual(42u, registry.LastSpatialVersion);
+
+            // Bump spatial grid version and tick
+            ConfigureSpatialGrid(99u);
+            _entityManager.SetComponentData(timeEntity, new TimeState { Tick = 5, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            yield return null;
+
+            registry = _entityManager.GetSingleton<ResourceRegistry>();
+            Assert.AreEqual(99u, registry.LastSpatialVersion);
+
+            entries = _entityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            Assert.AreEqual(99u, entries[0].SpatialVersion);
+            Assert.GreaterOrEqual(entries[0].CellId, 0);
         }
 
         [UnityTest]
@@ -161,6 +273,27 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(1, woodCount);
         }
 
+        private void ConfigureSpatialGrid(uint version)
+        {
+            var gridQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<SpatialGridConfig>(), ComponentType.ReadWrite<SpatialGridState>());
+            if (gridQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var gridEntity = gridQuery.GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.WorldMin = float3.zero;
+            config.CellSize = 1f;
+            config.CellCounts = new int3(8, 1, 8);
+            config.WorldMax = new float3(config.CellCounts.x * config.CellSize, config.CellCounts.y * config.CellSize, config.CellCounts.z * config.CellSize);
+            _entityManager.SetComponentData(gridEntity, config);
+
+            var state = _entityManager.GetComponentData<SpatialGridState>(gridEntity);
+            state.Version = version;
+            _entityManager.SetComponentData(gridEntity, state);
+        }
+
         [UnityTest]
         public System.Collections.IEnumerator ResourceRegistry_TracksActiveResources()
         {
@@ -192,6 +325,40 @@ namespace PureDOTS.Tests.Playmode
             var registry = _entityManager.GetSingleton<ResourceRegistry>();
             Assert.AreEqual(2, registry.TotalResources);
             Assert.AreEqual(1, registry.TotalActiveResources);
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator ResourceRegistry_ConsoleInstrumentation_LogsSummary()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var timeEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            var rewindEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            var resource = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(resource, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(resource, new ResourceSourceConfig());
+            _entityManager.AddComponentData(resource, new ResourceSourceState { UnitsRemaining = 25f });
+            _entityManager.AddComponentData(resource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(resource);
+
+            var instrumentationEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(instrumentationEntity, new RegistryConsoleInstrumentation
+            {
+                MinTickDelta = 0,
+                LastLoggedTick = 0,
+                LastDirectoryVersion = 0,
+                Flags = 0
+            });
+
+            LogAssert.Expect(LogType.Log, new Regex(@"\[Registry\]"));
+
+            yield return null;
+
+            LogAssert.NoUnexpectedReceived();
         }
 
         private void CreateResourceTypeCatalog(params string[] ids)
@@ -234,4 +401,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

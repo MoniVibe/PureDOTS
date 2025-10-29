@@ -7,6 +7,9 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [x] Create DOTS-only assembly definitions (Runtime, Systems, Authoring) mirroring `GodGame.ECS` but scoped for the new project.
    - [x] Define a custom bootstrap/world setup (FixedStepSimulation, Simulation, Presentation groups) referencing current best practices from the existing `PureDotsWorldBootstrap`.
    - [ ] Set up core packages/environment parity (DONE via manifest copy; Unity will regenerate `packages-lock.json`).
+   - [ ] **Pinned Advisory:** Lock documentation and onboarding notes to Entities 1.4.2 + NetCode 1.8 + Input System 1.7 baseline; highlight that NetCode integration stays on hold until single-player runtime is stable, and flag any attempts to pull 1.5+ APIs or legacy `UnityEngine.Input` usage in `Docs/Vision/core.md` so agents stop reintroducing incompatible patterns.
+   - [ ] Publish PureDOTS as a Unity package (package.json, README, samples) so downstream games reference it via UPM/git instead of copying code into their repos.
+   - [ ] Document the consumer workflow: game projects (`../Godgame`, `../Space4x`, etc.) should keep gameplay code in their own asmdefs and reference template assemblies only. Add guidance in `Docs/Guides/SceneSetup.md` + new "Using PureDOTS in a Game Project" note.
 
 2. Core Data & Authoring
    - [x] Port reusable ECS components and bakers (`ResourceComponents`, `VillagerComponents`, `ResourceAuthoring`, etc.) from `godgame` into the new assemblies.
@@ -19,8 +22,8 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
        - [x] Rewind coordinator and command processing for pause/playback/catch-up paths.
        - [x] Resource gathering, storehouse inventory, withdrawal, and deposition loops.
        - [x] Villager job assignment, needs, and status systems.
-   - [ ] Align divine hand & BW2 camera controls with legacy truth sources (router priorities, state machine events, pivot-orbit behaviour, cursor-relative pan).
-     - See `Docs/TODO/DivineHandCamera_TODO.md` for detailed plan scaffold.
+  - [ ] Lock deterministic hand/camera logic (router priorities, state machine events, fixed-step cursor transforms) while deferring BW2-style presentation to game-specific layers.
+    - Update `Docs/TODO/DivineHandCamera_TODO.md` to flag orbit/visual parity as downstream work; PureDOTS baseline owns logical DOTS flow only.
   - [ ] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters. For each legacy system, note any deviations required for the new architecture before implementation begins.
   - [x] Ensure each domain has deterministic update groups and clear scheduling.
    - [ ] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration.
@@ -44,6 +47,11 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [ ] Port domain-specific registry systems (resources, storehouses, villagers, bands) using DOTS buffers only—no bridge shims.
    - [x] Seed shared registry directory + handle lookup so systems can resolve registries without service locators (`RegistryDirectorySystem`).
    - [x] Provide registry lookup helpers and route core systems (spatial rebuild, job loops) through the directory for engine-agnostic access.
+   - [x] Add runtime continuity validation and instrumentation buffers (`RegistryContinuityValidationSystem`, `RegistryInstrumentationSystem`) so registries surface spatial drift and health metrics to shared tooling.
+   - [ ] Lock registry schemas to be theme-agnostic (villagers, logistics, miracles, construction) so downstream games only supply config/assets and intent commands.
+   - [x] Expose construction/jobsite registry so both template games consume identical build-site data.
+   - [x] Add neutral band/squad, creature/threat, and ability registries so shared systems can resolve formation, enemy, and special-action data.
+   - [x] Make spawner registry available for population/fauna/ship spawning coordination across games.
    - [ ] Build thin bridging layers only if legacy content/prefabs require temporary compatibility.
    - [ ] Introduce pooled SoA-friendly memory utilities (NativeList/Queue pools, slab allocators) to eliminate per-frame allocations in hot systems.
      - Track detailed work items in `Docs/TODO/RegistryRewrite_TODO.md`.
@@ -60,7 +68,8 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [ ] Port useful editor tooling (debug HUDs, history inspectors) from the old project once DOTS data structures stabilize.
    - [x] Maintain a running `Docs/Progress.md` log aligning with TruthSources for future contributors.
    - [ ] Draft CI/test-runner scripts for DOTS builds and playmode runs.
-   - [ ] Expand deterministic playmode coverage for hand/camera/time controls and resource workflows; add headless stress runs.
+  - [ ] Expand deterministic playmode coverage for hand/camera/time controls and resource workflows; rely on console/log assertions for rewind until visual presenters exist.
+  - [x] Add lightweight console instrumentation for rewind progress/state diffing to compensate for lack of visual entity representations.
    - [ ] Build a 50k-entity performance harness that validates rewind determinism and captures frame timing budgets.
 
 7. Migration Plan & Asset Salvage
@@ -71,6 +80,8 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
 8. Spatial Services & Observability
    - [ ] Implement configurable spatial grid/quadtree service (config asset + blob + lookup jobs) for proximity queries.
      - Planning doc: `Docs/TODO/SpatialServices_TODO.md`.
+     - Ensure navigation stack supports 2D surface layers today and can extend to full 3D volumes via config/provider swaps without code changes.
+   - [x] Wire up provider abstraction (`ISpatialGridProvider`) with hashed-grid implementation and config validation so future providers can plug in without touching consumer systems.
    - [ ] Extend deterministic debug/observability stack (timeline visualisers, HUD overlays) to read DOTS data without hybrid shims.
 
 9. Meta Foundations & Coordination
@@ -83,5 +94,18 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [ ] Execute initial `Docs/TODO/Utilities_TODO.md` backlog: debug overlay, telemetry hooks, integration test harness, deterministic replay, CI pipeline stubs.
    - [ ] Cross-link active TODOs with `RuntimeLifecycle_TruthSource.md`/`SystemIntegration_TODO.md`; start `Docs/DesignNotes/SystemIntegration.md` + missing registry/spatial design briefs.
    - [ ] Maintain meta work on `meta/dots-foundation`; merge stable slices to `master` once reviewed.
+
+10. Compilation Health
+   - [ ] Restore `StreamingValidatorTests` references once the Authoring/Editor asmdefs are ready: ensure the test assembly links against the correct editor assembly (or interim `Assembly-CSharp-Editor`) and `Unity.Scenes` so `PureDOTS.Authoring`, `PureDOTS.Editor`, and `Unity.Scenes` namespaces resolve.
+   - [ ] Track Entities 1.4.2 vs NetCode 1.8 physics regression: provide a local shim or package patch for `PhysicsWorldHistory.Clone` overloads (2- and 3-parameter variants) so the NetCode runtime builds.
+   - [ ] Remove the duplicate `StreamingCoordinatorBootstrapSystem` definition (source vs generated) to stop namespace collisions in `PureDOTS.Systems.Streaming`.
+   - [ ] Add the missing generic comparer surface in `StreamingLoaderSystem` (e.g., `using System.Collections.Generic;` or a DOTS-friendly equivalent) so `IComparer<StreamingSectionCommand>` compiles under 1.4.
+
+11. Agent Workflow Protocol
+   - [ ] Enforce three-agent cadence for backlog execution:
+     1. **Implementation Agent:** picks up scoped backlog slices and lands feature/system code.
+     2. **Error & Glue Agent:** resolves compile/runtime errors, integrates with existing systems, and polishes tests triggered by the implementation changes.
+     3. **Documentation Agent:** updates TruthSources, docs, and changelogs to reflect the delivered work and validations.
+   - [ ] Require each agent hand-off to cite the files touched and pending follow-ups so downstream prompts can focus on their lane without re-discovering context.
 
 Keep this file updated as tasks complete or new requirements surface. Tie progress back to existing TruthSource documents to stay aligned with the long-term vision.

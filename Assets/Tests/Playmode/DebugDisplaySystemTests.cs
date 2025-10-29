@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Streaming;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
 using Unity.Entities;
@@ -147,25 +149,30 @@ namespace PureDOTS.Tests
             var handle = CreateDebugSystem();
             ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
 
-            var registryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RegistryDirectory>()).GetSingletonEntity();
-            var entries = _entityManager.GetBuffer<RegistryDirectoryEntry>(registryEntity);
-            entries.Clear();
-
             var resourceRegistryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceRegistry>()).GetSingletonEntity();
             var metadata = _entityManager.GetComponentData<RegistryMetadata>(resourceRegistryEntity);
-            metadata.MarkUpdated(12, 5);
+            metadata.MarkUpdated(12, 5, RegistryContinuitySnapshot.WithoutSpatialData());
             _entityManager.SetComponentData(resourceRegistryEntity, metadata);
 
-            entries.Add(new RegistryDirectoryEntry
+            _entityManager.SetComponentData(resourceRegistryEntity, new RegistryHealth
             {
-                Kind = RegistryKind.Resource,
-                Handle = metadata.ToHandle(resourceRegistryEntity),
-                Label = metadata.Label
+                HealthLevel = RegistryHealthLevel.Warning,
+                StaleEntryCount = 3,
+                StaleEntryRatio = 0.25f,
+                SpatialVersionDelta = 0,
+                TicksSinceLastUpdate = 7,
+                DirectoryVersionDelta = 0,
+                TotalEntryCount = 12,
+                LastHealthCheckTick = 10,
+                FailureFlags = RegistryHealthFlags.StaleEntriesWarning
             });
 
+            _world.UpdateSystem<RegistryDirectorySystem>();
+            _world.UpdateSystem<RegistryContinuityValidationSystem>();
+            _world.UpdateSystem<RegistryInstrumentationSystem>();
+
+            var registryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RegistryDirectory>()).GetSingletonEntity();
             var directory = _entityManager.GetComponentData<RegistryDirectory>(registryEntity);
-            directory.MarkUpdated(metadata.LastUpdateTick, 1);
-            _entityManager.SetComponentData(registryEntity, directory);
 
             _debugSystem.OnUpdate(ref systemState);
 
@@ -174,6 +181,174 @@ namespace PureDOTS.Tests
             Assert.AreEqual(12, debugData.RegisteredEntryCount);
             Assert.Greater(debugData.RegistryStateText.Length, 0);
             Assert.AreEqual(directory.Version, debugData.RegistryDirectoryVersion);
+            Assert.AreEqual(0, debugData.RegistryHealthyCount);
+            Assert.AreEqual(1, debugData.RegistryWarningCount);
+            Assert.AreEqual(0, debugData.RegistryCriticalCount);
+            Assert.AreEqual(0, debugData.RegistryFailureCount);
+            Assert.GreaterOrEqual(debugData.RegistryInstrumentationVersion, 1u);
+            Assert.AreEqual(0, debugData.RegistryContinuityWarningCount);
+            Assert.AreEqual(0, debugData.RegistryContinuityFailureCount);
+            Assert.AreEqual(0, debugData.RegistryContinuityAlerts.Length);
+            Assert.Greater(debugData.RegistryHealthHeadline.Length, 0);
+            Assert.IsTrue(debugData.RegistryHealthAlerts.ToString().Contains("Alerts:"));
+        }
+
+        [Test]
+        public void DebugDisplaySystem_PopulatesStreamingDiagnostics()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            Entity coordinatorEntity;
+            using (var query = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<StreamingCoordinator>()))
+            {
+                if (query.IsEmptyIgnoreFilter)
+                {
+                    coordinatorEntity = _entityManager.CreateEntity(typeof(StreamingCoordinator));
+                    _entityManager.AddBuffer<StreamingSectionCommand>(coordinatorEntity);
+                    _entityManager.AddComponentData(coordinatorEntity, new StreamingDebugControl());
+                    _entityManager.AddComponentData(coordinatorEntity, new StreamingStatistics
+                    {
+                        FirstLoadTick = StreamingStatistics.TickUnset,
+                        FirstUnloadTick = StreamingStatistics.TickUnset
+                    });
+                }
+                else
+                {
+                    coordinatorEntity = query.GetSingletonEntity();
+                }
+            }
+
+            if (!_entityManager.HasComponent<StreamingStatistics>(coordinatorEntity))
+            {
+                _entityManager.AddComponentData(coordinatorEntity, new StreamingStatistics
+                {
+                    FirstLoadTick = StreamingStatistics.TickUnset,
+                    FirstUnloadTick = StreamingStatistics.TickUnset
+                });
+            }
+
+            _entityManager.SetComponentData(coordinatorEntity, new StreamingStatistics
+            {
+                DesiredCount = 4,
+                LoadedCount = 3,
+                LoadingCount = 1,
+                UnloadingCount = 0,
+                QueuedLoads = 2,
+                QueuedUnloads = 1,
+                PendingCommands = 3,
+                PeakPendingCommands = 5,
+                ActiveCooldowns = 2,
+                FirstLoadTick = 12,
+                FirstUnloadTick = StreamingStatistics.TickUnset
+            });
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.AreEqual(4, debugData.StreamingDesiredCount);
+            Assert.AreEqual(3, debugData.StreamingLoadedCount);
+            Assert.AreEqual(1, debugData.StreamingLoadingCount);
+            Assert.AreEqual(2, debugData.StreamingQueuedLoads);
+            Assert.AreEqual(1, debugData.StreamingQueuedUnloads);
+            Assert.AreEqual(3, debugData.StreamingPendingCommands);
+            Assert.AreEqual(2, debugData.StreamingActiveCooldowns);
+            Assert.AreEqual(12u, debugData.StreamingFirstLoadTick);
+            Assert.Greater(debugData.StreamingStateText.Length, 0);
+
+            var telemetryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>()).GetSingletonEntity();
+            var buffer = _entityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+
+            bool foundStreamingDesired = false;
+            bool foundStreamingCooldown = false;
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                if (metric.Key.ToString() == "streaming.desired")
+                {
+                    foundStreamingDesired = true;
+                    Assert.AreEqual(4f, metric.Value);
+                }
+
+                if (metric.Key.ToString() == "streaming.cooldowns.active")
+                {
+                    foundStreamingCooldown = true;
+                    Assert.AreEqual(2f, metric.Value);
+                }
+            }
+
+            Assert.IsTrue(foundStreamingDesired, "Streaming desired metric should be present.");
+            Assert.IsTrue(foundStreamingCooldown, "Streaming cooldown metric should be present.");
+        }
+
+        [Test]
+        public void DebugDisplaySystem_PopulatesSpatialDiagnostics()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            var gridEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()).GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.CellCounts = new int3(4, 1, 4);
+            config.CellSize = 1f;
+            _entityManager.SetComponentData(gridEntity, config);
+
+            _entityManager.SetComponentData(gridEntity, new SpatialGridState
+            {
+                ActiveBufferIndex = 1,
+                TotalEntries = 12,
+                Version = 5,
+                LastUpdateTick = 42,
+                LastDirtyTick = 0,
+                DirtyVersion = 0,
+                DirtyAddCount = 0,
+                DirtyUpdateCount = 0,
+                DirtyRemoveCount = 0,
+                LastRebuildMilliseconds = 0f,
+                LastStrategy = SpatialGridRebuildStrategy.Full
+            });
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.AreEqual(16, debugData.SpatialCellCount);
+            Assert.AreEqual(12, debugData.SpatialIndexedEntityCount);
+            Assert.AreEqual(5u, debugData.SpatialVersion);
+            Assert.AreEqual(42u, debugData.SpatialLastUpdateTick);
+            Assert.AreEqual(SpatialGridRebuildStrategy.Full, debugData.SpatialLastStrategy);
+            Assert.AreEqual(0f, debugData.SpatialLastRebuildMilliseconds);
+            Assert.AreEqual(0, debugData.SpatialDirtyAddCount);
+            Assert.AreEqual(0, debugData.SpatialDirtyUpdateCount);
+            Assert.AreEqual(0, debugData.SpatialDirtyRemoveCount);
+            Assert.AreEqual(0, debugData.ResourceSpatialFallback);
+            Assert.AreEqual(0, debugData.ResourceSpatialUnmapped);
+            Assert.AreEqual(0, debugData.StorehouseSpatialFallback);
+            Assert.AreEqual(0, debugData.StorehouseSpatialUnmapped);
+            Assert.IsTrue(debugData.SpatialStateText.ToString().Contains("Spatial Cells"));
+
+            var telemetryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>()).GetSingletonEntity();
+            var buffer = _entityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+
+            bool foundSpatialEntries = false;
+            bool foundSpatialVersion = false;
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                if (metric.Key.ToString() == "spatial.entries")
+                {
+                    foundSpatialEntries = true;
+                    Assert.AreEqual(12f, metric.Value);
+                }
+
+                if (metric.Key.ToString() == "spatial.version")
+                {
+                    foundSpatialVersion = true;
+                    Assert.AreEqual(5f, metric.Value);
+                }
+            }
+
+            Assert.IsTrue(foundSpatialEntries, "Spatial entries metric should be present.");
+            Assert.IsTrue(foundSpatialVersion, "Spatial version metric should be present.");
         }
 
         [Test]
@@ -226,6 +401,96 @@ namespace PureDOTS.Tests
         }
 
         [Test]
+        public void DebugDisplaySystem_RecordsSpatialMetricsAccurately()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            var gridEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()).GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.CellCounts = new int3(8, 1, 8);
+            config.CellSize = 1f;
+            _entityManager.SetComponentData(gridEntity, config);
+
+            _entityManager.SetComponentData(gridEntity, new SpatialGridState
+            {
+                ActiveBufferIndex = 0,
+                TotalEntries = 25,
+                Version = 10,
+                LastUpdateTick = 100,
+                LastDirtyTick = 99,
+                DirtyVersion = 5,
+                DirtyAddCount = 3,
+                DirtyUpdateCount = 7,
+                DirtyRemoveCount = 2,
+                LastRebuildMilliseconds = 1.234f,
+                LastStrategy = SpatialGridRebuildStrategy.Partial
+            });
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var debugData = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>()).GetSingleton<DebugDisplayData>();
+            Assert.AreEqual(64, debugData.SpatialCellCount);
+            Assert.AreEqual(25, debugData.SpatialIndexedEntityCount);
+            Assert.AreEqual(10u, debugData.SpatialVersion);
+            Assert.AreEqual(100u, debugData.SpatialLastUpdateTick);
+            Assert.AreEqual(3, debugData.SpatialDirtyAddCount);
+            Assert.AreEqual(7, debugData.SpatialDirtyUpdateCount);
+            Assert.AreEqual(2, debugData.SpatialDirtyRemoveCount);
+            Assert.AreEqual(1.234f, debugData.SpatialLastRebuildMilliseconds);
+            Assert.AreEqual(SpatialGridRebuildStrategy.Partial, debugData.SpatialLastStrategy);
+        }
+
+        [Test]
+        public void DebugDisplaySystem_TelemetryIncludesSpatialDirtyMetrics()
+        {
+            var handle = CreateDebugSystem();
+            ref var systemState = ref _world.Unmanaged.ResolveSystemStateRef(handle);
+
+            var gridEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()).GetSingletonEntity();
+            _entityManager.SetComponentData(gridEntity, new SpatialGridState
+            {
+                ActiveBufferIndex = 0,
+                TotalEntries = 50,
+                Version = 12,
+                LastUpdateTick = 200,
+                LastDirtyTick = 200,
+                DirtyVersion = 8,
+                DirtyAddCount = 5,
+                DirtyUpdateCount = 10,
+                DirtyRemoveCount = 3,
+                LastRebuildMilliseconds = 2.5f,
+                LastStrategy = SpatialGridRebuildStrategy.Partial
+            });
+
+            _debugSystem.OnUpdate(ref systemState);
+
+            var telemetryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>()).GetSingletonEntity();
+            var buffer = _entityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+
+            bool foundSpatialEntries = false;
+            bool foundSpatialVersion = false;
+
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                if (metric.Key.ToString() == "spatial.entries")
+                {
+                    foundSpatialEntries = true;
+                    Assert.AreEqual(50f, metric.Value);
+                }
+                if (metric.Key.ToString() == "spatial.version")
+                {
+                    foundSpatialVersion = true;
+                    Assert.AreEqual(12f, metric.Value);
+                }
+            }
+
+            Assert.IsTrue(foundSpatialEntries, "Telemetry should include spatial.entries");
+            Assert.IsTrue(foundSpatialVersion, "Telemetry should include spatial.version");
+        }
+
+        [Test]
         public void DebugDisplaySystem_PresentsFrameTimingSummary()
         {
             var recorder = _world.CreateSystemManaged<FrameTimingRecorderSystem>();
@@ -272,5 +537,3 @@ namespace PureDOTS.Tests
         }
     }
 }
-
-

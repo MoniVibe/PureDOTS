@@ -46,19 +46,14 @@
 
 ## Workstreams & Tasks
 
-### 0. Requirements Reconnaissance (Pre-Design)
-- [ ] **Audit existing spatial queries**: Scan `VillagerTargetingSystem`, `VillagerAISystem`, `ResourceRegistrySystem`, `StorehouseRegistrySystem` to document current proximity/neighbor search patterns and bottlenecks.
-- [ ] **Map rewind touchpoints**: Review `RewindCoordinatorSystem`, `RewindRoutingSystems`, and `ITimeAware` consumers to determine when/how the spatial grid must update or snapshot during record/playback/catch-up transitions.
-- [ ] **Catalog entity archetypes**: List which entity types need spatial indexing (villagers, resources, storehouses, vegetation, miracles, combat units) and estimate counts per archetype.
-- [ ] **Identify query hotspots**: Profile or estimate which systems run the most spatial queries per frame to prioritize optimization targets.
-- [ ] **Document current workarounds**: Note any existing hacks (linear scans, manual distance checks, registry-based filtering) that the grid will replace.
+- ✅ **Spatial services recon (2025-10-28)**: `VillagerJobSystems` and `VillagerTargetingSystem` already use the grid for candidate selection; `AISystems` runs k-NN batches; miracles/logistics still rely on EntityManager lookups. Rewind mode skips spatial rebuilds (Record-only), leaving cached buffers for playback. Further spatialisation needed for vegetation, miracles, combat, logistics. Hot paths are villager assignment/delivery and AI sensors; workarounds fall back to registry scans when spatial data absent. (See `Docs/DesignNotes/SpatialPartitioning.md` for full summary.)
 
 ### 1. Design & Data Spec
-- [ ] Draft a design note capturing provider interface, data types (`CellRange`, `GridConfigBlob`), and integration points.
-- [ ] Define config ScriptableObject (`SpatialPartitionProfile`) with cell size, world bounds, provider selection.
-- [ ] Document expected consumers and query patterns (villager jobs, miracles, AI search) based on reconnaissance findings.
+- [x] Draft a design note capturing provider interface, data types (`CellRange`, `GridConfigBlob`), and integration points. *(See `Docs/DesignNotes/SpatialPartitioning.md`)*
+- [x] Define config ScriptableObject (`SpatialPartitionProfile`) with cell size, world bounds, provider selection.
+- [x] Document expected consumers and query patterns (villager jobs, miracles, AI search, logistics) based on reconnaissance findings.
 
-### 2. Core Implementation
+### 2. Core Implementation (Partial Rebuild Slice)
 - [x] **Create component definitions** in `Assets/Scripts/PureDOTS/Runtime/Spatial/SpatialComponents.cs`:
   - `SpatialGridConfig` (singleton with cell size, world bounds, hash seed)
   - `SpatialGridState` (singleton with entity/position buffers, version counter)
@@ -73,17 +68,20 @@
   - Use change filters to minimize churn in record mode
   - Force full rebuild when entering record mode from playback/catch-up
   - Update within `VillagerSystemGroup` or dedicated `SpatialSystemGroup` before consumers run
-- [ ] Finalise Burst job implementation for rebuild & dirty detection (ensure double-buffer swap safe under rewind).
+- [x] Introduce dirty tracking & partial rebuild path (SpatialGridBuildSystem + optional `SpatialGridDirtyTrackingSystem`).
+- [x] Track rebuild statistics (dirty count, rebuild duration) and expose via `SpatialConsoleInstrumentation`/debug HUD.
+- [x] Introduce runtime provider abstraction (`ISpatialGridProvider`) with hashed-grid implementation and config validation hooks.
 - [ ] Expand deterministic query utilities: `kNN`, multi-radius batches, filtered entity iterators, and jobified wrappers.
 - [ ] Provide data-driven query descriptors so different game concepts can reuse the same query pipeline without custom code.
-- [ ] Integrate registries (villager, miner vessel, hauler freighter, wagon, resource, miracle neutral) with spatial indexing metadata for fast lookup.
+- [ ] Integrate registries (resource, storehouse, villager, logistics, miracles) with spatial indexing metadata for fast lookup once entries store spatial tokens. *(Resource & storehouse registries now consume `SpatialGridResidency`; villager/logistics/miracles still pending.)*
 - [ ] **Respect rewind state**: Check `RewindState.Mode` to skip/rebuild appropriately; add `PlaybackGuardTag` checks if needed.
-- [ ] Support 2D (XZ plane) initially; stub pseudo-3D (Y strata) hooks for future miracles/flying entities.
+- [ ] Support 2D (XZ plane) navigation out of the box **and** define config/runtime hooks for true 3D layers (int3 cells, volume cost fields) so PureDOTS pathfinding can service flying/underground agents without game-layer rewrites.
 
 ### 3. Future-Proofing (Roadmap Hooks)
 - [ ] Stub hierarchical grid interface (two-level: macro cell -> micro grid).  
 - [ ] Plan GPU offload hook (compute shader or Entities Graphics) for extreme densities.  
 - [ ] Reserve data slots for additional attributes (cell occupancy heatmaps, average normals).
+- [ ] Formalise layer provider abstraction (`INavLayerProvider`) so 2D/3D navigation layers can swap implementations without touching consumer systems.
 
 ### 4. Query Helpers & Integration
 - [ ] **Provide query API** in `SpatialQueryHelper`:
@@ -132,9 +130,9 @@
 - [ ] **Profiling automation**: Integrate with performance harness TODO to track spatial grid metrics in CI.
 
 ### 7. Documentation & Adoption
-- [ ] Update `Docs/Guides/SceneSetup.md` with instructions for adding a spatial profile to new scenes.  
-- [ ] Add `Docs/DesignNotes/SpatialPartitioning.md` summarizing design decisions and provider roadmap.  
-- [ ] Reflect progress in `Docs/Progress.md` and cross-link to registries/TODOs.
+- [x] Update `Docs/Guides/SceneSetup.md` with instructions for adding a spatial profile to new scenes.  
+- [x] Add `Docs/DesignNotes/SpatialPartitioning.md` summarizing design decisions and provider roadmap.  
+- [x] Reflect progress in `Docs/Progress.md` and cross-link to registries/TODOs.
 
 ## Open Questions
 - How many provider variants do we need at launch? (Uniform grid vs. hashed vs. quadtree.)

@@ -3,10 +3,13 @@
 > **Generalisation Guideline**: Treat hand and camera control as reusable interaction modules. Core logic should be data-driven, with configuration assets defining behaviour so different games can adopt the same systems.
 
 ## Goal
-- Deliver Black & White 2–quality hand + camera controls inside our pure DOTS world: cursor-following divine hand, pickable highlighting, grab/throw modes, BW2 orbit/pan/zoom.
+- Maintain deterministic DOTS hand/camera logic (input routing, state machines, fixed-step transforms) inside the PureDOTS foundation; presentation parity with Black & White 2 remains deferred to downstream game builds.
+- Document future parity ambitions so game teams can extend the logical core once they add presentation and fiction-specific feedback.
 - Ensure every input flows through deterministic DOTS systems (New Input System → router → DOTS components) with no Mono-only side effects.
-- Provide designers with configurable knobs (ScriptableObjects + blobs) for sensitivity, launch behaviour, highlights, and HUD.
+- Provide designers with configurable knobs (ScriptableObjects + blobs) for sensitivity, launch behaviour, highlights, and HUD when game layers are ready to consume them.
 - Keep contracts in sync with `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` and shared integration tasks in `Docs/TODO/SystemIntegration_TODO.md`.
+
+> **Baseline scope note (2025-10-28):** PureDOTS ships only the logical DOTS data flow for hand/camera features. Visuals, feel matching, and fiction-specific behaviours are flagged as deferred below for the first game to implement.
 
 ## Plain-Language Primer
 - The **divine hand** is the player cursor: it tracks the mouse, shows when objects can be picked up, and manipulates the world (grab, throw, miracles).
@@ -88,7 +91,7 @@
   - Holding → [over storehouse with resources] → Dumping
   - Dumping → [complete transfer] → Empty
   - Include all timers: `cooldownAfterThrowSeconds` (0.1s), `minChargeSeconds` (0.3s), `maxChargeSeconds` (2.0s)
-- [ ] **Hand cursor visual states** (match BW2 exactly):
+- [ ] **Hand cursor visual states** *(deferred: game-specific presentation)* (match BW2 exactly):
   - Open hand: default hovering state, can interact
   - Closed fist: grabbing/holding object firmly
   - Pointing finger: casting miracle or directing
@@ -98,11 +101,11 @@
 - [ ] Enforce resource type locking during siphon; guard cross-type operations with deterministic denies and feedback. **Partial** — pickup guard blocks mixed-resource grabs; siphon/dump enforcement outstanding.
 - [ ] Support future extension points (e.g., miracles toggling modes) via config fields and event hooks.
 
--### 3. Cursor Access & Highlighting
+### 3. Cursor Access & Highlighting
 - [x] Keep hand entity aligned with terrain raycast (ground plane fallback). Update `DivineHandInputBridge` to write world/cursor positions each frame.
-- [ ] Implement highlight system: when hovering a `HandPickable`, apply pooled highlight VFX (material swap, outline) and revert gracefully. Respect router priority (UI/higher handlers can override). **In Progress** — DOTS highlight component now mirrors router context; presentation/VFX hookup still pending.
-- [ ] Provide distinct feedback for invalid actions (cursor colour change, deny SFX).
-- [ ] Expose highlight info to presentation/companion systems (DOTS component describing highlight state). **In Progress** — `DivineHandHighlight` component populated each frame; consumers still to wire up.
+- [ ] Implement highlight system *(deferred: presentation-specific)*: when hovering a `HandPickable`, apply pooled highlight VFX (material swap, outline) and revert gracefully. Respect router priority (UI/higher handlers can override). **In Progress** — DOTS highlight component now mirrors router context; presentation/VFX hookup still pending.
+- [ ] Provide distinct feedback for invalid actions *(deferred: presentation-specific)* (cursor colour change, deny SFX).
+- [ ] Expose highlight info to presentation/companion systems *(deferred: presentation bridge)* (DOTS component describing highlight state). **In Progress** — `DivineHandHighlight` component populated each frame; consumers still to wire up.
 
 ### 4. Interaction Flow & Commands
 - [ ] Make all interactions (pickup, hold, throw, siphon, dump) issue deterministic command buffers that integrate with registries (resource/storehouse) and `RainMiracleCommand`. **In Progress** — storehouse dump now deposits into inventory via `DivineHandCommand`; siphon/pile extraction still TODO.
@@ -111,7 +114,9 @@
 - [ ] Ensure `DivineHandSystem` and related systems early-out correctly during playback/catch-up (`RewindState.Mode` check).
 - [ ] Adopt central `HandInputRouterSystem` once integration TODO lands; ensure state transitions respect shared `HandInteractionState` and fixed-step timing.
 
-### 5. BW2 Camera Parity
+### 5. BW2 Camera Parity *(deferred to game builds)*
+> Baseline PureDOTS keeps deterministic camera transforms/logical routing; feel-matching remains with downstream titles.
+
 - [x] **Pan (LMB - "Grab Land")**:
   - On LMB down over terrain: establish grab plane at raycast hit point
   - While dragging: camera follows inverse of mouse movement (land stays under cursor)
@@ -138,13 +143,13 @@
   - Sphere cast: detect obstacles between pivot and desired camera position
   - Auto-adjust: pull camera closer if blocked, return when path clears
   - Smooth: gentle easing, no sudden pops or jarring movements
-- [ ] **Anchor Snaps**:
+- [ ] **Anchor Snaps** *(deferred to game builds)*:
   - Space key → snap to temple with smooth lerp
   - C key → snap to creature with smooth lerp
   - Support designer-defined custom anchors (buildings, events)
   - Preserve pitch angle during snap (maintain player's chosen tilt)
   - Zoom inheritance: new pivot adopts zoom distance from previous view
-- [ ] **Configuration Assets**:
+- [ ] **Configuration Assets** *(deferred to game builds)*:
   - Build `CameraProfile` ScriptableObject with all sensitivity/speed/clamp parameters
   - Support multiple profiles per scene (different biomes, areas, story moments)
   - Expose invert toggles for all axes (pan X/Y, orbit X/Y, zoom)
@@ -156,19 +161,21 @@
 - [ ] Reserve extension points for future miracles/creature interactions (e.g., throw villager, drop miracle payloads).
 
 ### 7. Testing & Benchmarks
+> Baseline tests rely on console/log assertions because we lack shared visual representations for rewind validation.
+
 - [ ] Unit tests: state transitions, router priority resolution, highlight toggling, launch impulse calculations.
 - [ ] Playmode tests: pickup capacity enforcement, storehouse dump flow, cross-type block, throw trajectories, camera orbit/pan/zoom invariants (positions/angles).
-- [ ] Rewind tests: record → rewind → resume verifying hand state, camera pivot, highlight entity, and launch mode state all match original.
+- [ ] Rewind tests: record → rewind → resume verifying hand state, camera pivot, highlight entity, and launch mode state all match original via console/log instrumentation.
 - [ ] Performance tests: run at 120 FPS and 240 FPS verifying zero GC allocations, Burst compliance, and stable timing.
 - [ ] Integration tests: once spatial grid/registries land, confirm hand queries align with grid results (hover detection).
-- [ ] **BW2 Parity Validation**:
+- [ ] **BW2 Parity Validation** *(deferred to game builds)*:
   - Record side-by-side video (BW2 vs. our implementation) of same camera movements
   - Measure orbit sensitivity (degrees of rotation per pixel of mouse movement) at close/mid/far distances
   - Measure zoom speed (distance change per scroll tick)
   - Compare throw distances and arc trajectories for same charge times
   - Verify pan responsiveness (land stays under cursor during drag)
   - Validate hand state transitions match BW2 timing (grab, hold, release, throw)
-- [ ] **Manual QA Checklist**:
+- [ ] **Manual QA Checklist** *(deferred to game builds)*:
   - LMB pan feels smooth and responsive (land stays under cursor)
   - MMB orbit locks pivot correctly and releases on button up
   - Scroll zoom targets cursor position (not center of screen)

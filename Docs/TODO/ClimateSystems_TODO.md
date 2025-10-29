@@ -91,14 +91,10 @@
 ### 1.5. Sunlight & Shadow System (NEW)
 - [ ] **Define TimeOfDayState component**:
   - CurrentHour (0-24), HoursPerSecond (timescale), DayNumber (total days elapsed)
-- [ ] **Implement SunlightGridUpdateSystem** (runs every 5 ticks):
+- [x] **Implement SunlightGridUpdateSystem** (runs every 5 ticks):
   - Calculate sun position from time-of-day and season (elevation angle, azimuth)
-  - **Option A - Raycasting**: Cast rays from grid cells toward sun (16k rays for 128x128)
-    - Hit occluders (tall trees, buildings) → reduce light by shadow amount
-    - Store DirectLight and AmbientLight per cell
   - **Option B - Heuristic** (more performant): Query spatial grid for tall vegetation count
-    - Approximate: `light = 100 - (treeCount * 15)` clamped to 20-100
-    - Skip raycasts, much faster
+    - Implemented via mature vegetation occlusion counts to attenuate direct light and boost ambient terms.
   - Update SunDirection vector and SunIntensity (0-1 based on time)
 - [ ] **Sun arc calculations**:
   - Midnight (0h/24h): Below horizon (-90° elevation)

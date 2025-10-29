@@ -1,0 +1,754 @@
+2025-10-26 00:03:54.480 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:03:54.514 +03:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 00:03:54.911 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:03:54.913 +03:00 [INF] Using cached error state (2 errors, age: 0.4s)
+2025-10-26 00:03:55.409 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:03:55.409 +03:00 [INF] Using cached error state (2 errors, age: 0.9s)
+2025-10-26 00:09:03.030 +03:00 [INF] Initializing Coplay services
+2025-10-26 00:09:03.051 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 00:09:03.051 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 00:09:03.072 +03:00 [INF] Enabling console error detection
+2025-10-26 00:09:03.079 +03:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 00:09:03.079 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 00:09:03.081 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 00:09:03.083 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 00:09:03.083 +03:00 [INF] Enabling console debug button
+2025-10-26 00:09:03.084 +03:00 [INF] === Starting console button injection ===
+2025-10-26 00:09:03.084 +03:00 [INF] Found 0 console window instances
+2025-10-26 00:09:03.085 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 00:09:03.086 +03:00 [INF] Subscribed to error detection
+2025-10-26 00:09:03.086 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 00:09:16.605 +03:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 00:09:16.605 +03:00 [INF] Found 2 startup errors via direct console query - caching for downstream use
+2025-10-26 00:09:16.606 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:09:16.606 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:09:16.732 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:09:16.732 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:11:16.668 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:11:16.702 +03:00 [INF] Found 23 errors via direct console query (cached)
+2025-10-26 00:11:17.047 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:11:17.048 +03:00 [INF] Using cached error state (23 errors, age: 0.3s)
+2025-10-26 00:11:17.547 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:11:17.547 +03:00 [INF] Using cached error state (23 errors, age: 0.8s)
+2025-10-26 00:12:32.480 +03:00 [INF] Initializing Coplay services
+2025-10-26 00:12:32.507 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 00:12:32.508 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 00:12:32.524 +03:00 [INF] Enabling console error detection
+2025-10-26 00:12:32.531 +03:00 [INF] Found 23 errors via direct console query (cached)
+2025-10-26 00:12:32.531 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 00:12:32.532 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 00:12:32.532 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 00:12:32.533 +03:00 [INF] Enabling console debug button
+2025-10-26 00:12:32.533 +03:00 [INF] === Starting console button injection ===
+2025-10-26 00:12:32.533 +03:00 [INF] Found 0 console window instances
+2025-10-26 00:12:32.533 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 00:12:32.534 +03:00 [INF] Subscribed to error detection
+2025-10-26 00:12:32.534 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 00:12:46.196 +03:00 [INF] Found 23 errors via direct console query (cached)
+2025-10-26 00:12:46.196 +03:00 [INF] Found 23 startup errors via direct console query - caching for downstream use
+2025-10-26 00:12:46.196 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:12:46.196 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:12:46.305 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:12:46.305 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:36:32.397 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:36:32.427 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:36:32.428 +03:00 [INF] Cached error state is stale (1426.2s old), returning empty
+2025-10-26 00:36:32.428 +03:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 00:36:32.451 +03:00 [INF] Found 75 errors via direct console query (cached)
+2025-10-26 00:36:32.451 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 00:36:32.452 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 00:36:32.452 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:36:32.598 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:36:32.598 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:36:32.941 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:36:32.941 +03:00 [INF] Using cached error state (75 errors, age: 0.5s)
+2025-10-26 00:37:46.138 +03:00 [INF] Initializing Coplay services
+2025-10-26 00:37:46.148 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 00:37:46.148 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 00:37:46.156 +03:00 [INF] Enabling console error detection
+2025-10-26 00:37:46.161 +03:00 [INF] Found 75 errors via direct console query (cached)
+2025-10-26 00:37:46.161 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 00:37:46.162 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 00:37:46.163 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 00:37:46.163 +03:00 [INF] Enabling console debug button
+2025-10-26 00:37:46.164 +03:00 [INF] === Starting console button injection ===
+2025-10-26 00:37:46.164 +03:00 [INF] Found 0 console window instances
+2025-10-26 00:37:46.164 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 00:37:46.164 +03:00 [INF] Subscribed to error detection
+2025-10-26 00:37:46.164 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 00:37:59.438 +03:00 [INF] Found 75 errors via direct console query (cached)
+2025-10-26 00:37:59.438 +03:00 [INF] Found 75 startup errors via direct console query - caching for downstream use
+2025-10-26 00:37:59.438 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:37:59.438 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:37:59.546 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:37:59.546 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:52:04.356 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:52:04.409 +03:00 [INF] Found 70 errors via direct console query (cached)
+2025-10-26 00:52:04.425 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:52:04.425 +03:00 [INF] Using cached error state (70 errors, age: 0.0s)
+2025-10-26 00:52:04.924 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:52:04.925 +03:00 [INF] Using cached error state (70 errors, age: 0.5s)
+2025-10-26 00:54:04.615 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:54:04.656 +03:00 [INF] Found 60 errors via direct console query (cached)
+2025-10-26 00:54:04.889 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:54:04.889 +03:00 [INF] Using cached error state (60 errors, age: 0.2s)
+2025-10-26 00:54:05.389 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:54:05.389 +03:00 [INF] Using cached error state (60 errors, age: 0.7s)
+2025-10-26 00:55:40.233 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 00:55:40.274 +03:00 [INF] Found 60 errors via direct console query (cached)
+2025-10-26 00:55:40.619 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:55:40.619 +03:00 [INF] Using cached error state (60 errors, age: 0.3s)
+2025-10-26 00:55:41.119 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 00:55:41.119 +03:00 [INF] Using cached error state (60 errors, age: 0.8s)
+2025-10-26 00:58:02.732 +03:00 [INF] Initializing Coplay services
+2025-10-26 00:58:02.743 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 00:58:02.743 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 00:58:02.757 +03:00 [INF] Enabling console error detection
+2025-10-26 00:58:02.762 +03:00 [INF] Found 40 errors via direct console query (cached)
+2025-10-26 00:58:02.762 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 00:58:02.763 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 00:58:02.763 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 00:58:02.763 +03:00 [INF] Enabling console debug button
+2025-10-26 00:58:02.763 +03:00 [INF] === Starting console button injection ===
+2025-10-26 00:58:02.764 +03:00 [INF] Found 0 console window instances
+2025-10-26 00:58:02.764 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 00:58:02.765 +03:00 [INF] Subscribed to error detection
+2025-10-26 00:58:02.765 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 00:58:34.590 +03:00 [INF] Found 40 errors via direct console query (cached)
+2025-10-26 00:58:34.590 +03:00 [INF] Found 40 startup errors via direct console query - caching for downstream use
+2025-10-26 00:58:34.591 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:58:34.591 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 00:58:34.711 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 00:58:34.711 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:01:54.522 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:01:54.551 +03:00 [INF] Found 20 errors via direct console query (cached)
+2025-10-26 01:01:54.714 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:01:54.715 +03:00 [INF] Using cached error state (20 errors, age: 0.2s)
+2025-10-26 01:01:55.229 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:01:55.229 +03:00 [INF] Using cached error state (20 errors, age: 0.7s)
+2025-10-26 01:03:19.364 +03:00 [INF] Initializing Coplay services
+2025-10-26 01:03:19.375 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:03:19.375 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:03:19.383 +03:00 [INF] Enabling console error detection
+2025-10-26 01:03:19.389 +03:00 [INF] Found 25 errors via direct console query (cached)
+2025-10-26 01:03:19.389 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 01:03:19.389 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:03:19.390 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:03:19.390 +03:00 [INF] Enabling console debug button
+2025-10-26 01:03:19.390 +03:00 [INF] === Starting console button injection ===
+2025-10-26 01:03:19.391 +03:00 [INF] Found 0 console window instances
+2025-10-26 01:03:19.391 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 01:03:19.391 +03:00 [INF] Subscribed to error detection
+2025-10-26 01:03:19.391 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:03:32.391 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:03:32.509 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:03:32.510 +03:00 [INF] Cached error state is stale (13.1s old), returning empty
+2025-10-26 01:03:32.510 +03:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 01:03:33.009 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:03:33.009 +03:00 [INF] Cached error state is stale (13.6s old), returning empty
+2025-10-26 01:03:33.315 +03:00 [INF] Found 43 errors via direct console query (cached)
+2025-10-26 01:03:33.315 +03:00 [INF] Found 43 startup errors via direct console query - caching for downstream use
+2025-10-26 01:03:33.315 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:03:33.315 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:03:33.341 +03:00 [INF] Found 43 errors via direct console query (cached)
+2025-10-26 01:03:33.341 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 01:03:33.341 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:03:33.441 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:03:33.441 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:06:33.635 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:06:33.662 +03:00 [INF] Found 21 errors via direct console query (cached)
+2025-10-26 01:06:33.852 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:06:33.852 +03:00 [INF] Using cached error state (21 errors, age: 0.2s)
+2025-10-26 01:06:34.364 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:06:34.364 +03:00 [INF] Using cached error state (21 errors, age: 0.7s)
+2025-10-26 01:11:10.914 +03:00 [INF] Initializing Coplay services
+2025-10-26 01:11:10.926 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:11:10.926 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:11:10.934 +03:00 [INF] Enabling console error detection
+2025-10-26 01:11:10.939 +03:00 [INF] Found 21 errors via direct console query (cached)
+2025-10-26 01:11:10.939 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 01:11:10.940 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:11:10.941 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:11:10.941 +03:00 [INF] Enabling console debug button
+2025-10-26 01:11:10.942 +03:00 [INF] === Starting console button injection ===
+2025-10-26 01:11:10.942 +03:00 [INF] Found 0 console window instances
+2025-10-26 01:11:10.942 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 01:11:10.942 +03:00 [INF] Subscribed to error detection
+2025-10-26 01:11:10.942 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:11:24.161 +03:00 [INF] Found 21 errors via direct console query (cached)
+2025-10-26 01:11:24.161 +03:00 [INF] Found 21 startup errors via direct console query - caching for downstream use
+2025-10-26 01:11:24.161 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:11:24.161 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:11:24.277 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:11:24.277 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:13:37.853 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:13:37.882 +03:00 [INF] Found 16 errors via direct console query (cached)
+2025-10-26 01:13:38.179 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:13:38.179 +03:00 [INF] Using cached error state (16 errors, age: 0.3s)
+2025-10-26 01:13:38.668 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:13:38.668 +03:00 [INF] Using cached error state (16 errors, age: 0.8s)
+2025-10-26 01:26:05.172 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:26:05.196 +03:00 [INF] Found 4 errors via direct console query (cached)
+2025-10-26 01:26:05.448 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:26:05.448 +03:00 [INF] Using cached error state (4 errors, age: 0.3s)
+2025-10-26 01:26:05.962 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:26:05.962 +03:00 [INF] Using cached error state (4 errors, age: 0.8s)
+2025-10-26 01:27:42.659 +03:00 [INF] Initializing Coplay services
+2025-10-26 01:27:42.679 +03:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:27:42.679 +03:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:27:42.707 +03:00 [INF] Enabling console error detection
+2025-10-26 01:27:42.717 +03:00 [INF] Found 69 errors via direct console query (cached)
+2025-10-26 01:27:42.717 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 01:27:42.718 +03:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:27:42.719 +03:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:27:42.719 +03:00 [INF] Enabling console debug button
+2025-10-26 01:27:42.719 +03:00 [INF] === Starting console button injection ===
+2025-10-26 01:27:42.719 +03:00 [INF] Found 0 console window instances
+2025-10-26 01:27:42.720 +03:00 [WRN] No console window instances found - console may not be open
+2025-10-26 01:27:42.720 +03:00 [INF] Subscribed to error detection
+2025-10-26 01:27:42.720 +03:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:27:47.261 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:27:47.262 +03:00 [INF] Using cached error state (69 errors, age: 4.5s)
+2025-10-26 01:27:56.067 +03:00 [INF] Found 69 errors via direct console query (cached)
+2025-10-26 01:27:56.067 +03:00 [INF] Found 69 startup errors via direct console query - caching for downstream use
+2025-10-26 01:27:56.067 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:27:56.067 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:27:56.188 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:27:56.188 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:38:38.273 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:38:38.330 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:38:38.330 +03:00 [INF] Cached error state is stale (642.3s old), returning empty
+2025-10-26 01:38:38.330 +03:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 01:38:38.334 +03:00 [INF] Found 56 errors via direct console query (cached)
+2025-10-26 01:38:38.334 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 01:38:38.335 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 01:38:38.335 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:38:38.483 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:38:38.484 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:38:38.830 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:38:38.830 +03:00 [INF] Using cached error state (56 errors, age: 0.5s)
+2025-10-26 01:38:57.259 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:38:57.296 +03:00 [INF] Found 52 errors via direct console query (cached)
+2025-10-26 01:38:57.333 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:38:57.333 +03:00 [INF] Using cached error state (52 errors, age: 0.0s)
+2025-10-26 01:38:58.333 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:38:58.333 +03:00 [INF] Using cached error state (52 errors, age: 1.0s)
+2025-10-26 01:57:48.180 +03:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:57:48.207 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:57:48.207 +03:00 [INF] Cached error state is stale (1130.9s old), returning empty
+2025-10-26 01:57:48.207 +03:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 01:57:48.221 +03:00 [INF] Found 1 errors via direct console query (cached)
+2025-10-26 01:57:48.221 +03:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 01:57:48.221 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 01:57:48.221 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:57:48.371 +03:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 01:57:48.371 +03:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 01:57:50.707 +03:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:57:50.707 +03:00 [INF] Using cached error state (1 errors, age: 2.5s)
+2025-10-26 01:04:06.810 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:04:06.843 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 01:04:06.844 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 01:04:06.846 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 01:04:06.847 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 01:04:09.286 +02:00 [INF] Initializing Coplay services
+2025-10-26 01:04:09.304 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:04:09.305 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:04:09.311 +02:00 [INF] Enabling console error detection
+2025-10-26 01:04:09.316 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:04:09.316 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:04:09.317 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:04:09.317 +02:00 [INF] Enabling console debug button
+2025-10-26 01:04:09.317 +02:00 [INF] === Starting console button injection ===
+2025-10-26 01:04:09.317 +02:00 [INF] Found 1 console window instances
+2025-10-26 01:04:09.346 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 01:04:09.351 +02:00 [DBG] Initial error state: False
+2025-10-26 01:04:09.351 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 01:04:09.352 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 01:04:09.354 +02:00 [DBG] Logo texture load result: success
+2025-10-26 01:04:09.363 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 01:04:09.376 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 01:04:09.377 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 01:04:09.378 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:04:09.378 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 01:04:09.379 +02:00 [INF] Subscribed to error detection
+2025-10-26 01:04:09.379 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:04:09.816 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:04:09.817 +02:00 [INF] Using cached error state (0 errors, age: 0.5s)
+2025-10-26 01:04:11.087 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:04:11.087 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 01:04:11.088 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:14:18.108 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:14:18.108 +02:00 [INF] Cached error state is stale (607.0s old), returning empty
+2025-10-26 01:14:21.928 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:14:21.955 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 01:14:21.955 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 01:14:21.956 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 01:14:21.960 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 01:14:23.976 +02:00 [INF] Initializing Coplay services
+2025-10-26 01:14:23.992 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:14:23.992 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:14:23.998 +02:00 [INF] Enabling console error detection
+2025-10-26 01:14:24.002 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:14:24.002 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:14:24.003 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:14:24.003 +02:00 [INF] Enabling console debug button
+2025-10-26 01:14:24.003 +02:00 [INF] === Starting console button injection ===
+2025-10-26 01:14:24.003 +02:00 [INF] Found 1 console window instances
+2025-10-26 01:14:24.031 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 01:14:24.036 +02:00 [DBG] Initial error state: False
+2025-10-26 01:14:24.036 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 01:14:24.037 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 01:14:24.037 +02:00 [DBG] Logo texture load result: success
+2025-10-26 01:14:24.047 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 01:14:24.053 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 01:14:24.053 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 01:14:24.053 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:14:24.053 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 01:14:24.054 +02:00 [INF] Subscribed to error detection
+2025-10-26 01:14:24.054 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:14:25.002 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:14:25.002 +02:00 [INF] Using cached error state (0 errors, age: 1.0s)
+2025-10-26 01:14:25.235 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:14:25.235 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 01:14:25.235 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:31:17.901 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:31:17.901 +02:00 [INF] Cached error state is stale (1012.7s old), returning empty
+2025-10-26 01:31:22.339 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:31:22.421 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 01:31:22.422 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 01:31:22.424 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 01:31:22.430 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 01:31:24.565 +02:00 [INF] Initializing Coplay services
+2025-10-26 01:31:24.581 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:31:24.581 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:31:24.588 +02:00 [INF] Enabling console error detection
+2025-10-26 01:31:24.593 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:31:24.593 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:31:24.594 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:31:24.594 +02:00 [INF] Enabling console debug button
+2025-10-26 01:31:24.594 +02:00 [INF] === Starting console button injection ===
+2025-10-26 01:31:24.594 +02:00 [INF] Found 1 console window instances
+2025-10-26 01:31:24.622 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 01:31:24.628 +02:00 [DBG] Initial error state: False
+2025-10-26 01:31:24.628 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 01:31:24.629 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 01:31:24.629 +02:00 [DBG] Logo texture load result: success
+2025-10-26 01:31:24.639 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 01:31:24.644 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 01:31:24.645 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 01:31:24.645 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:31:24.645 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 01:31:24.645 +02:00 [INF] Subscribed to error detection
+2025-10-26 01:31:24.645 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:31:25.860 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:31:25.860 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 01:31:25.861 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:31:26.092 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 01:31:26.093 +02:00 [INF] Using cached error state (0 errors, age: 0.2s)
+2025-10-26 01:33:41.193 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 01:33:41.219 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 01:33:41.221 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 01:33:41.222 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 01:33:41.225 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 01:33:43.257 +02:00 [INF] Initializing Coplay services
+2025-10-26 01:33:43.274 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 01:33:43.274 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 01:33:43.280 +02:00 [INF] Enabling console error detection
+2025-10-26 01:33:43.284 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:33:43.284 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 01:33:43.285 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 01:33:43.285 +02:00 [INF] Enabling console debug button
+2025-10-26 01:33:43.286 +02:00 [INF] === Starting console button injection ===
+2025-10-26 01:33:43.286 +02:00 [INF] Found 1 console window instances
+2025-10-26 01:33:43.312 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 01:33:43.317 +02:00 [DBG] Initial error state: False
+2025-10-26 01:33:43.318 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 01:33:43.319 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 01:33:43.319 +02:00 [DBG] Logo texture load result: success
+2025-10-26 01:33:43.329 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 01:33:43.334 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 01:33:43.334 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 01:33:43.334 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 01:33:43.334 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 01:33:43.335 +02:00 [INF] Subscribed to error detection
+2025-10-26 01:33:43.335 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 01:33:44.621 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 01:33:44.621 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 01:33:44.621 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 02:02:37.572 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:02:37.610 +02:00 [INF] Found 12 errors via direct console query (cached)
+2025-10-26 02:02:37.610 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 02:02:37.759 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: exists
+2025-10-26 02:10:06.095 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:10:06.130 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 02:30:34.723 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:30:34.751 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 02:34:16.775 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:34:16.799 +02:00 [INF] Found 13 errors via direct console query (cached)
+2025-10-26 02:37:18.688 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:37:18.722 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 02:46:34.690 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:46:34.725 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 02:46:34.727 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 02:46:34.734 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 02:46:34.738 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 02:46:37.244 +02:00 [INF] Initializing Coplay services
+2025-10-26 02:46:37.262 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 02:46:37.262 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 02:46:37.269 +02:00 [INF] Enabling console error detection
+2025-10-26 02:46:37.273 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 02:46:37.273 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 02:46:37.274 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 02:46:37.274 +02:00 [INF] Enabling console debug button
+2025-10-26 02:46:37.275 +02:00 [INF] === Starting console button injection ===
+2025-10-26 02:46:37.275 +02:00 [INF] Found 1 console window instances
+2025-10-26 02:46:37.308 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 02:46:37.314 +02:00 [DBG] Initial error state: False
+2025-10-26 02:46:37.314 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 02:46:37.314 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 02:46:37.320 +02:00 [DBG] Logo texture load result: success
+2025-10-26 02:46:37.330 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 02:46:37.336 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 02:46:37.336 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 02:46:37.336 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 02:46:37.336 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 02:46:37.337 +02:00 [INF] Subscribed to error detection
+2025-10-26 02:46:37.337 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 02:46:38.534 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 02:46:38.534 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 02:46:38.534 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 02:54:10.717 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:54:10.782 +02:00 [INF] Found 5 errors via direct console query (cached)
+2025-10-26 02:54:10.783 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 02:54:10.931 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: exists
+2025-10-26 02:54:11.126 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 02:54:11.127 +02:00 [INF] Using cached error state (5 errors, age: 0.3s)
+2025-10-26 02:57:00.379 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:57:00.446 +02:00 [INF] Found 1 errors via direct console query (cached)
+2025-10-26 02:57:00.642 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 02:57:00.643 +02:00 [INF] Using cached error state (1 errors, age: 0.2s)
+2025-10-26 02:58:11.574 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 02:58:11.613 +02:00 [INF] Found 5 errors via direct console query (cached)
+2025-10-26 02:58:11.893 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 02:58:11.893 +02:00 [INF] Using cached error state (5 errors, age: 0.3s)
+2025-10-26 02:58:12.404 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 02:58:12.404 +02:00 [INF] Using cached error state (5 errors, age: 0.8s)
+2025-10-26 02:59:23.310 +02:00 [INF] Initializing Coplay services
+2025-10-26 02:59:23.321 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 02:59:23.321 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 02:59:23.329 +02:00 [INF] Enabling console error detection
+2025-10-26 02:59:23.334 +02:00 [INF] Found 9 errors via direct console query (cached)
+2025-10-26 02:59:23.334 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 02:59:23.335 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 02:59:23.336 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 02:59:23.336 +02:00 [INF] Enabling console debug button
+2025-10-26 02:59:23.336 +02:00 [INF] === Starting console button injection ===
+2025-10-26 02:59:23.336 +02:00 [INF] Found 0 console window instances
+2025-10-26 02:59:23.336 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 02:59:23.337 +02:00 [INF] Subscribed to error detection
+2025-10-26 02:59:23.337 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 02:59:38.157 +02:00 [INF] Found 9 errors via direct console query (cached)
+2025-10-26 02:59:38.158 +02:00 [INF] Found 9 startup errors via direct console query - caching for downstream use
+2025-10-26 02:59:38.158 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 02:59:38.158 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 02:59:38.284 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 02:59:38.284 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:03:53.082 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:03:53.093 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:03:53.093 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:03:53.101 +02:00 [INF] Enabling console error detection
+2025-10-26 03:03:53.105 +02:00 [INF] Found 9 errors via direct console query (cached)
+2025-10-26 03:03:53.106 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:03:53.106 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:03:53.107 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:03:53.107 +02:00 [INF] Enabling console debug button
+2025-10-26 03:03:53.107 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:03:53.107 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:03:53.107 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:03:53.107 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:03:53.107 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:04:06.925 +02:00 [INF] Found 9 errors via direct console query (cached)
+2025-10-26 03:04:06.925 +02:00 [INF] Found 9 startup errors via direct console query - caching for downstream use
+2025-10-26 03:04:06.925 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:04:06.925 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:04:07.049 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:04:07.049 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:11:08.345 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:11:08.371 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:11:08.826 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:11:08.827 +02:00 [INF] Using cached error state (2 errors, age: 0.5s)
+2025-10-26 03:11:09.330 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:11:09.330 +02:00 [INF] Using cached error state (2 errors, age: 1.0s)
+2025-10-26 03:12:32.366 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:12:32.376 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:12:32.376 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:12:32.384 +02:00 [INF] Enabling console error detection
+2025-10-26 03:12:32.389 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:12:32.389 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:12:32.389 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:12:32.391 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:12:32.391 +02:00 [INF] Enabling console debug button
+2025-10-26 03:12:32.391 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:12:32.391 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:12:32.391 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:12:32.393 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:12:32.393 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:12:46.257 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:12:46.257 +02:00 [INF] Found 2 startup errors via direct console query - caching for downstream use
+2025-10-26 03:12:46.257 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:12:46.257 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:12:46.398 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:12:46.398 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:20:28.669 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:20:28.670 +02:00 [INF] Cached error state is stale (462.4s old), returning empty
+2025-10-26 03:20:28.670 +02:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 03:20:28.794 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 03:20:28.794 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:20:38.692 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:20:38.692 +02:00 [INF] Cached error state is stale (472.4s old), returning empty
+2025-10-26 03:24:09.054 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:24:09.083 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:24:09.083 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:24:09.235 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:24:09.235 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:24:09.334 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:24:09.334 +02:00 [INF] Using cached error state (2 errors, age: 0.3s)
+2025-10-26 03:24:09.834 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:24:09.834 +02:00 [INF] Using cached error state (2 errors, age: 0.8s)
+2025-10-26 03:26:40.019 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:26:40.030 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:26:40.030 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:26:40.039 +02:00 [INF] Enabling console error detection
+2025-10-26 03:26:40.044 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:26:40.044 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:26:40.044 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:26:40.045 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:26:40.045 +02:00 [INF] Enabling console debug button
+2025-10-26 03:26:40.046 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:26:40.046 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:26:40.046 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:26:40.046 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:26:40.046 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:26:53.815 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:26:53.815 +02:00 [INF] Found 2 startup errors via direct console query - caching for downstream use
+2025-10-26 03:26:53.816 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:26:53.816 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:26:53.950 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:26:53.950 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:31:29.146 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:31:29.174 +02:00 [INF] Found 1 errors via direct console query (cached)
+2025-10-26 03:31:29.464 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:31:29.465 +02:00 [INF] Using cached error state (1 errors, age: 0.3s)
+2025-10-26 03:31:29.962 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:31:29.962 +02:00 [INF] Using cached error state (1 errors, age: 0.8s)
+2025-10-26 03:33:45.740 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:33:45.753 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:33:45.754 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:33:45.772 +02:00 [INF] Enabling console error detection
+2025-10-26 03:33:45.785 +02:00 [INF] Found 8 errors via direct console query (cached)
+2025-10-26 03:33:45.785 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:33:45.788 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:33:45.795 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:33:45.796 +02:00 [INF] Enabling console debug button
+2025-10-26 03:33:45.796 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:33:45.796 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:33:45.796 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:33:45.797 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:33:45.797 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:33:59.874 +02:00 [INF] Found 8 errors via direct console query (cached)
+2025-10-26 03:33:59.874 +02:00 [INF] Found 8 startup errors via direct console query - caching for downstream use
+2025-10-26 03:33:59.874 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:33:59.874 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:33:59.990 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:33:59.990 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:38:36.526 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:38:36.554 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:38:37.006 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:38:37.007 +02:00 [INF] Using cached error state (6 errors, age: 0.5s)
+2025-10-26 03:38:37.521 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:38:37.521 +02:00 [INF] Using cached error state (6 errors, age: 1.0s)
+2025-10-26 03:40:20.327 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:40:20.338 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:40:20.339 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:40:20.347 +02:00 [INF] Enabling console error detection
+2025-10-26 03:40:20.352 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:40:20.352 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:40:20.352 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:40:20.353 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:40:20.353 +02:00 [INF] Enabling console debug button
+2025-10-26 03:40:20.354 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:40:20.354 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:40:20.354 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:40:20.354 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:40:20.354 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:40:33.544 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:40:33.985 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:40:33.990 +02:00 [INF] Cached error state is stale (13.6s old), returning empty
+2025-10-26 03:40:33.991 +02:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 03:40:34.399 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:40:34.399 +02:00 [INF] Found 6 startup errors via direct console query - caching for downstream use
+2025-10-26 03:40:34.399 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:40:34.399 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:40:34.427 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:40:34.427 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 03:40:34.427 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:40:34.481 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:40:34.481 +02:00 [INF] Using cached error state (6 errors, age: 0.1s)
+2025-10-26 03:40:34.545 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:40:34.545 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:44:11.240 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:44:11.267 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:44:11.741 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:44:11.741 +02:00 [INF] Using cached error state (6 errors, age: 0.5s)
+2025-10-26 03:50:01.836 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:50:01.860 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:50:02.292 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:50:02.292 +02:00 [INF] Using cached error state (6 errors, age: 0.4s)
+2025-10-26 03:50:02.792 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:50:02.792 +02:00 [INF] Using cached error state (6 errors, age: 0.9s)
+2025-10-26 03:51:23.940 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:51:23.955 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:51:23.955 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:51:23.978 +02:00 [INF] Enabling console error detection
+2025-10-26 03:51:23.990 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:51:23.990 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:51:23.990 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:51:23.992 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:51:23.992 +02:00 [INF] Enabling console debug button
+2025-10-26 03:51:23.992 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:51:23.992 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:51:23.992 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:51:23.993 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:51:23.993 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:51:37.563 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 03:51:37.563 +02:00 [INF] Found 6 startup errors via direct console query - caching for downstream use
+2025-10-26 03:51:37.564 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:51:37.564 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:51:37.674 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:51:37.674 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:57:18.984 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 03:57:18.999 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:57:18.999 +02:00 [INF] Cached error state is stale (341.4s old), returning empty
+2025-10-26 03:57:18.999 +02:00 [INF] Console error state changed: HasErrors=False (direct console check)
+2025-10-26 03:57:19.050 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:57:19.050 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:57:19.050 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 03:57:19.050 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:57:19.199 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:57:19.199 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:57:19.512 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 03:57:19.512 +02:00 [INF] Using cached error state (2 errors, age: 0.5s)
+2025-10-26 03:58:54.320 +02:00 [INF] Initializing Coplay services
+2025-10-26 03:58:54.330 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 03:58:54.330 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 03:58:54.338 +02:00 [INF] Enabling console error detection
+2025-10-26 03:58:54.347 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:58:54.347 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 03:58:54.348 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 03:58:54.348 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 03:58:54.348 +02:00 [INF] Enabling console debug button
+2025-10-26 03:58:54.348 +02:00 [INF] === Starting console button injection ===
+2025-10-26 03:58:54.348 +02:00 [INF] Found 0 console window instances
+2025-10-26 03:58:54.349 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 03:58:54.350 +02:00 [INF] Subscribed to error detection
+2025-10-26 03:58:54.350 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 03:59:09.155 +02:00 [INF] Found 2 errors via direct console query (cached)
+2025-10-26 03:59:09.155 +02:00 [INF] Found 2 startup errors via direct console query - caching for downstream use
+2025-10-26 03:59:09.155 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:59:09.155 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 03:59:09.280 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 03:59:09.280 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 04:04:15.269 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 04:04:15.298 +02:00 [INF] Found 10 errors via direct console query (cached)
+2025-10-26 04:04:15.654 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 04:04:15.654 +02:00 [INF] Using cached error state (10 errors, age: 0.4s)
+2025-10-26 04:04:16.168 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 04:04:16.168 +02:00 [INF] Using cached error state (10 errors, age: 0.9s)
+2025-10-26 04:05:58.712 +02:00 [INF] Initializing Coplay services
+2025-10-26 04:05:58.721 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 04:05:58.721 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 04:05:58.729 +02:00 [INF] Enabling console error detection
+2025-10-26 04:05:58.734 +02:00 [INF] Found 10 errors via direct console query (cached)
+2025-10-26 04:05:58.734 +02:00 [INF] Console error state changed: HasErrors=True (direct console check)
+2025-10-26 04:05:58.734 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 04:05:58.736 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 04:05:58.736 +02:00 [INF] Enabling console debug button
+2025-10-26 04:05:58.736 +02:00 [INF] === Starting console button injection ===
+2025-10-26 04:05:58.736 +02:00 [INF] Found 0 console window instances
+2025-10-26 04:05:58.736 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 04:05:58.737 +02:00 [INF] Subscribed to error detection
+2025-10-26 04:05:58.737 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 04:06:12.396 +02:00 [INF] Found 10 errors via direct console query (cached)
+2025-10-26 04:06:12.396 +02:00 [INF] Found 10 startup errors via direct console query - caching for downstream use
+2025-10-26 04:06:12.396 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 04:06:12.396 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 04:06:12.542 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: True, _debugButton: null
+2025-10-26 04:06:12.542 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 04:14:20.347 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 04:14:20.376 +02:00 [INF] Found 6 errors via direct console query (cached)
+2025-10-26 04:14:20.402 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 04:14:20.402 +02:00 [INF] Using cached error state (6 errors, age: 0.0s)
+2025-10-26 04:24:48.117 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 04:24:48.141 +02:00 [INF] Found 1 errors via direct console query (cached)
+2025-10-26 04:24:48.552 +02:00 [WRN] Console reflection query failed: Exception has been thrown by the target of an invocation.
+2025-10-26 04:24:48.552 +02:00 [INF] Using cached error state (1 errors, age: 0.4s)
+2025-10-26 04:27:37.817 +02:00 [DBG] Compilation finished, refreshing error state
+2025-10-26 04:27:37.852 +02:00 [INF] Deinitializing Coplay services
+2025-10-26 04:27:37.853 +02:00 [INF] ConsoleDebugButtonService disposing
+2025-10-26 04:27:37.855 +02:00 [INF] Unsubscribed from error detection
+2025-10-26 04:27:37.856 +02:00 [INF] EditorThreadHelper disposed
+2025-10-26 04:27:39.858 +02:00 [INF] Initializing Coplay services
+2025-10-26 04:27:39.873 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 04:27:39.873 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 04:27:39.880 +02:00 [INF] Enabling console error detection
+2025-10-26 04:27:39.884 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 04:27:39.884 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 04:27:39.885 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 04:27:39.885 +02:00 [INF] Enabling console debug button
+2025-10-26 04:27:39.885 +02:00 [INF] === Starting console button injection ===
+2025-10-26 04:27:39.885 +02:00 [INF] Found 1 console window instances
+2025-10-26 04:27:39.912 +02:00 [DBG] Console window found, attempting to add button
+2025-10-26 04:27:39.918 +02:00 [DBG] Initial error state: False
+2025-10-26 04:27:39.918 +02:00 [WRN] Could not find toolbar by child count, trying alternative search
+2025-10-26 04:27:39.918 +02:00 [DBG] Could not find console toolbar - adding button to root instead
+2025-10-26 04:27:39.924 +02:00 [DBG] Logo texture load result: success
+2025-10-26 04:27:39.934 +02:00 [INF] Coplay logo added (always visible)
+2025-10-26 04:27:39.940 +02:00 [INF] Debug button added with absolute positioning (centered), initial visibility: hidden
+2025-10-26 04:27:39.940 +02:00 [INF] Copy button added (always visible), initial position: near logo
+2025-10-26 04:27:39.941 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 04:27:39.941 +02:00 [INF] Debug With AI button successfully injected into console
+2025-10-26 04:27:39.941 +02:00 [INF] Subscribed to error detection
+2025-10-26 04:27:39.941 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 04:27:41.190 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 04:27:41.190 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 04:27:41.190 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: exists
+2025-10-26 04:47:42.270 +02:00 [INF] Initializing Coplay services
+2025-10-26 04:47:42.280 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 04:47:42.280 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 04:47:42.288 +02:00 [INF] Enabling console error detection
+2025-10-26 04:47:42.292 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 04:47:42.292 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 04:47:42.293 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 04:47:42.293 +02:00 [INF] Enabling console debug button
+2025-10-26 04:47:42.294 +02:00 [INF] === Starting console button injection ===
+2025-10-26 04:47:42.294 +02:00 [INF] Found 0 console window instances
+2025-10-26 04:47:42.294 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 04:47:42.294 +02:00 [INF] Subscribed to error detection
+2025-10-26 04:47:42.294 +02:00 [INF] ConsoleDebugButtonService initialized
+2025-10-26 05:04:01.356 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 05:04:01.356 +02:00 [INF] No startup errors found after delayed check
+2025-10-26 05:04:01.357 +02:00 [DBG] UpdateButtonVisibility called - hasErrors: False, _debugButton: null
+2025-10-26 05:04:01.357 +02:00 [DBG] Cannot update visibility - buttons are null
+2025-10-26 23:01:41.918 +02:00 [INF] Initializing Coplay services
+2025-10-26 23:01:41.930 +02:00 [INF] Initializing EditorThreadHelper
+2025-10-26 23:01:41.930 +02:00 [INF] EditorThreadHelper initialized successfully
+2025-10-26 23:01:41.937 +02:00 [INF] Enabling console error detection
+2025-10-26 23:01:41.942 +02:00 [INF] Found 0 errors via direct console query (cached)
+2025-10-26 23:01:41.942 +02:00 [INF] ConsoleDebugButtonService initializing
+2025-10-26 23:01:41.943 +02:00 [INF] Console debug button is enabled, adding button
+2025-10-26 23:01:41.943 +02:00 [INF] Enabling console debug button
+2025-10-26 23:01:41.943 +02:00 [INF] === Starting console button injection ===
+2025-10-26 23:01:41.943 +02:00 [INF] Found 0 console window instances
+2025-10-26 23:01:41.943 +02:00 [WRN] No console window instances found - console may not be open
+2025-10-26 23:01:41.944 +02:00 [INF] Subscribed to error detection
+2025-10-26 23:01:41.944 +02:00 [INF] ConsoleDebugButtonService initialized

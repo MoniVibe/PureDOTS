@@ -1,5 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -27,6 +29,7 @@ namespace PureDOTS.Tests.Playmode
             CoreSingletonBootstrapSystem.EnsureSingletons(_entityManager);
             _catalogEntity = Entity.Null;
             _catalogBlob = default;
+            ConfigureSpatialGrid(77u);
         }
 
         [TearDown]
@@ -89,6 +92,67 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(1, registry.TotalStorehouses);
             Assert.AreEqual(100f, registry.TotalCapacity);
             Assert.AreEqual(0f, registry.TotalStored);
+            Assert.AreEqual(77u, registry.LastSpatialVersion);
+
+            var registryEntity = _entityManager.GetSingletonEntity<StorehouseRegistry>();
+            var metadata = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+            Assert.AreEqual(1, metadata.EntryCount);
+            Assert.Greater(metadata.Version, 0u);
+
+            var entries = _entityManager.GetBuffer<StorehouseRegistryEntry>(registryEntity);
+            Assert.AreEqual(1, entries.Length);
+            Assert.AreEqual(0, entries[0].CellId, "Storehouse registry entry should record spatial cell id.");
+            Assert.AreEqual(77u, entries[0].SpatialVersion, "Storehouse registry entry should mirror spatial grid version.");
+        }
+
+        [UnityTest]
+        public System.Collections.IEnumerator StorehouseRegistry_SpatialVersionUpdates()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var timeEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            var rewindEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            var storehouseEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(storehouseEntity, new StorehouseConfig());
+            _entityManager.AddComponentData(storehouseEntity, new StorehouseInventory
+            {
+                TotalStored = 0f,
+                TotalCapacity = 120f,
+                ItemTypeCount = 0,
+                IsShredding = 0,
+                LastUpdateTick = 0
+            });
+            _entityManager.AddComponentData(storehouseEntity, new LocalTransform
+            {
+                Position = new float3(2, 0, 3),
+                Rotation = quaternion.identity,
+                Scale = 1f
+            });
+
+            yield return null;
+
+            var registryEntity = _entityManager.GetSingletonEntity<StorehouseRegistry>();
+            var entries = _entityManager.GetBuffer<StorehouseRegistryEntry>(registryEntity);
+            Assert.AreEqual(77u, entries[0].SpatialVersion);
+
+            var registry = _entityManager.GetSingleton<StorehouseRegistry>();
+            Assert.AreEqual(77u, registry.LastSpatialVersion);
+
+            ConfigureSpatialGrid(101u);
+            _entityManager.SetComponentData(timeEntity, new TimeState { Tick = 6, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            yield return null;
+
+            registry = _entityManager.GetSingleton<StorehouseRegistry>();
+            Assert.AreEqual(101u, registry.LastSpatialVersion);
+
+            entries = _entityManager.GetBuffer<StorehouseRegistryEntry>(registryEntity);
+            Assert.AreEqual(101u, entries[0].SpatialVersion);
+            Assert.GreaterOrEqual(entries[0].CellId, 0);
         }
 
         [UnityTest]
@@ -144,6 +208,44 @@ namespace PureDOTS.Tests.Playmode
         }
 
         [UnityTest]
+        public System.Collections.IEnumerator StorehouseRegistry_SkipsUpdateDuringPlayback()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var timeEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            var rewindEntity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            var storehouse = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(storehouse, new StorehouseConfig());
+            _entityManager.AddComponentData(storehouse, new StorehouseInventory
+            {
+                TotalStored = 0f,
+                TotalCapacity = 100f,
+                ItemTypeCount = 0,
+                IsShredding = 0,
+                LastUpdateTick = 0
+            });
+            _entityManager.AddComponentData(storehouse, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+
+            yield return null;
+
+            var registryEntity = _entityManager.GetSingletonEntity<StorehouseRegistry>();
+            var metadataBefore = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+
+            _entityManager.SetComponentData(rewindEntity, new RewindState { Mode = RewindMode.Playback });
+            _entityManager.SetComponentData(timeEntity, new TimeState { Tick = 4, IsPaused = false, FixedDeltaTime = 0.016f });
+
+            yield return null;
+
+            var metadataAfter = _entityManager.GetComponentData<RegistryMetadata>(registryEntity);
+            Assert.AreEqual(metadataBefore.Version, metadataAfter.Version);
+            Assert.AreEqual(metadataBefore.EntryCount, metadataAfter.EntryCount);
+        }
+
+        [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_TracksCapacity()
         {
             CreateResourceTypeCatalog("Wood");
@@ -167,6 +269,7 @@ namespace PureDOTS.Tests.Playmode
                 LastUpdateTick = 0
             });
             _entityManager.AddComponentData(storehouseEntity, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(storehouseEntity);
 
             var capacityBuffer = _entityManager.AddBuffer<StorehouseCapacityElement>(storehouseEntity);
             capacityBuffer.Add(new StorehouseCapacityElement
@@ -189,6 +292,9 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(1, registry.TotalStorehouses);
             Assert.AreEqual(100f, registry.TotalCapacity);
             Assert.AreEqual(30f, registry.TotalStored);
+            Assert.AreEqual(1, registry.SpatialResolvedCount);
+            Assert.AreEqual(0, registry.SpatialFallbackCount);
+            Assert.AreEqual(0, registry.SpatialUnmappedCount);
 
             // Verify entries can be filtered for available capacity
             var registryEntity = _entityManager.GetSingletonEntity<StorehouseRegistry>();
@@ -241,6 +347,7 @@ namespace PureDOTS.Tests.Playmode
                 LastUpdateTick = 0
             });
             _entityManager.AddComponentData(storehouseEntity, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            _entityManager.AddComponent<SpatialIndexedTag>(storehouseEntity);
 
             yield return null;
 
@@ -254,6 +361,27 @@ namespace PureDOTS.Tests.Playmode
 
             var registry2 = _entityManager.GetSingleton<StorehouseRegistry>();
             Assert.AreEqual(5u, registry2.LastUpdateTick);
+        }
+
+        private void ConfigureSpatialGrid(uint version)
+        {
+            var gridQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<SpatialGridConfig>(), ComponentType.ReadWrite<SpatialGridState>());
+            if (gridQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var gridEntity = gridQuery.GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.WorldMin = float3.zero;
+            config.CellSize = 1f;
+            config.CellCounts = new int3(8, 1, 8);
+            config.WorldMax = new float3(config.CellCounts.x * config.CellSize, config.CellCounts.y * config.CellSize, config.CellCounts.z * config.CellSize);
+            _entityManager.SetComponentData(gridEntity, config);
+
+            var state = _entityManager.GetComponentData<SpatialGridState>(gridEntity);
+            state.Version = version;
+            _entityManager.SetComponentData(gridEntity, state);
         }
 
         private void CreateResourceTypeCatalog(params string[] ids)
@@ -296,4 +424,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

@@ -10,7 +10,7 @@
 ### 0. Tooling & Observability
 - [x] Deliver first-pass tooling bundle (debug overlay, telemetry hooks, integration harness bootstrap, deterministic replay capture, CI pipeline stubs) to unblock meta schedule. (See `FrameTimingRecorderSystem`, `ReplayCaptureSystem`, and overlay updates in `DebugDisplaySystem`.)
 - [x] Implement in-game debug overlay aggregator (grids, hand state, villager stats, resource piles).
-- [ ] Add editor gizmos + scene view tools for moisture/temperature/light grids.
+- [x] Add editor gizmos + scene view tools for moisture/temperature/light grids. *(EnvironmentGridConfigAuthoring now draws per-channel bounds with scene view labels.)*
 - [x] Build telemetry hooks logging per-group frame time and entity counts (pending: job completion stats feed). (`FrameTimingStream` + telemetry export).
 - [ ] Create replay recorder (input + events) for deterministic bug repro. *(ReplayCapture stream in place; input capture + diffing harness remains.)*
 - [ ] Integrate runtime console commands (toggle systems, force rain, spawn villagers).
@@ -114,3 +114,4 @@
 - Documentation/truth-sources remain authoritative and up to date.
 
 Update this TODO as utilities land and new gaps appear.
+

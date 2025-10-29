@@ -45,6 +45,7 @@ public struct ResourceRegistry : IComponentData
     public int TotalResources;          // Total count of all resource sources
     public int TotalActiveResources;   // Resources with UnitsRemaining > 0
     public uint LastUpdateTick;        // Frame synchronization
+    public uint LastSpatialVersion;    // Spatial grid version used for cached cell ids
 }
 ```
 
@@ -56,6 +57,11 @@ public struct ResourceRegistryEntry : IBufferElementData
     public Entity SourceEntity;         // The resource source entity
     public float3 Position;             // Cached position for spatial queries
     public float UnitsRemaining;        // Cached state for quick filtering
+    public byte ActiveTickets;          // Reservation tracking
+    public byte ClaimFlags;             // Custom flag mask (player claim, villager claim, etc.)
+    public uint LastMutationTick;       // Deterministic ordering/versioning hook
+    public int CellId;                  // Cached spatial cell id (-1 when grid unavailable)
+    public uint SpatialVersion;         // Spatial grid version used to compute CellId
 }
 ```
 
@@ -63,7 +69,7 @@ public struct ResourceRegistryEntry : IBufferElementData
 - All resources: Query buffer elements
 - By type: Filter by `ResourceTypeIndex`
 - Active only: Filter by `UnitsRemaining > 0`
-- Spatial: Use `Position` for distance calculations
+- Spatial: Use `CellId`/`SpatialVersion` when available, otherwise fall back to `Position` for distance calculations
 
 **Registry Metadata & Handles**  
 - Each registry singleton carries a `RegistryMetadata` component describing its semantic kind, archetype id, and latest version.  
@@ -82,6 +88,7 @@ public struct StorehouseRegistry : IComponentData
     public float TotalCapacity;        // Sum of all MaxCapacity values
     public float TotalStored;           // Sum of all TotalStored values
     public uint LastUpdateTick;
+    public uint LastSpatialVersion;     // Spatial grid version used for cached cell ids
 }
 ```
 
@@ -93,16 +100,51 @@ public struct StorehouseRegistryEntry : IBufferElementData
     public float3 Position;             // Cached position
     public float TotalCapacity;         // Sum of all capacity elements
     public float TotalStored;           // Current inventory total
-    public DynamicBuffer<StorehouseCapacityElement>; // Type-specific capacities
+    public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries; // Inlined per-type capacity/usage
+    public uint LastMutationTick;       // Deterministic ordering/versioning hook
+    public int CellId;                  // Cached spatial cell id (-1 when grid unavailable)
+    public uint SpatialVersion;         // Spatial grid version used to compute CellId
 }
 ```
 
 **Query Patterns**:
-- Find storehouse by type: Filter by `DynamicBuffer.Contains(typeId)`
-- Find available capacity: Filter by `TotalStored < TotalCapacity`
-- Nearest storehouse: Sort by distance using `Position`
+- Find storehouse by type: Iterate the `TypeSummaries` fixed list for a matching `ResourceTypeIndex`
+- Find available capacity: Filter by `TotalStored < TotalCapacity` or compare per-type `Reserved` values inside `TypeSummaries`
+- Nearest storehouse: Prefer `CellId`/`SpatialVersion` when spatial alignment is valid, fall back to `Position` otherwise
 
-### 4. Resource Type Mapping
+### 4. Logistics Registries (Transport Domain)
+
+Provides shared state for miner vessels, haulers, freighters, and wagons so logistics systems can query availability without EntityManager scans.
+
+**Common Structure**:
+```csharp
+public struct MinerVesselRegistry : IComponentData
+{
+    public int TotalVessels;
+    public int AvailableVessels;
+    public float TotalCapacity;
+    public uint LastUpdateTick;
+}
+
+public struct MinerVesselRegistryEntry : IBufferElementData
+{
+    public Entity VesselEntity;
+    public float3 Position;
+    public ushort ResourceTypeIndex;
+    public float Capacity;
+    public float Load;
+    public TransportUnitFlags Flags;
+    public uint LastCommandTick;
+}
+```
+
+Hauler, freighter, and wagon registries follow the same pattern with domain-specific payload (route ids, manifests, assigned villagers). All implement `IRegistryEntry`/`IRegistryFlaggedEntry` so shared helpers can reason about availability from bitmasks without bespoke code.
+
+**Spatial Integration**: Once the spatial service publishes registry handles via `SpatialRegistryMetadata`, transport registries should store cached cell indices or last-known positions so queries can be resolved without re-reading `LocalTransform`. Plan to extend registry entries with optional spatial metadata (e.g., `int CellId`, `uint LastSpatialVersion`) after the new spatial provider lands (see `Docs/DesignNotes/SpatialPartitioning.md`).
+
+**Status**: Components and bootstrap seeding exist today; future logistics systems will mirror authoritative transport components into these buffers. The registry directory already advertises the handles so spatial queries and AI subsystems can opt-in as soon as entries are populated.
+
+### 5. Resource Type Mapping
 
 **Authoring**: ResourceTypeCatalog ScriptableObject → BlobAssetReference via baker
 **Runtime**: Lookup string→index via blob asset traversal
@@ -163,6 +205,13 @@ ResourceSystemGroup
   ├─ ResourceDepositSystem (queries catalog)
   └─ StorehouseInventorySystem (updates storehouse state)
 ```
+
+### RegistryConsoleInstrumentationSystem *(new)*
+
+- **Update Group**: `LateSimulationSystemGroup` (after `RegistryDirectorySystem`).
+- **Purpose**: Optional console logging triggered by attaching `RegistryConsoleInstrumentation` to a singleton. Produces compact `[Registry] Tick ...` summaries for automated tests and headless runs.
+- **Behaviour**: Respects minimum tick deltas and a "log only on directory version change" flag to avoid noisy output. Consumes existing registry metadata so no additional bookkeeping is required.
+- **Spatial alignment**: Future spatial jobs should emit similar instrumentation (cell counts, rebuild timings) so registry metrics and spatial metrics can be correlated during headless runs.
 
 ## Migration Strategy
 
@@ -265,11 +314,13 @@ If scales exceed assumptions, consider:
    - Buffer entries match entities with `ResourceSourceConfig`
    - All entries have valid `ResourceTypeIndex` (exist in catalog)
    - `LastUpdateTick` updated every frame
+   - `LastSpatialVersion` mirrors the spatial grid version when available
 
 2. **StorehouseRegistry**:
    - Buffer entries match entities with `StorehouseConfig`
    - Cached `TotalStored` and `TotalCapacity` match sum of buffer elements
    - `LastUpdateTick` updated every frame
+   - `LastSpatialVersion` mirrors the spatial grid version when available
 
 3. **ResourceTypeIndex**:
    - Singleton exists throughout simulation
@@ -293,12 +344,15 @@ public struct ResourceRegistryEntry : IBufferElementData
     public byte ActiveTickets;
     public byte ClaimFlags;
     public uint LastMutationTick;
+    public int CellId;
+    public uint SpatialVersion;
 }
 ```
 
 - **StorehouseRegistryEntry**
   - Replace the (invalid) `DynamicBuffer<StorehouseCapacityElement>` field with a fixed list summary so consumers can reason about per-type capacity without extra entity lookups.
   - Track `Reserved` amounts to prevent double-counting between villager tickets and player deposits.
+  - Cache spatial metadata (CellId + SpatialVersion) to keep lookups aligned with the active grid.
 
 ```csharp
 public struct StorehouseRegistryCapacitySummary
@@ -317,10 +371,28 @@ public struct StorehouseRegistryEntry : IBufferElementData
     public float TotalStored;
     public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
     public uint LastMutationTick;
+    public int CellId;
+    public uint SpatialVersion;
 }
 ```
 
-These additions let the villager job loop create deterministic job tickets, honour player priority, and choose viable drop-off targets using only the registry buffers.
+These additions let the villager job loop create deterministic job tickets, honour player priority, and choose viable drop-off targets using only the registry buffers. Villager job assignment/delivery systems now rely on the cached `CellId`/`SpatialVersion` to shortlist nearby entries before falling back to broader scans when spatial data is unavailable. The neighbour heuristic is intentionally simple: expand a Manhattan-radius search (1 → 2 → 4 cells) until candidates appear, only falling back to distance checks when spatial metadata is stale.
+
+### Consumer Integration Guide
+
+When integrating new systems with the registries:
+
+1. **Pull the buffer through the directory** using `RegistryDirectoryLookup.TryGetRegistryBuffer<TEntry>`; this keeps consumers decoupled from concrete singleton entities.
+2. **Shortlist entries using the cached `CellId`** – compute the agent cell via `SpatialHash.Quantize`, then iterate the registry entries looking for matching/nearby cells (expanding the search radius as needed). The villager job systems contain a reference implementation (`VillagerJobAssignmentSystem`, `VillagerJobDeliverySystem`).
+3. **Evaluate candidates deterministically** using existing scoring helpers (`TryScoreResourceCandidate`, `TryScoreStorehouseCandidate`) or custom logic. All helpers should treat `CellId = -1` or mismatched `RegistrySpatialVersion` as “stale” and defer to broader searches.
+4. Optionally **fall back to linear scans** when the grid is unavailable (rewind, bootstrap) to guarantee work still proceeds.
+
+New consumers should follow the same pattern: shortlist with the cached metadata first, fall back gracefully if spatial data is invalid, and update documentation/tests to cover their integration path.
+
+#### Upcoming Consumers
+- **Logistics/Transport modules** – when miner vessels, haulers, or wagons arrive, mirror the villager flow: cache `CellId`/`SpatialVersion`, shortlist nearby loads/drops, and record pending reservations via registry flags.
+- **AI sensor suites** – proximity scans for miracles or environmental hazards should call the shared shortlist helper before sampling positions directly, protecting against missing transforms during streaming.
+- **Tooling/UI inspectors** – registry overlays can read `RegistrySpatialVersion` to warn when cached data lags behind the grid (e.g., after partial rebuilds).
 
 ## Update Order
 
@@ -347,6 +419,7 @@ These additions let the villager job loop create deterministic job tickets, hono
 - **Pile Merge**: Multiple deposits → Verify aggregation
 - **Storehouse Events**: Deposit/withdraw → Verify LastUpdateTick increments
 - **Registry Sync**: Entity spawns/despawns → Registry updates
+- **Registry Instrumentation**: Enable `RegistryConsoleInstrumentation` and assert console snapshot format (headless validation)
 
 ### Test Coverage
 ```csharp
@@ -383,4 +456,3 @@ This implementation replaces legacy registries per PureDOTS_TODO.md:40-43:
 - **Bridge shims**: Eliminated by direct DOTS-native access
 
 The registries provide deterministic, queryable data for villager AI, UI systems, and job assignment logic.
-

@@ -2,6 +2,8 @@
 
 This document defines how every gameplay / validation scene in **PureDOTS** must be structured. Keep it handy whenever you create or edit a scene so we remain deterministic and aligned with TruthSource rules.
 
+> **Package reminder:** PureDOTS scenes are template samples only. Game-specific scenes live in their owning repositories (`…/Godgame`, `…/Space4x`, …) and reference the template via UPM. Copy the structure described here into those projects rather than adding gameplay content to the `PureDOTS` repo.
+
 ---
 
 ## 1. Naming & Location
@@ -34,6 +36,7 @@ SceneName (root)  <-- plain GameObject
 - Add **PureDotsConfigAuthoring** (drag the script if it does not show up in the add-component menu).
 - Assign `Assets/PureDOTS/Config/PureDotsRuntimeConfig.asset`.
 - This seeds `TimeState`, `HistorySettings`, resource catalogs, and any other runtime singletons. Even if the SubScene contains the same data, the config is the canonical source.
+- Add **SpatialPartitionAuthoring** alongside the config and assign the default profile `Assets/PureDOTS/Config/DefaultSpatialPartitionProfile.asset` (or a scene-specific profile). This authoring component bakes the `SpatialGridConfig`/`SpatialGridState` singletons used by the spatial grid/registry systems.
 
 ### 2.2 Simulation SubScene
 1. Select the GameObjects you want converted to entities (villagers, resources, storehouses, etc.).
@@ -53,7 +56,7 @@ Add **Entity** conversion (`Convert and Destroy`) if the prefab/authoring object
 
 ### 2.3 HUD & Overlay
 - Add a Canvas (`Screen Space - Overlay`) named `SandboxHUD`.
-  - Attach `DebugDisplayReader` and wire time/rewind/resource text fields if desired.
+  - Attach `DebugDisplayReader` and wire time/rewind/spatial/registry text fields if desired.
 - Add a root-level GameObject `TimelineOverlay` with `RewindTimelineDebug`.
   - Keep the default window position (20, 20) and size unless the scene requires adjustments.
 - Ensure an `EventSystem` exists for UI.
@@ -97,7 +100,7 @@ Add **Entity** conversion (`Convert and Destroy`) if the prefab/authoring object
 | ResourceSourceAuthoring             | Converts authored resource nodes to entities.   |
 | StorehouseAuthoring                 | Defines storehouse capacities & queues.         |
 | VillagerAuthoring / Prefab          | Adds villager data & conversion pipeline.       |
-| DebugDisplayReader                  | HUD for time/registry data.                     |
+| DebugDisplayReader                  | HUD for time/spatial/registry telemetry.        |
 | RewindTimelineDebug                 | Displays current record/playback/catch-up state.|
 | HandCameraInputRouter               | Hybrid pointer/right-click router feeding DOTS `HandInputRouterSystem`. |
 | DivineHandInputBridge               | Pushes router signals into `DivineHandInput` and manages RMB phases. |

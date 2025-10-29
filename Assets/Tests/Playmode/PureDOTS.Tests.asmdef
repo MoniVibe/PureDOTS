@@ -4,6 +4,7 @@
     "references": [
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
+        "PureDOTS.Authoring",
         "Unity.Entities",
         "Unity.Collections",
         "Unity.Mathematics",

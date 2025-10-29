@@ -8,7 +8,13 @@ PureDOTS is a reusable Unity Entities template meant to accelerate new simulatio
 - **DOTS-Only Simulation** – Systems reside in explicit groups, compiled with Burst, and avoid hybrid bridges in hot paths. Presentation hooks live in optional companion worlds or cold archetypes.
 - **Flexibility by Configuration** – All subsystems (time tuning, physics backend, spatial partitioning, authoring) expose ScriptableObject configs and bakers. No hard-coded dependencies; swapping implementations mid-project should be a config change plus system registration.
 - **Scalability Discipline** – The template must comfortably handle 50k–100k complex entities by default. Architectural choices, code generation, and authoring UX should assume SoA layouts, hot/cold splits, and job-friendly patterns.
-- **Observability & Automation** – Built-in debugging HUDs, logging switches, and CI scripts ensure teams can profile, test, and ship deterministically.
+- **Observability & Automation** — Built-in debugging HUDs, logging switches, and CI scripts ensure teams can profile, test, and ship deterministically.
+
+## Distribution Model
+- PureDOTS ships as a standalone package (UPM/git) that game projects consume; template code lives in `PureDOTS/` and stays engine-agnostic.
+- Game-specific repositories (`…/Godgame`, `…/Space4x`, etc.) link the template via `Packages/manifest.json` and implement their own asmdefs (`Godgame.Runtime`, `Space4x.Runtime`, …). All gameplay code, authoring assets, and presentation bridges live in those repos.
+- Template changes must remain theme-neutral; if a slice needs game-specific behaviour, add extension hooks (partial classes, config ScriptableObjects, events) in PureDOTS and implement the concrete logic inside the consuming game project.
+- Tests follow the same split: template validation stays under `PureDOTS/Assets/Tests`, while each game has its own test assemblies referencing the template.
 
 ## Core Systems Overview
 1. **Time & Rewind Spine**
@@ -48,6 +54,7 @@ PureDOTS is a reusable Unity Entities template meant to accelerate new simulatio
 
 ## Roadmap
 1. **Short Term**
+   - Stabilize the single-player deterministic loop before touching NetCode; multiplayer/networking stays in backlog until the solo experience passes compile, playmode, and soak gates.
    - Finalize physics abstraction (config assets, system registration patterns).
    - Implement modular spatial grid service with runtime-configurable cell sizes and alternative providers.
    - Add automated performance suite (headless playmode run that spawns 100k archetype mix, captures timings, validates determinism under rewind).
@@ -67,5 +74,11 @@ PureDOTS is a reusable Unity Entities template meant to accelerate new simulatio
 4. Implement new systems within existing groups or register new groups with explicit ordering.
 5. Enable automated tests/soak runs early and keep results in CI dashboards.
 6. Update `PureDOTS_TODO.md` and `Docs/Progress.md` as domains evolve to maintain traceability back to this vision.
+
+## Execution Cadence
+- **Implementation Prompt:** Builds new features/systems drawn from the backlog, scoped to land deterministic, testable slices.
+- **Error & Glue Prompt:** Fixes compilation/runtime breakages, integrates the new code with existing systems, and shores up tests triggered by the implementation drop.
+- **Documentation Prompt:** Updates TruthSources, TODO trackers, and changelogs so the knowledge base reflects the current state.  
+Each prompt hand-off must list touched files and outstanding follow-ups to keep the pipeline deterministic and avoid rework.
 
 Keep every addition modular, deterministic, and data-oriented—so the template stays lean yet powerful for any future PureDOTS-powered game.

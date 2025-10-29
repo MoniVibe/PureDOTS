@@ -1,6 +1,7 @@
 using System;
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
 using PureDOTS.Systems;
 using Unity.Collections;
 using Unity.Entities;
@@ -30,6 +31,8 @@ namespace PureDOTS.Tests
         private SystemHandle _jobHistoryHandle;
         private SystemHandle _jobPlaybackHandle;
         private SystemHandle _jobTimeAdapterHandle;
+        private SystemHandle _aiSystemHandle;
+        private SystemHandle _targetingSystemHandle;
 
         private BlobAssetReference<ResourceTypeIndexBlob> _resourceCatalog;
         private Entity _catalogEntity;
@@ -60,6 +63,8 @@ namespace PureDOTS.Tests
             _jobHistoryHandle = _world.GetOrCreateSystem<VillagerJobHistorySystem>();
             _jobPlaybackHandle = _world.GetOrCreateSystem<VillagerJobPlaybackSystem>();
             _jobTimeAdapterHandle = _world.GetOrCreateSystem<VillagerJobTimeAdapterSystem>();
+            _aiSystemHandle = _world.GetOrCreateSystem<VillagerAISystem>();
+            _targetingSystemHandle = _world.GetOrCreateSystem<VillagerTargetingSystem>();
 
             // Villager job bootstrap ensures singletons.
             _world.GetOrCreateSystem<VillagerJobBootstrapSystem>();
@@ -217,6 +222,41 @@ namespace PureDOTS.Tests
             rewind.Mode = RewindMode.Record;
             _entityManager.SetSingleton(rewind);
             UpdateSystem(_jobTimeAdapterHandle);
+        }
+
+        [Test]
+        public void Targeting_UsesRegistryPositionWhenTransformMissing()
+        {
+            CreateResourceTypeCatalog("Wood");
+
+            var resource = CreateResource(new float3(0f, 0f, 0f), "Wood", 150f, 25f);
+            CreateStorehouse(new float3(5f, 0f, 0f), "Wood", 500f);
+            var villager = CreateVillager(new float3(0f, 0f, 0f));
+
+            UpdateSystem(_reservationBootstrapHandle);
+            UpdateSystem(_resourceRegistryHandle);
+            UpdateSystem(_storehouseRegistryHandle);
+            UpdateSystem(_jobInitHandle);
+            UpdateSystem(_jobRequestHandle);
+            UpdateSystem(_jobAssignHandle);
+            UpdateSystem(_aiSystemHandle);
+            UpdateSystem(_targetingSystemHandle);
+
+            var aiState = _entityManager.GetComponentData<VillagerAIState>(villager);
+            Assert.AreEqual(resource, aiState.TargetEntity);
+            Assert.AreNotEqual(float3.zero, aiState.TargetPosition);
+
+            _entityManager.RemoveComponent<LocalTransform>(resource);
+            aiState.TargetPosition = float3.zero;
+            _entityManager.SetComponentData(villager, aiState);
+
+            UpdateSystem(_targetingSystemHandle);
+
+            aiState = _entityManager.GetComponentData<VillagerAIState>(villager);
+            var registryEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceRegistry>()).GetSingletonEntity();
+            var entries = _entityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            Assert.IsTrue(entries.TryFindEntryIndex(resource, out var entryIndex));
+            Assert.AreEqual(entries[entryIndex].Position, aiState.TargetPosition);
         }
 
         private void EnsureCoreSingletons()

@@ -41,6 +41,8 @@ namespace PureDOTS.Tests
                 {
                     VesselEntity = vesselC,
                     Position = new float3(5f, 0f, 0f),
+                    CellId = 9,
+                    SpatialVersion = 3,
                     Capacity = 120f,
                     Load = 60f,
                     ResourceTypeIndex = 1,
@@ -51,6 +53,8 @@ namespace PureDOTS.Tests
                 {
                     VesselEntity = vesselA,
                     Position = float3.zero,
+                    CellId = -1,
+                    SpatialVersion = 0,
                     Capacity = 80f,
                     Load = 0f,
                     ResourceTypeIndex = 2,
@@ -61,6 +65,8 @@ namespace PureDOTS.Tests
                 {
                     VesselEntity = vesselB,
                     Position = new float3(2f, 0f, 1f),
+                    CellId = 5,
+                    SpatialVersion = 1,
                     Capacity = 100f,
                     Load = 20f,
                     ResourceTypeIndex = 3,
@@ -92,6 +98,8 @@ namespace PureDOTS.Tests
                 {
                     HaulerEntity = hauler1,
                     Position = new float3(1f, 0f, 3f),
+                    CellId = 7,
+                    SpatialVersion = 2,
                     CargoTypeIndex = 4,
                     ReservedCapacity = 40f,
                     EstimatedTravelTime = 12f,
@@ -102,6 +110,8 @@ namespace PureDOTS.Tests
                 {
                     HaulerEntity = hauler0,
                     Position = new float3(-2f, 0f, -2f),
+                    CellId = -1,
+                    SpatialVersion = 0,
                     CargoTypeIndex = 6,
                     ReservedCapacity = 0f,
                     EstimatedTravelTime = 5f,
@@ -127,6 +137,8 @@ namespace PureDOTS.Tests
                 {
                     FreighterEntity = freighterB,
                     Position = new float3(10f, 0f, 10f),
+                    CellId = 12,
+                    SpatialVersion = 2,
                     Destination = new float3(50f, 0f, -20f),
                     ManifestId = "Manifest-002",
                     PayloadCapacity = 400f,
@@ -138,6 +150,8 @@ namespace PureDOTS.Tests
                 {
                     FreighterEntity = freighterA,
                     Position = float3.zero,
+                    CellId = -1,
+                    SpatialVersion = 0,
                     Destination = new float3(100f, 0f, 25f),
                     ManifestId = "Manifest-001",
                     PayloadCapacity = 500f,
@@ -167,6 +181,8 @@ namespace PureDOTS.Tests
                     WagonEntity = wagonB,
                     AssignedVillager = villager,
                     Position = new float3(8f, 0f, 4f),
+                    CellId = 10,
+                    SpatialVersion = 3,
                     CargoCapacity = 60f,
                     CargoReserved = 20f,
                     Flags = TransportUnitFlags.Assigned
@@ -177,6 +193,8 @@ namespace PureDOTS.Tests
                     WagonEntity = wagonA,
                     AssignedVillager = Entity.Null,
                     Position = new float3(-3f, 0f, 7f),
+                    CellId = -1,
+                    SpatialVersion = 0,
                     CargoCapacity = 40f,
                     CargoReserved = 0f,
                     Flags = TransportUnitFlags.Idle

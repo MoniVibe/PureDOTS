@@ -19,6 +19,21 @@
       },
       "hash": "697e0fb69bb40d3849673e14cd1e70831400512d"
     },
+    "com.moni.puredots": {
+      "version": "file:com.moni.puredots",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.entities": "1.4.2",
+        "com.unity.entities.graphics": "1.4.15",
+        "com.unity.burst": "1.8.24",
+        "com.unity.collections": "2.6.2",
+        "com.unity.jobs": "0.70.0-preview.7",
+        "com.unity.mathematics": "1.3.2",
+        "com.unity.inputsystem": "1.7.0",
+        "com.unity.physics": "1.0.16"
+      }
+    },
     "com.unity.burst": {
       "version": "1.8.24",
       "depth": 0,
@@ -126,17 +141,6 @@
       "depth": 0,
       "source": "registry",
       "dependencies": {},
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.netcode": {
-      "version": "1.8.0",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.entities": "1.3.5",
-        "com.unity.transport": "2.5.3",
-        "com.unity.modules.animation": "1.0.0"
-      },
       "url": "https://packages.unity.com"
     },
     "com.unity.nuget.mono-cecil": {
@@ -280,17 +284,6 @@
       "dependencies": {
         "com.unity.ugui": "2.0.0"
       }
-    },
-    "com.unity.transport": {
-      "version": "2.5.3",
-      "depth": 1,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.burst": "1.8.12",
-        "com.unity.collections": "2.2.1",
-        "com.unity.mathematics": "1.3.1"
-      },
-      "url": "https://packages.unity.com"
     },
     "com.unity.ugui": {
       "version": "2.0.0",

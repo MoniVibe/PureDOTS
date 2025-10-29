@@ -1,21 +1,36 @@
 {
-    "name": "PureDOTS.EditorTests",
-    "references": [
-        "PureDOTS.Editor.Migrations",
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "UnityEditor"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
-}
+    "name":  "PureDOTS.EditorTests",
+    "references":  [
+                       "PureDOTS.Editor.Migrations",
+                       "PureDOTS.Authoring",
+                       "PureDOTS.Runtime",
+                       "Unity.Scenes",
+                       "Unity.Entities",
+                       "Unity.Mathematics",
+                       "Assembly-CSharp-Editor",
+                       "UnityEngine.TestRunner",
+                       "UnityEditor.TestRunner",
+                       "UnityEditor",
+                       "Unity.Collections",
+                       "PureDOTS.Editor"
+                   ],
+    "includePlatforms":  [
+                             "Editor"
+                         ],
+    "excludePlatforms":  [
 
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

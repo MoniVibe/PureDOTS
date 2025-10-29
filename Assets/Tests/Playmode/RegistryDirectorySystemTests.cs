@@ -7,7 +7,7 @@ using Unity.Entities;
 
 namespace PureDOTS.Tests
 {
-    public class RegistryDirectorySystemTests
+    public partial class RegistryDirectorySystemTests
     {
         [Test]
         public void RegistryDirectorySystem_BuildsDirectoryFromMetadata()
@@ -44,7 +44,7 @@ namespace PureDOTS.Tests
             // Mutate resource registry metadata to force a directory refresh.
             var resourceEntity = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceRegistry>()).GetSingletonEntity();
             var metadata = entityManager.GetComponentData<RegistryMetadata>(resourceEntity);
-            metadata.MarkUpdated(metadata.EntryCount, metadata.LastUpdateTick + 1u);
+            metadata.MarkUpdated(metadata.EntryCount, metadata.LastUpdateTick + 1u, RegistryContinuitySnapshot.WithoutSpatialData());
             entityManager.SetComponentData(resourceEntity, metadata);
 
             // Advance time tick so the directory records a new update tick.
@@ -83,6 +83,8 @@ namespace PureDOTS.Tests
         {
             public static bool LastResult;
             public static int BufferLength;
+            private BufferLookup<ResourceRegistryEntry> _resourceEntriesLookup;
+            private EntityQuery _resourceRegistryQuery;
 
             public static void Reset()
             {
@@ -94,12 +96,28 @@ namespace PureDOTS.Tests
             {
                 state.RequireForUpdate<RegistryDirectory>();
                 state.RequireForUpdate<ResourceRegistry>();
+
+                _resourceEntriesLookup = state.GetBufferLookup<ResourceRegistryEntry>(isReadOnly: true);
+                _resourceRegistryQuery = state.GetEntityQuery(ComponentType.ReadOnly<ResourceRegistry>(), ComponentType.ReadOnly<ResourceRegistryEntry>());
+                state.RequireForUpdate(_resourceRegistryQuery);
             }
 
             public void OnUpdate(ref SystemState state)
             {
-                LastResult = RegistryDirectoryLookup.TryGetRegistryBuffer<ResourceRegistryEntry>(ref state, RegistryKind.Resource, out var buffer);
-                BufferLength = LastResult ? buffer.Length : -1;
+                _resourceEntriesLookup.Update(ref state);
+
+                if (_resourceRegistryQuery.IsEmptyIgnoreFilter)
+                {
+                    LastResult = false;
+                    BufferLength = -1;
+                }
+                else
+                {
+                    var registryEntity = _resourceRegistryQuery.GetSingletonEntity();
+                    LastResult = _resourceEntriesLookup.TryGetBuffer(registryEntity, out var buffer);
+                    BufferLength = LastResult ? buffer.Length : -1;
+                }
+
                 state.Enabled = false;
             }
         }

@@ -18,16 +18,24 @@
 ## Workstreams & Tasks
 
 ### 1. Registry Blueprint (Data Layout)
-- [x] Sketch each registry as “one singleton entity + buffer”. Example: `ResourceRegistry` entity with `DynamicBuffer<ResourceRegistryEntry>`. ✅ Implemented via `DeterministicRegistryBuilder` pipeline.
-- [ ] Decide per registry what fields we need (position, type index, capacity, reservations, etc.) in SoA-friendly structs.
+- [x] Sketch each registry as “one singleton entity + buffer”. Example: `ResourceRegistry` entity with `DynamicBuffer<ResourceRegistryEntry>` (delivered via `DeterministicRegistryBuilder`).
+- [x] Decide per registry what fields we need (position, type index, capacity, reservations, etc.) in SoA-friendly structs.
 - [ ] Add optional `BlobAssetReference` tables for lookup by string ID (e.g., map resource type name to ushort index).
 - [ ] Document hot (frequently updated) vs. cold (rare fields) splits to keep main chunks lean.
+- [ ] Finalise theme-agnostic registry schemas for villagers, transport units, miracles, and construction sites so game-layer code only supplies intent/resources (see `Docs/DesignNotes/RegistryDomainPlan.md`).
 
 ### 2. Update Systems
-- [x] Build lightweight systems that populate/refresh each registry at a controlled point in the frame (e.g., `ResourceRegistrySystem` running before villager jobs). ✅ All registry systems now rebuild via `DeterministicRegistryBuilder` with deterministic sorting.
+- [x] Build lightweight systems that populate/refresh each registry at a controlled point in the frame (e.g., `ResourceRegistrySystem` running before villager jobs) using `DeterministicRegistryBuilder`.
 - [x] Create global registry directory so shared systems can resolve handles generically (`RegistryDirectorySystem` + buffer helpers).
 - [x] Update spatial grid rebuild to read from directory, ensuring registry handles remain consistent even as domains expand.
 - [x] Provide shared lookup utilities (`RegistryDirectoryLookup`) so systems fetch registry entities/buffers by kind without domain-specific knowledge.
+- [x] Add runtime continuity validation (`RegistryContinuityValidationSystem`) to flag spatial drift and surface alerts for consumers.
+- [x] Logistics request registry system (`LogisticsRequestRegistrySystem`) rebuilds request entries with continuity snapshots.
+- [x] Construction registry system exposes build sites with shared continuity + instrumentation hooks.
+- [x] Creature/threat registry system keeps environmental entities discoverable across domains.
+- [x] Band/squad registry system surfaces formation data for AI/pathfinding consumers.
+- [x] Ability registry system enumerates player-triggered actions for miracle/ability layers.
+- [x] Spawner registry system exposes shared spawn pads for villagers/fauna/ships with continuity + instrumentation.
 - [ ] Handle spawn/despawn: when entities arise or die, ensure registry entries are inserted/removed deterministically (use ECB and predictable sorting).
 - [ ] Integrate with rewind: either rebuild registries every frame from authoritative components or record minimal history to reapply on playback.
 - [ ] Provide helper static methods (or extension structs) so other systems can query registries from Burst without copying data.
@@ -42,17 +50,23 @@
 - [ ] Villager job assignment: consume registry instead of scanning every frame; share reservation data via registry entries.
 - [ ] Rain miracles/divine hand: use registries to quickly find nearest valid targets once spatial grid is ready (future integration point).
 - [ ] Remove or obsolete any legacy service singletons/MonoBehaviours that duplicate registry responsibilities.
+- [ ] Stand up generic consumption samples/tests so downstream games can plug domain-specific logic into PureDOTS registries without modifying template code.
 
 ### 5. Tooling & Docs
 - [ ] Add inspector gizmos or debug HUD panels so designers can view registry contents at runtime (counts, capacities).
 - [ ] Extend authoring docs (`SceneSetup`, `DesignNotes`) with “how to configure registries” (e.g., required components on prefabs).
 - [ ] Update `Docs/Progress.md` when each registry migrates; link to relevant truth sources.
+- [x] Introduce console instrumentation toggle (`RegistryConsoleInstrumentation`) for headless logging of registry snapshots.
+- [x] Emit registry instrumentation buffers (`RegistryInstrumentationSystem`) so debug HUDs and telemetry can read per-registry health metrics.
 
 ### 6. Testing & Validation
 - [ ] Unit tests for each registry update system (spawn, despawn, reorder, rewind).
 - [ ] Playmode tests ensuring villagers/resources behave identically before/after migration.
+- [ ] Playmode `RegistryContinuity` suite covering villager, miracle, transport, and logistics request registries (spatial sync + rewind).
+ - [x] Playmode coverage for miracle registry aggregates (`MiracleRegistryTests`).
 - [ ] Stress tests with 50k entities verifying no GC allocations and acceptable frame time.
 - [ ] Regression checks for deterministic ordering (sorted indexes stable between runs).
+- [x] Playmode smoke test for console instrumentation output (`ResourceRegistry_ConsoleInstrumentation_LogsSummary`).
 
 ## Open Questions
 - Which registries require historical data for rewind vs. live-only caches?

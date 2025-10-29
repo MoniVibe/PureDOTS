@@ -1,6 +1,36 @@
 # PureDOTS Progress Log
 
+## 2025-11-03
+- Wired villager registry entries to carry spatial `CellId`/`SpatialVersion` (sourced via `SpatialGridResidency` when available, falling back to deterministic quantisation) and surfaced continuity counters so registry metadata reports resolved vs fallback vs unmapped villagers.
+- Extended `AISensorUpdateSystem` to stamp sensor readings with the target's spatial metadata and added fallback quantisation when residency is missing, enabling downstream AI to avoid stale cell lookups.
+- Tagged villager prefabs and rain cloud prefabs with `SpatialIndexedTag` so both domains participate in the spatial grid without manual setup; debug HUD spatial readouts now reflect miracle entities during playmode.
+- Added transport unit components + `TransportRegistrySystem`, mirroring the spatial continuity flow so miner vessels, haulers, freighters, and wagons publish cell/version data and availability summaries.
+- Delivered the first sunlight pass: `SunlightGridUpdateSystem` drives day/night direction, cloud/season scaling, and vegetation occlusion heuristics with runtime buffers that sampling APIs now consume. Moisture evaporation factors in the new shade data.
+
+## 2025-11-02
+- Landed registry continuity scaffolding: RegistryMetadata now records RegistryContinuitySnapshot via the builder API, resource/storehouse registries publish spatial counters to metadata, and RegistrySpatialSyncSystem surfaces the latest spatial grid version for downstream enforcement.
+- Hooked RegistryHealthSystem into the continuity snapshot so missing spatial sync is flagged as Failure, with playmode coverage exercising the new guard.
+- Drafted domain registry expansion plan (Docs/DesignNotes/RegistryDomainPlan.md) detailing villager, miracle, and logistics schemas plus upcoming validation tasks.
+- Documented the package distribution model (PureDOTS as UPM/git package; game code lives under ../Godgame, ../Space4x, etc.) in Docs/Vision.md and scene setup guide.
+- Upgraded villager registry system to emit spatial continuity snapshots, aggregate health/morale/energy stats, and provide richer per-entry data (health/morale/AI), with new playmode coverage validating the aggregates.
+- Extended transport registries (miner vessels, haulers, freighters, wagons) with spatial continuity gating, aggregate metrics (idle/assigned counts, capacity utilisation), and continuity snapshots driven by RegistrySpatialSyncState.
+- Introduced logistics request registry (LogisticsRequestRegistrySystem) to index outstanding transport jobs with continuity-aware entries and playmode coverage.
+- Implemented miracle registry system with lifecycle/state aggregation and continuity snapshots, alongside playmode coverage validating entry ordering and aggregate counts.
+
+## 2025-11-01
+- Added scene view gizmo previews to `EnvironmentGridConfigAuthoring`, drawing per-channel bounds (moisture, temperature, sunlight, optional wind/biome) with labels for resolution and cell size to help designers tune grid coverage.
+- Updated utilities TODO to record the environment grid gizmo tooling slice completion.
+
+## 2025-10-28
+- Audited existing registries across resource, storehouse, villager, and logistics domains; documented updated contracts (including transport registries) in `Docs/DesignNotes/ResourceRegistryPlan.md`.
+- Fixed duplicate metadata bumps in resource/storehouse/villager registry systems and routed buffer rebuilds through `DeterministicRegistryBuilder.ApplyTo` so versions/ticks stay aligned.
+- Added opt-in console instrumentation via `RegistryConsoleInstrumentationSystem` for headless/CI validation and wired new playmode coverage (`ResourceRegistry_ConsoleInstrumentation_LogsSummary`).
+- Extended registry playmode tests with rewind guards and metadata assertions to confirm systems skip updates during playback mode.
+- Kicked off spatial services planning: recorded reconnaissance + provider/registry contracts in `Docs/DesignNotes/SpatialPartitioning.md` and refreshed `Docs/TODO/SpatialServices_TODO.md` with the updated roadmap.
+- Authored configurable spatial partition profile (`SpatialPartitionProfile` schema v2) plus default asset (`Assets/PureDOTS/Config/DefaultSpatialPartitionProfile.asset`), updated baker duplicate handling, and documented the scene workflow/tests.
+
 ## 2025-10-30
+- Codified three-agent workflow (implementation → error/glue → documentation) with explicit hand-off expectations; pinned NetCode work as post-single-player backlog in Vision/TODO.
 - Delivered the first observability bundle: `FrameTimingRecorderSystem` captures per-group timings + allocation diagnostics, with instrumentation injected into every custom system group and surfaced through `DebugDisplaySystem`.
 - Added replay capture hooks via `ReplayCaptureSystem`/`ReplayCaptureStream`, enabling overlay + telemetry consumers to review the latest deterministic events ahead of rewind tooling.
 - Extended HUD/telemetry output with frame timing, memory, and replay summaries; updated `DebugDisplayReader` bindings so designers can wire the data into UI layouts.
@@ -73,3 +103,5 @@
 - Synced authoring: `VillagerAuthoring` now seeds job ticket/progress/carry buffers for runtime determinism.
 - Provided inline extension points (job-type modifiers, event hooks) so future job variants can extend execution logic without rewriting core loop.
 - **Presentation/UI integration note:** consume `VillagerJobEventStream` for job status badges; storehouse dashboards should prefer `StorehouseRegistryEntry.TypeSummaries` (reserved + stored) and subscribe after `VillagerJobEventFlushSystem` runs to avoid redundant updates.
+
+
