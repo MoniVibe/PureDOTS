@@ -20,6 +20,8 @@ namespace PureDOTS.Runtime.Telemetry
         History = 9,
         Presentation = 10,
         Hand = 11,
+        Camera = 12,  // Highest priority - runs first in simulation
+        Transport = 13,
         Custom = 255
     }
 
@@ -77,6 +79,7 @@ namespace PureDOTS.Runtime.Telemetry
         {
             return group switch
             {
+                FrameTimingGroup.Camera => 0.5f,  // High priority, must be fast
                 FrameTimingGroup.Time => 0.5f,
                 FrameTimingGroup.Environment => 2f,
                 FrameTimingGroup.Spatial => 1f,
@@ -85,6 +88,7 @@ namespace PureDOTS.Runtime.Telemetry
                 FrameTimingGroup.Resource => 1.5f,
                 FrameTimingGroup.Miracle => 1.5f,
                 FrameTimingGroup.Gameplay => 4f,
+                FrameTimingGroup.Transport => 1.25f,
                 FrameTimingGroup.History => 1f,
                 FrameTimingGroup.Presentation => 1.5f,
                 FrameTimingGroup.Hand => 0.75f,
@@ -96,6 +100,7 @@ namespace PureDOTS.Runtime.Telemetry
         {
             return group switch
             {
+                FrameTimingGroup.Camera => "Camera",
                 FrameTimingGroup.Time => "Time",
                 FrameTimingGroup.Environment => "Environment",
                 FrameTimingGroup.Spatial => "Spatial",
@@ -104,6 +109,7 @@ namespace PureDOTS.Runtime.Telemetry
                 FrameTimingGroup.Resource => "Resource",
                 FrameTimingGroup.Miracle => "Miracle",
                 FrameTimingGroup.Gameplay => "Gameplay",
+                FrameTimingGroup.Transport => "Transport",
                 FrameTimingGroup.History => "History",
                 FrameTimingGroup.Presentation => "Presentation",
                 FrameTimingGroup.Hand => "Hand",
@@ -116,6 +122,7 @@ namespace PureDOTS.Runtime.Telemetry
         {
             return group switch
             {
+                FrameTimingGroup.Camera => "timing.camera",
                 FrameTimingGroup.Time => "timing.time",
                 FrameTimingGroup.Environment => "timing.environment",
                 FrameTimingGroup.Spatial => "timing.spatial",
@@ -124,6 +131,7 @@ namespace PureDOTS.Runtime.Telemetry
                 FrameTimingGroup.Resource => "timing.resource",
                 FrameTimingGroup.Miracle => "timing.miracle",
                 FrameTimingGroup.Gameplay => "timing.gameplay",
+                FrameTimingGroup.Transport => "timing.transport",
                 FrameTimingGroup.History => "timing.history",
                 FrameTimingGroup.Presentation => "timing.presentation",
                 FrameTimingGroup.Hand => "timing.hand",

@@ -12,7 +12,10 @@ namespace PureDOTS.Systems
     /// Builds a deterministic directory of all active registries so shared systems can resolve handles by kind without hard references.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(ResourceSystemGroup))]
+    [UpdateAfter(typeof(ResourceRegistrySystem))]
+    [UpdateAfter(typeof(StorehouseRegistrySystem))]
+    [UpdateBefore(typeof(RegistryHealthSystem))]
     public partial struct RegistryDirectorySystem : ISystem
     {
         private EntityQuery _registryQuery;

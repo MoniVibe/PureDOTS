@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Resource;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -34,6 +35,7 @@ namespace PureDOTS.Runtime.Components
         public int MaxShredQueueSize;
         public float InputRate;
         public float OutputRate;
+        public FixedString64Bytes Label;
     }
 
     public struct StorehouseInventory : IComponentData
@@ -185,6 +187,8 @@ namespace PureDOTS.Runtime.Components
         public uint LastMutationTick;
         public int CellId;
         public uint SpatialVersion;
+        public ushort FamilyIndex;
+        public ResourceTier Tier;
 
         public int CompareTo(ResourceRegistryEntry other)
         {

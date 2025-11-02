@@ -8,7 +8,7 @@
         "com.unity.inputsystem": "1.1.1",
         "com.unity.cloud.gltfast": "6.12.1"
       },
-      "hash": "ab031e9155f7d3a0334e7512359ec35fa589363a"
+      "hash": "8121cb2142d61f75fade126c66d94f372d9676d3"
     },
     "com.coplaydev.unity-mcp": {
       "version": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",

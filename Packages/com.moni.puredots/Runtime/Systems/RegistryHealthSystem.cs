@@ -11,7 +11,8 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Computes health metrics for each active registry and updates aggregated monitoring state.
     /// </summary>
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateInGroup(typeof(ResourceSystemGroup))]
+    [UpdateAfter(typeof(RegistryDirectorySystem))]
     public partial struct RegistryHealthSystem : ISystem
     {
         private ComponentLookup<RegistryMetadata> _metadataLookup;

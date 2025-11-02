@@ -29,10 +29,20 @@ Updated: 2025-10-25
 - `Docs/DesignNotes/VegetationAssets.md`
 - `Docs/DesignNotes/VillagerJobs_DOTS.md`
 
+## Architecture
+- `Docs/Architecture/PureDOTS_As_Framework.md` - Framework architecture and contract
+- `Docs/Architecture/Framework_Formalization_Summary.md` - Formalization overview
+- `Docs/Architecture/GameDOTS_Separation.md` - Separation conventions
+
 ## Guides & Authoring
+- `Docs/Guides/GameProject_Integration.md` - Integrating PureDOTS into game projects
+- `Docs/Guides/LinkingExternalGameProjects.md` - Linking external game projects
+- `Docs/Guides/CreatingDualMiningDemoScene.md` - Creating dual mining demo scenes
 - `Docs/Guides/SceneSetup.md`
 - `Docs/Guides/Authoring/EnvironmentAndSpatialValidation.md`
 - `Docs/Guides/GettingStarted.md`
+- `Docs/Streaming_Content.md` - Streaming section content references and preload flow
+- `Docs/Guides/PhysicsValidation.md` - Physics validation scenarios and sample parity
 
 ## QA & Testing
 - `Docs/QA/IntegrationTestChecklist.md`

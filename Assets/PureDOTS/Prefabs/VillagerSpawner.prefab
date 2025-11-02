@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78eb129ea45b55441ac88cc7e051b547, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  villagerPrefab: {fileID: 0}
+  villagerPrefab: {fileID: 100000, guid: 2ce797cb7f2f4e7aa20b3d9d37cf8b23, type: 3}
   initialPopulation: 1
   spawnRadius: 3
   maxPopulation: 25

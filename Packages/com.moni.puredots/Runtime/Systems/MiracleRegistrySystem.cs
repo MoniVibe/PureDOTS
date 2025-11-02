@@ -13,8 +13,7 @@ namespace PureDOTS.Systems
     /// Builds the miracle registry for quick lookup by hand, AI, and presentation systems.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(LogisticsRequestRegistrySystem))]
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     public partial struct MiracleRegistrySystem : ISystem
     {
         private EntityQuery _miracleQuery;

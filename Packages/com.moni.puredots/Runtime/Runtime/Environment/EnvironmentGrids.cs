@@ -434,6 +434,15 @@ namespace PureDOTS.Environment
     }
 
     /// <summary>
+    /// Mutable runtime representation of Biome assignments per cell.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct BiomeGridRuntimeCell : IBufferElementData
+    {
+        public BiomeType Value;
+    }
+
+    /// <summary>
     /// Utility math helpers shared by all environment grids.
     /// </summary>
     public static class EnvironmentGridMath

@@ -31,3 +31,4 @@ MonoBehaviour:
     maxTicksPerSecond: 120
     strideScale: 1
   _resourceTypes: {fileID: 11400000, guid: 6f8227095a7a4f2f8dff92367be7e55d, type: 2}
+  _recipeCatalog: {fileID: 11400000, guid: e5c2e49e7c4f4dc58e65e6b1d8b3ef19, type: 2}

@@ -51,7 +51,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_CreatesSingleton()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             // Create storehouse
             var storehouseEntity = _entityManager.CreateEntity();
@@ -108,7 +108,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_SpatialVersionUpdates()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             var timeEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
@@ -158,7 +158,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_UpdatesOnEntitySpawn()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             // Setup singletons
             var timeEntity = _entityManager.CreateEntity();
@@ -210,7 +210,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_SkipsUpdateDuringPlayback()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             var timeEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
@@ -248,7 +248,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_TracksCapacity()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             // Setup singletons
             var timeEntity = _entityManager.CreateEntity();
@@ -274,14 +274,14 @@ namespace PureDOTS.Tests.Playmode
             var capacityBuffer = _entityManager.AddBuffer<StorehouseCapacityElement>(storehouseEntity);
             capacityBuffer.Add(new StorehouseCapacityElement
             {
-                ResourceTypeId = "Wood",
+                ResourceTypeId = "iron_ore",
                 MaxCapacity = 100f
             });
 
             var inventoryItems = _entityManager.AddBuffer<StorehouseInventoryItem>(storehouseEntity);
             inventoryItems.Add(new StorehouseInventoryItem
             {
-                ResourceTypeId = "Wood",
+                ResourceTypeId = "iron_ore",
                 Amount = 30f,
                 Reserved = 5f
             });
@@ -308,8 +308,8 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(5f, resourceSummary.Reserved);
             var catalogEntity = _entityManager.GetSingletonEntity<ResourceTypeIndex>();
             var catalogData = _entityManager.GetComponentData<ResourceTypeIndex>(catalogEntity);
-            var woodId = new FixedString64Bytes("Wood");
-            Assert.AreEqual(catalogData.Catalog.Value.LookupIndex(woodId), resourceSummary.ResourceTypeIndex);
+            var ironOreId = new FixedString64Bytes("iron_ore");
+            Assert.AreEqual(catalogData.Catalog.Value.LookupIndex(ironOreId), resourceSummary.ResourceTypeIndex);
 
             // Filter for available capacity
             int availableCount = 0;
@@ -326,7 +326,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator StorehouseRegistry_UpdatesLastTick()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             // Setup singletons
             var timeEntity = _entityManager.CreateEntity();

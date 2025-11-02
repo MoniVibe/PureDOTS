@@ -16,6 +16,13 @@ namespace PureDOTS.Systems.Environment
     [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
     public partial struct EnvironmentGridBootstrapSystem : ISystem
     {
+        private Entity _configEntity;
+        private BlobAssetReference<MoistureGridBlob> _moistureBlob;
+        private BlobAssetReference<TemperatureGridBlob> _temperatureBlob;
+        private BlobAssetReference<SunlightGridBlob> _sunlightBlob;
+        private BlobAssetReference<WindFieldBlob> _windBlob;
+        private BlobAssetReference<BiomeGridBlob> _biomeBlob;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -28,6 +35,8 @@ namespace PureDOTS.Systems.Environment
             var configEntity = SystemAPI.GetSingletonEntity<EnvironmentGridConfigData>();
             var config = SystemAPI.GetSingleton<EnvironmentGridConfigData>();
 
+            _configEntity = configEntity;
+
             var entityManager = state.EntityManager;
             if (!entityManager.HasComponent<ClimateState>(configEntity))
             {
@@ -36,31 +45,66 @@ namespace PureDOTS.Systems.Environment
 
             if (!entityManager.HasComponent<MoistureGrid>(configEntity))
             {
-                entityManager.AddComponentData(configEntity, CreateMoistureGrid(config));
+                var grid = CreateMoistureGrid(config);
+                entityManager.AddComponentData(configEntity, grid);
+                _moistureBlob = grid.Blob;
+            }
+            else
+            {
+                _moistureBlob = entityManager.GetComponentData<MoistureGrid>(configEntity).Blob;
             }
 
             EnsureMoistureRuntimeBuffers(ref state, configEntity);
 
             if (!entityManager.HasComponent<TemperatureGrid>(configEntity))
             {
-                entityManager.AddComponentData(configEntity, CreateTemperatureGrid(config));
+                var grid = CreateTemperatureGrid(config);
+                entityManager.AddComponentData(configEntity, grid);
+                _temperatureBlob = grid.Blob;
+            }
+            else
+            {
+                _temperatureBlob = entityManager.GetComponentData<TemperatureGrid>(configEntity).Blob;
             }
 
             if (!entityManager.HasComponent<SunlightGrid>(configEntity))
             {
-                entityManager.AddComponentData(configEntity, CreateSunlightGrid(config));
+                var grid = CreateSunlightGrid(config);
+                entityManager.AddComponentData(configEntity, grid);
+                _sunlightBlob = grid.Blob;
+            }
+            else
+            {
+                _sunlightBlob = entityManager.GetComponentData<SunlightGrid>(configEntity).Blob;
             }
 
             EnsureSunlightRuntimeBuffer(ref state, configEntity);
 
             if (!entityManager.HasComponent<WindField>(configEntity))
             {
-                entityManager.AddComponentData(configEntity, CreateWindField(config));
+                var grid = CreateWindField(config);
+                entityManager.AddComponentData(configEntity, grid);
+                _windBlob = grid.Blob;
+            }
+            else
+            {
+                _windBlob = entityManager.GetComponentData<WindField>(configEntity).Blob;
             }
 
             if (config.BiomeEnabled != 0 && !entityManager.HasComponent<BiomeGrid>(configEntity))
             {
-                entityManager.AddComponentData(configEntity, CreateBiomeGrid(config));
+                var grid = CreateBiomeGrid(config);
+                entityManager.AddComponentData(configEntity, grid);
+                _biomeBlob = grid.Blob;
+            }
+            else if (entityManager.HasComponent<BiomeGrid>(configEntity))
+            {
+                _biomeBlob = entityManager.GetComponentData<BiomeGrid>(configEntity).Blob;
+            }
+
+            if (entityManager.HasComponent<BiomeGrid>(configEntity))
+            {
+                EnsureBiomeRuntimeBuffer(ref state, configEntity);
             }
 
             if (!entityManager.HasComponent<MoistureGridSimulationState>(configEntity))
@@ -73,6 +117,34 @@ namespace PureDOTS.Systems.Environment
             }
 
             state.Enabled = false;
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            var entityManager = state.EntityManager;
+
+            if (_configEntity != Entity.Null && entityManager.Exists(_configEntity))
+            {
+                RemoveComponentIfPresent<MoistureGridSimulationState>(entityManager, _configEntity);
+                RemoveComponentIfPresent<ClimateState>(entityManager, _configEntity);
+                RemoveComponentIfPresent<MoistureGrid>(entityManager, _configEntity);
+                RemoveComponentIfPresent<TemperatureGrid>(entityManager, _configEntity);
+                RemoveComponentIfPresent<SunlightGrid>(entityManager, _configEntity);
+                RemoveComponentIfPresent<WindField>(entityManager, _configEntity);
+                RemoveComponentIfPresent<BiomeGrid>(entityManager, _configEntity);
+
+                RemoveBufferIfPresent<MoistureGridRuntimeCell>(entityManager, _configEntity);
+                RemoveBufferIfPresent<SunlightGridRuntimeSample>(entityManager, _configEntity);
+                RemoveBufferIfPresent<BiomeGridRuntimeCell>(entityManager, _configEntity);
+            }
+
+            DisposeBlob(ref _moistureBlob);
+            DisposeBlob(ref _temperatureBlob);
+            DisposeBlob(ref _sunlightBlob);
+            DisposeBlob(ref _windBlob);
+            DisposeBlob(ref _biomeBlob);
+
+            _configEntity = Entity.Null;
         }
 
         private static ClimateState CreateDefaultClimateState()
@@ -226,6 +298,31 @@ namespace PureDOTS.Systems.Environment
             PopulateSunlightRuntimeBuffer(buffer, in sunlightGrid);
         }
 
+        private static void EnsureBiomeRuntimeBuffer(ref SystemState state, Entity configEntity)
+        {
+            var entityManager = state.EntityManager;
+            var biomeGrid = entityManager.GetComponentData<BiomeGrid>(configEntity);
+            var cellCount = math.max(1, biomeGrid.Metadata.CellCount);
+
+            DynamicBuffer<BiomeGridRuntimeCell> buffer;
+            if (!entityManager.HasBuffer<BiomeGridRuntimeCell>(configEntity))
+            {
+                buffer = entityManager.AddBuffer<BiomeGridRuntimeCell>(configEntity);
+                buffer.ResizeUninitialized(cellCount);
+            }
+            else
+            {
+                buffer = entityManager.GetBuffer<BiomeGridRuntimeCell>(configEntity);
+                if (buffer.Length != cellCount)
+                {
+                    buffer.Clear();
+                    buffer.ResizeUninitialized(cellCount);
+                }
+            }
+
+            PopulateBiomeRuntimeBuffer(buffer, in biomeGrid);
+        }
+
         private static void InitialiseMoistureRuntimeBuffer(EntityManager entityManager, Entity entity, in MoistureGrid grid)
         {
             if (!grid.IsCreated)
@@ -277,6 +374,25 @@ namespace PureDOTS.Systems.Environment
             {
                 var value = i < samples.Length ? samples[i] : default;
                 buffer[i] = new SunlightGridRuntimeSample { Value = value };
+            }
+        }
+
+        private static void PopulateBiomeRuntimeBuffer(DynamicBuffer<BiomeGridRuntimeCell> buffer, in BiomeGrid grid)
+        {
+            if (!grid.IsCreated)
+            {
+                for (var i = 0; i < buffer.Length; i++)
+                {
+                    buffer[i] = new BiomeGridRuntimeCell { Value = BiomeType.Unknown };
+                }
+                return;
+            }
+
+            ref var biomes = ref grid.Blob.Value.Biomes;
+            for (var i = 0; i < buffer.Length; i++)
+            {
+                var value = i < biomes.Length ? biomes[i] : BiomeType.Unknown;
+                buffer[i] = new BiomeGridRuntimeCell { Value = value };
             }
         }
 
@@ -391,6 +507,33 @@ namespace PureDOTS.Systems.Environment
             var blob = builder.CreateBlobAssetReference<BiomeGridBlob>(Allocator.Persistent);
             builder.Dispose();
             return blob;
+        }
+
+        private static void DisposeBlob<T>(ref BlobAssetReference<T> blob) where T : unmanaged
+        {
+            if (blob.IsCreated)
+            {
+                blob.Dispose();
+                blob = default;
+            }
+        }
+
+        private static void RemoveComponentIfPresent<T>(EntityManager entityManager, Entity entity)
+            where T : unmanaged, IComponentData
+        {
+            if (entityManager.HasComponent<T>(entity))
+            {
+                entityManager.RemoveComponent<T>(entity);
+            }
+        }
+
+        private static void RemoveBufferIfPresent<T>(EntityManager entityManager, Entity entity)
+            where T : unmanaged, IBufferElementData
+        {
+            if (entityManager.HasBuffer<T>(entity))
+            {
+                entityManager.RemoveComponent<T>(entity);
+            }
         }
     }
 }

@@ -1,0 +1,21 @@
+<linker>
+  <!-- Preserve runtime-only types accessed via reflection or generated at runtime -->
+  <assembly fullname="PureDOTS.Runtime">
+    <type fullname="PureDOTS.Runtime.Components.ResourceTypeIndex" preserve="all" />
+    <type fullname="PureDOTS.Runtime.Components.DivineHandConfig" preserve="all" />
+    <type fullname="PureDOTS.Runtime.Visuals.MiningVisualManifest" preserve="all" />
+    <type fullname="PureDOTS.Runtime.Visuals.MiningVisualPrefab" preserve="all" />
+    <type fullname="PureDOTS.Runtime.Visuals.MiningVisualRequest" preserve="all" />
+  </assembly>
+  <assembly fullname="Space4X.Runtime">
+    <type fullname="Space4X.Runtime.Transport.MinerVessel" preserve="all" />
+    <type fullname="Space4X.Runtime.Transport.TransportUnitFlags" preserve="all" />
+  </assembly>
+  <assembly fullname="Unity.Entities">
+    <type fullname="Unity.Entities.TypeManager" preserve="all" />
+  </assembly>
+  <assembly fullname="Unity.Rendering.EntitiesGraphics">
+    <type fullname="Unity.Rendering.RenderBoundsUpdateSystem" preserve="all" />
+  </assembly>
+</linker>
+

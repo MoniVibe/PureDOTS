@@ -68,8 +68,7 @@ namespace PureDOTS.Systems.Spatial
             var dirtyOps = state.EntityManager.GetBuffer<SpatialGridDirtyOp>(gridEntity);
             dirtyOps.Clear();
 
-            var stateRW = SystemAPI.GetComponentRW<SpatialGridState>(gridEntity);
-            var currentState = stateRW.ValueRO;
+            var currentState = SystemAPI.GetComponentRO<SpatialGridState>(gridEntity).ValueRO;
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
@@ -202,6 +201,7 @@ namespace PureDOTS.Systems.Spatial
                 nextState.DirtyRemoveCount = 0;
             }
 
+            var stateRW = SystemAPI.GetComponentRW<SpatialGridState>(gridEntity);
             stateRW.ValueRW = nextState;
         }
 

@@ -18,9 +18,11 @@ namespace PureDOTS.Systems
     {
         private static readonly FrameTimingGroup[] s_OutputOrder =
         {
+            FrameTimingGroup.Camera,  // Highest priority - runs first
             FrameTimingGroup.Time,
             FrameTimingGroup.Environment,
             FrameTimingGroup.Spatial,
+            FrameTimingGroup.Transport,
             FrameTimingGroup.AI,
             FrameTimingGroup.Villager,
             FrameTimingGroup.Resource,

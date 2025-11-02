@@ -1,5 +1,5 @@
-#if UNITY_EDITOR
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Rendering;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -67,16 +67,9 @@ namespace PureDOTS.Authoring
             var entity = GetEntity(authoring, TransformUsageFlags.Dynamic | TransformUsageFlags.Renderable);
             float baseScale = math.max(0.01f, authoring.baseScale);
 
-            var authoringTransform = authoring.transform;
-            var position = new float3(authoringTransform.localPosition.x, authoringTransform.localPosition.y, authoringTransform.localPosition.z) +
-                           new float3(authoring.localOffset.x, authoring.localOffset.y, authoring.localOffset.z);
-            var rotation = authoringTransform.localRotation;
-            var localTransform = LocalTransform.FromPositionRotationScale(
-                position,
-                math.normalize(new quaternion(rotation.x, rotation.y, rotation.z, rotation.w)),
-                baseScale);
-
-            AddComponent(entity, localTransform);
+            // Note: We don't set LocalTransform here because Physics bakers (CapsuleBaker, SphereBaker, etc.)
+            // may already add it. The Physics bakers will set LocalTransform correctly based on the GameObject's transform.
+            // Custom scale and offset are stored in PlaceholderVisual for rendering systems to use.
 
             AddComponent(entity, new PlaceholderVisual
             {
@@ -134,11 +127,19 @@ namespace PureDOTS.Authoring
                     };
 
                     AddComponent(entity, emission);
+                    AddComponent(entity, new MaterialEmissionOverride
+                    {
+                        Value = new float4(glow.x, glow.y, glow.z, 1f)
+                    });
                     break;
                 }
             }
 
             var tint = (Vector4)authoring.baseColor;
+            AddComponent(entity, new MaterialColorOverride
+            {
+                Value = new float4(tint.x, tint.y, tint.z, tint.w)
+            });
             var baseColor = new URPMaterialPropertyBaseColor
             {
                 Value = new float4(tint.x, tint.y, tint.z, tint.w)
@@ -148,4 +149,3 @@ namespace PureDOTS.Authoring
         }
     }
 }
-#endif

@@ -24,12 +24,16 @@ namespace PureDOTS.Authoring
         private ResourceTypeCatalog _resourceTypes;
 
         [SerializeField]
+        private ResourceRecipeCatalog _recipeCatalog;
+
+        [SerializeField]
         private PoolingSettingsData _pooling = PoolingSettingsData.CreateDefault();
 
         public int SchemaVersion => _schemaVersion;
         public TimeSettingsData Time => _time;
         public HistorySettingsData History => _history;
         public ResourceTypeCatalog ResourceTypes => _resourceTypes;
+        public ResourceRecipeCatalog RecipeCatalog => _recipeCatalog;
         public PoolingSettingsData Pooling => _pooling;
 
 #if UNITY_EDITOR

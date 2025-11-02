@@ -1,0 +1,98 @@
+TASK: Fix Critical DOTS Runtime Errors Preventing Camera Rendering
+
+CRITICAL ISSUES IDENTIFIED:
+
+1. ✅ FIXED: Singleton Duplicates - Code fix applied (SingletonCleanupSystem.cs)
+   - HistorySettings, PoolingSettings, TimeSettingsConfig have 2-3 entities instead of 1
+   - Fixed by: SingletonCleanupSystem removes duplicates in InitializationSystemGroup
+
+2. ✅ FIXED: Job Data Initialization - Code fix applied (VesselAISystem.cs, VesselTargetingSystem.cs)
+   - ResourceEntries NativeArray disposed before job completes
+   - Carriers NativeList disposed before job completes
+   - Fixed by: Using TempJob allocator and ensuring job completes before disposal
+
+3. ⚠️ NEEDS MANUAL FIX: URP Render Pipeline Not Loading
+   - "No SRP present, no compute shader support..." error
+   - URP Asset GUID: 4b83569d67af61e458304325a23e5dfd
+   - Check: Edit > Project Settings > Graphics > Scriptable Render Pipeline Settings
+   - Verify: URP Asset is assigned
+
+4. ⚠️ NEEDS MANUAL FIX: Duplicate Main Camera in SubScene
+   - Main Camera exists in "New Sub Scene" subscene
+   - Should only exist in main scene
+   - Action: Delete or disable camera in subscene
+
+REQUIRED ACTIONS:
+
+A. VERIFY URP RENDER PIPELINE:
+   1. In Unity Editor:
+      - Edit > Project Settings > Graphics
+      - Check "Scriptable Render Pipeline Settings" field
+      - Should have URP Asset assigned (GUID: 4b83569d67af61e458304325a23e5dfd)
+      - If empty, assign the URP Asset from Assets/
+   2. Also check Quality Settings:
+      - Edit > Project Settings > Quality
+      - For each quality level, verify Render Pipeline Asset is assigned
+
+B. REMOVE DUPLICATE CAMERA FROM SUBSCENE:
+   1. Open subscene "New Sub Scene.unity" (or find in hierarchy)
+   2. Find "Main Camera" GameObject inside subscene
+   3. Either:
+      - Delete the Main Camera GameObject from subscene
+      - OR disable its Camera component
+   4. Verify only ONE Main Camera exists in main scene
+
+C. VERIFY CODE FIXES ARE ACTIVE:
+   1. Check console in Play Mode:
+      - Should see "[SingletonCleanup] Found X entities (expected 1). Removing duplicates..."
+      - Should NOT see "InvalidOperationException: Multiple entities found"
+      - Should NOT see "UNKNOWN_OBJECT_TYPE" or "NativeList ... has not been assigned"
+   2. If still seeing singleton errors:
+      - Check SingletonCleanupSystem.cs exists in Assets/Scripts/Space4x/Systems/
+      - Verify it's in InitializationSystemGroup with OrderFirst=true
+
+D. VERIFY SYSTEMS RUNNING:
+   1. Enter Play Mode
+   2. Check console for:
+      - "[SingletonCleanup] Cleanup complete" (should appear early)
+      - "[VesselAISystem] Found X vessels..." (should NOT crash)
+      - "[VesselTargetingSystem] Found X vessels..." (should NOT crash)
+      - "[Space4XCameraRenderSyncSystem] Found/Created Main Camera"
+   3. No exceptions should appear in console
+
+MCP TOOLS TO USE:
+- manage_scene get_hierarchy (check for duplicate cameras)
+- manage_gameobject find by_component "Camera" (list all cameras)
+- manage_gameobject delete (remove duplicate camera from subscene)
+- manage_asset get_info (check URP asset exists)
+
+IF MCP CAN'T ACCESS GRAPHICS SETTINGS:
+- Manual steps:
+  1. Edit > Project Settings > Graphics
+  2. Assign URP Asset to "Scriptable Render Pipeline Settings"
+  3. Edit > Project Settings > Quality
+  4. For each quality level, assign URP Asset to "Render Pipeline Asset"
+
+SUCCESS CRITERIA:
+- ✅ No "InvalidOperationException: Multiple entities found" errors
+- ✅ No "UNKNOWN_OBJECT_TYPE" or "NativeList ... has not been assigned" errors
+- ✅ No "No SRP present" error (URP Asset is assigned)
+- ✅ Only ONE Main Camera in main scene (not in subscene)
+- ✅ Console shows "[SingletonCleanup] Cleanup complete"
+- ✅ Camera systems running without exceptions
+- ✅ Game View shows rendered scene (not "Display 1 no camera rendering")
+
+TEST AFTER FIXES:
+1. Exit Play Mode
+2. Delete Library/ folder (optional, forces recompile)
+3. Re-enter Play Mode
+4. Check console - should be clean of singleton/job errors
+5. Game View should render scene
+
+
+
+
+
+
+
+

@@ -169,25 +169,6 @@ namespace PureDOTS.Systems
         }
     }
 
-    public partial class HistorySystemGroup
-    {
-        private Stopwatch _timingStopwatch;
-
-        protected override void OnCreate()
-        {
-            base.OnCreate();
-            _timingStopwatch = new Stopwatch();
-        }
-
-        protected override void OnUpdate()
-        {
-            _timingStopwatch.Restart();
-            base.OnUpdate();
-            _timingStopwatch.Stop();
-            SystemGroupInstrumentationUtility.Record(this, _timingStopwatch, FrameTimingGroup.History);
-        }
-    }
-
     public partial class HandSystemGroup
     {
         private Stopwatch _timingStopwatch;
@@ -206,4 +187,5 @@ namespace PureDOTS.Systems
             SystemGroupInstrumentationUtility.Record(this, _timingStopwatch, FrameTimingGroup.Hand);
         }
     }
+
 }

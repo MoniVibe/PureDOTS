@@ -11,6 +11,7 @@
 - **Group-driven execution.** Systems run inside dedicated DOTS ComponentSystemGroups; we never manually tick systems in user code.
 - **Rewind awareness.** Each group honours RewindState.Mode and exposes explicit phases for record/playback/catch-up.
 - **Performance visibility.** Group budgets are defined and enforced; expensive work must be amortised or throttled.
+- **Profile aware.** `SystemRegistry` selects which systems exist per world profile; avoid ad-hoc `World.GetOrCreateSystem` calls outside bootstrap so profile guarantees stay authoritative.
 
 ## Boot Sequence Overview
 1. **Unity Startup**
@@ -19,6 +20,7 @@
 2. **Bootstrap (MonoBehaviour / Subscene Script)**
    - Load ScriptableObject configs (profiles, catalogues).
    - Create BlobAssets (Environment grids, Spatial profiles, Archetype catalogues) and register singleton components.
+   - Resolve active `BootstrapWorldProfile` via `SystemRegistry` (default/headless/replay; override with env var `PURE_DOTS_BOOTSTRAP_PROFILE`).
    - Construct custom system groups (EnvironmentSystemGroup, SpatialSystemGroup, etc.) and insert into update order.
    - Optionally execute one-off jobs (e.g., preloading streaming assets).
 3. **Initialisation Group Phase (InitializationSystemGroup)**
@@ -58,7 +60,8 @@
 - Runs every tick before spatial/gameplay; houses deterministic world-state updates.
 - Expected order:
   1. EnvironmentEffectUpdateSystem (evaluates scalar/vector/pulse effects defined in EnvironmentEffectCatalogData).
-  2. Additional derivations (BiomeDeterminationSystem, rainfall accumulation, etc.) consume the refreshed channels.
+  2. BiomeDerivationSystem repopulates `BiomeGridRuntimeCell` using moisture + temperature fields.
+  3. Additional derivations (rainfall accumulation, etc.) consume the refreshed channels.
 - Group budget: <2 ms aggregated.
 - All systems check RewindState.Mode and skip logic during playback.
 - Effect dispatcher writes additive contributions into channel buffers; consumers must read via EnvironmentSampling helpers to obtain base + contributions without mutating blobs.
@@ -73,6 +76,16 @@
 - Updates SpatialRegistryMetadata each time the grid refreshes so domain registries can cache handles for spatial queries.
 - Systems that consume spatial data should [UpdateAfter(typeof(SpatialSystemGroup))] or execute inside one of its child groups.
 
+### TransportPhaseGroup
+- Manual phase group that aggregates logistics/transport systems between spatial rebuilds and gameplay logic.
+- Runs inside SimulationSystemGroup after `SpatialSystemGroup` and before `GameplaySystemGroup`.
+- Default systems: `LogisticsRequestRegistrySystem` plus game-specific transport registries.
+- Toggle via `ManualPhaseControl.TransportPhaseEnabled`; disabled in headless worlds when transport registries are unnecessary.
+- Frame timing budget: 1.25 ms (tracked as `FrameTimingGroup.Transport`).
+
+### Streaming Section Content
+- `StreamingSectionContentSystem` executes inside RecordSimulation after `StreamingLoaderSystem`. It preloads `StreamingSectionPrefabReference` and `StreamingSectionWeakGameObjectReference` entries while sections are active and releases them when the section unloads. See `Docs/Streaming_Content.md` for authoring flow.
+
 ### GameplaySystemGroup
 - Houses high-level simulation domains and is expected to execute after spatial rebuilds.
 - Sub-groups:
@@ -86,6 +99,13 @@
   - ConstructionSystemGroup
 - Each subgroup respects RewindState and uses double buffering for writes where required.
 - When adding a new domain group, update this truth-source **and** SystemGroups.cs so the ordering remains authoritative.
+
+### CameraPhaseGroup
+- Lives inside `CameraInputSystemGroup` to process camera/input synchronisation ahead of simulation.
+- Empty placeholder until the ECS camera pipeline lands, but already supports toggling/instrumentation.
+- Toggle via `ManualPhaseControl.CameraPhaseEnabled`; disabled by default for headless profiles.
+- Frame timing budget: 0.5 ms (shared with the legacy camera group budget).
+- ECS camera pipeline (`Space4XCameraEcsSystem` + `Space4XCameraRigSyncSystem`) activates when `camera.ecs.enabled` config var is true; otherwise the legacy Mono controller (`Space4XCameraMouseController`) owns the rig.
 
 ### AISystemGroup
 - Runs inside GameplaySystemGroup immediately after spatial rebuilds and before villager/resource domains.
@@ -132,7 +152,9 @@
 
 ### LateSimulationSystemGroup & HistorySystemGroup
 - LateSimulationSystemGroup is marked OrderLast inside simulation and hosts cleanup/state capture.
-- HistorySystemGroup lives within late simulation and records state for rewind playback.
+- HistoryPhaseGroup sits inside late simulation and is toggled via `ManualPhaseControl.HistoryPhaseEnabled`.
+- HistorySystemGroup lives within HistoryPhaseGroup and records state for rewind playback.
+- `PhysicsHistoryCaptureSystem` clones `PhysicsWorldSingleton` each record tick (config: `history.physics.enabled`, `history.physics.length`) ahead of history consumers.
 - Systems emitting history snapshots should either live in HistorySystemGroup or [UpdateBefore(typeof(HistorySystemGroup))] to guarantee ordering.
 - ReplayCaptureSystem executes here to stream recent replay events into tooling (`ReplayCaptureStream`) ahead of presentation/telemetry consumption.
 - MoistureGridTimeAdapterSystem and StorehouseInventoryTimeAdapterSystem snapshot deterministic state for playback/catch-up using the shared `TimeAwareController` contract; extend this pattern for other rewind-sensitive domains.
@@ -142,6 +164,7 @@
 - Accesses read-only data; never mutates simulation state.
 - Guarded by PresentationRewindGuardSystem to pause updates during catch-up rewinds.
 - FrameTimingRecorderSystem runs at the top of this group to gather per-system-group timings, allocation diagnostics, and update telemetry singletons before DebugDisplaySystem reads them.
+- `MaterialOverrideSystem` copies `MaterialColorOverride` / `MaterialEmissionOverride` values into URP material property components, enabling ECS-friendly tint swaps similar to the Entities RenderSwap sample.
 
 ### Rewind Guard Systems
 - EnvironmentRewindGuardSystem, SpatialRewindGuardSystem, GameplayRewindGuardSystem, and PresentationRewindGuardSystem toggle group execution based on RewindState.Mode.
@@ -155,6 +178,9 @@
   - Converted to BlobAssets using burst-friendly bakers; registered as singleton components (ConfigSingleton<T> pattern).
 - **Singleton Registration**
   - TimeState, GameplayFixedStep, RewindState, TerrainVersion, EnvironmentGrids (Moisture/Wind/Temp/Sunlight), SpatialGridState, RegistryState, SpatialRegistryMetadata singletons must exist before the first simulation tick.
+- **Runtime Config**
+  - `RuntimeConfigBootstrapSystem` initialises `RuntimeConfigRegistry`, loads `UserSettings/puredots.cfg`, and spawns the runtime console overlay (toggle `~`).
+  - Config vars marked with `[RuntimeConfigVar]` are authoritative; systems needing live toggles should define a config var instead of custom singletons.
 - **Random Seeds**
   - All random-driven systems draw seeds from SeedCatalog singleton initialised in bootstrap; ensures deterministic replays.
 - **Debug Guards**
@@ -163,10 +189,12 @@
 ## Runtime Rules & Best Practices
 - **No synchronous heavy work in bootstrap.** Any operation >1 ms should move to an async job triggered after the initial frame (e.g., chunked nav mesh builds).
 - **System construction only in bootstrap.** World.GetOrCreateSystem calls are limited to bootstrap/initialisation; avoid dynamic creation mid-game.
+- **Respect world profiles.** Register new systems with appropriate `WorldSystemFilterFlags` so `SystemRegistry` can include/exclude them; update profile inclusions if a system must always exist.
 - **Group-level toggles.** Use custom ComponentSystemGroup toggles (guards) to pause modules cleanly.
 - **History buffers registered early.** If a system needs rewind support, register its history buffers in bootstrap so memory cost is stable.
 - **Order documentation.** Each system must specify UpdateInGroup attributes referencing this truth-source; code comments should link back here.
 - **Burst + Jobs compliance.** All runtime systems targeted at gameplay use Burst and job-friendly patterns; bootstrap remains minimal but can use managed code if needed (only runs once).
+- **Authoring auto-copy helpers.** Use `AuthoringComponentCopyUtility` when authoring data maps 1:1 to runtime structs; it mirrors PascalCase/camelCase serialized fields and reduces bespoke baker boilerplate.
 
 ## Rewind Integration Hooks
 - RewindState singleton drives behaviour: Record, Playback, CatchUp.

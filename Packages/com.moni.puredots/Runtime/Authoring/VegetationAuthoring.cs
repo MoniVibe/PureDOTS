@@ -89,9 +89,10 @@ namespace PureDOTS.Authoring
             }
             else
             {
-                if (!authoring.useCatalog && (authoring.catalog == null || authoring.catalog.species.Count == 0))
+                // Manual mode: warn only if catalog mode was intended but catalog is missing
+                if (authoring.useCatalog && (authoring.catalog == null || authoring.catalog.species.Count == 0))
                 {
-                    Debug.LogWarning($"[VegetationBaker] {authoring.name} is configured for manual species but no catalog entry was supplied. Falling back to slot 0.");
+                    Debug.LogWarning($"[VegetationBaker] {authoring.name} is configured to use catalog but no catalog entry was supplied. Falling back to slot 0.");
                 }
 
                 AddComponent(entity, new VegetationId

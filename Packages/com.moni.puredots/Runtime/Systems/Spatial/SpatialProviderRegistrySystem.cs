@@ -10,7 +10,6 @@ namespace PureDOTS.Systems.Spatial
     /// Runs in InitializationSystemGroup to ensure registry is available before spatial systems need it.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateBefore(typeof(TimeSystemGroup))]
     [BurstCompile]
     public partial struct SpatialProviderRegistrySystem : ISystem
     {

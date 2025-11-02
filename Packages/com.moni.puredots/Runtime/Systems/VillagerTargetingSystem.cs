@@ -58,8 +58,11 @@ namespace PureDOTS.Systems
 
             _transformLookup.Update(ref state);
 
-            NativeArray<ResourceRegistryEntry> resourceEntries = default;
-            NativeArray<StorehouseRegistryEntry> storehouseEntries = default;
+            // Initialize with empty arrays to ensure they're always valid
+            NativeArray<ResourceRegistryEntry> resourceEntries = new NativeArray<ResourceRegistryEntry>(0, Allocator.TempJob);
+            NativeArray<StorehouseRegistryEntry> storehouseEntries = new NativeArray<StorehouseRegistryEntry>(0, Allocator.TempJob);
+            bool disposeResourceEntries = true;
+            bool disposeStorehouseEntries = true;
 
             _resourceEntriesLookup.Update(ref state);
             _storehouseEntriesLookup.Update(ref state);
@@ -68,10 +71,17 @@ namespace PureDOTS.Systems
             if (hasResourceEntries)
             {
                 var resourceEntity = _resourceRegistryQuery.GetSingletonEntity();
-                hasResourceEntries = _resourceEntriesLookup.TryGetBuffer(resourceEntity, out var resourceBuffer) && resourceBuffer.Length > 0;
-                if (hasResourceEntries)
+                if (_resourceEntriesLookup.TryGetBuffer(resourceEntity, out var resourceBuffer) && resourceBuffer.Length > 0)
                 {
+                    hasResourceEntries = true;
+                    // Dispose the empty array and use the buffer's view (buffer owns the memory)
+                    resourceEntries.Dispose();
                     resourceEntries = resourceBuffer.AsNativeArray();
+                    disposeResourceEntries = false; // Don't dispose - buffer owns it
+                }
+                else
+                {
+                    hasResourceEntries = false;
                 }
             }
 
@@ -79,10 +89,17 @@ namespace PureDOTS.Systems
             if (hasStorehouseEntries)
             {
                 var storehouseEntity = _storehouseRegistryQuery.GetSingletonEntity();
-                hasStorehouseEntries = _storehouseEntriesLookup.TryGetBuffer(storehouseEntity, out var storehouseBuffer) && storehouseBuffer.Length > 0;
-                if (hasStorehouseEntries)
+                if (_storehouseEntriesLookup.TryGetBuffer(storehouseEntity, out var storehouseBuffer) && storehouseBuffer.Length > 0)
                 {
+                    hasStorehouseEntries = true;
+                    // Dispose the empty array and use the buffer's view (buffer owns the memory)
+                    storehouseEntries.Dispose();
                     storehouseEntries = storehouseBuffer.AsNativeArray();
+                    disposeStorehouseEntries = false; // Don't dispose - buffer owns it
+                }
+                else
+                {
+                    hasStorehouseEntries = false;
                 }
             }
 
@@ -95,7 +112,20 @@ namespace PureDOTS.Systems
                 HasStorehouseEntries = hasStorehouseEntries
             };
 
-            state.Dependency = job.ScheduleParallel(state.Dependency);
+            var jobHandle = job.ScheduleParallel(state.Dependency);
+            
+            // Dispose arrays after job completes (only if we created empty ones)
+            // Note: Arrays from AsNativeArray() are views owned by buffers, don't dispose those
+            if (disposeResourceEntries)
+            {
+                jobHandle = resourceEntries.Dispose(jobHandle);
+            }
+            if (disposeStorehouseEntries)
+            {
+                jobHandle = storehouseEntries.Dispose(jobHandle);
+            }
+            
+            state.Dependency = jobHandle;
         }
 
         [BurstCompile]

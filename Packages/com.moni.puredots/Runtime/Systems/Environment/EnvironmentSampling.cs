@@ -86,66 +86,139 @@ namespace PureDOTS.Systems.Environment
     /// Convenience helpers for sampling shared environment state from systems without
     /// needing to duplicate singleton lookup boilerplate.
     /// </summary>
-    public static class EnvironmentSampling
+    public struct EnvironmentSampler
     {
-        public static EnvironmentScalarSample SampleMoistureDetailed(float3 worldPosition, float defaultValue = 0f)
+        private EntityManager _entityManager;
+
+        private EntityQuery _moistureGridQuery;
+        private EntityQuery _temperatureGridQuery;
+        private EntityQuery _sunlightGridQuery;
+        private EntityQuery _windFieldQuery;
+        private EntityQuery _biomeGridQuery;
+        private EntityQuery _catalogQuery;
+        private EntityQuery _climateQuery;
+
+        private ComponentLookup<MoistureGrid> _moistureGridLookup;
+        private BufferLookup<MoistureGridRuntimeCell> _moistureRuntimeLookup;
+        private ComponentLookup<TemperatureGrid> _temperatureGridLookup;
+        private ComponentLookup<SunlightGrid> _sunlightGridLookup;
+        private BufferLookup<SunlightGridRuntimeSample> _sunlightRuntimeLookup;
+        private ComponentLookup<WindField> _windFieldLookup;
+        private ComponentLookup<BiomeGrid> _biomeGridLookup;
+        private ComponentLookup<ClimateState> _climateStateLookup;
+
+        private BufferLookup<EnvironmentScalarChannelDescriptor> _scalarDescriptorLookup;
+        private BufferLookup<EnvironmentScalarContribution> _scalarContributionLookup;
+        private BufferLookup<EnvironmentVectorChannelDescriptor> _vectorDescriptorLookup;
+        private BufferLookup<EnvironmentVectorContribution> _vectorContributionLookup;
+
+        public EnvironmentSampler(ref SystemState state)
         {
-            if (!TryGetEntityManager(out var entityManager) || !TryGetSingletonEntity<MoistureGrid>(entityManager, out var gridEntity))
+            _entityManager = state.EntityManager;
+
+            _moistureGridLookup = state.GetComponentLookup<MoistureGrid>(true);
+            _moistureRuntimeLookup = state.GetBufferLookup<MoistureGridRuntimeCell>(true);
+            _temperatureGridLookup = state.GetComponentLookup<TemperatureGrid>(true);
+            _sunlightGridLookup = state.GetComponentLookup<SunlightGrid>(true);
+            _sunlightRuntimeLookup = state.GetBufferLookup<SunlightGridRuntimeSample>(true);
+            _windFieldLookup = state.GetComponentLookup<WindField>(true);
+            _biomeGridLookup = state.GetComponentLookup<BiomeGrid>(true);
+            _climateStateLookup = state.GetComponentLookup<ClimateState>(true);
+
+            _scalarDescriptorLookup = state.GetBufferLookup<EnvironmentScalarChannelDescriptor>(true);
+            _scalarContributionLookup = state.GetBufferLookup<EnvironmentScalarContribution>(true);
+            _vectorDescriptorLookup = state.GetBufferLookup<EnvironmentVectorChannelDescriptor>(true);
+            _vectorContributionLookup = state.GetBufferLookup<EnvironmentVectorContribution>(true);
+
+            _moistureGridQuery = state.GetEntityQuery(ComponentType.ReadOnly<MoistureGrid>());
+            _temperatureGridQuery = state.GetEntityQuery(ComponentType.ReadOnly<TemperatureGrid>());
+            _sunlightGridQuery = state.GetEntityQuery(ComponentType.ReadOnly<SunlightGrid>());
+            _windFieldQuery = state.GetEntityQuery(ComponentType.ReadOnly<WindField>());
+            _biomeGridQuery = state.GetEntityQuery(ComponentType.ReadOnly<BiomeGrid>());
+            _catalogQuery = state.GetEntityQuery(ComponentType.ReadOnly<EnvironmentEffectCatalogData>());
+            _climateQuery = state.GetEntityQuery(ComponentType.ReadOnly<ClimateState>());
+
+            Update(ref state);
+        }
+
+        public void Update(ref SystemState state)
+        {
+            _entityManager = state.EntityManager;
+
+            _moistureGridLookup.Update(ref state);
+            _moistureRuntimeLookup.Update(ref state);
+            _temperatureGridLookup.Update(ref state);
+            _sunlightGridLookup.Update(ref state);
+            _sunlightRuntimeLookup.Update(ref state);
+            _windFieldLookup.Update(ref state);
+            _biomeGridLookup.Update(ref state);
+            _climateStateLookup.Update(ref state);
+
+            _scalarDescriptorLookup.Update(ref state);
+            _scalarContributionLookup.Update(ref state);
+            _vectorDescriptorLookup.Update(ref state);
+            _vectorContributionLookup.Update(ref state);
+        }
+
+        public EnvironmentScalarSample SampleMoistureDetailed(float3 worldPosition, float defaultValue = 0f)
+        {
+            if (!TryGetSingletonEntity(_moistureGridQuery, out var gridEntity))
             {
                 return new EnvironmentScalarSample(defaultValue, 0f);
             }
 
-            var grid = entityManager.GetComponentData<MoistureGrid>(gridEntity);
+            var grid = _moistureGridLookup[gridEntity];
 
             float baseValue;
-            if (entityManager.HasBuffer<MoistureGridRuntimeCell>(gridEntity))
+            if (_moistureRuntimeLookup.HasBuffer(gridEntity))
             {
-                var runtime = entityManager.GetBuffer<MoistureGridRuntimeCell>(gridEntity).AsNativeArray();
+                var runtime = _moistureRuntimeLookup[gridEntity].AsNativeArray();
                 baseValue = EnvironmentGridMath.SampleBilinear(grid.Metadata, runtime, worldPosition, defaultValue);
             }
             else
             {
                 baseValue = grid.SampleBilinear(worldPosition, defaultValue);
             }
-            var contribution = SampleScalarContribution(entityManager, grid.ChannelId, worldPosition, 0f);
+
+            var contribution = SampleScalarContribution(grid.ChannelId, worldPosition, 0f);
             return new EnvironmentScalarSample(baseValue, contribution);
         }
 
-        public static float SampleMoisture(float3 worldPosition, float defaultValue = 0f)
+        public float SampleMoisture(float3 worldPosition, float defaultValue = 0f)
         {
             return SampleMoistureDetailed(worldPosition, defaultValue).Value;
         }
 
-        public static EnvironmentScalarSample SampleTemperatureDetailed(float3 worldPosition, float defaultValue = 0f)
+        public EnvironmentScalarSample SampleTemperatureDetailed(float3 worldPosition, float defaultValue = 0f)
         {
-            if (!TryGetEntityManager(out var entityManager) || !TryGetSingletonEntity<TemperatureGrid>(entityManager, out var gridEntity))
+            if (!TryGetSingletonEntity(_temperatureGridQuery, out var gridEntity))
             {
                 return new EnvironmentScalarSample(defaultValue, 0f);
             }
 
-            var grid = entityManager.GetComponentData<TemperatureGrid>(gridEntity);
+            var grid = _temperatureGridLookup[gridEntity];
             var baseValue = grid.SampleBilinear(worldPosition, defaultValue);
-            var contribution = SampleScalarContribution(entityManager, grid.ChannelId, worldPosition, 0f);
+            var contribution = SampleScalarContribution(grid.ChannelId, worldPosition, 0f);
             return new EnvironmentScalarSample(baseValue, contribution);
         }
 
-        public static float SampleTemperature(float3 worldPosition, float defaultValue = 0f)
+        public float SampleTemperature(float3 worldPosition, float defaultValue = 0f)
         {
             return SampleTemperatureDetailed(worldPosition, defaultValue).Value;
         }
 
-        public static EnvironmentSunlightSample SampleSunlightDetailed(float3 worldPosition, SunlightSample defaultValue = default)
+        public EnvironmentSunlightSample SampleSunlightDetailed(float3 worldPosition, SunlightSample defaultValue = default)
         {
-            if (!TryGetEntityManager(out var entityManager) || !TryGetSingletonEntity<SunlightGrid>(entityManager, out var gridEntity))
+            if (!TryGetSingletonEntity(_sunlightGridQuery, out var gridEntity))
             {
                 return new EnvironmentSunlightSample(defaultValue, default);
             }
 
-            var grid = entityManager.GetComponentData<SunlightGrid>(gridEntity);
+            var grid = _sunlightGridLookup[gridEntity];
             SunlightSample baseSample;
-            if (entityManager.HasBuffer<SunlightGridRuntimeSample>(gridEntity))
+            if (_sunlightRuntimeLookup.HasBuffer(gridEntity))
             {
-                var runtime = entityManager.GetBuffer<SunlightGridRuntimeSample>(gridEntity);
+                var runtime = _sunlightRuntimeLookup[gridEntity];
                 var runtimeSamples = runtime.Reinterpret<SunlightSample>().AsNativeArray();
                 baseSample = EnvironmentGridMath.SampleBilinear(grid.Metadata, runtimeSamples, worldPosition, defaultValue);
             }
@@ -153,7 +226,8 @@ namespace PureDOTS.Systems.Environment
             {
                 baseSample = grid.SampleBilinear(worldPosition, defaultValue);
             }
-            var vectorContribution = SampleVectorContribution(entityManager, grid.ChannelId, worldPosition);
+
+            var vectorContribution = SampleVectorContribution(grid.ChannelId, worldPosition);
             var contributionSample = new SunlightSample
             {
                 DirectLight = vectorContribution.x,
@@ -164,59 +238,91 @@ namespace PureDOTS.Systems.Environment
             return new EnvironmentSunlightSample(baseSample, contributionSample);
         }
 
-        public static SunlightSample SampleSunlight(float3 worldPosition, SunlightSample defaultValue = default)
+        public SunlightSample SampleSunlight(float3 worldPosition, SunlightSample defaultValue = default)
         {
             return SampleSunlightDetailed(worldPosition, defaultValue).Value;
         }
 
-        public static EnvironmentWindSample SampleWindDetailed(float3 worldPosition, WindSample defaultValue = default)
+        public EnvironmentWindSample SampleWindDetailed(float3 worldPosition, WindSample defaultValue = default)
         {
-            if (!TryGetEntityManager(out var entityManager) || !TryGetSingletonEntity<WindField>(entityManager, out var gridEntity))
+            if (!TryGetSingletonEntity(_windFieldQuery, out var gridEntity))
             {
                 return new EnvironmentWindSample(defaultValue, float2.zero, 0f);
             }
 
-            var grid = entityManager.GetComponentData<WindField>(gridEntity);
+            var grid = _windFieldLookup[gridEntity];
             var baseSample = grid.SampleBilinear(worldPosition, defaultValue);
-            var vectorContribution = SampleVectorContribution(entityManager, grid.ChannelId, worldPosition);
+            var vectorContribution = SampleVectorContribution(grid.ChannelId, worldPosition);
             var directionContribution = new float2(vectorContribution.x, vectorContribution.y);
             var strengthContribution = vectorContribution.z;
 
             return new EnvironmentWindSample(baseSample, directionContribution, strengthContribution);
         }
 
-        public static WindSample SampleWind(float3 worldPosition, WindSample defaultValue = default)
+        public WindSample SampleWind(float3 worldPosition, WindSample defaultValue = default)
         {
             return SampleWindDetailed(worldPosition, defaultValue).Value;
         }
 
-        public static BiomeType SampleBiome(float3 worldPosition, BiomeType defaultValue = BiomeType.Unknown)
+        public BiomeType SampleBiome(float3 worldPosition, BiomeType defaultValue = BiomeType.Unknown)
         {
-            if (!TryGetEntityManager(out var entityManager) || !TryGetSingletonEntity<BiomeGrid>(entityManager, out var gridEntity))
+            if (!TryGetSingletonEntity(_biomeGridQuery, out var gridEntity))
             {
                 return defaultValue;
             }
 
-            var grid = entityManager.GetComponentData<BiomeGrid>(gridEntity);
+            var grid = _biomeGridLookup[gridEntity];
             return grid.SampleNearest(worldPosition, defaultValue);
         }
 
-        public static ClimateState GetClimateStateOrDefault()
+        public bool TryGetClimateState(out ClimateState climateState)
         {
-            return TryGetEntityManager(out var entityManager) && TryGetSingletonEntity<ClimateState>(entityManager, out var climateEntity)
-                ? entityManager.GetComponentData<ClimateState>(climateEntity)
-                : default;
+            if (!TryGetSingletonEntity(_climateQuery, out var climateEntity))
+            {
+                climateState = default;
+                return false;
+            }
+
+            climateState = _climateStateLookup[climateEntity];
+            return true;
         }
 
-        private static float SampleScalarContribution(EntityManager entityManager, FixedString64Bytes channelId, float3 worldPosition, float defaultValue)
+        public ClimateState GetClimateStateOrDefault()
         {
-            if (!TryGetSingletonEntity<EnvironmentEffectCatalogData>(entityManager, out var effectEntity))
+            return TryGetClimateState(out var climate) ? climate : default;
+        }
+
+        private bool TryGetSingletonEntity(EntityQuery query, out Entity entity)
+        {
+            if (query.IsEmptyIgnoreFilter)
+            {
+                entity = Entity.Null;
+                return false;
+            }
+
+            entity = query.GetSingletonEntity();
+            return entity != Entity.Null;
+        }
+
+        private float SampleScalarContribution(FixedString64Bytes channelId, float3 worldPosition, float defaultValue)
+        {
+            if (channelId.Length == 0)
             {
                 return defaultValue;
             }
 
-            var descriptors = entityManager.GetBuffer<EnvironmentScalarChannelDescriptor>(effectEntity);
-            var contributions = entityManager.GetBuffer<EnvironmentScalarContribution>(effectEntity).Reinterpret<float>().AsNativeArray();
+            if (!TryGetSingletonEntity(_catalogQuery, out var catalogEntity))
+            {
+                return defaultValue;
+            }
+
+            if (!_scalarDescriptorLookup.HasBuffer(catalogEntity) || !_scalarContributionLookup.HasBuffer(catalogEntity))
+            {
+                return defaultValue;
+            }
+
+            var descriptors = _scalarDescriptorLookup[catalogEntity];
+            var contributions = _scalarContributionLookup[catalogEntity].Reinterpret<float>().AsNativeArray();
 
             for (var i = 0; i < descriptors.Length; i++)
             {
@@ -233,15 +339,25 @@ namespace PureDOTS.Systems.Environment
             return defaultValue;
         }
 
-        private static float3 SampleVectorContribution(EntityManager entityManager, FixedString64Bytes channelId, float3 worldPosition)
+        private float3 SampleVectorContribution(FixedString64Bytes channelId, float3 worldPosition)
         {
-            if (!TryGetSingletonEntity<EnvironmentEffectCatalogData>(entityManager, out var effectEntity))
+            if (channelId.Length == 0)
             {
                 return float3.zero;
             }
 
-            var descriptors = entityManager.GetBuffer<EnvironmentVectorChannelDescriptor>(effectEntity);
-            var contributions = entityManager.GetBuffer<EnvironmentVectorContribution>(effectEntity).Reinterpret<float3>().AsNativeArray();
+            if (!TryGetSingletonEntity(_catalogQuery, out var catalogEntity))
+            {
+                return float3.zero;
+            }
+
+            if (!_vectorDescriptorLookup.HasBuffer(catalogEntity) || !_vectorContributionLookup.HasBuffer(catalogEntity))
+            {
+                return float3.zero;
+            }
+
+            var descriptors = _vectorDescriptorLookup[catalogEntity];
+            var contributions = _vectorContributionLookup[catalogEntity].Reinterpret<float3>().AsNativeArray();
 
             for (var i = 0; i < descriptors.Length; i++)
             {
@@ -257,32 +373,13 @@ namespace PureDOTS.Systems.Environment
 
             return float3.zero;
         }
+    }
 
-        private static bool TryGetEntityManager(out EntityManager entityManager)
+    public static class EnvironmentSampling
+    {
+        public static EnvironmentSampler CreateSampler(ref SystemState state)
         {
-            var world = World.DefaultGameObjectInjectionWorld;
-            if (world == null || !world.IsCreated)
-            {
-                entityManager = default;
-                return false;
-            }
-
-            entityManager = world.EntityManager;
-            return true;
-        }
-
-        private static bool TryGetSingletonEntity<T>(EntityManager entityManager, out Entity entity)
-            where T : unmanaged, IComponentData
-        {
-            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<T>());
-            if (query.IsEmptyIgnoreFilter)
-            {
-                entity = Entity.Null;
-                return false;
-            }
-
-            entity = query.GetSingletonEntity();
-            return entity != Entity.Null;
+            return new EnvironmentSampler(ref state);
         }
     }
 }

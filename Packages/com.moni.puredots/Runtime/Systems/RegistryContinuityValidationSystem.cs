@@ -8,7 +8,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Validates registry spatial continuity against the published spatial sync state and raises alerts when drift is detected.
     /// </summary>
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateInGroup(typeof(ResourceSystemGroup))]
     [UpdateAfter(typeof(RegistryHealthSystem))]
     public partial struct RegistryContinuityValidationSystem : ISystem
     {

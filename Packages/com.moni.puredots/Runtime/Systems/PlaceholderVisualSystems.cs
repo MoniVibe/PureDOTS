@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Rendering;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -104,6 +105,36 @@ namespace PureDOTS.Systems
                 baseColorRef.Value = new float4(rgb, pulseRef.BaseColor.w);
                 ref var emissionRef = ref emissionColor.ValueRW;
                 emissionRef.Value = new float4(rgb, 1f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies simple material overrides to URP material property components.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateAfter(typeof(MiraclePlaceholderPulseSystem))]
+    public partial struct MaterialOverrideSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            if (SystemAPI.TryGetSingleton<RewindState>(out var rewindState) && rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
+            foreach (var (overrideColor, baseColor) in SystemAPI
+                         .Query<RefRO<MaterialColorOverride>, RefRW<URPMaterialPropertyBaseColor>>())
+            {
+                baseColor.ValueRW.Value = overrideColor.ValueRO.Value;
+            }
+
+            foreach (var (overrideEmission, emission) in SystemAPI
+                         .Query<RefRO<MaterialEmissionOverride>, RefRW<URPMaterialPropertyEmissionColor>>())
+            {
+                emission.ValueRW.Value = overrideEmission.ValueRO.Value;
             }
         }
     }

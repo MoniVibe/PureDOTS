@@ -1,0 +1,28 @@
+{
+    "name": "Space4X.Placeholder",
+    "rootNamespace": "Space4X",
+    "references": [
+        "Unity.Entities",
+        "Unity.Entities.Hybrid",
+        "Unity.Mathematics",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Transforms",
+        "Unity.InputSystem",
+        "PureDOTS.Runtime",
+        "PureDOTS.Systems",
+        "PureDOTS.Authoring"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "PUREDOTS_PLACEHOLDER"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
+

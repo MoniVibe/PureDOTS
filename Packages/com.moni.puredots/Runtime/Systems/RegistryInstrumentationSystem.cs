@@ -8,7 +8,6 @@ namespace PureDOTS.Systems
     /// Produces per-registry instrumentation samples for debug HUDs and telemetry bridges.
     /// </summary>
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-    [UpdateAfter(typeof(RegistryContinuityValidationSystem))]
     public partial struct RegistryInstrumentationSystem : ISystem
     {
         private ComponentLookup<RegistryMetadata> _metadataLookup;

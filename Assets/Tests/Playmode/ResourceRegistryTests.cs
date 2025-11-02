@@ -53,7 +53,7 @@ namespace PureDOTS.Tests.Playmode
         public System.Collections.IEnumerator ResourceRegistry_CreatesSingleton()
         {
             // Create resource type catalog
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             // Create a resource source
             var resourceEntity = _entityManager.CreateEntity();
@@ -248,11 +248,11 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
 
             // Create resources
-            var woodResource = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(woodResource, new ResourceTypeId { Value = "Wood" });
-            _entityManager.AddComponentData(woodResource, new ResourceSourceConfig());
-            _entityManager.AddComponentData(woodResource, new ResourceSourceState { UnitsRemaining = 100f });
-            _entityManager.AddComponentData(woodResource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
+            var ironResource = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(ironResource, new ResourceTypeId { Value = "iron_ore" });
+            _entityManager.AddComponentData(ironResource, new ResourceSourceConfig());
+            _entityManager.AddComponentData(ironResource, new ResourceSourceState { UnitsRemaining = 100f });
+            _entityManager.AddComponentData(ironResource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
 
             yield return null;
 
@@ -261,16 +261,16 @@ namespace PureDOTS.Tests.Playmode
             var entries = _entityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
             Assert.Greater(entries.Length, 0);
 
-            // Filter for wood type (index 0)
-            int woodCount = 0;
+            // Filter for iron ore type (index 0)
+            int ironCount = 0;
             for (int i = 0; i < entries.Length; i++)
             {
                 if (entries[i].ResourceTypeIndex == 0)
                 {
-                    woodCount++;
+                    ironCount++;
                 }
             }
-            Assert.AreEqual(1, woodCount);
+            Assert.AreEqual(1, ironCount);
         }
 
         private void ConfigureSpatialGrid(uint version)
@@ -298,7 +298,7 @@ namespace PureDOTS.Tests.Playmode
         public System.Collections.IEnumerator ResourceRegistry_TracksActiveResources()
         {
             // Setup catalog
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             var timeEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
@@ -308,14 +308,14 @@ namespace PureDOTS.Tests.Playmode
 
             // Create active resource
             var activeResource = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(activeResource, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(activeResource, new ResourceTypeId { Value = "iron_ore" });
             _entityManager.AddComponentData(activeResource, new ResourceSourceConfig());
             _entityManager.AddComponentData(activeResource, new ResourceSourceState { UnitsRemaining = 50f });
             _entityManager.AddComponentData(activeResource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });
 
             // Create depleted resource
             var depletedResource = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(depletedResource, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(depletedResource, new ResourceTypeId { Value = "iron_ore" });
             _entityManager.AddComponentData(depletedResource, new ResourceSourceConfig());
             _entityManager.AddComponentData(depletedResource, new ResourceSourceState { UnitsRemaining = 0f });
             _entityManager.AddComponentData(depletedResource, new LocalTransform { Position = new float3(10, 0, 0), Rotation = quaternion.identity, Scale = 1f });
@@ -330,7 +330,7 @@ namespace PureDOTS.Tests.Playmode
         [UnityTest]
         public System.Collections.IEnumerator ResourceRegistry_ConsoleInstrumentation_LogsSummary()
         {
-            CreateResourceTypeCatalog("Wood");
+            CreateResourceTypeCatalog("iron_ore");
 
             var timeEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(timeEntity, new TimeState { Tick = 0, IsPaused = false, FixedDeltaTime = 0.016f });
@@ -339,7 +339,7 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(rewindEntity, new RewindState { Mode = RewindMode.Record });
 
             var resource = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(resource, new ResourceTypeId { Value = "Wood" });
+            _entityManager.AddComponentData(resource, new ResourceTypeId { Value = "iron_ore" });
             _entityManager.AddComponentData(resource, new ResourceSourceConfig());
             _entityManager.AddComponentData(resource, new ResourceSourceState { UnitsRemaining = 25f });
             _entityManager.AddComponentData(resource, new LocalTransform { Position = float3.zero, Rotation = quaternion.identity, Scale = 1f });

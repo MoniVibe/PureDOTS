@@ -1,11 +1,13 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace PureDOTS.Systems
 {
@@ -21,6 +23,7 @@ namespace PureDOTS.Systems
             EnsureEventStream(entityManager);
             EnsureRequestQueue(entityManager);
             EnsureDeliveryQueue(entityManager);
+            EnsureDiagnostics(entityManager);
 
             state.Enabled = false;
         }
@@ -86,6 +89,16 @@ namespace PureDOTS.Systems
                 {
                     entityManager.AddBuffer<VillagerJobDeliveryCommand>(entity);
                 }
+            }
+        }
+
+        private static void EnsureDiagnostics(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<VillagerJobDiagnostics>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(VillagerJobDiagnostics));
+                entityManager.SetComponentData(entity, default(VillagerJobDiagnostics));
             }
         }
     }
@@ -526,6 +539,11 @@ namespace PureDOTS.Systems
 
             var entry = entries[entryIndex];
             if (entry.UnitsRemaining <= 0f)
+            {
+                return;
+            }
+
+            if (entry.Tier != ResourceTier.Raw)
             {
                 return;
             }
@@ -1412,6 +1430,78 @@ namespace PureDOTS.Systems
                 }
             }
             return -1;
+        }
+    }
+
+    [BurstCompile]
+    [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
+    [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
+    public partial struct VillagerJobDiagnosticsSystem : ISystem
+    {
+        private EntityQuery _jobQuery;
+        private EntityQuery _ticketQuery;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _jobQuery = SystemAPI.QueryBuilder().WithAll<VillagerJob>().WithNone<PlaybackGuardTag>().Build();
+            _ticketQuery = SystemAPI.QueryBuilder().WithAll<VillagerJobTicket>().WithNone<PlaybackGuardTag>().Build();
+
+            state.RequireForUpdate<VillagerJobDiagnostics>();
+            state.RequireForUpdate<VillagerJobRequestQueue>();
+            state.RequireForUpdate<TimeState>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            var diagnosticsEntity = SystemAPI.GetSingletonEntity<VillagerJobDiagnostics>();
+            var diagnostics = SystemAPI.GetComponentRW<VillagerJobDiagnostics>(diagnosticsEntity);
+
+            var totalVillagers = _jobQuery.CalculateEntityCount();
+            var idleVillagers = 0;
+            var assignedVillagers = 0;
+
+            foreach (var job in SystemAPI.Query<RefRO<VillagerJob>>().WithNone<PlaybackGuardTag>())
+            {
+                if (job.ValueRO.Type == VillagerJob.JobType.None || job.ValueRO.Phase == VillagerJob.JobPhase.Idle)
+                {
+                    idleVillagers++;
+                }
+                else
+                {
+                    assignedVillagers++;
+                }
+            }
+
+            var requestEntity = SystemAPI.GetSingletonEntity<VillagerJobRequestQueue>();
+            var requests = state.EntityManager.GetBuffer<VillagerJobRequest>(requestEntity);
+            var pendingRequests = requests.Length;
+
+            var activeTickets = 0;
+            foreach (var ticket in SystemAPI.Query<RefRO<VillagerJobTicket>>().WithNone<PlaybackGuardTag>())
+            {
+                if (ticket.ValueRO.JobType != VillagerJob.JobType.None && ticket.ValueRO.ResourceEntity != Entity.Null)
+                {
+                    activeTickets++;
+                }
+            }
+
+            diagnostics.ValueRW = new VillagerJobDiagnostics
+            {
+                Frame = (uint)UnityEngine.Time.frameCount,
+                TotalVillagers = totalVillagers,
+                IdleVillagers = idleVillagers,
+                AssignedVillagers = assignedVillagers,
+                PendingRequests = pendingRequests,
+                ActiveTickets = activeTickets
+            };
         }
     }
 }

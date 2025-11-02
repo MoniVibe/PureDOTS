@@ -11,10 +11,11 @@ namespace PureDOTS.Systems
 {
     /// <summary>
     /// Builds the logistics request registry each frame for deterministic discovery.
+    /// Runs after spatial systems to ensure spatial data is available.
+    /// Note: Game-specific transport registry systems (e.g., TransportRegistrySystem in Space4X) should run after this system.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(TransportRegistrySystem))]
+    [UpdateInGroup(typeof(TransportPhaseGroup))]
     public partial struct LogisticsRequestRegistrySystem : ISystem
     {
         private EntityQuery _requestQuery;

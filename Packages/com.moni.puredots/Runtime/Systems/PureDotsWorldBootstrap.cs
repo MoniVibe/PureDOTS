@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace PureDOTS.Systems
@@ -10,70 +11,86 @@ namespace PureDOTS.Systems
     /// </summary>
     public sealed class PureDotsWorldBootstrap : ICustomBootstrap
     {
+        private static readonly ProfilerMarker InitializeMarker = new("PureDOTS.Bootstrap.Initialize");
+        private static readonly ProfilerMarker ConfigureGroupsMarker = new("PureDOTS.Bootstrap.ConfigureRootGroups");
+        private static readonly ProfilerMarker MaterializeGroupsMarker = new("PureDOTS.Bootstrap.MaterializeGroups");
+
         public bool Initialize(string defaultWorldName)
         {
-            // Always run a single game world for now; presentation happens through system groups.
-            var world = new World(defaultWorldName, WorldFlags.Game);
-            World.DefaultGameObjectInjectionWorld = world;
-
-            // Pull every auto-created system (including editor/scene streaming helpers) into the world.
-            var systems = DefaultWorldInitialization.GetAllSystems(
-                WorldSystemFilterFlags.Default |
-                WorldSystemFilterFlags.Editor |
-                WorldSystemFilterFlags.Streaming |
-                WorldSystemFilterFlags.ProcessAfterLoad |
-                WorldSystemFilterFlags.EntitySceneOptimizations);
-
-            DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, systems);
-
-            // Align fixed-step timing with the simulation tick assumptions.
-            if (world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>() is { } fixedStepGroup)
+            using (InitializeMarker.Auto())
             {
-                fixedStepGroup.Timestep = 1f / 60f;
+                var profile = SystemRegistry.ResolveActiveProfile();
+
+                var world = new World(defaultWorldName, WorldFlags.Game);
+                World.DefaultGameObjectInjectionWorld = world;
+
+                var systems = SystemRegistry.GetSystems(profile);
+                DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, systems);
+
+                if (world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>() is { } fixedStepGroup)
+                {
+                    fixedStepGroup.Timestep = 1f / 60f;
+                }
+
+                ConfigureRootGroups(world);
+
+                using (MaterializeGroupsMarker.Auto())
+                {
+                    var cameraInputGroup = world.GetOrCreateSystemManaged<CameraInputSystemGroup>();
+                    var cameraPhaseGroup = world.GetOrCreateSystemManaged<CameraPhaseGroup>();
+                    var environmentGroup = world.GetOrCreateSystemManaged<EnvironmentSystemGroup>();
+                    var spatialGroup = world.GetOrCreateSystemManaged<SpatialSystemGroup>();
+                    var gameplayGroup = world.GetOrCreateSystemManaged<GameplaySystemGroup>();
+                    var transportPhaseGroup = world.GetOrCreateSystemManaged<TransportPhaseGroup>();
+                    var historyPhaseGroup = world.GetOrCreateSystemManaged<HistoryPhaseGroup>();
+
+                    world.GetOrCreateSystemManaged<TimeSystemGroup>();
+                    world.GetOrCreateSystemManaged<VillagerSystemGroup>();
+                    world.GetOrCreateSystemManaged<ResourceSystemGroup>();
+                    world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
+                    world.GetOrCreateSystemManaged<CombatSystemGroup>();
+                    world.GetOrCreateSystemManaged<HandSystemGroup>();
+                    world.GetOrCreateSystemManaged<VegetationSystemGroup>();
+                    world.GetOrCreateSystemManaged<ConstructionSystemGroup>();
+                    world.GetOrCreateSystemManaged<HistorySystemGroup>();
+
+                    cameraInputGroup.SortSystems();
+                    cameraPhaseGroup.SortSystems();
+                    environmentGroup.SortSystems();
+                    spatialGroup.SortSystems();
+                    transportPhaseGroup.SortSystems();
+                    gameplayGroup.SortSystems();
+                    historyPhaseGroup.SortSystems();
+                }
+
+                ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);
+
+                Debug.Log($"[PureDotsWorldBootstrap] DOTS world initialized with profile '{profile.DisplayName}' ({profile.Id}).");
             }
 
-            // Force creation of our custom groups early so ordering attributes are respected.
-            ConfigureRootGroups(world);
-            var environmentGroup = world.GetOrCreateSystemManaged<EnvironmentSystemGroup>();
-            var spatialGroup = world.GetOrCreateSystemManaged<SpatialSystemGroup>();
-            var gameplayGroup = world.GetOrCreateSystemManaged<GameplaySystemGroup>();
-
-            world.GetOrCreateSystemManaged<TimeSystemGroup>();
-            world.GetOrCreateSystemManaged<VillagerSystemGroup>();
-            world.GetOrCreateSystemManaged<ResourceSystemGroup>();
-            world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
-            world.GetOrCreateSystemManaged<CombatSystemGroup>();
-            world.GetOrCreateSystemManaged<HandSystemGroup>();
-            world.GetOrCreateSystemManaged<VegetationSystemGroup>();
-            world.GetOrCreateSystemManaged<ConstructionSystemGroup>();
-            world.GetOrCreateSystemManaged<HistorySystemGroup>();
-
-            environmentGroup.SortSystems();
-            spatialGroup.SortSystems();
-            gameplayGroup.SortSystems();
-
-            // Make sure everything ends up in the player loop.
-            ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);
-
-            Debug.Log("[PureDotsWorldBootstrap] Default DOTS world initialized.");
             return true;
         }
 
         private static void ConfigureRootGroups(World world)
         {
-            var initializationGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
-            initializationGroup.SortSystems();
-
-            if (world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>() is { } fixedStepGroup)
+            using (ConfigureGroupsMarker.Auto())
             {
-                fixedStepGroup.SortSystems();
+                var initializationGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
+                initializationGroup.SortSystems();
+
+                if (world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>() is { } fixedStepGroup)
+                {
+                    fixedStepGroup.SortSystems();
+                }
+
+                var simulationGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();
+                simulationGroup.SortSystems();
+
+                if (world.GetExistingSystemManaged<PresentationSystemGroup>() is { } presentationGroup)
+                {
+                    presentationGroup.SortSystems();
+                }
             }
-
-            var simulationGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();
-            simulationGroup.SortSystems();
-
-            var presentationGroup = world.GetOrCreateSystemManaged<PresentationSystemGroup>();
-            presentationGroup.SortSystems();
         }
     }
 }

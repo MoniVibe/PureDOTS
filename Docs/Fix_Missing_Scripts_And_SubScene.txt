@@ -1,0 +1,81 @@
+TASK: Fix Missing Script References and SubScene Link
+
+ISSUES IDENTIFIED:
+
+1. ✅ FIXED: SubScene GUID Mismatch
+   - SubScene was pointing to wrong GUID (e79f3a924132fcf40a3afdb1fd451bca)
+   - Updated to correct GUID: 106a2d17480e4f49a581c054882707df (GameEntities.unity)
+   - Fixed _SceneAsset and _SceneGUID values
+
+2. ⚠️ NEEDS MANUAL FIX: Missing Script References on Main Camera
+   - Components at index 3 and 4 are missing scripts
+   - This happens when MonoBehaviours are deleted but references remain
+   - Unity Editor will need to clean these up
+
+REQUIRED ACTIONS:
+
+A. REMOVE MISSING SCRIPT REFERENCES FROM MAIN CAMERA:
+   Option 1 (Recommended - Manual):
+   1. Select "Main Camera" GameObject in Hierarchy
+   2. In Inspector, you'll see "Missing (Mono Script)" components
+   3. Click the three dots (⋮) next to each missing script
+   4. Select "Remove Component"
+   
+   Option 2 (MCP):
+   - Use manage_gameobject get_components "Main Camera"
+   - Identify which components have missing scripts
+   - Use manage_gameobject remove_component to remove them
+
+B. VERIFY SUBSCENE LINK IS FIXED:
+   1. Select "New Sub Scene" GameObject in Hierarchy
+   2. In Inspector, check SubScene component
+   3. "Scene Asset" should point to "GameEntities" (not empty or wrong scene)
+   4. If still broken, manually assign: Assets/Scenes/GameEntities.unity
+
+C. ADDRESS AUTHORING WARNINGS (Optional but Recommended):
+   1. VillagerSpawnerAuthoring warnings:
+      - Find VillagerSpawner GameObjects in scene
+      - Assign villager prefab to the "Villager Prefab" field
+      - OR remove VillagerSpawnerAuthoring if not needed
+   
+   2. SpatialPartitionAuthoring warnings:
+      - Find GameObjects with SpatialPartitionAuthoring
+      - Assign a SpatialPartitionProfile asset
+      - OR remove component if not needed
+
+MCP TOOLS TO USE:
+- manage_gameobject get_components "Main Camera" (check for missing scripts)
+- manage_gameobject remove_component (remove missing script components)
+- manage_scene get_hierarchy (verify subscene link)
+
+MANUAL STEPS IF MCP CAN'T REMOVE MISSING SCRIPTS:
+1. In Unity Editor:
+   - Select Main Camera in Hierarchy
+   - Inspector shows missing script components
+   - Right-click each "Missing (Mono Script)" → Remove Component
+   - OR: Right-click GameObject → Remove Component → select missing script
+
+2. Fix SubScene link:
+   - Select "New Sub Scene" GameObject
+   - In SubScene component, click the circle icon next to "Scene Asset"
+   - Navigate to Assets/Scenes/GameEntities.unity
+   - Assign it
+
+SUCCESS CRITERIA:
+- ✅ No "The referenced script is missing" warnings
+- ✅ SubScene component points to GameEntities.unity
+- ✅ No "Loading Entity Scene failed" errors
+- ✅ Subscene loads and bakes correctly
+
+AFTER FIXES:
+1. The subscene should now load properly
+2. GameObjects in subscene should bake into entities
+3. Console should show entities being created (vessels, villagers, resources)
+
+
+
+
+
+
+
+

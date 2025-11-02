@@ -1,0 +1,63 @@
+TASK: Fix "Display 1 No Camera Rendering" - Configure Main Camera Component
+
+CURRENT STATUS:
+- ✅ Main Camera GameObject EXISTS in main scene (created via menu)
+- ✅ Position: (0, 15, -20), Rotation: (60, 0, 0)
+- ✅ Tag: "MainCamera"
+- ❌ Camera component may not be configured correctly (needs enabled=true, depth=0)
+
+REQUIRED ACTION:
+1. VERIFY Main Camera is in MAIN SCENE (not subscene):
+   - Use manage_gameobject find by_name "Main Camera"
+   - Verify scenePath is "Assets/Scenes/SpawnerDemoScene.unity/SpawnerDemoScene.unity" (NOT subscene)
+   - If in subscene, move to main scene
+
+2. CONFIGURE Camera component (CRITICAL):
+   - Use manage_gameobject get_components "Main Camera" to check Camera component
+   - Use manage_gameobject set_component_property to set:
+     * enabled: true (MUST be true)
+     * depth: 0 (MUST be 0 for main camera)
+     * clearFlags: 1 (SolidColor)
+     * backgroundColor: {"r": 0.3, "g": 0.5, "b": 0.7, "a": 1}
+     * fieldOfView: 60
+     * nearClipPlane: 0.3
+     * farClipPlane: 1000
+   
+   IMPORTANT: Use valid JSON format:
+   {"enabled": true, "depth": 0, "clearFlags": 1, "backgroundColor": {"r": 0.3, "g": 0.5, "b": 0.7, "a": 1}, "fieldOfView": 60, "nearClipPlane": 0.3, "farClipPlane": 1000}
+
+3. CHECK FOR SUBSCENE CAMERA (if exists):
+   - Open subscene "New Sub Scene.unity"
+   - Delete the Main Camera GameObject from subscene
+   - OR disable its Camera component
+
+4. VERIFY Rendering:
+   - Enter Play Mode
+   - Game View should show rendered scene (not black/gray)
+   - Console should show: "[Space4XCameraRenderSyncSystem] Found/Created Main Camera"
+
+MCP TOOLS TO USE:
+- manage_gameobject create (with position, rotation, tag)
+- manage_gameobject add_component (Camera component)
+- manage_gameobject set_component_property (configure Camera settings)
+- manage_scene get_hierarchy (verify Main Camera is in main scene)
+
+IF MCP CAN'T CREATE IN MAIN SCENE:
+- Use Unity Editor:
+  1. Select root of Hierarchy (main scene level)
+  2. Right-click → Camera
+  3. Rename to "Main Camera"
+  4. Set Tag to "MainCamera"
+  5. Position: (0, 15, -20), Rotation: (60, 0, 0)
+  6. In Camera component: Depth=0, Enabled=true
+
+SUCCESS CRITERIA:
+- ✅ Main Camera GameObject exists in MAIN SCENE (not subscene)
+- ✅ Camera component enabled=true, depth=0
+- ✅ Game View shows rendered scene in Play Mode
+- ✅ Console shows camera found/syncing messages
+- ✅ No "Display 1 no camera rendering" message
+
+WHY THIS IS CRITICAL:
+Unity SubScenes are for baking GameObjects into DOTS entities. Cameras should remain in the main scene to render the view. A camera in a subscene won't render in the main scene view, causing "no camera rendering" errors.
+

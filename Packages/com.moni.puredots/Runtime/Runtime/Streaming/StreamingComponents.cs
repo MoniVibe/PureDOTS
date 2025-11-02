@@ -1,7 +1,14 @@
 using System;
 using Unity.Collections;
 using Unity.Entities;
+#if ENABLE_ENTITIES_CONTENT
+using Unity.Entities.Content;
+#endif
 using Unity.Mathematics;
+using Unity.Scenes;
+#if ENABLE_ENTITIES_CONTENT
+using UnityEngine;
+#endif
 
 namespace PureDOTS.Runtime.Streaming
 {
@@ -18,7 +25,7 @@ namespace PureDOTS.Runtime.Streaming
     public struct StreamingSectionDescriptor : IComponentData
     {
         public FixedString64Bytes Identifier;
-        public Hash128 SceneGuid;
+        public Unity.Entities.Hash128 SceneGuid;
         public float3 Center;
         public float EnterRadius;
         public float ExitRadius;
@@ -154,4 +161,25 @@ namespace PureDOTS.Runtime.Streaming
     {
         public bool UseTransform;
     }
+
+#if ENABLE_ENTITIES_CONTENT
+    /// <summary>
+    /// Prefab reference that should stay warm while the owning streaming section is active.
+    /// </summary>
+    public struct StreamingSectionPrefabReference : IBufferElementData
+    {
+        public EntityPrefabReference Prefab;
+        public Entity PrefabSceneEntity;
+    }
+#endif
+
+#if ENABLE_ENTITIES_CONTENT
+    /// <summary>
+    /// Weak object reference that should be loaded while the section is active.
+    /// </summary>
+    public struct StreamingSectionWeakGameObjectReference : IBufferElementData
+    {
+        public WeakObjectReference<GameObject> Reference;
+    }
+#endif
 }

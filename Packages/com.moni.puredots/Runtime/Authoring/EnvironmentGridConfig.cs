@@ -14,6 +14,7 @@ namespace PureDOTS.Authoring
     public sealed class EnvironmentGridConfig : ScriptableObject
     {
         public const int LatestSchemaVersion = 1;
+        private const bool BiomeGridRuntimeSupport = false;
 
         [SerializeField, HideInInspector]
         private int _schemaVersion = LatestSchemaVersion;
@@ -66,6 +67,15 @@ namespace PureDOTS.Authoring
 
         public EnvironmentGridConfigData ToComponent()
         {
+            var biomeEnabled = _biome.Enabled && BiomeGridRuntimeSupport;
+
+#if UNITY_EDITOR
+            if (_biome.Enabled && !BiomeGridRuntimeSupport)
+            {
+                Debug.LogWarning("EnvironmentGridConfig: biome grid authoring is available for previews, but runtime support is disabled until BiomeDeterminationSystem ships. The biome channel will be ignored.", this);
+            }
+#endif
+
             return new EnvironmentGridConfigData
             {
                 Moisture = _moisture.ToMetadata(),
@@ -73,7 +83,7 @@ namespace PureDOTS.Authoring
                 Sunlight = _sunlight.ToMetadata(),
                 Wind = _wind.ToMetadata(),
                 Biome = _biome.ToMetadata(),
-                BiomeEnabled = _biome.Enabled ? (byte)1 : (byte)0,
+                BiomeEnabled = biomeEnabled ? (byte)1 : (byte)0,
                 MoistureChannelId = ToFixedString(_moistureChannelId, "moisture"),
                 TemperatureChannelId = ToFixedString(_temperatureChannelId, "temperature"),
                 SunlightChannelId = ToFixedString(_sunlightChannelId, "sunlight"),

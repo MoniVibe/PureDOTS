@@ -58,11 +58,20 @@ namespace PureDOTS.Authoring
         public override void Bake(ResourceSourceAuthoring authoring)
         {
             var entity = GetEntity(authoring, TransformUsageFlags.Dynamic);
+#if UNITY_EDITOR
+            Debug.Log($"[ResourceSourceBaker] Baking '{authoring.name}' (resourceTypeId='{authoring.resourceTypeId}', initialUnits={authoring.initialUnits})", authoring);
+#endif
             var resourceType = ToFixedString(authoring.resourceTypeId);
             if (!resourceType.IsEmpty)
             {
                 AddComponent(entity, new ResourceTypeId { Value = resourceType });
             }
+#if UNITY_EDITOR
+            else
+            {
+                Debug.LogWarning($"[ResourceSourceBaker] '{authoring.name}' has empty resourceTypeId; ResourceTypeId component not added.", authoring);
+            }
+#endif
 
             byte flags = 0;
             if (authoring.infinite) flags |= ResourceSourceConfig.FlagInfinite;
@@ -92,6 +101,9 @@ namespace PureDOTS.Authoring
                 OverrideStrideSeconds = 0f
             });
             AddBuffer<ResourceHistorySample>(entity);
+#if UNITY_EDITOR
+            Debug.Log($"[ResourceSourceBaker] Completed baking '{authoring.name}' -> Entity {entity.Index}:{entity.Version}", authoring);
+#endif
 
             static FixedString64Bytes ToFixedString(string value)
             {

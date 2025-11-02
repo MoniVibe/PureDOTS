@@ -3,6 +3,8 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Assertions;
+using UnityEngine;
 
 namespace PureDOTS.Systems.Environment
 {
@@ -23,25 +25,40 @@ namespace PureDOTS.Systems.Environment
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var entityManager = state.EntityManager;
             var entity = SystemAPI.GetSingletonEntity<EnvironmentEffectCatalogData>();
-            var catalog = SystemAPI.GetSingleton<EnvironmentEffectCatalogData>().Catalog;
+            var catalogReference = SystemAPI.GetSingleton<EnvironmentEffectCatalogData>().Catalog;
 
-            if (!state.EntityManager.HasBuffer<EnvironmentEffectRuntime>(entity))
+            if (!catalogReference.IsCreated)
             {
-                var runtimeBuffer = state.EntityManager.AddBuffer<EnvironmentEffectRuntime>(entity);
-                runtimeBuffer.ResizeUninitialized(catalog.Value.Effects.Length);
-                for (var i = 0; i < runtimeBuffer.Length; i++)
-                {
-                    runtimeBuffer[i] = new EnvironmentEffectRuntime { LastUpdateTick = uint.MaxValue };
-                }
+                Debug.LogWarning("EnvironmentEffectBootstrapSystem: EnvironmentEffectCatalogData has no blob asset; skipping bootstrap.");
+                state.Enabled = false;
+                return;
             }
 
-            if (!state.EntityManager.HasBuffer<EnvironmentEventPulse>(entity))
+            ref var catalog = ref catalogReference.Value;
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            ValidateCatalog(ref catalog);
+#endif
+
+            var runtimeBuffer = entityManager.HasBuffer<EnvironmentEffectRuntime>(entity)
+                ? entityManager.GetBuffer<EnvironmentEffectRuntime>(entity)
+                : entityManager.AddBuffer<EnvironmentEffectRuntime>(entity);
+
+            var effectCount = catalog.Effects.Length;
+            runtimeBuffer.ResizeUninitialized(effectCount);
+            for (var i = 0; i < effectCount; i++)
             {
-                state.EntityManager.AddBuffer<EnvironmentEventPulse>(entity);
+                runtimeBuffer[i] = new EnvironmentEffectRuntime { LastUpdateTick = uint.MaxValue };
             }
 
-            EnsureChannelDescriptors(ref state, entity, catalog);
+            if (!entityManager.HasBuffer<EnvironmentEventPulse>(entity))
+            {
+                entityManager.AddBuffer<EnvironmentEventPulse>(entity);
+            }
+
+            EnsureChannelDescriptors(ref state, entity, catalogReference);
 
             state.Enabled = false;
         }
@@ -162,5 +179,39 @@ namespace PureDOTS.Systems.Environment
 
             offset += length;
         }
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+        private static void ValidateCatalog(ref EnvironmentEffectCatalogBlob catalog)
+        {
+            var scalarCount = catalog.ScalarParameters.Length;
+            var vectorCount = catalog.VectorParameters.Length;
+            var pulseCount = catalog.PulseParameters.Length;
+            var effectCount = catalog.Effects.Length;
+
+            Assert.IsTrue(scalarCount + vectorCount + pulseCount == effectCount);
+
+            for (var i = 0; i < effectCount; i++)
+            {
+                ref var definition = ref catalog.Effects[i];
+                switch (definition.Type)
+                {
+                    case EnvironmentEffectType.ScalarField:
+                        Assert.IsTrue(definition.ParameterIndex < scalarCount);
+                        break;
+                    case EnvironmentEffectType.VectorField:
+                        Assert.IsTrue(definition.ParameterIndex < vectorCount);
+                        break;
+                    case EnvironmentEffectType.EventPulse:
+                        Assert.IsTrue(definition.ParameterIndex < pulseCount);
+                        break;
+                    default:
+                        Assert.IsTrue(false);
+                        break;
+                }
+
+                Assert.IsTrue(definition.UpdateStride > 0u);
+            }
+        }
+#endif
     }
 }

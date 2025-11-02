@@ -41,6 +41,7 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpatialSystemGroup))]
+    [UpdateAfter(typeof(TransportPhaseGroup))]
     public partial class GameplaySystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -48,7 +49,7 @@ namespace PureDOTS.Systems
     /// Runs after simulation to capture state.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateInGroup(typeof(HistoryPhaseGroup))]
     public partial class HistorySystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -110,6 +111,14 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
     public partial class ConstructionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// High-priority system group for camera input and control.
+    /// Runs FIRST in SimulationSystemGroup to ensure real-time, responsive input processing.
+    /// This ensures camera controls have absolute priority and are never queued behind other systems.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    public partial class CameraInputSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
     /// Late simulation group for cleanup and state recording.

@@ -87,4 +87,14 @@ namespace PureDOTS.Runtime.Components
         public float Amount;
         public uint TicketId;
     }
+
+    public struct VillagerJobDiagnostics : IComponentData
+    {
+        public uint Frame;
+        public int TotalVillagers;
+        public int IdleVillagers;
+        public int AssignedVillagers;
+        public int PendingRequests;
+        public int ActiveTickets;
+    }
 }

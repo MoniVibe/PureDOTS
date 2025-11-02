@@ -1,0 +1,92 @@
+TASK: Fix SubScene link and verify GameObjects are being baked into DOTS entities
+
+CURRENT SITUATION - CRITICAL ISSUE:
+- ✅ SubScene component IS linked to GameEntities.unity (fixed in file)
+- ❌ GameEntities.unity file is EMPTY - contains NO GameObjects
+- ❌ GameObjects are still in main scene (SpawnerDemoScene.unity), NOT in subscene file
+- ❌ Console shows: "GameObjects aren't in a subscene (must be in subscene for DOTS baking)"
+- ❌ PROBLEM: Zero entities created - Vessels=0, Villagers=0, Resources=0, Carriers=0
+
+ROOT CAUSE:
+Unity SubScenes require GameObjects to be INSIDE the subscene file (.unity), not just parented to a GameObject with a SubScene component. Parented GameObjects stay in the main scene and won't be baked.
+
+REQUIRED ACTION - CRITICAL (GAMEOBJECTS MUST BE IN SUBSCENE FILE):
+
+OPTION 1: Use Unity Editor "Create SubScene from Selection" (RECOMMENDED):
+1. In Unity Editor, select ALL GameObjects that need to be baked:
+   - Carrier (and its children MiningVessel1, MiningVessel2)
+   - ResourceNode_Wood1, ResourceNode_Wood2, ResourceNode_Wood3
+   - OreNode1, OreNode2
+   - Asteroid_Ore1, Asteroid_Ore2, Asteroid_Ore3
+   - Storehouse
+   - Villager GameObjects (if they exist in scene)
+2. Right-click selected GameObjects → "New Sub Scene" → "From Selection"
+3. Unity will create a new subscene and AUTOMATICALLY move GameObjects into it
+4. Delete old GameEntities_SubScene GameObject if it exists
+5. The new subscene GameObject will have SubScene component automatically linked
+
+OPTION 2: Manually Move GameObjects to Existing SubScene:
+1. Open GameEntities.unity subscene file (double-click in Project window)
+2. Drag GameObjects from main scene Hierarchy into the subscene Hierarchy
+3. Save the subscene file
+4. Close subscene, return to main scene
+5. Verify SubScene component on GameEntities_SubScene is linked
+
+OPTION 3: Use Unity MCP (if available):
+- Use manage_prefabs or manage_scene to move GameObjects
+- Or find GameObjects, get their paths, copy to subscene file manually
+
+VERIFY VILLAGERSPAWNER:
+- Find "VillagerSpawner" GameObject
+- Check VillagerSpawnerAuthoring component
+- villagerPrefab field should reference a Villager prefab (currently {fileID: 0})
+- If missing, assign Assets/PureDOTS/Prefabs/Villager.prefab or similar
+
+4. Enter Play Mode and verify entities are created:
+   - Check console for "Vessels: Total=2" (should be >0)
+   - Check console for "Villagers: Total=2" (should be >0) 
+   - Check console for "ResourceRegistry: Entries=8" (should be >0)
+   - If still 0, check Entities window (Window > Entities > Hierarchy) to see if entities exist
+
+WHY GAMEOBJECTS MUST BE IN SUBSCENE FILE:
+- Unity ONLY bakes GameObjects that are INSIDE a subscene file (.unity)
+- Parented GameObjects stay in main scene - they WON'T be baked
+- GameObjects must be MOVED INTO the subscene file, not just parented
+- SubScene component link alone isn't enough - GameObjects must physically be in subscene file
+- Systems query for DOTS components (VesselMovement, VillagerMovement, etc.) find ZERO entities
+- Result: Nothing moves because nothing exists in the ECS world
+
+HOW UNITY SUBSCENES WORK:
+- When SubScene is OPEN: Unity displays GameObjects, performs live baking
+- When SubScene is CLOSED: Unity streams in baked entities
+- GameObjects MUST be in the subscene file itself for baking to occur
+
+IF SUBSCENE LINK KEEPS REVERTING:
+- Unity may reset it if the subscene file structure is invalid
+- Verify GameEntities.unity is a valid scene file (has proper YAML header)
+- Open the subscene in Unity Editor at least once to trigger proper setup
+- Check that GameEntities.unity.meta file exists with correct GUID
+
+SUCCESS CRITERIA (ALL MUST BE TRUE):
+- ✅ SubScene component's _SceneAsset references GameEntities.unity (already fixed)
+- ✅ SubScene component's _SceneGUID matches scene file GUID (already fixed)
+- ❌ CRITICAL: GameEntities.unity file MUST contain GameObjects (currently EMPTY)
+- ❌ CRITICAL: Verify GameObjects are INSIDE subscene file, not just parented
+- VillagerSpawnerAuthoring has villagerPrefab assigned (check separately)
+- Entering Play Mode creates DOTS entities
+- Console shows: Vessels: Total>0, Villagers: Total>0, ResourceRegistry: Entries>0
+- No "[MovementDiagnostic] NO VESSEL ENTITIES FOUND!" errors
+- Entities window (Window > Entities > Hierarchy) shows entities exist
+
+HOW TO VERIFY GAMEOBJECTS ARE IN SUBSCENE:
+- Read Assets/Scenes/GameEntities.unity file
+- Search for "GameObject:" entries (should find Carrier, MiningVessel, ResourceNode, etc.)
+- If file only has OcclusionCullingSettings, RenderSettings, LightmapSettings - it's EMPTY
+- GameObjects MUST be in subscene file for baking to work
+
+USE MCP TOOLS:
+- manage_gameobject to find/select GameEntities_SubScene
+- manage_scene to verify scene state
+- read_console to check entity creation logs
+- Direct file editing if needed for manual migration
+

@@ -8,6 +8,8 @@
         "Unity.Transforms",
         "Unity.Burst",
         "Unity.InputSystem",
+        "Unity.Scenes",
+        "Unity.Entities.Content",
         "PureDOTS.Input"
     ],
     "includePlatforms": [],

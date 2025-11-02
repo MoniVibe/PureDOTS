@@ -13,7 +13,8 @@
         "Unity.Rendering",
         "Unity.Rendering.Entities",
         "Unity.Rendering.Universal",
-        "Unity.Scenes"
+        "Unity.Scenes",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

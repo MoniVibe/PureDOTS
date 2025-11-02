@@ -1,0 +1,225 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b93d2b1b1f74a7d987c4f046f0c7c1c, type: 3}
+  m_Name: ResourceRecipeCatalog
+  m_EditorClassIdentifier: 
+  _families:
+  - id: metals
+    displayName: Metals
+    rawResourceId: iron_ore
+    refinedResourceId: iron_ingot
+    compositeResourceId: steel
+    description: "Baseline structural materials forged from iron and carbon blends."
+  - id: advanced_metals
+    displayName: Advanced Metals
+    rawResourceId: titanium_ore
+    refinedResourceId: titanium_ingot
+    compositeResourceId: plasteel
+    description: "High-stress alloys combining titanium with polymer additives for hulls and armour."
+  - id: organics
+    displayName: Organics
+    rawResourceId: biomass
+    refinedResourceId: nutrients
+    compositeResourceId: biopolymers
+    description: "Biological inputs refined into life-support consumables and growth accelerants."
+  - id: petrochemicals
+    displayName: Petrochemicals
+    rawResourceId: hydrocarbon_ice
+    refinedResourceId: refined_fuels
+    compositeResourceId: polymers
+    description: "Hydrocarbon streams cracked into fuels and versatile polymer chains."
+  - id: electronics
+    displayName: Electronics
+    rawResourceId: rare_earths
+    refinedResourceId: conductors
+    compositeResourceId: quantum_cores
+    description: "Rare elements processed into high-density conductors and computation-grade cores."
+  _recipes:
+  - id: refine_iron_ingot
+    kind: 0
+    facilityTag: refinery
+    outputResourceId: iron_ingot
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: iron_ore
+      amount: 2
+    notes: "Smelt ore from terrestrial deposits into workable ingots."
+  - id: refine_titanium_ingot
+    kind: 0
+    facilityTag: refinery
+    outputResourceId: titanium_ingot
+    outputAmount: 1
+    processSeconds: 8
+    inputs:
+    - resourceId: titanium_ore
+      amount: 2
+    notes: "Refine titanium ore under inert atmosphere to preserve purity."
+  - id: refine_nutrients
+    kind: 0
+    facilityTag: bio_lab
+    outputResourceId: nutrients
+    outputAmount: 1
+    processSeconds: 5
+    inputs:
+    - resourceId: biomass
+      amount: 2
+    notes: "Convert biomass into balanced nutrient slurry for colonies."
+  - id: synthesize_carbon
+    kind: 2
+    facilityTag: bio_lab
+    outputResourceId: carbon
+    outputAmount: 1
+    processSeconds: 4
+    inputs:
+    - resourceId: biomass
+      amount: 1
+    notes: "Extract industrial carbon feedstock from organic waste streams."
+  - id: refine_refined_fuels
+    kind: 0
+    facilityTag: refinery
+    outputResourceId: refined_fuels
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: hydrocarbon_ice
+      amount: 2
+    notes: "Crack hydrocarbon ice into stable propulsion-grade fuels."
+  - id: synthesize_catalysts
+    kind: 2
+    facilityTag: chem_lab
+    outputResourceId: catalysts
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: rare_earths
+      amount: 1
+    - resourceId: silicates
+      amount: 1
+    notes: "Blend trace rare earths with silicates to create reusable catalytic substrates."
+  - id: refine_conductors
+    kind: 0
+    facilityTag: electronics_fab
+    outputResourceId: conductors
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: rare_earths
+      amount: 2
+    notes: "Pull conductive filaments from concentrated rare earth deposits."
+  - id: refine_silicates
+    kind: 0
+    facilityTag: refinery
+    outputResourceId: silicates
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: silicate_ore
+      amount: 2
+    notes: "Refine silicate ore into high-quality lattice material."
+  - id: composite_steel
+    kind: 1
+    facilityTag: forge
+    outputResourceId: steel
+    outputAmount: 1
+    processSeconds: 7
+    inputs:
+    - resourceId: iron_ingot
+      amount: 2
+    - resourceId: carbon
+      amount: 1
+    notes: "Alloy iron with carbon for versatile structural steel."
+  - id: composite_plasteel
+    kind: 1
+    facilityTag: forge
+    outputResourceId: plasteel
+    outputAmount: 1
+    processSeconds: 9
+    inputs:
+    - resourceId: steel
+      amount: 1
+    - resourceId: polymers
+      amount: 1
+    notes: "Fuse steel lattice with polymers to produce reinforced plasteel."
+  - id: composite_biopolymers
+    kind: 1
+    facilityTag: bio_lab
+    outputResourceId: biopolymers
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: nutrients
+      amount: 2
+    - resourceId: polymers
+      amount: 1
+    notes: "Engineer organics and petrochemicals into lightweight biopolymers."
+  - id: composite_polymers
+    kind: 1
+    facilityTag: chem_lab
+    outputResourceId: polymers
+    outputAmount: 1
+    processSeconds: 6
+    inputs:
+    - resourceId: refined_fuels
+      amount: 2
+    - resourceId: catalysts
+      amount: 1
+    notes: "Catalytically chain refined fuels into versatile polymers."
+  - id: composite_quantum_cores
+    kind: 1
+    facilityTag: electronics_fab
+    outputResourceId: quantum_cores
+    outputAmount: 1
+    processSeconds: 10
+    inputs:
+    - resourceId: conductors
+      amount: 2
+    - resourceId: silicates
+      amount: 1
+    notes: "Embed silicate lattices with precision conductors for computation-grade cores."
+  - id: composite_circuit_mesh
+    kind: 1
+    facilityTag: electronics_fab
+    outputResourceId: circuit_mesh
+    outputAmount: 1
+    processSeconds: 5
+    inputs:
+    - resourceId: conductors
+      amount: 1
+    - resourceId: polymers
+      amount: 1
+    notes: "Lay polymers over conductor meshes for flexible electronics."
+  - id: composite_life_support_kits
+    kind: 1
+    facilityTag: bio_lab
+    outputResourceId: life_support_kits
+    outputAmount: 1
+    processSeconds: 5
+    inputs:
+    - resourceId: nutrients
+      amount: 1
+    - resourceId: polymers
+      amount: 1
+    notes: "Bundle nutrients and polymer casings into deployable life support kits."
+  - id: composite_composite_alloys
+    kind: 1
+    facilityTag: forge
+    outputResourceId: composite_alloys
+    outputAmount: 1
+    processSeconds: 12
+    inputs:
+    - resourceId: plasteel
+      amount: 2
+    - resourceId: quantum_cores
+      amount: 1
+    notes: "Culminating alloy combining plasteel strength with quantum core control matrices."
+

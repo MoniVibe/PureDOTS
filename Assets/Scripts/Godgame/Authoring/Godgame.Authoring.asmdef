@@ -1,5 +1,5 @@
 {
-  "name": "Godgame.Authoring",
+  "name": "Godgame.Authoring.Placeholder",
   "rootNamespace": "Godgame.Authoring",
   "references": [
     "GUID:22425877c6208af4d856e5e5f04bfef1",
@@ -15,8 +15,10 @@
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "PUREDOTS_PLACEHOLDER"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }

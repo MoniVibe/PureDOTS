@@ -1,0 +1,117 @@
+TASK: Diagnose why Main Camera isn't rendering despite correct configuration
+
+CURRENT STATUS:
+- ✅ Main Camera GameObject EXISTS in main scene
+- ✅ Camera component: enabled=true, depth=0, clearFlags=1
+- ✅ Position: (0, 15, -20), Rotation: (60, 0, 0)
+- ✅ Tag: "MainCamera"
+- ❌ Game View shows "Display 1 no camera rendering"
+
+ROOT CAUSE ANALYSIS NEEDED:
+
+1. CHECK CONSOLE ERRORS:
+   - Use read_console get (all types: error, warning, log)
+   - Look for:
+     * Camera rendering errors
+     * Render pipeline errors
+     * URP/Graphics settings errors
+     * "No cameras rendering" messages
+     * Camera component errors
+
+2. VERIFY RENDER PIPELINE SETUP:
+   - Check Edit > Project Settings > Graphics
+   - Verify Render Pipeline Asset is assigned
+   - If using URP, ensure URP Asset exists and is assigned
+   - Check if default render pipeline is set
+
+3. CHECK CAMERA STATE IN PLAY MODE:
+   - Enter Play Mode
+   - Check if Space4XCameraRenderSyncSystem is running
+   - Console should show: "[Space4XCameraRenderSyncSystem] Found/Created Main Camera"
+   - Check if camera state singleton exists
+
+4. VERIFY CAMERA IS NOT DISABLED:
+   - Use manage_gameobject get_component "Main Camera" "Camera"
+   - Verify enabled=true
+   - Check if GameObject.activeSelf=true
+   - Check if GameObject.activeInHierarchy=true
+
+5. CHECK FOR CONFLICTING CAMERAS:
+   - Use manage_gameobject find by_component "Camera"
+   - List all cameras in scene
+   - Ensure only Main Camera has depth=0
+   - Other cameras should have depth>0 or be disabled
+
+6. CHECK RENDER SETTINGS:
+   - Use manage_scene get_active
+   - Verify scene is correctly loaded
+   - Check if Game View is actually showing the scene (not a different scene)
+
+7. VERIFY CAMERA SYSTEMS ARE RUNNING:
+   - Check console for:
+     * "[Space4XCameraInitializationSystem]" - Should have created camera state
+     * "[Space4XCameraRenderSyncSystem]" - Should sync camera transform
+     * "[Space4XCameraSystem]" - Should process camera input
+   - If systems aren't logging, they may not be running
+
+COMMON ISSUES:
+
+A. Render Pipeline Not Assigned:
+   - Symptoms: Black screen, no rendering
+   - Fix: Assign URP Asset to Graphics Settings
+
+B. Camera Component Disabled:
+   - Symptoms: "No cameras rendering"
+   - Fix: Enable Camera component, verify GameObject is active
+
+C. Camera Outside View/Too Far:
+   - Symptoms: Game View is solid color (background color)
+   - Fix: Verify camera position is correct, check if scene has objects to render
+
+D. Multiple Cameras Conflicting:
+   - Symptoms: Wrong camera rendering or no rendering
+   - Fix: Ensure only Main Camera has depth=0, disable/remove others
+
+E. Camera Systems Not Running:
+   - Symptoms: Camera doesn't respond to input, state not updating
+   - Fix: Check if DOTS systems are enabled, verify world is initialized
+
+F. Scene Not Properly Loaded:
+   - Symptoms: Empty scene, no GameObjects visible
+   - Fix: Verify correct scene is active, check if subscenes are loaded
+
+MCP TOOLS TO USE:
+- read_console get (types: ["error", "warning", "log"])
+- manage_gameobject get_component "Main Camera" "Camera"
+- manage_gameobject find by_component "Camera"
+- manage_scene get_active
+- manage_editor get_state (check if playing, compiling, etc.)
+
+IF CAN'T FIX WITH MCP:
+1. In Unity Editor:
+   - Window > Analysis > Rendering Debugger (check render settings)
+   - Edit > Project Settings > Graphics (verify render pipeline)
+   - Window > Entities > Systems (check if camera systems are running)
+   - Window > Entities > Hierarchy (check if camera state singleton exists)
+
+2. Manual Camera Reset:
+   - Delete Main Camera
+   - Create new Camera
+   - Configure: Tag="MainCamera", Depth=0, Enabled=true
+   - Position: (0, 15, -20), Rotation: (60, 0, 0)
+
+SUCCESS CRITERIA:
+- ✅ Console shows no camera/rendering errors
+- ✅ Render Pipeline Asset is assigned in Graphics Settings
+- ✅ Main Camera enabled=true, depth=0, in main scene
+- ✅ Enter Play Mode → Game View shows rendered scene
+- ✅ Console shows camera systems running
+- ✅ Camera responds to WASD/mouse input
+
+
+
+
+
+
+
+

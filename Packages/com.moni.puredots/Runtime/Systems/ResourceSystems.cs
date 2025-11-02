@@ -9,49 +9,52 @@ using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(ResourceSystemGroup), OrderFirst = true)]
     public partial struct ResourceReservationBootstrapSystem : ISystem
     {
-        [BurstCompile]
+        private EntityQuery _resourceSourcesWithoutReservationQuery;
+        private EntityQuery _storehousesWithoutReservationQuery;
+
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+
+            _resourceSourcesWithoutReservationQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<ResourceSourceConfig>() },
+                None = new[] { ComponentType.ReadOnly<ResourceJobReservation>() }
+            });
+
+            _storehousesWithoutReservationQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<StorehouseConfig>() },
+                None = new[] { ComponentType.ReadOnly<StorehouseJobReservation>() }
+            });
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+            var entityManager = state.EntityManager;
 
-            foreach (var (config, entity) in SystemAPI.Query<RefRO<ResourceSourceConfig>>()
-                         .WithNone<ResourceJobReservation>()
-                         .WithEntityAccess())
+            using (var sources = _resourceSourcesWithoutReservationQuery.ToEntityArray(Allocator.TempJob))
             {
-                ecb.AddComponent(entity, new ResourceJobReservation
+                for (var i = 0; i < sources.Length; i++)
                 {
-                    ActiveTickets = 0,
-                    PendingTickets = 0,
-                    ReservedUnits = 0f,
-                    LastMutationTick = 0,
-                    ClaimFlags = 0
-                });
-                ecb.AddBuffer<ResourceActiveTicket>(entity);
+                    var entity = sources[i];
+                    entityManager.AddComponent<ResourceJobReservation>(entity);
+                    entityManager.AddBuffer<ResourceActiveTicket>(entity);
+                }
             }
 
-            foreach (var (config, entity) in SystemAPI.Query<RefRO<StorehouseConfig>>()
-                         .WithNone<StorehouseJobReservation>()
-                         .WithEntityAccess())
+            using (var storehouses = _storehousesWithoutReservationQuery.ToEntityArray(Allocator.TempJob))
             {
-                ecb.AddComponent(entity, new StorehouseJobReservation
+                for (var i = 0; i < storehouses.Length; i++)
                 {
-                    ReservedCapacity = 0f,
-                    LastMutationTick = 0
-                });
-                ecb.AddBuffer<StorehouseReservationItem>(entity);
+                    var entity = storehouses[i];
+                    entityManager.AddComponent<StorehouseJobReservation>(entity);
+                    entityManager.AddBuffer<StorehouseReservationItem>(entity);
+                }
             }
         }
     }

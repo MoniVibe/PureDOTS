@@ -33,18 +33,9 @@ namespace PureDOTS.Authoring
             var entity = GetEntity(authoring, TransformUsageFlags.None);
 
             AddBuffer<TimeControlCommand>(entity);
-            AddComponent(entity, new TimeControlConfig
-            {
-                DefaultSpeed = authoring.defaultSpeed,
-                FastForwardSpeed = authoring.fastForwardSpeed,
-                SlowMotionSpeed = authoring.slowMotionSpeed,
-                DefaultRewindTicksPerSecond = authoring.defaultRewindTicksPerSecond,
-                FastRewindTicksPerSecond = authoring.fastRewindTicksPerSecond,
-                ScrubSpeedMultiplier = authoring.scrubSpeedMultiplier,
-                EnableKeyboardShortcuts = authoring.enableKeyboardShortcuts,
-                ShowDebugUI = authoring.showDebugUI,
-                LogStateChanges = authoring.logStateChanges
-            });
+
+            var config = AuthoringComponentCopyUtility.CreateComponent<TimeControlsAuthoring, TimeControlConfig>(authoring);
+            AddComponent(entity, config);
 
             AddComponent<TimeControlSingletonTag>(entity);
         }

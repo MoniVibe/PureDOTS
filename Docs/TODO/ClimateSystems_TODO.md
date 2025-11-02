@@ -165,6 +165,7 @@
 - [x] Coordinate with `FixedStepSimulationSystemGroup` linkage to ensure climate updates respect deterministic tick lengths *(requires verifying new cadence sync system)*
 
 ### 3.5. Biome Determination System (NEW)
+- [x] Guard `EnvironmentGridConfig` so the biome channel stays disabled at runtime (logs a warning if toggled) until the biome determination pipeline ships.
 - [ ] **Implement BiomeDeterminationSystem** (runs every 60 ticks):
   - For each cell, read Temperature and Moisture values
   - Apply biome determination logic (temp + moisture → BiomeType)

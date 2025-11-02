@@ -14,6 +14,12 @@ This repository is intended to serve as a reusable DOTS sandbox that future game
 
 These prefabs are intentionally minimal and should be duplicated/customised per project.
 
+## Foundation Authoring Components
+
+The PureDOTS foundation package (`com.moni.puredots`) provides reusable authoring components:
+
+- **`TerrainAuthoring`** (`PureDOTS.Authoring`) – Creates procedurally generated terrain/ground planes. Useful for visibility and movement reference in demos and games. Supports configurable size, subdivisions, and materials.
+
 ## Debugging Utilities
 
 - **DotsDebugHUD** (`Assets/Scripts/PureDOTS/Debug/DotsDebugHUD.cs`) – optional MonoBehaviour that displays key DOTS singleton data in-game.

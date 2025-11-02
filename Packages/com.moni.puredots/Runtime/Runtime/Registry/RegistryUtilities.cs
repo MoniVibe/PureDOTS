@@ -16,10 +16,8 @@ namespace PureDOTS.Runtime.Registry
         Resource = 2,
         Storehouse = 3,
         Miracle = 4,
-        MinerVessel = 5,
-        Hauler = 6,
-        Freighter = 7,
-        Wagon = 8,
+        // Game-specific transport registries (MinerVessel, Hauler, Freighter, Wagon) moved to Space4X
+        // Values 5-8 reserved for potential future game-specific registries
         Creature = 9,
         LogisticsRequest = 10,
         Construction = 11,

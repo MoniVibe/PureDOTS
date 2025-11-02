@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d8a74f61337eec45a9087206d39a15c, type: 3}
+  m_EditorClassIdentifier: 
+  m_Name: Space4XCameraProfile
+  PanSpeed: 10
+  VerticalPanSpeed: 10
+  PanBoundsMin: {x: -100, y: 0, z: -100}
+  PanBoundsMax: {x: 100, y: 100, z: 100}
+  UsePanBounds: 0
+  ZoomSpeed: 5
+  ZoomMinDistance: 10
+  ZoomMaxDistance: 500
+  RotationSpeed: 0.25
+  PitchMin: -30
+  PitchMax: 85
+  Smoothing: 0.1
+  EnablePan: 1
+  EnableZoom: 1
+  EnableRotation: 1
+

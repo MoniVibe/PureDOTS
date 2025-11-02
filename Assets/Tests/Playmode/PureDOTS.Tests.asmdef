@@ -5,10 +5,15 @@
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
         "PureDOTS.Authoring",
+        "Space4X.Gameplay",
         "Unity.Entities",
         "Unity.Collections",
         "Unity.Mathematics",
-        "Unity.Transforms"
+        "Unity.Transforms",
+        "Unity.Physics",
+        "Unity.Physics.Hybrid",
+        "Unity.Physics.Systems",
+        "Unity.Core"
     ],
     "includePlatforms": [
         "Editor"

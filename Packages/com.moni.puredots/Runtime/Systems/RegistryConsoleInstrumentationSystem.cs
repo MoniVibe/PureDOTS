@@ -175,18 +175,7 @@ namespace PureDOTS.Systems
                 case RegistryKind.Miracle:
                     builder.Append("Miracle");
                     break;
-                case RegistryKind.MinerVessel:
-                    builder.Append("MinerVessel");
-                    break;
-                case RegistryKind.Hauler:
-                    builder.Append("Hauler");
-                    break;
-                case RegistryKind.Freighter:
-                    builder.Append("Freighter");
-                    break;
-                case RegistryKind.Wagon:
-                    builder.Append("Wagon");
-                    break;
+                // Game-specific transport registries (MinerVessel, Hauler, Freighter, Wagon) handled by Space4X
                 case RegistryKind.Construction:
                     builder.Append("Construction");
                     break;
