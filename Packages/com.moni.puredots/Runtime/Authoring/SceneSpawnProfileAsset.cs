@@ -53,6 +53,20 @@ namespace PureDOTS.Authoring
         [Tooltip("Optional numeric payload for domain-specific tuning (capacity, tier, etc.).")]
         public float payloadValue;
 
+        [Header("Presentation (optional)")]
+        [Tooltip("Automatically enqueue a presentation request when the spawn occurs.")]
+        public bool spawnPresentation;
+        [Tooltip("Descriptor key defined in the Presentation Registry asset.")]
+        public string presentationDescriptorKey;
+        public Vector3 presentationOffset;
+        public Vector3 presentationEulerOffset;
+        [Min(0.01f)] public float presentationScaleMultiplier = 1f;
+        public Color presentationTint = Color.clear;
+        [Tooltip("Optional explicit variant seed; leave zero to derive from spawn order.")]
+        public uint presentationVariantSeed;
+        [Tooltip("Additional spawn flags for the presentation request.")]
+        public PresentationSpawnFlags presentationFlags = PresentationSpawnFlags.AllowPooling;
+
         public uint GetSeedOffset(uint entryIndex)
         {
             if (!randomizeSeedOffset)

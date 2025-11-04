@@ -30,11 +30,14 @@ Provide a scalable, deterministic navigation strategy for large crowds (100k–1
   - `SteeringWeightBlob`: weights for avoidance/alignment/cohesion per archetype.
 - **Buffers**
   - `FlowFieldRequest` (singleton buffer): queued goal changes (entity, layer id, priority, validity tick).
+  - `FlowFieldHazardUpdate` (singleton buffer): pending danger/cost adjustments (cell id, delta cost, expiration tick).
+  - `FlowFieldCacheEntry` (buffer per layer): cached sub-field gradients for hierarchical reuse (macro cells, corridor segments).
   - `VillagerCommandBuffer`: already present for job commands; extend to include movement overrides if needed.
 
 ## System Overview
 1. **FlowFieldRequestSystem (Initialization)**
    - Collects new/updated goals (e.g., storehouse built, rally point changed).
+   - Applies hazard updates to layer cost modifiers.
    - Marks relevant layers dirty; schedules rebuild jobs for next allowed tick.
 2. **FlowFieldBuildSystem (Fixed Step / Spatial System Group)**
    - Runs Burst jobs to recompute dirty layers:
@@ -42,6 +45,7 @@ Provide a scalable, deterministic navigation strategy for large crowds (100k–1
      - Use Dijkstra/Fast-Marching style propagation to compute cell costs and direction vectors.
      - Write results into double-buffered `FlowFieldCellData` to keep readers stable.
    - Deterministic iteration order (sorted cell indices, consistent queue usage).
+   - Reuses cached sub-fields when only local segments changed; rebuild macro layer before micro layer to keep hierarchy coherent.
 3. **FlowFieldFollowSystem (Simulation)**
    - For each villager with `VillagerFlowState`:
      - Sample flow field direction (bilinear interpolation optional).
@@ -105,6 +109,7 @@ Provide a scalable, deterministic navigation strategy for large crowds (100k–1
 - **Flow fields:** 256×256 grid per layer generated every 30–60 ticks under 3 ms.
 - **Steering:** <1.5 ms for 50k agents per frame (vectorized math).
 - **Overall:** 100k villagers moving with flow fields under 5 ms total navigation budget on target hardware.
+- **Cache reuse:** Track ratio of cached vs. rebuilt segments; target >60% reuse in stable scenarios to cut rebuild time.
 
 ## Testing Strategy
 - Unit tests for flow field generation (cost propagation, direction accuracy).
@@ -112,12 +117,14 @@ Provide a scalable, deterministic navigation strategy for large crowds (100k–1
 - Rewind tests: record/rewind/resume verifying flow states & sensors match.
 - Stress benchmarks at 10k/50k/100k/1M inhabitants using placeholder movement.
 - Integration tests combining job assignment, sensors, and flow fields to ensure consistent behaviour.
+- Hazard regression tests to ensure dynamic danger updates bias flow away from risky cells.
 
 ## Tooling & Debugging
 - Flow field visualizer (scene gizmos) showing direction vectors and cost heatmaps.
 - Runtime UI overlay with layer toggles, rebuild stats, sensor hit counts.
 - Performance logging (frames per rebuild, agent update time) integrated into profiling harness.
 - Editor validation: warn if flow field bounds mismatch scene size; check cell size vs. spatial grid config.
+- Cached segment overlay to highlight reused gradients and verify hierarchy efficiency.
 
 ## Dependencies
 - Relies on spatial partition service (hashed grid) for obstacle and neighbor queries.
