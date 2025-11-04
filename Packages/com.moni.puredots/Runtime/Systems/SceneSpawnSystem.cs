@@ -37,6 +37,7 @@ namespace PureDOTS.Systems
 
             var entityManager = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
+            bool hasPresentationQueue = SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out var presentationQueueEntity);
 
             foreach (var (controller, rootTransform, entity) in
                      SystemAPI.Query<RefRO<SceneSpawnController>, RefRO<LocalTransform>>()
@@ -86,11 +87,11 @@ namespace PureDOTS.Systems
                         request.CustomPointStart + request.CustomPointCount <= points.Length)
                     {
                         SpawnFromCustomPoints(ref ecb, in request, ref random, transform, prefabRotation, prefabScale,
-                            points, request.CustomPointStart, request.CustomPointCount);
+                            points, request.CustomPointStart, request.CustomPointCount, presentationQueueEntity, hasPresentationQueue, requestSeed);
                     }
                     else
                     {
-                        SpawnByPattern(ref ecb, in request, ref random, transform, prefabRotation, prefabScale);
+                        SpawnByPattern(ref ecb, in request, ref random, transform, prefabRotation, prefabScale, requestSeed, presentationQueueEntity, hasPresentationQueue);
                     }
                 }
 
@@ -105,7 +106,10 @@ namespace PureDOTS.Systems
             ref Unity.Mathematics.Random random,
             in LocalTransform rootTransform,
             quaternion prefabRotation,
-            float prefabScale)
+            float prefabScale,
+            uint requestSeed,
+            Entity presentationQueue,
+            bool hasPresentationQueue)
         {
             var baseOffset = request.Offset;
             switch (request.Placement)
@@ -121,7 +125,7 @@ namespace PureDOTS.Systems
                         }
 
                         SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                            baseOffset + relative, relative);
+                            baseOffset + relative, relative, index, requestSeed, presentationQueue, hasPresentationQueue);
                     }
                     break;
                 }
@@ -133,7 +137,7 @@ namespace PureDOTS.Systems
                     {
                         var relative = SampleDisc(ref random, radius);
                         SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                            baseOffset + relative, relative);
+                            baseOffset + relative, relative, index, requestSeed, presentationQueue, hasPresentationQueue);
                     }
                     break;
                 }
@@ -150,7 +154,7 @@ namespace PureDOTS.Systems
                         var direction = random.NextFloat2Direction();
                         var relative = new float3(direction.x * radius, 0f, direction.y * radius);
                         SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                            baseOffset + relative, relative);
+                            baseOffset + relative, relative, index, requestSeed, presentationQueue, hasPresentationQueue);
                     }
                     break;
                 }
@@ -175,7 +179,7 @@ namespace PureDOTS.Systems
                         int row = index / columns;
                         var relative = new float3(col * spacingX, 0f, row * spacingZ);
                         SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                            origin + relative, relative + (origin - baseOffset));
+                            origin + relative, relative + (origin - baseOffset), index, requestSeed, presentationQueue, hasPresentationQueue);
                     }
                     break;
                 }
@@ -186,7 +190,7 @@ namespace PureDOTS.Systems
                     for (int index = 0; index < request.Count; index++)
                     {
                         SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                            baseOffset, float3.zero);
+                            baseOffset, float3.zero, index, requestSeed, presentationQueue, hasPresentationQueue);
                     }
                     break;
                 }
@@ -201,14 +205,17 @@ namespace PureDOTS.Systems
             float prefabScale,
             NativeArray<SceneSpawnPoint> points,
             int startIndex,
-            int count)
+            int count,
+            Entity presentationQueue,
+            bool hasPresentationQueue,
+            uint requestSeed)
         {
             int spawnTotal = math.min(request.Count, count);
             for (int i = 0; i < spawnTotal; i++)
             {
                 var point = points[startIndex + i].LocalPoint;
                 SpawnInstance(ref ecb, in request, ref random, rootTransform, prefabRotation, prefabScale,
-                    request.Offset + point, point);
+                    request.Offset + point, point, i, requestSeed, presentationQueue, hasPresentationQueue);
             }
         }
 
@@ -219,7 +226,11 @@ namespace PureDOTS.Systems
             quaternion prefabRotation,
             float prefabScale,
             float3 localPosition,
-            float3 relativePosition)
+            float3 relativePosition,
+            int spawnOrdinal,
+            uint requestSeed,
+            Entity presentationQueue,
+            bool hasPresentationQueue)
         {
             float heightOffset = 0f;
             if (math.abs(request.HeightRange.y - request.HeightRange.x) > 1e-4f)
@@ -240,7 +251,7 @@ namespace PureDOTS.Systems
 
             var instance = ecb.Instantiate(request.Prefab);
             ecb.SetComponent(instance, LocalTransform.FromPositionRotationScale(worldPosition, worldRotation, prefabScale));
-            ApplySpawnPayload(ref ecb, request, instance);
+            ApplySpawnPayload(ref ecb, request, instance, worldPosition, worldRotation, spawnOrdinal, requestSeed, hasPresentationQueue, presentationQueue);
         }
 
         private static float3 TransformLocalToWorld(in LocalTransform root, float3 local)
@@ -290,8 +301,53 @@ namespace PureDOTS.Systems
             return math.mul(rootRotation, localRotation);
         }
 
-        private static void ApplySpawnPayload(ref EntityCommandBuffer ecb, in SceneSpawnRequest request, Entity instance)
+        private static void ApplySpawnPayload(ref EntityCommandBuffer ecb,
+            in SceneSpawnRequest request,
+            Entity instance,
+            float3 worldPosition,
+            quaternion worldRotation,
+            int spawnOrdinal,
+            uint requestSeed,
+            bool hasPresentationQueue,
+            Entity presentationQueue)
         {
+            if (hasPresentationQueue && request.PresentationDescriptor.IsValid)
+            {
+                var flags = request.PresentationFlags;
+                float3 position = worldPosition;
+                quaternion rotation = worldRotation;
+
+                if (flags.HasFlag(PresentationSpawnFlags.OverrideTransform))
+                {
+                    if (math.any(request.PresentationOffset != float3.zero))
+                    {
+                        position += math.mul(worldRotation, request.PresentationOffset);
+                    }
+
+                    rotation = math.mul(worldRotation, request.PresentationRotationOffset);
+                }
+
+                float scaleMultiplier = request.PresentationScaleMultiplier > 0f
+                    ? request.PresentationScaleMultiplier
+                    : 1f;
+
+                uint variantSeed = request.PresentationVariantSeed != 0
+                    ? request.PresentationVariantSeed
+                    : math.hash(new uint4(requestSeed, (uint)(spawnOrdinal + 1), (uint)request.Count, 0xB5297A4Du));
+
+                ecb.AppendToBuffer(presentationQueue, new PresentationSpawnRequest
+                {
+                    Target = instance,
+                    DescriptorHash = request.PresentationDescriptor,
+                    Position = position,
+                    Rotation = rotation,
+                    ScaleMultiplier = scaleMultiplier,
+                    Tint = request.PresentationTint,
+                    VariantSeed = variantSeed,
+                    Flags = flags
+                });
+            }
+
             // Placeholder for future domain-specific initialization (jobs, species, teams, etc.).
             // Keep method in place so future extensions centralize payload handling.
         }

@@ -70,6 +70,13 @@ namespace PureDOTS.Runtime.Components
         public uint SeedOffset;
         public int CustomPointStart;
         public int CustomPointCount;
+        public Hash128 PresentationDescriptor;
+        public float3 PresentationOffset;
+        public quaternion PresentationRotationOffset;
+        public float PresentationScaleMultiplier;
+        public float4 PresentationTint;
+        public uint PresentationVariantSeed;
+        public PresentationSpawnFlags PresentationFlags;
     }
 
     /// <summary>

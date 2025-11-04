@@ -93,6 +93,58 @@ namespace PureDOTS.Authoring
                     payload = new FixedString64Bytes(definition.payloadId.Trim());
                 }
 
+                Hash128 presentationHash = default;
+                float3 presentationOffset = float3.zero;
+                quaternion presentationRotationOffset = quaternion.identity;
+                float presentationScaleMultiplier = 1f;
+                float4 presentationTint = float4.zero;
+                uint presentationVariantSeed = definition.presentationVariantSeed;
+                PresentationSpawnFlags presentationFlags = definition.presentationFlags;
+
+                if (definition.spawnPresentation)
+                {
+                    if (!PresentationKeyUtility.TryParseKey(definition.presentationDescriptorKey, out presentationHash, out _))
+                    {
+                        Debug.LogWarning($"SceneSpawnProfile '{authoring.profile.name}' entry {i} requested presentation but has an invalid descriptor key.", authoring);
+                        presentationHash = default;
+                    }
+                    else
+                    {
+                        presentationOffset = new float3(definition.presentationOffset.x, definition.presentationOffset.y, definition.presentationOffset.z);
+                        if (math.any(presentationOffset != float3.zero))
+                        {
+                            presentationFlags |= PresentationSpawnFlags.OverrideTransform;
+                        }
+
+                        if (definition.presentationEulerOffset != Vector3.zero)
+                        {
+                            var radians = math.radians(new float3(definition.presentationEulerOffset.x, definition.presentationEulerOffset.y, definition.presentationEulerOffset.z));
+                            presentationRotationOffset = quaternion.Euler(radians);
+                            presentationFlags |= PresentationSpawnFlags.OverrideTransform;
+                        }
+                        else
+                        {
+                            presentationRotationOffset = quaternion.identity;
+                        }
+
+                        presentationScaleMultiplier = math.max(0.01f, definition.presentationScaleMultiplier);
+                        if (math.abs(presentationScaleMultiplier - 1f) > 1e-3f)
+                        {
+                            presentationFlags |= PresentationSpawnFlags.OverrideScale;
+                        }
+
+                        if (definition.presentationTint.a > 0f && definition.presentationTint != Color.clear)
+                        {
+                            presentationTint = new float4(definition.presentationTint.r, definition.presentationTint.g, definition.presentationTint.b, definition.presentationTint.a);
+                            presentationFlags |= PresentationSpawnFlags.OverrideTint;
+                        }
+                        else
+                        {
+                            presentationTint = new float4(definition.presentationTint.r, definition.presentationTint.g, definition.presentationTint.b, definition.presentationTint.a);
+                        }
+                    }
+                }
+
                 var gridDimensions = new int2(
                     math.max(1, definition.gridDimensions.x),
                     math.max(1, definition.gridDimensions.y));
@@ -127,7 +179,14 @@ namespace PureDOTS.Authoring
                     PayloadValue = definition.payloadValue,
                     SeedOffset = entrySeedOffset,
                     CustomPointStart = customPointStart,
-                    CustomPointCount = customPointCount
+                    CustomPointCount = customPointCount,
+                    PresentationDescriptor = presentationHash,
+                    PresentationOffset = presentationOffset,
+                    PresentationRotationOffset = presentationRotationOffset,
+                    PresentationScaleMultiplier = presentationScaleMultiplier,
+                    PresentationTint = presentationTint,
+                    PresentationVariantSeed = presentationVariantSeed,
+                    PresentationFlags = presentationHash.IsValid ? presentationFlags : PresentationSpawnFlags.None
                 });
             }
         }
