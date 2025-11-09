@@ -24,14 +24,16 @@ namespace PureDOTS.Systems.Space
             var queue = state.EntityManager.GetBuffer<HaulingJobQueueEntry>(_jobQueueEntity);
             queue.Clear();
 
-            foreach (var (pile, entity) in SystemAPI.Query<RefRO<ResourcePile>>().WithEntityAccess())
+            foreach (var (pile, urgency, entity) in SystemAPI.Query<RefRO<ResourcePile>, RefRO<ResourceUrgency>>().WithEntityAccess())
             {
                 queue.Add(new HaulingJobQueueEntry
                 {
                     Priority = HaulingJobPriority.Normal,
                     SourceEntity = entity,
                     DestinationEntity = Entity.Null,
-                    RequestedAmount = pile.ValueRO.Amount
+                    RequestedAmount = pile.ValueRO.Amount,
+                    Urgency = urgency.ValueRO.UrgencyWeight,
+                    ResourceValue = urgency.ValueRO.UrgencyWeight
                 });
             }
         }

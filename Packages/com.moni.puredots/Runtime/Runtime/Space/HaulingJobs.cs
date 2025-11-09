@@ -16,15 +16,19 @@ namespace PureDOTS.Runtime.Space
         public Entity SourceEntity;
         public Entity DestinationEntity;
         public float RequestedAmount;
+        public float Urgency;
+        public float ResourceValue;
     }
 
-    [InternalBufferCapacity(16)]
+    [InternalBufferCapacity(32)]
     public struct HaulingJobQueueEntry : IBufferElementData
     {
         public HaulingJobPriority Priority;
         public Entity SourceEntity;
         public Entity DestinationEntity;
         public float RequestedAmount;
+        public float Urgency;
+        public float ResourceValue;
     }
 
     public struct HaulerRole : IComponentData
