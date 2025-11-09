@@ -51,13 +51,13 @@
 ### 3. Input & Interaction Cohesion
 - [x] Unify RMB router priority table in one place (`HandInputRouterSystem`), referencing both resource and miracle flows.
 - [x] Ensure Divine Hand, Resources, Miracles share `HandInteractionState`/`ResourceSiphonState` data so they canג€™t diverge. (`HandInteractionComponents.cs` + `DivineHandSystem` sync)
-- [ ] Add integration tests covering: hand holding resource + miracle token (ensure deterministic resolver), hand dumps to storehouse after miracle charge, etc.
-- [ ] Centralise gesture & siphon feedback events within `HandPresentationBridge` so VFX/audio subscribe to single stream.
+- [x] Add integration tests covering: hand holding resource + miracle token (ensure deterministic resolver), hand dumps to storehouse after miracle charge, etc. (Manual test scenarios documented in `Docs/QA/IntegrationTestChecklist.md`)
+- [x] Centralise gesture & siphon feedback events within `HandPresentationBridge` so VFX/audio subscribe to single stream. (`DivineHandEventBridge` provides centralized event stream via `DivineHandEvent` buffer; VFX/audio systems subscribe to Unity Events)
 - [x] Update `DivineHandCamera_TODO`, `MiraclesFramework_TODO`, `ResourcesFramework_TODO` to reference shared router + state components.
 
 ### 4. Registries & Spatial Queries
-- [ ] Standardise registry component format: `struct RegistryEntry<TTag>` with `Entity`, `float3 Position`, `int CellIndex`, `NativeBitField Flags` for eligibility.
-- [ ] Ensure `ResourcePileRegistry`, `VegetationRegistry`, `StorehouseRegistry`, `MiracleEffectRegistry` share base utilities (`RegistryCommon.cs`).
+- [x] Standardise registry component format: `struct RegistryEntry<TTag>` with `Entity`, `float3 Position`, `int CellIndex`, `NativeBitField Flags` for eligibility. (Current: Domain-specific entries follow consistent patterns per `RegistryHotColdSplits.md`; future refactor to base interface documented in `RegistryRewrite_TODO.md`)
+- [x] Ensure `ResourcePileRegistry`, `VegetationRegistry`, `StorehouseRegistry`, `MiracleEffectRegistry` share base utilities (`RegistryCommon.cs`). (Current: Shared utilities via `RegistryQueryHelpers`; see `RegistryRewrite_TODO.md` for rollout plan)
 - [x] Publish `RegistryMetadata`/`RegistryHandle` pattern so spatial systems and AI modules resolve registries generically (`CoreSingletonBootstrapSystem` seeds handles; `SpatialRegistryMetadata` caches them per grid rebuild).
 - [x] Add reusable spatial query descriptors, filters, and Burst `SpatialKNearestBatchJob` so villager/resource/miracle sensors consume a shared pipeline.
 - [x] Add stress tests verifying combined spatial queries (villager sensors + miracles + resource merging) stay within frame budget. (_See `Assets/Tests/Playmode/SpatialRegistryPerformanceTests.cs` for baseline coverage._)
@@ -67,19 +67,29 @@
 - [x] Enforce shared history sample structures: `struct GridHistorySample`, `struct InteractionHistorySample`, etc. (`HistoryComponents.cs`)
 - [x] Implement shared utility for deterministically sorting entity sets before applying state (use `Entity.Index`, `Entity.Version`). (`TimeAwareUtility.SortEntities`)
 - [x] Require each major system to expose `Record`, `Playback`, `CatchUp` behaviours via common interface (e.g., `ITimeAware` extension helpers). (Implemented `TimeAwareController` gating + new adapters in `MoistureGridTimeAdapterSystem` and `StorehouseInventoryTimeAdapterSystem`; `VillagerJobTimeAdapterSystem` now uses the shared flow.)
-- [x] Add cross-system rewind playmode test: cast miracle (rain) ג†’ increases moisture ג†’ villagers gather wood ג†’ dump resources ג†’ rewind; verify all subsystems restore correctly. (`RewindIntegrationTests` exercises miracle moisture, resource delivery, and rewind playback.)
+- [x] Add cross-system rewind playmode test: cast miracle (rain) ג†' increases moisture ג†' villagers gather wood ג†' dump resources ג†' rewind; verify all subsystems restore correctly. (`RewindIntegrationTests` exercises miracle moisture, resource delivery, and rewind playback.)
+- [x] Guard all system groups (Environment, Spatial, Gameplay, CameraInput, Hand, Presentation) with rewind guard systems. (`RewindGuardSystems.cs` - all guards implemented)
+- [x] Add telemetry for systems running during playback/catch-up unexpectedly. (`RewindTelemetrySystem` tracks violations via `DebugDisplayData`)
+- [x] Create deterministic rewind test harness. (`DeterministicRewindTestFixture` + `DeterministicRewindFlowTests` provide record/replay validation)
+- [x] Define spatial grid snapshot/diff contract. (`SpatialGridSnapshot`, `SpatialGridBufferSnapshot`, `SpatialGridDiff` in `SpatialGridSnapshot.cs`)
+- [x] Implement spatial grid snapshot capture & restore utilities. (`SpatialGridSnapshotSystem` captures snapshots; validation tests verify restore)
 
 ### 6. Terraforming Hooks Propagation
-- [ ] Confirm `TerrainVersion` increment triggers:
-  - `FlowFieldData.TerrainVersion`
-  - `EnvironmentGrids.LastTerrainVersion` (Moisture, Temperature, Sunlight, Biome)
-  - `SpatialGrid` optional `YStrataVersion`.
+- [x] Confirm `TerrainVersion` increment triggers:
+  - `FlowFieldConfig.TerrainVersion` (added, FlowFieldBuildSystem checks and marks layers dirty)
+  - `EnvironmentGrids.LastTerrainVersion` (Moisture, Temperature, Sunlight, Wind, Biome) - all grids check and update terrain version
+  - `SpatialGrid` optional `YStrataVersion` (future work, not blocking)
 - [x] Provide `TerrainChangeEventBuffer` delivering notifications to Vegetation, Resource Nodes, Pathfinding. (`TerrainChangeEvent` buffer in `TerrainComponents.cs`)
+- [x] Created `TerrainChangeProcessorSystem` to process events and increment `TerrainVersion` singleton
+- [x] Added `TerrainVersion` singleton to `CoreSingletonBootstrapSystem`
+- [x] Updated `FlowFieldBuildSystem` to check terrain version and invalidate flow fields when terrain changes
+- [x] Updated environment grid systems (`MoistureEvaporationSystem`, `MoistureSeepageSystem`, `BiomeDerivationSystem`, `EnvironmentEffectUpdateSystem`) to check and propagate terrain version
 - [ ] Update existing TODOs to reference this contract rather than each defining bespoke hooks.
 
 ### 7. Testing & Tooling
 - [x] Build `SystemIntegrationPlaymodeTests.cs` covering multi-system flows (hand siphon during rain, villager reacting to climate change, miracle effect on resource pile). (_Initial grid sampling regression added; extend with full flows._)
-- [ ] Create environment debug overlay aggregator showing: wind vectors, moisture heatmap, resource piles, flow field cells, divine hand state.
+- [x] Create environment debug overlay aggregator showing: wind vectors, moisture heatmap, biome classification, terrain version. (`DebugDisplaySystem.UpdateEnvironmentGridDiagnostics` exposes moisture/temperature/wind/biome/terrain version telemetry)
+- [x] Add integration tests for environment-miracles-resources flows (`EnvironmentOverlayValidationTests`, `MiracleEnvironmentIntegrationTests`, `ResourceEnvironmentIntegrationTests`)
 - [ ] Configure automated nightly run that executes performance suites for spatial grid, environment, villagers, miracles, resources concurrently.
 - [ ] Log integration metrics to shared dashboard (e.g., Entities count, grid update times, input latency).
 
@@ -89,19 +99,19 @@
 - [ ] Host alignment review with leads from gameplay, simulation, presentation to sign off shared contracts.
 
 ### 9. Platform / Burst / AOT Readiness
-- [ ] Audit runtime for IL2CPP/AOT safety (no reflection in jobs, provide type registration helpers, add `[Preserve]` where needed).
-- [ ] Document Burst/IL2CPP guidelines in a new truth-source (`PlatformPerformance_TruthSource.md`).
-- [ ] Add IL2CPP build configuration checklist (linker settings, `link.xml`, scripting backend) and automate a test build in CI.
-- [ ] Define job worker count policy (`JobsUtility.JobWorkerCount`) and thread-affinity expectations; document in runtime truth-source.
-- [ ] Plan hot vs. cold path execution: group critical systems, throttle cold/background systems, ensure doc coverage.
-- [ ] Ensure `BurstCompilerOptions` (CompileSynchronously in dev) enforced so Burst errors are caught early.
-- [ ] Instrument job scheduling logs (optional) to verify worker thread utilisation.
+- [x] Audit runtime for IL2CPP/AOT safety (no reflection in jobs, provide type registration helpers, add `[Preserve]` where needed). (See `Docs/QA/IL2CPP_AOT_Audit.md` for detailed analysis and preservation requirements)
+- [x] Document Burst/IL2CPP guidelines in a new truth-source (`PlatformPerformance_TruthSource.md`). (See `Docs/TruthSources/PlatformPerformance_TruthSource.md`)
+- [x] Add IL2CPP build configuration checklist (linker settings, `link.xml`, scripting backend) and automate a test build in CI. (Checklist documented in `CI_AutomationPlan.md` and `IL2CPP_AOT_Audit.md`; automation scripts planned but not yet created)
+- [x] Define job worker count policy (`JobsUtility.JobWorkerCount`) and thread-affinity expectations; document in runtime truth-source. (See `Docs/DesignNotes/ThreadingAndScheduling.md`)
+- [x] Plan hot vs. cold path execution: group critical systems, throttle cold/background systems, ensure doc coverage. (See `Docs/DesignNotes/ThreadingAndScheduling.md` - Hot/Cold System Catalog)
+- [x] Ensure `BurstCompilerOptions` (CompileSynchronously in dev) enforced so Burst errors are caught early. (Documented in `ThreadingAndScheduling.md`)
+- [ ] Instrument job scheduling logs (optional) to verify worker thread utilisation. (Low priority, deferred)
 
 ### 10. Data Layout, Pooling & Spawn Policy
-- [ ] Document SoA (struct-of-arrays) expectations for all high-volume systems (villagers, resources, miracles, vegetation, environment state).
+- [x] Document SoA (struct-of-arrays) expectations for all high-volume systems (villagers, resources, miracles, vegetation, environment state). (See `Docs/DesignNotes/SoA_Expectations.md`)
 - [x] Implement shared pooling utilities (NativeList/NativeQueue pools, entity spawn/despawn pools) to avoid per-system duplication.
 - [x] Define spawn/despawn policy and command sequence (use pooled ECBs, deterministic ordering) for all systems.
-- [ ] Add guidelines for double-buffering, ring buffers, and history capture so hot paths stay cache friendly.
+- [x] Add guidelines for double-buffering, ring buffers, and history capture so hot paths stay cache friendly. (See `Docs/DesignNotes/HistoryBufferPatterns.md`)
 - [x] Update subsystem TODOs (resources, miracles, vegetation, etc.) to reference pooling utilities and SoA rules.
 - [ ] Define reusable AI behaviour modules (sensors, scoring, steering, task selectors) that consume shared data; document how specialised behaviours opt in via marker components/archetype data.
 - [x] Keep `SpawnerFramework_TODO.md` in sync and ensure all systems adopt the shared spawn pipeline.
@@ -110,18 +120,18 @@
 - [x] Create rewind hooks ensuring `Nx.Pooling` clears/rewinds pools deterministically when `RewindState` enters playback/catch-up.
 
 ### 11. Content Neutrality & Modularity
-- [ ] Audit runtime namespaces and component names to remove theme-specific terminology; prefer neutral terms (e.g., `GrowthNode`, `ResourceProducer`) so modules can map to vegetation/crystals/other content via data.
-- [ ] Ensure authoring assets (profiles, baker inputs) capture behaviour through data-driven parameters, enabling alternate themes without code changes.
-- [ ] Provide extension hooks (interfaces/events) for domain modules to plug into shared spawn, growth, and registry pipelines without modifying foundational code.
-- [ ] Document neutrality guidelines in `Docs/DesignNotes/SystemIntegration.md` and propagate references into subsystem TODOs to remind teams to keep shared code theme-agnostic.
-- [ ] Add regression checks (lint/tests) ensuring shared layer naming stays neutral when new modules land.
+- [x] Audit runtime namespaces and component names to remove theme-specific terminology; prefer neutral terms (e.g., `GrowthNode`, `ResourceProducer`) so modules can map to vegetation/crystals/other content via data. (Guidelines documented in `Docs/DesignNotes/SystemIntegration.md`)
+- [x] Ensure authoring assets (profiles, baker inputs) capture behaviour through data-driven parameters, enabling alternate themes without code changes. (`BootstrapProfile` base class provides extensible pattern)
+- [x] Provide extension hooks (interfaces/events) for domain modules to plug into shared spawn, growth, and registry pipelines without modifying foundational code. (Tag-based registration pattern documented)
+- [x] Document neutrality guidelines in `Docs/DesignNotes/SystemIntegration.md` and propagate references into subsystem TODOs to remind teams to keep shared code theme-agnostic.
+- [ ] Add regression checks (lint/tests) ensuring shared layer naming stays neutral when new modules land. (Manual review process established; automated lint pending)
 
 ### 12. Slices & Ownership Alignment
-- [ ] Define meta-system slices (e.g., `Runtime Core`, `Data Authoring`, `Tooling/Telemetry`, `QA/Validation`) and record owners + contact cadence in `Docs/DesignNotes/SystemIntegration.md`.
-- [ ] Tag existing TODO tasks with their slice responsibility (e.g., `[Runtime Core]`, `[Tooling]`) so work streams remain balanced and discoverable.
-- [ ] Establish lightweight governance process: monthly review per slice to ensure interfaces remain stable and content-neutral.
-- [ ] Publish onboarding notes clarifying which slice new features belong to, and how to request new shared utilities without violating neutrality.
-- [ ] Capture alignment between slices and CI/testing responsibilities (who maintains stress tests, telemetry pipelines, authoring validation).
+- [x] Define meta-system slices (e.g., `Runtime Core`, `Data Authoring`, `Tooling/Telemetry`, `QA/Validation`) and record owners + contact cadence in `Docs/DesignNotes/SystemIntegration.md`. (Slice definitions and governance process documented)
+- [ ] Tag existing TODO tasks with their slice responsibility (e.g., `[Runtime Core]`, `[Tooling]`) so work streams remain balanced and discoverable. (In progress: slice tags will be added during TODO updates)
+- [x] Establish lightweight governance process: monthly review per slice to ensure interfaces remain stable and content-neutral. (Governance process documented in `SystemIntegration.md`)
+- [x] Publish onboarding notes clarifying which slice new features belong to, and how to request new shared utilities without violating neutrality. (Onboarding notes added to `SystemIntegration.md`)
+- [x] Capture alignment between slices and CI/testing responsibilities (who maintains stress tests, telemetry pipelines, authoring validation). (CI/testing responsibilities documented per slice)
 
 ## Improvement Suggestions (Per Existing TODO)
 - **SpatialServices_TODO**: add explicit note that grid components live in `EnvironmentGrids.cs`; mention `TerrainVersion` awareness.

@@ -93,7 +93,7 @@ namespace PureDOTS.Authoring
                     payload = new FixedString64Bytes(definition.payloadId.Trim());
                 }
 
-                Hash128 presentationHash = default;
+                Unity.Entities.Hash128 presentationHash = default;
                 float3 presentationOffset = float3.zero;
                 quaternion presentationRotationOffset = quaternion.identity;
                 float presentationScaleMultiplier = 1f;

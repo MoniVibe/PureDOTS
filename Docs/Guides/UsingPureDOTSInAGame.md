@@ -34,6 +34,7 @@ PureDOTS expects a small set of ScriptableObjects to exist in every consuming pr
    - `PureDotsRuntimeConfig` (time, history, resource catalogs).
    - `DefaultSpatialPartitionProfile`.
    - Any domain-specific catalogs you rely on (resource types, vegetation species, etc.).
+   - `AggregateBehaviorProfileAsset` for workforce/aggregate AI tuning (drop one per scene or assign via bootstrap so initiative cadence & law/chaos weights stay serialized). See `Docs/Guides/Authoring/AggregateValidationSample.md` for a complete sample SubScene that exercises the aggregate stack.
 3. Use `PureDotsConfigAuthoring` and `SpatialPartitionAuthoring` MonoBehaviours in your scene root to bake the runtime singletons.
 4. Confirm the SubScene baker output includes `TimeState`, `HistorySettings`, `SpatialGridConfig`, and the registry singletons when entering Play Mode.
 
@@ -46,6 +47,17 @@ PureDOTS expects a small set of ScriptableObjects to exist in every consuming pr
    - Record summary data for telemetry (counts, averages) so the debug HUD shows game-specific insights.
 3. Add a backup snapshot component so UI and tooling can display aggregate data even if the registries rewind (`GodgameRegistrySnapshot`, `Space4XRegistrySnapshot`).
 4. When new registries appear in the package, extend the bridge to fill them. Keep registry labels unique so the shared directory can resolve them deterministically.
+
+### Meta Registries (Phase 2)
+
+1. Use the new authoring components for meta data:
+   - `FactionAuthoring` / `FactionProfileAsset`
+   - `ClimateHazardAuthoring` / `ClimateHazardProfileAsset`
+   - `AreaEffectAuthoring` / `AreaEffectProfileAsset`
+   - `CultureAuthoring` / `CultureProfileAsset`
+2. Generate sample assets via **PureDOTS ➜ Samples ➜ Create Meta Registry Samples** or create custom profiles under your game project to seed default factions/hazards/effects/cultures.
+3. Confirm the meta registries populate by checking `DebugDisplayReader` (`Fact`, `Hazard`, `Effects`, `Culture` lines) and telemetry metrics (`registry.faction.count`, `registry.hazard.count`, etc.).
+4. When bridging game-specific systems, pipe additional metadata (territory, resources, alignment) through the shared registries so the HUD and soak harness can report the combined state.
 
 ## 5. Bootstrap Scenes & Testing
 

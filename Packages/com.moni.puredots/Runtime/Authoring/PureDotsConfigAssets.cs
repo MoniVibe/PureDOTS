@@ -226,6 +226,7 @@ namespace PureDOTS.Authoring
         public float minTicksPerSecond;
         public float maxTicksPerSecond;
         public float strideScale;
+        public bool enableInputRecording;
 
         public static HistorySettingsData CreateDefault()
         {
@@ -244,7 +245,8 @@ namespace PureDOTS.Authoring
                 defaultTicksPerSecond = defaults.DefaultTicksPerSecond,
                 minTicksPerSecond = defaults.MinTicksPerSecond,
                 maxTicksPerSecond = defaults.MaxTicksPerSecond,
-                strideScale = defaults.StrideScale
+                strideScale = defaults.StrideScale,
+                enableInputRecording = defaults.EnableInputRecording
             };
         }
 
@@ -264,7 +266,8 @@ namespace PureDOTS.Authoring
                 DefaultTicksPerSecond = defaultTicksPerSecond,
                 MinTicksPerSecond = minTicksPerSecond,
                 MaxTicksPerSecond = maxTicksPerSecond,
-                StrideScale = strideScale
+                StrideScale = strideScale,
+                EnableInputRecording = enableInputRecording
             };
         }
 

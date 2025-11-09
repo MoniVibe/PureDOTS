@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using PureDOTS.Runtime.Components;
+using PureDOTS.Input;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -118,12 +119,22 @@ namespace PureDOTS.Authoring
 
             AddComponent(entity, new DivineHandInput
             {
-                CursorPosition = cursor,
+                SampleTick = 0,
+                PlayerId = 0,
+                PointerPosition = float2.zero,
+                PointerDelta = float2.zero,
+                CursorWorldPosition = cursor,
                 AimDirection = aim,
-                GrabPressed = 0,
-                GrabReleased = 0,
-                ThrowPressed = 0,
-                ThrowCharge = 0f
+                PrimaryHeld = 0,
+                SecondaryHeld = 0,
+                ThrowCharge = 0f,
+                PointerOverUI = 0,
+                AppHasFocus = 1,
+                QueueModifierHeld = 0,
+                ReleaseSingleTriggered = 0,
+                ReleaseAllTriggered = 0,
+                ToggleThrowModeTriggered = 0,
+                ThrowModeIsSlingshot = 1
             });
 
             AddComponent(entity, new DivineHandCommand
@@ -146,6 +157,17 @@ namespace PureDOTS.Authoring
             AddBuffer<DivineHandEvent>(entity);
             AddBuffer<HandInputRouteRequest>(entity);
             AddComponent(entity, HandInputRouteResult.None);
+            AddBuffer<HandQueuedThrowElement>(entity);
+            AddBuffer<MiracleReleaseEvent>(entity);
+            AddBuffer<MiracleSlotDefinition>(entity);
+
+            AddComponent(entity, new MiracleCasterState
+            {
+                HandEntity = entity,
+                SelectedSlot = 0,
+                SustainedCastHeld = 0,
+                ThrowCastTriggered = 0
+            });
         }
     }
 }

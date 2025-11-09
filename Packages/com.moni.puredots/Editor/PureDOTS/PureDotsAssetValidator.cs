@@ -305,14 +305,32 @@ namespace PureDOTS.Editor
             }
 
             var config = profile.ToComponent();
-            if (config.CellCounts.x * config.CellCounts.y * config.CellCounts.z > 4_000_000)
+            var totalCells = config.CellCounts.x * config.CellCounts.y * config.CellCounts.z;
+            if (totalCells > 4_000_000)
             {
                 report.AddWarning(profile, "Spatial grid cell count exceeds 4 million. Verify memory/performance budgets.");
+            }
+            else if (totalCells > 1_000_000)
+            {
+                report.AddInfo(profile, $"Spatial grid has {totalCells:N0} cells. Monitor rebuild performance in playmode.");
+            }
+
+            // Validate cell counts are reasonable
+            if (config.CellCounts.x < 1 || config.CellCounts.y < 1 || config.CellCounts.z < 1)
+            {
+                report.AddError(profile, "Cell counts must be at least 1 on all axes.");
+            }
+
+            // Check aspect ratio
+            var extent = max - min;
+            var aspectXZ = extent.x / Mathf.Max(extent.z, 0.1f);
+            if (aspectXZ > 10f || aspectXZ < 0.1f)
+            {
+                report.AddWarning(profile, $"Spatial grid has extreme aspect ratio ({aspectXZ:F2}:1). Consider more balanced bounds for better query performance.");
             }
 
             if (profile.Provider == SpatialProviderType.UniformGrid)
             {
-                var extent = profile.WorldMax - profile.WorldMin;
                 var cellSize = profile.CellSize;
                 if (Mathf.Abs((extent.x / cellSize) - Mathf.Round(extent.x / cellSize)) > 0.01f ||
                     Mathf.Abs((extent.z / cellSize) - Mathf.Round(extent.z / cellSize)) > 0.01f)
@@ -324,6 +342,12 @@ namespace PureDOTS.Editor
             if (profile.HashSeed == 0 && profile.Provider == SpatialProviderType.HashedGrid)
             {
                 report.AddInfo(profile, "Hash seed is 0. Consider choosing a non-zero deterministic seed to avoid accidental collisions across projects.");
+            }
+
+            // Validate 2D navigation lock
+            if (profile.LockYAxisToOne && config.CellCounts.y != 1)
+            {
+                report.AddWarning(profile, "LockYAxisToOne is enabled but cell counts Y != 1. This may indicate a configuration mismatch.");
             }
         }
 

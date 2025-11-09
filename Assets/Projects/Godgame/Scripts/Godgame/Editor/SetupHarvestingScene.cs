@@ -3,6 +3,7 @@ using UnityEngine;
 using Godgame.Authoring;
 using PureDOTS.Authoring;
 using PureDOTS.Runtime.Components;
+using StorehouseAuthoring = PureDOTS.Authoring.StorehouseAuthoring;
 
 namespace Godgame.Editor
 {

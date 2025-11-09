@@ -61,6 +61,17 @@ This document establishes naming, versioning, validation, and migration practice
 2. **Registry Directory**: The bootstrap scene must include `RegistryDirectoryAuthoring` (if present) to publish handles through `RegistryMetadata`. Document registry ownership in `Docs/DesignNotes/SystemIntegration.md`.
 3. **Custom Registries**: When adding new registry types, follow the pattern: authoring component → baker adds config/state → runtime system updates registry buffers. Update this document and validation once stabilized.
 
+### 4.5 Baking Pattern (Per-Authoring Bakers + Aggregator)
+
+- **Skip "mega bakers"**: In Entities 1.4 we rely on incremental baking. Large bakers that scan the whole world force wide rebakes. Keep each `Baker<T>` scoped to its authoring component and leave cross-asset aggregation to a baking system.
+- **Local conversion**: Inside the baker call `GetEntity(go, TransformUsageFlags.…)` for referenced assets and `DependsOn(asset)` so changes trigger rebakes. Only convert the data owned by that authoring instance.
+- **Temporary handoff records**: Emit buffers/tags marked `[TemporaryBakingType]` (cleared every bake) or `[BakingType]` (kept in the baking world) so the aggregator can discover entries. These components must not ship to runtime.
+- **Aggregator baking system**: Implement a system marked `[WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]`. It runs after bakers, queries the temporary records, and writes the final runtime registry (dynamic buffer or blob asset) on a single entity via `EntityCommandBuffer`.
+- **Choose storage intentionally**: Use dynamic buffers when the registry stays small/patchable (e.g., VFX prefabs). Use blob assets for large read-only data and dedupe with `AddBlobAsset`.
+- **Lean transform usage**: When creating entities in bakers, pass the narrowest `TransformUsageFlags` (`None` for registries, `Static`/`Dynamic` only if required) to avoid unnecessary transform components.
+- **Baking-only helpers**: Tag temporary helper entities `BakingOnlyEntity` so they never reach runtime.
+- **Reference pattern**: Authoring + local baker produces `[TemporaryBakingType]` records → baking system gathers them → writes runtime buffer/blob → clears temporary data. Reuse this pipeline for new registries, catalogues, or dev tool manifests.
+
 ## 5. Pooling Authoring Guidelines
 
 - **Default Config**: `PoolingSettingsData` inside `PureDotsRuntimeConfig` defines global capacities. Keep values conservative; use telemetry to justify increases.

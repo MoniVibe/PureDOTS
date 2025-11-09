@@ -28,6 +28,11 @@ Updated: 2025-10-25
 - `Docs/DesignNotes/ResourceRegistryPlan.md`
 - `Docs/DesignNotes/VegetationAssets.md`
 - `Docs/DesignNotes/VillagerJobs_DOTS.md`
+- `Docs/DesignNotes/SoA_Expectations.md` - Structure of Arrays layout guidelines
+- `Docs/DesignNotes/ThreadingAndScheduling.md` - Threading policy and execution strategy
+- `Docs/DesignNotes/HistoryBufferPatterns.md` - History buffer patterns for rewind
+- `Docs/DesignNotes/RegistryHotColdSplits.md` - Registry hot/cold data splits
+- `Docs/DesignNotes/MetaRegistryRoadmap.md` - Meta registry implementation roadmap (faction, climate, area effects, culture)
 
 ## Architecture
 - `Docs/Architecture/PureDOTS_As_Framework.md` - Framework architecture and contract
@@ -47,5 +52,15 @@ Updated: 2025-10-25
 ## QA & Testing
 - `Docs/QA/IntegrationTestChecklist.md`
 - `Docs/QA/PerformanceProfiles.md`
+- `Docs/QA/BootstrapAudit.md` - Bootstrap infrastructure audit and validation checklist
+- `Docs/QA/IL2CPP_AOT_Audit.md` - IL2CPP/AOT safety audit and preservation requirements
+- `Docs/QA/TestingStrategy.md` - Testing pyramid, replay harness, soak suite, regression scenes
+- `Docs/QA/TelemetryEnhancementPlan.md` - Telemetry, profiling, and performance monitoring plan
+
+## CI & Automation
+- `Docs/CI/CI_AutomationPlan.md` - CI pipeline, build automation, coverage, nightly runs
+
+## Technical Debt
+- `Docs/TECHNICAL_DEBT.md` - Comprehensive catalog of remaining technical debt items
 
 Keep this index updated when new documents or TODOs are added.

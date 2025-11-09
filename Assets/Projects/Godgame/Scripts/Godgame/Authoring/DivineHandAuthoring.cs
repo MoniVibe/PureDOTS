@@ -1,7 +1,9 @@
 using Godgame.Interaction;
+using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using InteractionHandState = Godgame.Interaction.HandState;
 
 namespace Godgame.Authoring
 {
@@ -28,7 +30,7 @@ namespace Godgame.Authoring
 
                 AddComponent(entity, new Hand
                 {
-                    State = HandState.Empty,
+                    State = InteractionHandState.Empty,
                     WorldPos = float3.zero,
                     PrevWorldPos = float3.zero,
                     AimDir = new float3(0f, -1f, 0f),
@@ -68,6 +70,17 @@ namespace Godgame.Authoring
                 AddBuffer<HandEventDump>(entity);
                 AddBuffer<HandEventSiphon>(entity);
                 AddBuffer<HandEventThrow>(entity);
+                AddBuffer<HandQueuedThrowElement>(entity);
+                AddBuffer<MiracleReleaseEvent>(entity);
+                AddBuffer<MiracleSlotDefinition>(entity);
+
+                AddComponent(entity, new MiracleCasterState
+                {
+                    HandEntity = entity,
+                    SelectedSlot = 0,
+                    SustainedCastHeld = 0,
+                    ThrowCastTriggered = 0
+                });
             }
         }
     }

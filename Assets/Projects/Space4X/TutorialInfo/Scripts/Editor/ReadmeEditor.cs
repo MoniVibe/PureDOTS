@@ -6,13 +6,15 @@ using System;
 using System.IO;
 using System.Reflection;
 
-[CustomEditor(typeof(Readme))]
-[InitializeOnLoad]
-public class ReadmeEditor : Editor
+namespace Space4X.TutorialInfo
 {
-    static string s_ShowedReadmeSessionStateName = "ReadmeEditor.showedReadme";
+    [CustomEditor(typeof(Readme))]
+    [InitializeOnLoad]
+    public class ReadmeEditor : UnityEditor.Editor
+    {
+        static string s_ShowedReadmeSessionStateName = "ReadmeEditor.showedReadme";
     
-    static string s_ReadmeSourceDirectory = "Assets/TutorialInfo";
+        static string s_ReadmeSourceDirectory = "Assets/Projects/Space4X/TutorialInfo";
 
     const float k_Space = 16f;
 
@@ -71,7 +73,7 @@ public class ReadmeEditor : Editor
         var assembly = typeof(EditorApplication).Assembly;
         var windowLayoutType = assembly.GetType("UnityEditor.WindowLayout", true);
         var method = windowLayoutType.GetMethod("LoadWindowLayout", BindingFlags.Public | BindingFlags.Static);
-        method.Invoke(null, new object[] { Path.Combine(Application.dataPath, "TutorialInfo/Layout.wlt"), false });
+        method.Invoke(null, new object[] { Path.Combine(Application.dataPath, "Projects/Space4X/TutorialInfo/Layout.wlt"), false });
     }
 
     static Readme SelectReadme()
@@ -238,5 +240,6 @@ public class ReadmeEditor : Editor
         EditorGUIUtility.AddCursorRect(position, MouseCursor.Link);
 
         return GUI.Button(position, label, LinkStyle);
+    }
     }
 }

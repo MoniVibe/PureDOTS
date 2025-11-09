@@ -20,8 +20,8 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerNeeds, VillagerJob, VillagerAIState, VillagerDisciplineState, VillagerMood, VillagerAvailability>()
-                .WithNone<VillagerDeadTag, PlaybackGuardTag>()
+                .WithAll<VillagerNeeds, VillagerJob, VillagerAIState, VillagerDisciplineState, VillagerMood, VillagerAvailability, VillagerFlags>()
+                .WithNone<PlaybackGuardTag>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -86,8 +86,15 @@ namespace PureDOTS.Systems
                 ref VillagerDisciplineState discipline,
                 ref VillagerMood mood,
                 in VillagerNeeds needs,
-                in VillagerAIState aiState)
+                in VillagerAIState aiState,
+                in VillagerFlags flags)
             {
+                // Skip dead villagers
+                if (flags.IsDead)
+                {
+                    return;
+                }
+                
                 var alive = needs.Health > AliveHealthThreshold;
                 var busy = aiState.CurrentState == VillagerAIState.State.Working || aiState.CurrentGoal == VillagerAIState.Goal.Work;
 
@@ -110,13 +117,17 @@ namespace PureDOTS.Systems
                     discipline.Value = MapJobToDiscipline(job.Type);
                 }
 
-                var wellbeing = math.clamp((100f - needs.Hunger) * WellbeingHungerWeight + needs.Energy * WellbeingEnergyWeight + math.saturate(needs.Health / math.max(1f, needs.MaxHealth)) * 100f * WellbeingHealthWeight, 0f, 100f);
+                // Use helper methods to convert ushort to float
+                var hunger = needs.HungerFloat;
+                var energy = needs.EnergyFloat;
+                
+                var wellbeing = math.clamp((100f - hunger) * WellbeingHungerWeight + energy * WellbeingEnergyWeight + math.saturate(needs.Health / math.max(1f, needs.MaxHealth)) * 100f * WellbeingHealthWeight, 0f, 100f);
                 mood.Wellbeing = wellbeing;
                 mood.TargetMood = wellbeing;
                 var adjust = math.clamp(DeltaTime * mood.MoodChangeRate, 0f, 1f);
                 mood.Mood = math.lerp(mood.Mood, mood.TargetMood, adjust);
 
-                var energyFactor = math.clamp(needs.Energy / 100f, 0f, 1f);
+                var energyFactor = math.clamp(energy / 100f, 0f, 1f);
                 var moraleFactor = math.clamp(mood.Mood / 100f, 0f, 1f);
                 job.Productivity = math.clamp(ProductivityBase + energyFactor * ProductivityEnergyWeight + moraleFactor * ProductivityMoraleWeight, 0f, ProductivityMax);
             }

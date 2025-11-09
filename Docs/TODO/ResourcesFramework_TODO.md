@@ -100,7 +100,7 @@ All systems respect `RewindState.Mode` and skip updates during playback.
 - Villager job assignment instant (registry + spatial query)
 
 ## Dependencies & Shared Infrastructure
-- Use environment grid cadence (moisture/temperature/wind/sunlight sampling) when resource systems react to climate (e.g., drying piles, rain-soaked wood).
+- [x] Use environment grid cadence (moisture/temperature/wind/sunlight sampling) when resource systems react to climate (e.g., drying piles, rain-soaked wood). (`ResourceEnvironmentIntegrationTests` validates integration point; `ResourceSourceManagementSystem` can sample environment via `EnvironmentSampling` helpers)
 - Adopt shared registry utilities (`DeterministicRegistryBuilder`, resource/storehouse registries) and spatial query helpers for all proximity lookups.
 - Feed hauler/miner agents through the shared `AISystemGroup` pipeline; author resource-specific behaviour by supplying `AISensorConfig` ranges and utility blobs rather than bespoke AI systems.
 - Integrate with the central hand/router (`HandInputRouterSystem`, `HandInteractionState`) for siphon priorities, cooldowns, and rewind guards.

@@ -53,22 +53,25 @@
 - [ ] Identify systems needing climate hooks: vegetation, resource nodes, fire propagation (future), projectile physics, terraforming, villager movement.
 - [ ] Determine data resolution (grid size vs. world size) and update cadence.
 
-### 1. Data & Asset Model
-- [ ] **Define comprehensive grid structures** in new or expanded components:
-  - `SunlightGrid` singleton - BlobAssetReference, GridResolution (128x128), CellSize (10m), SunDirection, SunIntensity, LastUpdateTick
-  - `SunlightGridBlob` - BlobArray of DirectLight (0-100), AmbientLight, OccluderCount
-  - `MoistureGrid` singleton - BlobAssetReference, GridResolution (256x256), CellSize (5m), WorldMin/Max, LastUpdateTick
-  - `MoistureGridBlob` - BlobArray of MoistureLevels, DrainageRates, TerrainHeight, LastRainTick, EvaporationRate
-  - `TemperatureGrid` singleton - BlobAssetReference, GridResolution (64x64), CellSize (20m), BaseSeasonTemperature, TimeOfDayModifier, LastUpdateTick
-  - `TemperatureGridBlob` - BlobArray of CellTemperatures (Celsius), Altitudes
-  - `WindField` singleton - BlobAssetReference, GridResolution (32x32), CellSize (40m), GlobalWindDirection, GlobalWindStrength, LastUpdateTick
-  - `WindFieldBlob` - BlobArray of LocalWind (float2 direction + strength per cell)
-- [ ] **Define ClimateState singleton** (global environmental state):
-  - CurrentSeason (0=Spring, 1=Summer, 2=Autumn, 3=Winter), SeasonProgress (0-1)
-  - TimeOfDay (0-24 hours), DayNightProgress (0-1, 0=midnight, 0.5=noon)
-  - GlobalTemperature, GlobalWindDirection, GlobalWindStrength
-  - AtmosphericMoisture (0-100, affects rain chance), CloudCover (0-100, affects sunlight)
-  - LastUpdateTick
+### 1. Data & Asset Model (SUBSTANTIALLY COMPLETE)
+- [x] **Define comprehensive grid structures** in `EnvironmentGrids.cs`:
+  - [x] `SunlightGrid` singleton - BlobAssetReference, GridResolution, CellSize, SunDirection, SunIntensity, LastUpdateTick
+  - [x] `SunlightGridBlob` - BlobArray of SunlightSample (DirectLight, AmbientLight, OccluderCount)
+  - [x] `MoistureGrid` singleton - BlobAssetReference, GridResolution, CellSize, WorldMin/Max, LastUpdateTick
+  - [x] `MoistureGridBlob` - BlobArray of MoistureLevels, DrainageRates, TerrainHeight, LastRainTick, EvaporationRate
+  - [x] `TemperatureGrid` singleton - BlobAssetReference, GridResolution, CellSize, BaseSeasonTemperature, TimeOfDayModifier, LastUpdateTick
+  - [x] `TemperatureGridBlob` - BlobArray of CellTemperatures (Celsius), Altitudes
+  - [x] `WindField` singleton - BlobAssetReference, GridResolution, CellSize, GlobalWindDirection, GlobalWindStrength, LastUpdateTick
+  - [x] `WindFieldBlob` - BlobArray of WindSample (float2 direction + strength per cell)
+  - [x] `BiomeGrid` singleton - BlobAssetReference, GridResolution, CellSize, LastUpdateTick
+  - [x] `BiomeGridBlob` - BlobArray of BiomeType per cell
+- [x] **Define ClimateState singleton** (global environmental state):
+  - [x] CurrentSeason (0=Spring, 1=Summer, 2=Autumn, 3=Winter), SeasonProgress (0-1)
+  - [x] TimeOfDay (0-24 hours), DayNightProgress (0-1, 0=midnight, 0.5=noon)
+  - [x] GlobalTemperature, GlobalWindDirection, GlobalWindStrength
+  - [x] AtmosphericMoisture (0-100, affects rain chance), CloudCover (0-100, affects sunlight)
+  - [x] LastUpdateTick
+- [x] **Sampling API**: `EnvironmentSampling` provides Burst-friendly helpers for all grids (`SampleMoisture`, `SampleTemperature`, `SampleSunlight`, `SampleWind`, `SampleBiome`)
 - [ ] Define `ClimateProfile` ScriptableObject:
   - SeasonalTemperatures [4] (Spring, Summer, Autumn, Winter base temps)
   - DayNightTempSwing (±5°C typical)
@@ -88,14 +91,15 @@
 - [ ] Align system implementations with shared baseline environment grid jobs (moisture, temperature, wind, sunlight) defined in `EnvironmentSystemGroup`.
 - [ ] Reference platform guidance (`PlatformPerformance_TruthSource.md`) when adding Burst/AOT-sensitive environment jobs and instrumentation.
 
-### 1.5. Sunlight & Shadow System (NEW)
-- [ ] **Define TimeOfDayState component**:
-  - CurrentHour (0-24), HoursPerSecond (timescale), DayNumber (total days elapsed)
+### 1.5. Sunlight & Shadow System (COMPLETE)
+- [x] **Define TimeOfDayState component**: Integrated into `ClimateState` singleton with `TimeOfDayHours` and `DayNightProgress`
 - [x] **Implement SunlightGridUpdateSystem** (runs every 5 ticks):
   - Calculate sun position from time-of-day and season (elevation angle, azimuth)
   - **Option B - Heuristic** (more performant): Query spatial grid for tall vegetation count
     - Implemented via mature vegetation occlusion counts to attenuate direct light and boost ambient terms.
   - Update SunDirection vector and SunIntensity (0-1 based on time)
+- [x] **Grid structures defined**: `SunlightGrid`, `SunlightGridBlob`, `SunlightSample` with bilinear sampling support
+- [x] **Sampling helpers**: `EnvironmentSampling.SampleSunlight()` provides Burst-friendly sampling API
 - [ ] **Sun arc calculations**:
   - Midnight (0h/24h): Below horizon (-90° elevation)
   - Sunrise (6h): Horizon (0° elevation)
@@ -147,7 +151,7 @@
   - Calculate moisture difference, transfer 10% of difference per tick (diffusion)
   - Water flows from high concentration to low (groundwater)
   - Deterministic cell order (row-major traversal)
-- [ ] **Implement MoistureRainSystem**: Rain clouds/miracles add moisture to cells (integrate existing rain)
+- [x] **Implement MoistureRainSystem**: Rain clouds/miracles add moisture to cells (integrate existing rain). (`MoistureRainSystem` integrates rain clouds with moisture grid, runs in `EnvironmentSystemGroup` after `MoistureSeepageSystem`)
 - [ ] **Water balance equation per cell**: ΔMoisture = Rainfall + Seepage_In - Evaporation - Plant_Consumption - Drainage - Seepage_Out
 
 ### 2.6. Data-Driven Environment Effects (NEW)

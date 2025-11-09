@@ -54,6 +54,8 @@ Recommended placements (world space metres):
 
 Add **Entity** conversion (`Convert and Destroy`) if the prefab/authoring object does not already include it.
 
+> Need a concrete example with villagers, a village center, and aggregate behaviour already wired? Follow `Docs/Guides/Authoring/AggregateValidationSample.md` to build the validation SubScene described there and copy its structure into your own sandbox scenes.
+
 ### 2.3 HUD & Overlay
 - Add a Canvas (`Screen Space - Overlay`) named `SandboxHUD`.
   - Attach `DebugDisplayReader` and wire time/rewind/spatial/registry text fields if desired.

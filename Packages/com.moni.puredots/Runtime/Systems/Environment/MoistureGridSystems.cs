@@ -72,8 +72,22 @@ namespace PureDOTS.Systems.Environment
                 return;
             }
 
-            var grid = SystemAPI.GetSingleton<MoistureGrid>();
+            var grid = SystemAPI.GetSingletonRW<MoistureGrid>();
             var gridEntity = SystemAPI.GetSingletonEntity<MoistureGrid>();
+            
+            // Check terrain version - if terrain changed, mark grid as needing update
+            uint currentTerrainVersion = 0;
+            if (SystemAPI.TryGetSingleton<PureDOTS.Environment.TerrainVersion>(out var terrainVersion))
+            {
+                currentTerrainVersion = terrainVersion.Value;
+                if (currentTerrainVersion != grid.ValueRO.LastTerrainVersion)
+                {
+                    // Terrain changed, force update
+                    grid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                    grid.ValueRW.LastUpdateTick = uint.MaxValue; // Force rebuild
+                }
+            }
+            
             if (!SystemAPI.HasBuffer<MoistureGridRuntimeCell>(gridEntity))
             {
                 gridState.ValueRW.LastEvaporationTick = currentTick;
@@ -206,6 +220,20 @@ namespace PureDOTS.Systems.Environment
 
             var grid = SystemAPI.GetSingletonRW<MoistureGrid>();
             var gridEntity = SystemAPI.GetSingletonEntity<MoistureGrid>();
+            
+            // Check terrain version - if terrain changed, mark grid as needing update
+            uint currentTerrainVersion = 0;
+            if (SystemAPI.TryGetSingleton<PureDOTS.Environment.TerrainVersion>(out var terrainVersion))
+            {
+                currentTerrainVersion = terrainVersion.Value;
+                if (currentTerrainVersion != grid.ValueRO.LastTerrainVersion)
+                {
+                    // Terrain changed, force update
+                    grid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                    grid.ValueRW.LastUpdateTick = uint.MaxValue; // Force rebuild
+                }
+            }
+            
             if (!SystemAPI.HasBuffer<MoistureGridRuntimeCell>(gridEntity))
             {
                 gridState.ValueRW.LastSeepageTick = currentTick;

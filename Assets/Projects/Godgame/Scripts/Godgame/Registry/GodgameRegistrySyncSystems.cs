@@ -1,4 +1,7 @@
+using Godgame.Authoring;
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -428,6 +431,259 @@ namespace Godgame.Registry
             FixedString64Bytes result = default;
             result.Append("Storehouse-");
             result.Append(storehouseId);
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Mirrors resource node gameplay data so the registry bridge can build ResourceRegistry entries.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
+    public partial struct GodgameResourceNodeSyncSystem : ISystem
+    {
+        private ComponentLookup<GodgameResourceNodeMirror> _resourceMirrorLookup;
+        private ComponentLookup<GodgameResourceNode> _resourceNodeLookup;
+
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<ResourceRegistry>();
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            _resourceMirrorLookup = state.GetComponentLookup<GodgameResourceNodeMirror>(isReadOnly: false);
+            _resourceNodeLookup = state.GetComponentLookup<GodgameResourceNode>(isReadOnly: true);
+
+            state.RequireForUpdate(SystemAPI.QueryBuilder()
+                .WithAll<GodgameResourceNode, LocalTransform>()
+                .Build());
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            _resourceMirrorLookup.Update(ref state);
+            _resourceNodeLookup.Update(ref state);
+
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var tick = SystemAPI.GetSingleton<TimeState>().Tick;
+
+            foreach (var (resourceNode, entity) in SystemAPI
+                         .Query<RefRO<GodgameResourceNode>>()
+                         .WithAll<LocalTransform>()
+                         .WithEntityAccess())
+            {
+                var node = resourceNode.ValueRO;
+                var hasMirror = _resourceMirrorLookup.HasComponent(entity);
+                var mirror = hasMirror ? _resourceMirrorLookup[entity] : default;
+
+                var remainingAmount = math.max(0f, node.RemainingAmount);
+                var maxAmount = math.max(remainingAmount, node.MaxAmount);
+                var regeneration = math.max(0f, node.RegenerationRate);
+                var depleted = remainingAmount <= 0.001f ? (byte)1 : (byte)0;
+
+                bool mutated = !hasMirror
+                               || mirror.ResourceTypeIndex != node.ResourceTypeIndex
+                               || math.abs(mirror.RemainingAmount - remainingAmount) > 0.001f
+                               || math.abs(mirror.MaxAmount - maxAmount) > 0.001f
+                               || math.abs(mirror.RegenerationRate - regeneration) > 0.001f
+                               || mirror.IsDepleted != depleted;
+
+                mirror.ResourceTypeIndex = node.ResourceTypeIndex;
+                mirror.RemainingAmount = remainingAmount;
+                mirror.MaxAmount = maxAmount;
+                mirror.RegenerationRate = regeneration;
+                mirror.IsDepleted = depleted;
+                mirror.LastMutationTick = mutated || mirror.LastMutationTick == 0 ? tick : mirror.LastMutationTick;
+
+                if (!hasMirror)
+                {
+                    ecb.AddComponent(entity, mirror);
+                }
+                else
+                {
+                    _resourceMirrorLookup[entity] = mirror;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Mirrors villager spawner configuration so the registry bridge can export spawner entries.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
+    public partial struct GodgameSpawnerSyncSystem : ISystem
+    {
+        private static readonly FixedString64Bytes VillagerSpawnerTypeId = new FixedString64Bytes("godgame.villager");
+
+        private ComponentLookup<GodgameSpawnerMirror> _spawnerMirrorLookup;
+        private ComponentLookup<VillageSpawnerConfig> _spawnerConfigLookup;
+
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<SpawnerRegistry>();
+            state.RequireForUpdate<VillageSpawnerConfig>();
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            _spawnerMirrorLookup = state.GetComponentLookup<GodgameSpawnerMirror>(isReadOnly: false);
+            _spawnerConfigLookup = state.GetComponentLookup<VillageSpawnerConfig>(isReadOnly: true);
+
+            state.RequireForUpdate(SystemAPI.QueryBuilder()
+                .WithAll<VillageSpawnerConfig, LocalTransform>()
+                .Build());
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            _spawnerMirrorLookup.Update(ref state);
+            _spawnerConfigLookup.Update(ref state);
+
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var tick = SystemAPI.GetSingleton<TimeState>().Tick;
+
+            foreach (var (configRef, entity) in SystemAPI
+                         .Query<RefRO<VillageSpawnerConfig>>()
+                         .WithAll<LocalTransform>()
+                         .WithEntityAccess())
+            {
+                var config = configRef.ValueRO;
+                var hasMirror = _spawnerMirrorLookup.HasComponent(entity);
+                var mirror = hasMirror ? _spawnerMirrorLookup[entity] : default;
+
+                var totalCapacity = math.max(0, config.VillagerCount);
+                var spawnedCount = math.clamp(config.SpawnedCount, 0, totalCapacity);
+                var pendingCount = math.max(0, totalCapacity - spawnedCount);
+                var spawnRadius = math.max(0f, config.SpawnRadius);
+                var isActive = (byte)(pendingCount > 0 ? 1 : 0);
+
+                bool mutated = !hasMirror
+                               || mirror.TotalCapacity != totalCapacity
+                               || mirror.SpawnedCount != spawnedCount
+                               || mirror.PendingSpawnCount != pendingCount
+                               || math.abs(mirror.SpawnRadius - spawnRadius) > 0.001f
+                               || mirror.DefaultJobType != config.DefaultJobType
+                               || mirror.DefaultAIGoal != config.DefaultAIGoal
+                               || mirror.IsActive != isActive;
+
+                mirror.SpawnerTypeId = VillagerSpawnerTypeId;
+                mirror.TotalCapacity = totalCapacity;
+                mirror.SpawnedCount = spawnedCount;
+                mirror.PendingSpawnCount = pendingCount;
+                mirror.SpawnRadius = spawnRadius;
+                mirror.DefaultJobType = config.DefaultJobType;
+                mirror.DefaultAIGoal = config.DefaultAIGoal;
+                mirror.IsActive = isActive;
+                mirror.LastMutationTick = mutated || mirror.LastMutationTick == 0 ? tick : mirror.LastMutationTick;
+
+                if (!hasMirror)
+                {
+                    ecb.AddComponent(entity, mirror);
+                }
+                else
+                {
+                    _spawnerMirrorLookup[entity] = mirror;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Mirrors shared band components into <see cref="GodgameBand"/> summaries so the registry bridge can publish band data.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
+    public partial struct GodgameBandSyncSystem : ISystem
+    {
+        private ComponentLookup<GodgameBand> _bandMirrorLookup;
+        private ComponentLookup<BandFormation> _formationLookup;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _bandMirrorLookup = state.GetComponentLookup<GodgameBand>(isReadOnly: false);
+            _formationLookup = state.GetComponentLookup<BandFormation>(isReadOnly: true);
+
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate(SystemAPI.QueryBuilder()
+                .WithAll<BandId, BandStats, LocalTransform>()
+                .Build());
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            _bandMirrorLookup.Update(ref state);
+            _formationLookup.Update(ref state);
+
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+
+            foreach (var (bandId, stats, transform, entity) in SystemAPI
+                         .Query<RefRO<BandId>, RefRO<BandStats>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
+            {
+                var hasMirror = _bandMirrorLookup.HasComponent(entity);
+                var mirror = hasMirror ? _bandMirrorLookup[entity] : default;
+
+                if (!hasMirror || mirror.DisplayName.Length == 0)
+                {
+                    mirror.DisplayName = BuildBandName(bandId.ValueRO.Value);
+                }
+
+                mirror.BandId = bandId.ValueRO.Value;
+                mirror.FactionId = bandId.ValueRO.FactionId;
+                mirror.Leader = bandId.ValueRO.Leader;
+                mirror.MemberCount = stats.ValueRO.MemberCount;
+                mirror.Morale = stats.ValueRO.Morale;
+                mirror.Cohesion = stats.ValueRO.Cohesion;
+                mirror.AverageDiscipline = stats.ValueRO.AverageDiscipline;
+                mirror.Fatigue = stats.ValueRO.Fatigue;
+                mirror.StatusFlags = stats.ValueRO.Flags;
+
+                if (_formationLookup.HasComponent(entity))
+                {
+                    var formation = _formationLookup[entity];
+                    mirror.Formation = formation.Formation;
+                    mirror.FormationSpacing = formation.Spacing;
+                    mirror.FormationWidth = formation.Width;
+                    mirror.FormationDepth = formation.Depth;
+                    mirror.Anchor = formation.Anchor;
+                    mirror.Facing = formation.Facing;
+                }
+                else
+                {
+                    mirror.Formation = BandFormationType.Column;
+                    mirror.FormationSpacing = 1.5f;
+                    mirror.FormationWidth = math.max(1f, stats.ValueRO.MemberCount);
+                    mirror.FormationDepth = 1f;
+                    mirror.Anchor = transform.ValueRO.Position;
+                    mirror.Facing = math.forward(transform.ValueRO.Rotation);
+                }
+
+                if (!hasMirror)
+                {
+                    ecb.AddComponent(entity, mirror);
+                }
+                else
+                {
+                    _bandMirrorLookup[entity] = mirror;
+                }
+            }
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+
+        private static FixedString64Bytes BuildBandName(int bandId)
+        {
+            FixedString64Bytes result = default;
+            result.Append("Band-");
+            result.Append(bandId);
             return result;
         }
     }

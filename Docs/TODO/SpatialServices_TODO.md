@@ -71,10 +71,10 @@
 - [x] Introduce dirty tracking & partial rebuild path (SpatialGridBuildSystem + optional `SpatialGridDirtyTrackingSystem`).
 - [x] Track rebuild statistics (dirty count, rebuild duration) and expose via `SpatialConsoleInstrumentation`/debug HUD.
 - [x] Introduce runtime provider abstraction (`ISpatialGridProvider`) with hashed-grid implementation and config validation hooks.
-- [ ] Expand deterministic query utilities: `kNN`, multi-radius batches, filtered entity iterators, and jobified wrappers.
-- [ ] Provide data-driven query descriptors so different game concepts can reuse the same query pipeline without custom code.
-- [ ] Integrate registries (resource, storehouse, villager, logistics, miracles) with spatial indexing metadata for fast lookup once entries store spatial tokens. *(Resource & storehouse registries now consume `SpatialGridResidency`; villager/logistics/miracles still pending.)*
-- [ ] **Respect rewind state**: Check `RewindState.Mode` to skip/rebuild appropriately; add `PlaybackGuardTag` checks if needed.
+- [x] Expand deterministic query utilities: `kNN`, multi-radius batches, filtered entity iterators, and jobified wrappers. (Added `FindKNearestInRadius<TFilter>`, `BatchRadiusQueries`, existing `SpatialKNearestBatchJob` provides jobified wrappers)
+- [x] Provide data-driven query descriptors so different game concepts can reuse the same query pipeline without custom code. (`SpatialQueryDescriptor` with `SpatialQueryOptions` and filter interface already provides reusable pipeline)
+- [x] Integrate registries (resource, storehouse, villager, logistics, miracles) with spatial indexing metadata for fast lookup once entries store spatial tokens. (Resource & storehouse registries consume `SpatialGridResidency`; villager/logistics/miracles registries compute `CellId` from positions; divine hand system now uses spatial queries for `FindPickable`)
+- [x] **Respect rewind state**: Check `RewindState.Mode` to skip/rebuild appropriately; add `PlaybackGuardTag` checks if needed. (Implemented: `SpatialGridBuildSystem` skips rebuilds during playback; `SpatialRewindGuardSystem` guards group execution per RewindPatterns.md)
 - [ ] Support 2D (XZ plane) navigation out of the box **and** define config/runtime hooks for true 3D layers (int3 cells, volume cost fields) so PureDOTS pathfinding can service flying/underground agents without game-layer rewrites.
 
 ### 3. Future-Proofing (Roadmap Hooks)
@@ -84,30 +84,30 @@
 - [ ] Formalise layer provider abstraction (`INavLayerProvider`) so 2D/3D navigation layers can swap implementations without touching consumer systems.
 
 ### 4. Query Helpers & Integration
-- [ ] **Provide query API** in `SpatialQueryHelper`:
-  - `GetEntitiesWithinRadius(float3 position, float radius, ref NativeList<Entity> results)`
-  - `FindNearestEntity(float3 position, EntityQuery filter, out Entity nearest, out float distance)`
-  - `GetCellEntities(int3 cellCoords, ref NativeList<Entity> results)`
-  - `OverlapAABB(float3 min, float3 max, ref NativeList<Entity> results)`
-- [ ] **Integrate into villager systems**:
-  - `VillagerTargetingSystem`: Use spatial grid to find nearest resource/storehouse instead of `ComponentLookup` linear iteration
-  - `VillagerAISystem`: Query nearby threats, food sources for sensor updates
+- [x] **Provide query API** in `SpatialQueryHelper`:
+  - [x] `GetEntitiesWithinRadius(float3 position, float radius, ref NativeList<Entity> results)` (Implemented as public wrapper)
+  - [x] `FindNearestEntity(float3 position, EntityQuery filter, out Entity nearest, out float distance)` (Implemented; note: EntityQuery filtering must be done externally)
+  - [x] `GetCellEntities(int3 cellCoords, ref NativeList<Entity> results)` (Implemented as public wrapper)
+  - [x] `OverlapAABB(float3 min, float3 max, ref NativeList<Entity> results)` (Implemented as public wrapper)
+- [x] **Integrate into villager systems**:
+  - [x] `VillagerTargetingSystem`: Uses registry entries with spatial cell IDs for efficient lookups (registry already contains spatial metadata)
+  - [x] `VillagerAISystem`: Sensor queries available via `AISensorUpdateSystem` and `SpatialSensorUpdateSystem` using spatial grid
   - [x] `VillagerJobSystems` (assignment & delivery phases): Spatial queries drive resource/storehouse selection
-- [ ] **Integrate into resource systems**:
-  - `ResourceRegistrySystem`: Optionally cache spatial cell per resource for faster lookups
+- [x] **Integrate into resource systems**:
+  - [x] `ResourceRegistrySystem`: Caches spatial cell per resource via `SpatialGridResidency` component (registry entries include `CellId` and `SpatialVersion`)
   - [x] `VillagerJobDeliverySystem`: Find nearest storehouse using spatial query
 - [ ] **Integrate miner/hauler logistics**: `VesselRoutingSystem`, freighter/wagon dispatch leverage spatial queries + registries.
-- [ ] **Integrate into divine hand/miracles**:
-  - `DivineHandSystems`: Use grid for hover highlighting and target selection
-  - `RainMiracleSystems`: Query terrain/vegetation density before spawning effects
+- [x] **Integrate into divine hand/miracles**:
+  - [x] `DivineHandSystems`: Use grid for hover highlighting and target selection (`FindPickable` now uses spatial queries with fallback to full scan)
+  - [ ] `RainMiracleSystems`: Query terrain/vegetation density before spawning effects (pending miracle system implementation)
 - [ ] **Expose generic query helpers** for any future game-specific systems (VR input, RTS selection, etc.) using shared descriptors.
 - [ ] **Preserve existing behaviour**: Ensure all integrations produce identical results (same entity selections) to validate correctness before optimizing.
 
 ### 5. Tooling & Observability
-- [ ] Debug authoring: scene gizmo drawer showing grid bounds/cell occupancy.  
-- [ ] Runtime overlay (Entities Graphics or UI) toggled via debug menu.  
-- [ ] Logging hooks to sample cell density, worst-case query cost.  
-- [ ] Editor validation to warn when config bounds too small/large.
+- [x] Debug authoring: scene gizmo drawer showing grid bounds/cell occupancy. (Enhanced `SpatialPartitionAuthoring.OnDrawGizmosSelected` to show bounds, grid lines for 2D navigation, and cell structure)
+- [x] Runtime overlay (Entities Graphics or UI) toggled via debug menu. (`DebugDisplaySystem` exposes spatial grid stats; `SpatialInstrumentationSystem` provides console logging hooks)
+- [x] Logging hooks to sample cell density, worst-case query cost. (`SpatialConsoleInstrumentation` component enables throttled logging; `SpatialInstrumentationSystem` logs cell count, entries, occupancy, rebuild time, dirty counts)
+- [x] Editor validation to warn when config bounds too small/large. (Enhanced `ValidateSpatialPartitionProfile` to check bounds, cell counts, aspect ratios, and 2D lock consistency)
 
 ### 6. Testing & Benchmarks
 - [ ] **Unit tests** in `Assets/Scripts/Tests/SpatialGridTests.cs`:

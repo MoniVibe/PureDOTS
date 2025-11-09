@@ -4,6 +4,8 @@
   "references": [
     "Godgame.Authoring",
     "PureDOTS.Authoring",
+    "PureDOTS.Editor",
+    "PureDOTS.Runtime",
     "Unity.Entities",
     "Unity.Collections"
   ],

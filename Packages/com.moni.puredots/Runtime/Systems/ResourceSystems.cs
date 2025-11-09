@@ -75,8 +75,8 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _gathererQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerJob, VillagerInventoryItem>()
-                .WithNone<VillagerDeadTag, PlaybackGuardTag>()
+                .WithAll<VillagerJob, VillagerInventoryItem, VillagerFlags>()
+                .WithNone<PlaybackGuardTag>()
                 .Build();
 
             _sourceStateLookup = state.GetComponentLookup<ResourceSourceState>(false);

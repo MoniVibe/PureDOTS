@@ -7,6 +7,8 @@
                        "Unity.Mathematics",
                        "Unity.Transforms",
                        "Unity.InputSystem",
+                       "Unity.VisualEffectGraph.Runtime",
+                       "Unity.VisualEffectGraph.Editor",
                        "UnityEditor",
                        "UnityEditor.UI",
                        "PureDOTS.Runtime",

@@ -12,6 +12,8 @@
 - Provide an IL2CPP build checklist (Scripting Backend, API compatibility level, `Managed Stripping Level`).
 - Ensure testing pipeline includes an IL2CPP build (e.g., Windows or DOTS Runtime headless) to catch AOT regressions.
 
+**Audit Status**: See `Docs/QA/IL2CPP_AOT_Audit.md` for detailed reflection usage analysis and preservation requirements.
+
 ### IL2CPP Build Checklist
 1. **Player Settings → Other Settings**
    - `Scripting Backend`: IL2CPP
@@ -28,18 +30,17 @@
    - Update CI build step to pass `-enableBurstCompilation` and `-burst-compile-assembly=PureDOTS.Runtime` flags as needed.
    - Record build output (`build/Logs/BurstCompilation.txt`) for troubleshooting.
 
-#### Example `link.xml`
-```xml
-<linker>
-  <assembly fullname="PureDOTS.Runtime">
-    <type fullname="PureDOTS.Runtime.Components.ResourceTypeIndex" preserve="all" />
-    <type fullname="PureDOTS.Runtime.Components.DivineHandConfig" preserve="all" />
-  </assembly>
-  <assembly fullname="Unity.Entities">
-    <type fullname="Unity.Entities.TypeManager" preserve="all" />
-  </assembly>
-</linker>
-```
+#### `link.xml` Configuration
+
+**Location**: `PureDOTS/Assets/Config/Linker/link.xml`
+
+**Current Entries** (see audit for full list):
+- `SystemRegistry` and `BootstrapWorldProfile` (bootstrap system discovery)
+- `VillagerJob` enum (debug console enum reflection)
+- `ResourceTypeIndex`, `DivineHandConfig` (runtime configs)
+- Visual manifest types (presentation bridge)
+
+**See**: `Docs/QA/IL2CPP_AOT_Audit.md` for complete preservation requirements and rationale.
 
 #### Burst Troubleshooting Tips
 - If Burst compilation fails in IL2CPP, inspect `Library/Bee/tmp/il2cppOutput/BurstDebugInformation_DoNotShip/` for generated C++.
@@ -81,6 +82,7 @@
 
 ## References
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`
+- `Docs/QA/IL2CPP_AOT_Audit.md` - Detailed reflection usage audit and preservation requirements
 - `Docs/TODO/SystemIntegration_TODO.md` (Platform/AOT tasks)
 - `Docs/TODO/Utilities_TODO.md` (debug, testing, CI infrastructure)
 - `Docs/QA/PerformanceProfiles.md` (profiling results once instrumentation lands)

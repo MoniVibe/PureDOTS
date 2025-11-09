@@ -278,17 +278,33 @@ namespace PureDOTS.Systems
                 ? SystemAPI.GetSingleton<ResourceInteractionConfig>()
                 : ResourceInteractionConfig.CreateDefaults();
 
+            // Get resource catalog for type ID to index conversion
+            if (!SystemAPI.HasSingleton<ResourceTypeIndex>())
+            {
+                return;
+            }
+            var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
+            var catalogRef = resourceCatalog.Catalog;
+
             var withdrawDistance = config.WithdrawDistance;
 
             foreach (var tuple in
-                     SystemAPI.Query<DynamicBuffer<VillagerWithdrawRequest>, DynamicBuffer<VillagerInventoryItem>, VillagerAIState, LocalTransform>()
-                         .WithNone<PlaybackGuardTag, VillagerDeadTag>()
+                     SystemAPI.Query<DynamicBuffer<VillagerWithdrawRequest>, DynamicBuffer<VillagerInventoryItem>, VillagerAIState, LocalTransform, VillagerFlags>()
+                         .WithNone<PlaybackGuardTag>()
                          .WithEntityAccess())
             {
                 var requests = tuple.Item1;
                 var inventory = tuple.Item2;
                 var aiState = tuple.Item3;
                 var transform = tuple.Item4;
+                var flags = tuple.Item5;
+                
+                // Skip dead villagers
+                if (flags.IsDead)
+                {
+                    continue;
+                }
+                
                 if (requests.Length == 0)
                 {
                     continue;
@@ -322,6 +338,14 @@ namespace PureDOTS.Systems
                         continue;
                     }
 
+                    // Convert ResourceTypeId to ResourceTypeIndex
+                    var resourceTypeIndex = catalogRef.Value.LookupIndex(request.ResourceTypeId);
+                    if (resourceTypeIndex < 0 || resourceTypeIndex > ushort.MaxValue)
+                    {
+                        continue; // Invalid resource type
+                    }
+                    var ushortTypeIndex = (ushort)resourceTypeIndex;
+
                     var itemIndex = -1;
                     for (var i = 0; i < storeItems.Length; i++)
                     {
@@ -353,7 +377,7 @@ namespace PureDOTS.Systems
                     var inventoryIndex = -1;
                     for (var i = 0; i < inventory.Length; i++)
                     {
-                        if (inventory[i].ResourceTypeId.Equals(request.ResourceTypeId))
+                        if (inventory[i].ResourceTypeIndex == ushortTypeIndex)
                         {
                             inventoryIndex = i;
                             break;
@@ -385,7 +409,7 @@ namespace PureDOTS.Systems
                         {
                             inventory.Add(new VillagerInventoryItem
                             {
-                                ResourceTypeId = request.ResourceTypeId,
+                                ResourceTypeIndex = ushortTypeIndex,
                                 Amount = taken,
                                 MaxCarryCapacity = config.DefaultMaxCarryCapacity
                             });

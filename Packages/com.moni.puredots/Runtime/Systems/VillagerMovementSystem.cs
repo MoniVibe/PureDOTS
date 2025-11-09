@@ -1,5 +1,7 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Villager;
+using PureDOTS.Systems.Navigation;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,10 +11,12 @@ namespace PureDOTS.Systems
 {
     /// <summary>
     /// Moves villagers toward their current target positions with simple steering.
+    /// Integrates with flow field navigation when available.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillagerTargetingSystem))]
+    [UpdateAfter(typeof(FlowFieldFollowSystem))]
     public partial struct VillagerMovementSystem : ISystem
     {
         [BurstCompile]
@@ -69,48 +73,90 @@ namespace PureDOTS.Systems
             public float VelocityThreshold;
             public float RotationSpeed;
 
-            public void Execute(ref VillagerMovement movement, ref LocalTransform transform, in VillagerAIState aiState, in VillagerNeeds needs)
+            public void Execute(
+                ref VillagerMovement movement,
+                ref LocalTransform transform,
+                in VillagerAIState aiState,
+                in VillagerNeeds needs,
+                [ChunkIndexInQuery] int chunkIndex)
             {
+                // Check if flow field navigation is available
+                float3 direction = float3.zero;
+                bool useFlowField = false;
+
+                // Try to use flow field if available (checked via optional component)
+                // FlowFieldFollowSystem will have already set movement.Velocity if agent has FlowFieldAgentTag
+                // Otherwise fall back to direct targeting
+
                 if (aiState.TargetPosition.Equals(float3.zero) || aiState.TargetEntity == Entity.Null)
                 {
-                    movement.Velocity = float3.zero;
-                    movement.IsMoving = 0;
-                    return;
+                    // If flow field didn't set velocity, stop
+                    if (math.lengthsq(movement.Velocity) < 0.01f)
+                    {
+                        movement.Velocity = float3.zero;
+                        movement.IsMoving = 0;
+                        return;
+                    }
+                    // Otherwise continue with flow field direction
+                    useFlowField = true;
                 }
-
-                var toTarget = aiState.TargetPosition - transform.Position;
-                var distance = math.length(toTarget);
-
-                if (distance <= ArrivalDistance)
+                else
                 {
-                    movement.Velocity = float3.zero;
-                    movement.IsMoving = 0;
-                    return;
+                    var toTarget = aiState.TargetPosition - transform.Position;
+                    var distance = math.length(toTarget);
+
+                    if (distance <= ArrivalDistance)
+                    {
+                        movement.Velocity = float3.zero;
+                        movement.IsMoving = 0;
+                        return;
+                    }
+
+                    direction = math.normalize(toTarget);
                 }
 
-                var direction = math.normalize(toTarget);
+                // Apply speed multipliers
                 var speedMultiplier = 1f;
-
                 if (aiState.CurrentState == VillagerAIState.State.Fleeing)
                 {
                     speedMultiplier = FleeSpeedMultiplier;
                 }
-                else if (needs.Energy < LowEnergyThreshold)
+                else if (needs.EnergyFloat < LowEnergyThreshold)
                 {
                     speedMultiplier = LowEnergySpeedMultiplier;
                 }
 
-                movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
-                movement.Velocity = direction * movement.CurrentSpeed;
-                transform.Position += movement.Velocity * DeltaTime;
-
-                if (math.lengthsq(movement.Velocity) > VelocityThreshold)
+                // If not using flow field, compute velocity from direction
+                if (!useFlowField && math.lengthsq(direction) > 0.01f)
                 {
-                    movement.DesiredRotation = quaternion.LookRotationSafe(direction, math.up());
-                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, DeltaTime * RotationSpeed);
+                    movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
+                    movement.Velocity = direction * movement.CurrentSpeed;
+                }
+                else if (useFlowField)
+                {
+                    // Flow field already set velocity, just apply speed multiplier
+                    if (math.lengthsq(movement.Velocity) > 0.01f)
+                    {
+                        movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
+                        movement.Velocity = math.normalize(movement.Velocity) * movement.CurrentSpeed;
+                    }
                 }
 
-                movement.IsMoving = 1;
+                // Apply movement
+                if (math.lengthsq(movement.Velocity) > 0.01f)
+                {
+                    transform.Position += movement.Velocity * DeltaTime;
+
+                    var moveDirection = math.normalize(movement.Velocity);
+                    movement.DesiredRotation = quaternion.LookRotationSafe(moveDirection, math.up());
+                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, DeltaTime * RotationSpeed);
+                    movement.IsMoving = 1;
+                }
+                else
+                {
+                    movement.IsMoving = 0;
+                }
+
                 movement.LastMoveTick = CurrentTick;
             }
         }

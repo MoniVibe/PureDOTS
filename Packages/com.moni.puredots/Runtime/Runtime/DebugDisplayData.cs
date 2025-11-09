@@ -46,6 +46,21 @@ namespace PureDOTS.Runtime.Components
         public int BandSpatialResolved;
         public int BandSpatialFallback;
         public int BandSpatialUnmapped;
+        public int FactionRegistryCount;
+        public int FactionEntryCount;
+        public int TotalFactionTerritoryCells;
+        public float TotalFactionResources;
+        public int ClimateHazardRegistryCount;
+        public int ClimateHazardEntryCount;
+        public int ClimateHazardActiveCount;
+        public float ClimateHazardGlobalIntensity;
+        public int AreaEffectRegistryCount;
+        public int AreaEffectEntryCount;
+        public int AreaEffectActiveCount;
+        public float AreaEffectAverageStrength;
+        public int CultureRegistryCount;
+        public int CultureEntryCount;
+        public float CultureGlobalAlignmentScore;
 
         // Pooling diagnostics snapshot sourced from Nx pooling runtime
         public bool PoolingActive;
@@ -84,6 +99,45 @@ namespace PureDOTS.Runtime.Components
         public float3 SunlightDirection;
         public ushort SunlightMaxOccluders;
         public uint SunlightLastUpdateTick;
+        
+        // Environment grid diagnostics
+        public FixedString128Bytes MoistureStateText;
+        public float MoistureAverage;
+        public float MoistureMin;
+        public float MoistureMax;
+        public uint MoistureLastUpdateTick;
+        public uint MoistureLastTerrainVersion;
+        
+        public FixedString128Bytes TemperatureStateText;
+        public float TemperatureAverage;
+        public float TemperatureMin;
+        public float TemperatureMax;
+        public uint TemperatureLastUpdateTick;
+        public uint TemperatureLastTerrainVersion;
+        
+        public FixedString128Bytes WindStateText;
+        public float WindAverageStrength;
+        public float2 WindGlobalDirection;
+        public float WindGlobalStrength;
+        public uint WindLastUpdateTick;
+        public uint WindLastTerrainVersion;
+        
+        public FixedString128Bytes BiomeStateText;
+        public int BiomeUnknownCount;
+        public int BiomeTundraCount;
+        public int BiomeTaigaCount;
+        public int BiomeGrasslandCount;
+        public int BiomeForestCount;
+        public int BiomeDesertCount;
+        public int BiomeRainforestCount;
+        public int BiomeSavannaCount;
+        public int BiomeSwampCount;
+        public uint BiomeLastUpdateTick;
+        public uint BiomeLastTerrainVersion;
+        
+        public FixedString128Bytes TerrainVersionText;
+        public uint TerrainVersion;
+        public int TerrainChangeEventCount;
 
         // Frame timing diagnostics
         public FixedString128Bytes FrameTimingText;
@@ -101,6 +155,18 @@ namespace PureDOTS.Runtime.Components
         // Replay capture diagnostics
         public int ReplayEventCount;
         public FixedString128Bytes ReplayStateText;
+
+        // Rewind guard telemetry
+        public int RewindGuardViolationCount;
+        public FixedString512Bytes RewindGuardViolationText;
+
+#if DEVTOOLS_ENABLED
+        // Spawn telemetry
+        public int SpawnRequestsThisTick;
+        public int SpawnSpawnedThisTick;
+        public int SpawnFailuresThisTick;
+        public FixedString128Bytes SpawnFailureReasons;
+#endif
     }
 }
 

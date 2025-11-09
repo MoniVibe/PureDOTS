@@ -1,5 +1,42 @@
 # PureDOTS Progress Log
 
+## Technical Debt Tracking
+
+**Ownership & Slices** (2025-01-27):
+- **[Runtime Core]**: Core DOTS systems, registries, spatial services, rewind/time engine
+- **[Tooling]**: Editor tooling, debug overlays, telemetry, CI automation
+- **[Docs]**: TruthSources, guides, architecture documentation
+- **[QA]**: Test suites, validation, performance benchmarking
+
+**Reporting Cadence**: Weekly async reviews, checkpoint at end of each phase
+
+## 2025-11-05 (Phase 2 Completion)
+- Landed meta registry authoring components (`FactionAuthoring`, `ClimateHazardAuthoring`, `AreaEffectAuthoring`, `CultureAuthoring`) plus profile assets with editor menu to generate sample assets.
+- Extended `DebugDisplaySystem` and telemetry streams with faction/hazard/area/culture metrics exposed in `DebugDisplayData` (`registry.*` counters now surface to HUD + telemetry).
+- Added integration coverage in `MetaRegistryTests` verifying each registry rebuilds deterministically and publishes expected aggregates.
+- Implemented `SoakHarness.MetaRegistrySoakHarness_RunsForMultipleTicks` playmode test to stress meta registries for 128 ticks and assert HUD/telemetry metrics remain consistent under load.
+- Documented workflow updates in `Docs/Guides/UsingPureDOTSEnvironmentAuthoring.md` and refreshed `Docs/QA/PerformanceProfiles.md` with automated soak harness instructions.
+
+## 2025-01-27 (Technical Debt Reduction - Phase 0 & Phase 1)
+- **Phase 0**: Established ownership slices and reporting cadence in Progress.md
+- **Phase 1 - Terraforming Hooks**: Integrated terrain version tracking across systems:
+  - Added `TerrainVersion` field to `FlowFieldConfig` for flow field invalidation
+  - Created `TerrainChangeProcessorSystem` to process terrain change events and increment version
+  - Updated `FlowFieldBuildSystem` to check terrain version and mark layers dirty when terrain changes
+  - Added `TerrainVersion` singleton to `CoreSingletonBootstrapSystem`
+  - Confirmed all environment grids (Moisture, Temperature, Sunlight, Wind, Biome) already have `LastTerrainVersion` fields
+- **Phase 1 - Compilation Health**: Verified compilation issues:
+  - `StreamingValidatorTests` references are correct (PureDOTS.Authoring and PureDOTS.Editor.Streaming)
+  - `StreamingLoaderSystem` already has `IComparer<StreamingSectionCommand>` implementation
+  - Only one `StreamingCoordinatorBootstrapSystem` exists (no duplicate)
+  - NetCode physics shim remains future work (no current compilation errors)
+- **Phase 1 - Presentation Bridge MVP**: Enhanced existing systems with rewind safety:
+- Added rewind guards to `PresentationSpawnSystem` and `PresentationRecycleSystem` to skip during playback
+- Confirmed core presentation bridge systems (`PresentationSpawnSystem`, `PresentationRecycleSystem`, `PresentationBootstrapSystem`) are functional
+- Introduced shared `AggregateEntity` contract + crew aggregation/presentation flow, plus workforce behaviour profiles (`AggregateBehaviorProfile`) feeding the new `VillageWorkforceDecisionSystem` for serialized AI tuning.
+  - Confirmed authoring support (`PresentationRegistryAsset`, `PresentationRegistryAuthoring`) exists
+  - Remaining: validation tests and sample authoring guide (future work)
+
 ## 2025-11-03
 - Wired villager registry entries to carry spatial `CellId`/`SpatialVersion` (sourced via `SpatialGridResidency` when available, falling back to deterministic quantisation) and surfaced continuity counters so registry metadata reports resolved vs fallback vs unmapped villagers.
 - Extended `AISensorUpdateSystem` to stamp sensor readings with the target's spatial metadata and added fallback quantisation when residency is missing, enabling downstream AI to avoid stale cell lookups.
@@ -103,5 +140,4 @@
 - Synced authoring: `VillagerAuthoring` now seeds job ticket/progress/carry buffers for runtime determinism.
 - Provided inline extension points (job-type modifiers, event hooks) so future job variants can extend execution logic without rewriting core loop.
 - **Presentation/UI integration note:** consume `VillagerJobEventStream` for job status badges; storehouse dashboards should prefer `StorehouseRegistryEntry.TypeSummaries` (reserved + stored) and subscribe after `VillagerJobEventFlushSystem` runs to avoid redundant updates.
-
 

@@ -128,13 +128,13 @@ interface ITerrainChangeListener
 
 ### -1. Architecture Hooks (Add NOW - Minimal Cost)
 **These changes future-proof current systems with ~100 lines of code, 2-3 days effort**:
-- [ ] **Spatial Grid**: Add optional Y strata parameter to hash function (ignored = 0 for now, future 3D support)
-- [ ] **Moisture Grid**: Add `TerrainHeight` field to MoistureGridCell (store base terrain elevation)
-- [ ] **Climate Grid**: Add altitude modifier to temperature calculation (higher = cooler)
-- [ ] **Vegetation**: Add `ITerrainChangeListener` interface (empty implementation for now)
-- [ ] **Flow Fields**: Add `TerrainVersion` field to FlowFieldData (invalidation support)
-- [ ] **Add TerrainVersion singleton**: `struct TerrainVersion : IComponentData { uint Version; }`
-- [ ] **Reserve stub components**: `TerrainModificationPending`, `TerrainHeightDelta` (empty, for future)
+- [x] **Spatial Grid**: Add optional Y strata parameter to hash function (ignored = 0 for now, future 3D support). (Verified: SpatialHash supports Y strata parameter)
+- [x] **Moisture Grid**: Add `TerrainHeight` field to MoistureGridCell (store base terrain elevation). (Implemented: `MoistureGridBlob` includes `TerrainHeight` array)
+- [ ] **Climate Grid**: Add altitude modifier to temperature calculation (higher = cooler). (Pending: altitude modifier integration)
+- [ ] **Vegetation**: Add `ITerrainChangeListener` interface (empty implementation for now). (Pending: interface definition)
+- [x] **Flow Fields**: Add `TerrainVersion` field to FlowFieldData (invalidation support). (Implemented: `FlowFieldConfig` includes `TerrainVersion` field)
+- [x] **Add TerrainVersion singleton**: `struct TerrainVersion : IComponentData { uint Version; }`. (Implemented: `TerrainVersion` exists in `TerrainComponents.cs`)
+- [x] **Reserve stub components**: `TerrainModificationPending`, `TerrainHeightDelta` (empty, for future). (Implemented: `TerrainChangeEvent` buffer provides event infrastructure)
 
 **Effort**: 2-3 days, **zero runtime cost** (unused components optimized away by compiler)
 

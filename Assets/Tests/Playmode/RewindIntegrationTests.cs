@@ -414,15 +414,16 @@ namespace PureDOTS.Tests
                 BusyTime = 0f
             });
 
-            _entityManager.SetComponentData(entity, new VillagerNeeds
+            var needs = new VillagerNeeds
             {
                 Health = 100f,
-                MaxHealth = 100f,
-                Hunger = 10f,
-                Energy = 90f,
-                Morale = 80f,
-                Temperature = 20f
-            });
+                MaxHealth = 100f
+            };
+            needs.SetHunger(10f);
+            needs.SetEnergy(90f);
+            needs.SetMorale(80f);
+            needs.SetTemperature(20f);
+            _entityManager.SetComponentData(entity, needs);
 
             _entityManager.SetComponentData(entity, new VillagerAIState
             {

@@ -317,7 +317,7 @@ namespace PureDOTS.Systems
                 float3 position = worldPosition;
                 quaternion rotation = worldRotation;
 
-                if (flags.HasFlag(PresentationSpawnFlags.OverrideTransform))
+                if ((flags & PresentationSpawnFlags.OverrideTransform) != 0)
                 {
                     if (math.any(request.PresentationOffset != float3.zero))
                     {

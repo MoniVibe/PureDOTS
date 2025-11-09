@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Systems;
@@ -40,7 +41,10 @@ namespace PureDOTS.Tests
             entityManager.AddComponentData(bandEntity, new BandStats
             {
                 MemberCount = 25,
-                Morale = 0.85f,
+                AverageDiscipline = 60f,
+                Morale = 75f,
+                Cohesion = 70f,
+                Fatigue = 0.1f,
                 Flags = BandStatusFlags.Engaged
             });
             entityManager.AddComponentData(bandEntity, LocalTransform.FromPositionRotationScale(new float3(12f, 0f, -4f), quaternion.identity, 1f));
@@ -58,6 +62,9 @@ namespace PureDOTS.Tests
             Assert.AreEqual(0, registry.SpatialResolvedCount);
             Assert.AreEqual(0, registry.SpatialFallbackCount);
             Assert.AreEqual(0, registry.SpatialUnmappedCount);
+            Assert.AreEqual(75f, registry.AverageMorale, 0.0001f);
+            Assert.AreEqual(70f, registry.AverageCohesion, 0.0001f);
+            Assert.AreEqual(60f, registry.AverageDiscipline, 0.0001f);
 
             var entries = entityManager.GetBuffer<BandRegistryEntry>(registryEntity);
             Assert.AreEqual(1, entries.Length);
@@ -65,7 +72,9 @@ namespace PureDOTS.Tests
             Assert.AreEqual(bandEntity, entry.BandEntity);
             Assert.AreEqual(3, entry.BandId);
             Assert.AreEqual(25, entry.MemberCount);
-            Assert.AreEqual(0.85f, entry.Morale, 0.0001f);
+            Assert.AreEqual(75f, entry.Morale, 0.0001f);
+            Assert.AreEqual(70f, entry.Cohesion, 0.0001f);
+            Assert.AreEqual(60f, entry.AverageDiscipline, 0.0001f);
             Assert.AreEqual(BandStatusFlags.Engaged, entry.Flags);
             Assert.AreEqual(-1, entry.CellId);
             Assert.AreEqual(0u, entry.SpatialVersion);

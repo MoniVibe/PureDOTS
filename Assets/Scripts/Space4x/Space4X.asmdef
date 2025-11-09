@@ -18,10 +18,7 @@
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
-    "autoReferenced": false,
-    "defineConstraints": [
-        "PUREDOTS_PLACEHOLDER"
-    ],
+    "autoReferenced": true,
     "versionDefines": [],
     "noEngineReferences": false
 }

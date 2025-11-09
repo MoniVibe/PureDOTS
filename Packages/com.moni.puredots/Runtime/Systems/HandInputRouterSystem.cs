@@ -1,12 +1,17 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Hand;
+using PureDOTS.Systems.Input;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
     /// <summary>
     /// Centralises RMB routing by resolving the highest-priority hand interaction request each frame.
+    /// Now consumes GodIntent to gate routing deterministically based on player intent.
     /// Downstream systems rely on the resolved <see cref="DivineHandCommand"/> without duplicating priority logic.
+    /// Note: Runs in HandSystemGroup, which executes after SimulationSystemGroup where IntentMappingSystem runs.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HandSystemGroup), OrderFirst = true)]
@@ -22,27 +27,53 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (requests, resultRef, commandRef, entity) in SystemAPI
-                         .Query<DynamicBuffer<HandInputRouteRequest>, RefRW<HandInputRouteResult>, RefRW<DivineHandCommand>>()
+            foreach (var (requests, resultRef, commandRef, intentRef, entity) in SystemAPI
+                         .Query<DynamicBuffer<HandInputRouteRequest>, RefRW<HandInputRouteResult>, RefRW<DivineHandCommand>, RefRO<GodIntent>>()
                          .WithEntityAccess())
             {
                 var result = resultRef.ValueRO;
                 var command = commandRef.ValueRW;
+                var intent = intentRef.ValueRO;
 
-                var resolved = ResolveRoute(requests, result);
-                var commandChanged = resolved.CommandType != command.Type ||
-                                     resolved.TargetEntity != command.TargetEntity;
+                // Gate routing based on intent
+                // If intent says cancel, clear command
+                if (intent.CancelAction != 0)
+                {
+                    command.Type = DivineHandCommandType.None;
+                    command.TargetEntity = Entity.Null;
+                    command.TargetPosition = float3.zero;
+                    command.TargetNormal = new float3(0f, 1f, 0f);
+                    command.TimeSinceIssued = 0f;
+                    resultRef.ValueRW = HandInputRouteResult.None;
+                    requests.Clear();
+                    continue;
+                }
 
-                command.Type = resolved.CommandType;
-                command.TargetEntity = resolved.TargetEntity;
-                command.TargetPosition = resolved.TargetPosition;
-                command.TargetNormal = resolved.TargetNormal;
+                // Only resolve routes if intent allows selection
+                // (This gates routing during playback/rewind, etc.)
+                if (intent.StartSelect == 0 && intent.ConfirmPlace == 0)
+                {
+                    // No active intent, but still resolve existing requests for highlights
+                    var resolved = ResolveRoute(requests, result);
+                    resultRef.ValueRW = resolved;
+                    requests.Clear();
+                    continue;
+                }
+
+                var resolvedRoute = ResolveRoute(requests, result);
+                var commandChanged = resolvedRoute.CommandType != command.Type ||
+                                     resolvedRoute.TargetEntity != command.TargetEntity;
+
+                command.Type = resolvedRoute.CommandType;
+                command.TargetEntity = resolvedRoute.TargetEntity;
+                command.TargetPosition = resolvedRoute.TargetPosition;
+                command.TargetNormal = resolvedRoute.TargetNormal;
                 if (commandChanged)
                 {
                     command.TimeSinceIssued = 0f;
                 }
 
-                resultRef.ValueRW = resolved;
+                resultRef.ValueRW = resolvedRoute;
                 commandRef.ValueRW = command;
                 requests.Clear();
             }

@@ -87,16 +87,18 @@
   - `MiracleState` - Per-token state enum (Inactive, Held, Thrown, Active, Depleted) with StateTimer, Velocity, Target
 - [ ] Plan for pooled miracle token/effect entities using shared pooling utilities.
 - [ ] Review high-frequency miracle data for SoA compliance (separate arrays for position/intensity/state as needed).
-- [ ] Express miracle behaviours (damage, heal, growth, weather) via payload data definitions to keep the runtime agnostic to game theme.
-- [ ] **Add payload components** in `MiraclePayloads.cs` (per miracle type):
-  - `FireballPayload` - ExplosionRadius, BurnDuration, IgnitionChance
-  - `HealPayload` - HealPerSecond, MaxHealPerTarget, TargetTypes
-  - `ShieldPayload` - AbsorptionAmount, ShieldDuration, ShieldedEntity
-  - `LightningPayload` - ChainCount, ChainRadius, DamagePerBolt
-  - (Add more as miracle types expand)
-- [ ] **Create PrayerPower/Mana system** in `PrayerPowerComponents.cs`:
-  - `PrayerPower` singleton - CurrentMana, MaxMana, RegenRate
-  - `PrayerPowerSystem` - Handles regeneration from worship, buildings
+- [x] Express miracle behaviours (damage, heal, growth, weather) via payload data definitions to keep the runtime agnostic to game theme. (Implemented: `MiraclePayloads.cs` created with payload components for all major miracle types)
+- [x] **Add payload components** in `MiraclePayloads.cs` (per miracle type):
+  - [x] `FireballPayload` - ExplosionRadius, BurnDuration, IgnitionChance, BaseDamage, FireDamagePerSecond
+  - [x] `HealPayload` - HealPerSecond, MaxHealPerTarget, TargetTypes, HealRadius
+  - [x] `ShieldPayload` - AbsorptionAmount, ShieldDuration, ShieldedEntity, ShieldRadius
+  - [x] `LightningPayload` - ChainCount, ChainRadius, DamagePerBolt, StunDuration
+  - [x] `EarthquakePayload`, `ForestPayload`, `FreezePayload`, `FoodPayload`, `MeteorPayload` (All payload types defined)
+- [x] **Create PrayerPower/Mana system** in `PrayerPowerComponents.cs`:
+  - [x] `PrayerPower` singleton - CurrentMana, MaxMana, RegenRate, LastRegenTick
+  - [x] `PrayerPowerSource` - GenerationRate, Range, IsActive
+  - [x] `PrayerPowerConsumer` - ConsumptionRate, OneTimeCost, RequiresPower
+  - [x] `PrayerPowerSystem` - Handles regeneration from sources and consumption from active consumers
 - [ ] Update authoring/bakers to convert profiles into runtime blobs.
 - [x] Provide pooling configuration for miracle token/effect prefabs via shared pooling settings (prewarm counts per miracle type).
 

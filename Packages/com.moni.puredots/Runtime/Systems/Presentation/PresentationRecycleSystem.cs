@@ -18,6 +18,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Skip during rewind playback (visuals are regenerated or restored from state)
+            if (SystemAPI.TryGetSingleton<RewindState>(out var rewindState) && rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
             var queueEntity = SystemAPI.GetSingletonEntity<PresentationCommandQueue>();
             var recycleBuffer = SystemAPI.GetBuffer<PresentationRecycleRequest>(queueEntity);
             if (recycleBuffer.Length == 0)

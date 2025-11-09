@@ -186,15 +186,16 @@ namespace PureDOTS.Tests
 
             _entityManager.SetComponentData(entity, LocalTransform.FromPositionRotationScale(position, quaternion.identity, 1f));
 
-            _entityManager.SetComponentData(entity, new VillagerNeeds
+            var needs = new VillagerNeeds
             {
                 Health = math.clamp(health, 0f, maxHealth),
-                MaxHealth = maxHealth,
-                Hunger = 0f,
-                Energy = math.clamp(energy, 0f, 100f),
-                Morale = math.clamp(morale, 0f, 100f),
-                Temperature = 0f
-            });
+                MaxHealth = maxHealth
+            };
+            needs.SetHunger(0f);
+            needs.SetEnergy(math.clamp(energy, 0f, 100f));
+            needs.SetMorale(math.clamp(morale, 0f, 100f));
+            needs.SetTemperature(0f);
+            _entityManager.SetComponentData(entity, needs);
 
             _entityManager.SetComponentData(entity, new VillagerMood
             {

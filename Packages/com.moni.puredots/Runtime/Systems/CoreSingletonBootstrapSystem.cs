@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Telemetry;
@@ -117,6 +118,10 @@ namespace PureDOTS.Systems
             EnsureRegistry<BandRegistry, BandRegistryEntry>(entityManager, RegistryKind.Band, "BandRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureRegistry<AbilityRegistry, AbilityRegistryEntry>(entityManager, RegistryKind.Ability, "AbilityRegistry", RegistryHandleFlags.SupportsAIQueries);
             EnsureRegistry<SpawnerRegistry, SpawnerRegistryEntry>(entityManager, RegistryKind.Spawner, "SpawnerRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureRegistry<FactionRegistry, FactionRegistryEntry>(entityManager, RegistryKind.Faction, "FactionRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<ClimateHazardRegistry, ClimateHazardRegistryEntry>(entityManager, RegistryKind.ClimateHazard, "ClimateHazardRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<AreaEffectRegistry, AreaEffectRegistryEntry>(entityManager, RegistryKind.AreaEffect, "AreaEffectRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            EnsureRegistry<CultureAlignmentRegistry, CultureAlignmentRegistryEntry>(entityManager, RegistryKind.CultureAlignment, "CultureAlignmentRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
 
             EnsureAICommandQueue(entityManager);
 
@@ -130,6 +135,9 @@ namespace PureDOTS.Systems
             EnsureFrameTimingStream(entityManager);
             EnsureReplayCaptureStream(entityManager);
             EnsureRegistryHealthConfig(entityManager);
+
+            EnsureFlowFieldConfig(entityManager);
+            EnsureTerrainVersion(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
@@ -442,6 +450,66 @@ namespace PureDOTS.Systems
                 var entity = entityManager.CreateEntity(typeof(ResourceInteractionConfig));
                 entityManager.SetComponentData(entity, ResourceInteractionConfig.CreateDefaults());
             }
+        }
+
+        private static void EnsureTerrainVersion(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Environment.TerrainVersion>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(PureDOTS.Environment.TerrainVersion));
+                entityManager.SetComponentData(entity, new PureDOTS.Environment.TerrainVersion { Value = 0 });
+            }
+        }
+
+        private static void EnsurePrayerPower(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PrayerPower>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(PrayerPower));
+                entityManager.SetComponentData(entity, new PrayerPower
+                {
+                    CurrentMana = 100f,
+                    MaxMana = 100f,
+                    RegenRate = 1f,
+                    LastRegenTick = 0
+                });
+            }
+        }
+
+        private static void EnsureFlowFieldConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<FlowFieldConfig>());
+            Entity flowFieldEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                flowFieldEntity = entityManager.CreateEntity(typeof(FlowFieldConfig));
+                entityManager.SetComponentData(flowFieldEntity, new FlowFieldConfig
+                {
+                    CellSize = 5f,
+                    WorldBoundsMin = new float2(-100f, -100f),
+                    WorldBoundsMax = new float2(100f, 100f),
+                    RebuildCadenceTicks = 30,
+                    SteeringWeight = 1f,
+                    AvoidanceWeight = 1.5f,
+                    CohesionWeight = 0.5f,
+                    SeparationWeight = 2f,
+                    LastRebuildTick = 0,
+                    Version = 0,
+                    TerrainVersion = 0
+                });
+            }
+            else
+            {
+                flowFieldEntity = query.GetSingletonEntity();
+            }
+
+            EnsureBuffer<FlowFieldLayer>(entityManager, flowFieldEntity);
+            EnsureBuffer<FlowFieldCellData>(entityManager, flowFieldEntity);
+            EnsureBuffer<FlowFieldRequest>(entityManager, flowFieldEntity);
+            EnsureBuffer<FlowFieldHazardUpdate>(entityManager, flowFieldEntity);
         }
 
         private static void EnsureRegistryHealthConfig(EntityManager entityManager)

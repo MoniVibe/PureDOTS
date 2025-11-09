@@ -36,7 +36,6 @@ namespace PureDOTS.Authoring
 
         byte _pendingGrabPress;
         byte _pendingGrabRelease;
-        byte _pendingThrowPress;
 
         bool _registeredWithRouter;
         HandState _currentState = HandState.Empty;
@@ -102,14 +101,46 @@ namespace PureDOTS.Authoring
 
             ComputeCursor(config, out Vector3 cursorWorld, out Vector3 aimDirection);
 
-            input.CursorPosition = new float3(cursorWorld.x, cursorWorld.y, cursorWorld.z);
+            // Update DivineHandInput with new structure
+            input.SampleTick = 0; // Will be set by system
+            input.PlayerId = 0; // Default player
+            input.PointerPosition = float2.zero; // Would need to track if needed
+            input.PointerDelta = float2.zero;
+            input.CursorWorldPosition = new float3(cursorWorld.x, cursorWorld.y, cursorWorld.z);
             input.AimDirection = math.normalizesafe(new float3(aimDirection.x, aimDirection.y, aimDirection.z), new float3(0f, -1f, 0f));
-            input.GrabPressed = _pendingGrabPress;
-            input.GrabReleased = _pendingGrabRelease;
-            input.ThrowPressed = _pendingThrowPress;
+            input.PrimaryHeld = 0; // Not used in this bridge (RMB handling)
+            input.SecondaryHeld = _holdActive ? (byte)1 : (byte)0;
             input.ThrowCharge = _holdActive ? _holdTimer : (_hasReleasedCharge ? _releasedCharge : 0f);
+            input.PointerOverUI = 0; // Would need to check EventSystem if needed
+            input.AppHasFocus = Application.isFocused ? (byte)1 : (byte)0;
 
             entityManager.SetComponentData(handEntity, input);
+
+            // Write edge events to buffer
+            if (entityManager.HasBuffer<HandInputEdge>(handEntity))
+            {
+                var edges = entityManager.GetBuffer<HandInputEdge>(handEntity);
+                if (_pendingGrabPress != 0)
+                {
+                    edges.Add(new HandInputEdge
+                    {
+                        Button = InputButton.Secondary, // RMB is secondary
+                        Kind = InputEdgeKind.Down,
+                        Tick = 0, // Will be set by system
+                        PointerPosition = float2.zero // Would need to track this if needed
+                    });
+                }
+                if (_pendingGrabRelease != 0)
+                {
+                    edges.Add(new HandInputEdge
+                    {
+                        Button = InputButton.Secondary,
+                        Kind = InputEdgeKind.Up,
+                        Tick = 0,
+                        PointerPosition = float2.zero
+                    });
+                }
+            }
 
             bool hasHeldEntity = state.HeldEntity != Entity.Null && entityManager.Exists(state.HeldEntity);
             inputRouter?.ReportHandCargo(hasHeldEntity);
@@ -119,7 +150,6 @@ namespace PureDOTS.Authoring
 
             _pendingGrabPress = 0;
             _pendingGrabRelease = 0;
-            _pendingThrowPress = 0;
 
             if (!_holdActive)
             {
@@ -158,7 +188,6 @@ namespace PureDOTS.Authoring
                     _hasReleasedCharge = false;
                     _pendingGrabPress = 1;
                     _pendingGrabRelease = 0;
-                    _pendingThrowPress = 0;
                     break;
 
                 case RmbPhase.Performed:
@@ -170,7 +199,6 @@ namespace PureDOTS.Authoring
 
                 case RmbPhase.Canceled:
                     _pendingGrabRelease = 1;
-                    _pendingThrowPress = 1;
                     _holdActive = false;
                     _releasedCharge = _holdTimer;
                     _hasReleasedCharge = true;

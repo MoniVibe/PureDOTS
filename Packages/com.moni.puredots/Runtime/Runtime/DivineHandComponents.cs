@@ -59,16 +59,6 @@ namespace PureDOTS.Runtime.Components
         public byte Flags;
     }
 
-    public struct DivineHandInput : IComponentData
-    {
-        public float3 CursorPosition;
-        public float3 AimDirection;
-        public byte GrabPressed;
-        public byte GrabReleased;
-        public byte ThrowPressed;
-        public float ThrowCharge;
-    }
-
     public struct DivineHandEvent : IBufferElementData
     {
         public DivineHandEventType Type;
@@ -155,5 +145,28 @@ namespace PureDOTS.Runtime.Components
     public struct HandHeldTag : IComponentData
     {
         public Entity Holder;
+    }
+
+    /// <summary>
+    /// Marks entities that have been queued for deferred throws.
+    /// Stores the original physics values so they can be restored when released.
+    /// </summary>
+    public struct HandQueuedTag : IComponentData
+    {
+        public Entity Holder;
+        public float3 StoredLinearVelocity;
+        public float3 StoredAngularVelocity;
+        public float StoredGravityFactor;
+    }
+
+    /// <summary>
+    /// Buffer on the hand entity containing pending queued throws.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct HandQueuedThrowElement : IBufferElementData
+    {
+        public Entity Entity;
+        public float3 Direction;
+        public float Impulse;
     }
 }

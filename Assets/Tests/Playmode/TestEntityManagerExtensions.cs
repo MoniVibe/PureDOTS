@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace PureDOTS.Tests
 {
-    internal static class TestEntityManagerExtensions
+    public static class TestEntityManagerExtensions
     {
         public static bool HasSingleton<T>(this EntityManager entityManager) where T : unmanaged, IComponentData
         {

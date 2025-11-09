@@ -20,8 +20,8 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket>()
-                .WithNone<VillagerDeadTag, PlaybackGuardTag>()
+                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket, VillagerFlags>()
+                .WithNone<PlaybackGuardTag>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -78,9 +78,19 @@ namespace PureDOTS.Systems
             public float FleeDuration;
             public float RestEnergyThreshold;
 
-            public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket)
+            public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags)
             {
+                // Skip dead villagers
+                if (flags.IsDead)
+                {
+                    return;
+                }
+                
                 aiState.StateTimer += DeltaTime;
+
+                // Convert ushort to float for comparisons
+                var hunger = needs.HungerFloat;
+                var energy = needs.EnergyFloat;
 
                 var desiredGoal = aiState.CurrentGoal;
 
@@ -88,11 +98,11 @@ namespace PureDOTS.Systems
                 {
                     desiredGoal = VillagerAIState.Goal.Flee;
                 }
-                else if (needs.Hunger >= HungerThreshold)
+                else if (hunger >= HungerThreshold)
                 {
                     desiredGoal = VillagerAIState.Goal.SurviveHunger;
                 }
-                else if (needs.Energy <= EnergyThreshold)
+                else if (energy <= EnergyThreshold)
                 {
                     desiredGoal = VillagerAIState.Goal.Rest;
                 }
@@ -125,13 +135,13 @@ namespace PureDOTS.Systems
                         }
                         break;
                     case VillagerAIState.State.Eating:
-                        if (needs.Hunger < HungerThreshold * EatingHungerThresholdMultiplier || aiState.StateTimer >= EatingDuration)
+                        if (hunger < HungerThreshold * EatingHungerThresholdMultiplier || aiState.StateTimer >= EatingDuration)
                         {
                             SetIdle(ref aiState);
                         }
                         break;
                     case VillagerAIState.State.Sleeping:
-                        if (needs.Energy > RestEnergyThreshold)
+                        if (energy > RestEnergyThreshold)
                         {
                             SetIdle(ref aiState);
                         }

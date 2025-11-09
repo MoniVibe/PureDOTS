@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -18,7 +20,7 @@ namespace PureDOTS.Runtime.Components
 
     public struct PresentationDescriptor
     {
-        public Hash128 KeyHash;
+        public Unity.Entities.Hash128 KeyHash;
         public Entity Prefab;
         public float3 DefaultOffset;
         public float DefaultScale;
@@ -43,7 +45,7 @@ namespace PureDOTS.Runtime.Components
     public struct PresentationSpawnRequest : IBufferElementData
     {
         public Entity Target;
-        public Hash128 DescriptorHash;
+        public Unity.Entities.Hash128 DescriptorHash;
         public float3 Position;
         public quaternion Rotation;
         public float ScaleMultiplier;
@@ -60,7 +62,7 @@ namespace PureDOTS.Runtime.Components
     public struct PresentationHandle : IComponentData
     {
         public Entity Visual;
-        public Hash128 DescriptorHash;
+        public Unity.Entities.Hash128 DescriptorHash;
         public uint VariantSeed;
     }
 
@@ -68,7 +70,7 @@ namespace PureDOTS.Runtime.Components
     {
         private const int MaxKeyLength = 48;
 
-        public static bool TryParseKey(string key, out Hash128 hash, out string sanitizedKey)
+        public static bool TryParseKey(string key, out Unity.Entities.Hash128 hash, out string sanitizedKey)
         {
             sanitizedKey = string.Empty;
 
@@ -84,7 +86,16 @@ namespace PureDOTS.Runtime.Components
                 lower = lower.Substring(0, MaxKeyLength);
             }
 
-            hash = Hash128.Compute(lower);
+            // Compute hash using MD5 (128-bit) and convert to Hash128
+            var inputBytes = Encoding.UTF8.GetBytes(lower);
+            using (var md5 = MD5.Create())
+            {
+                var hashBytes = md5.ComputeHash(inputBytes);
+                // Convert 16-byte MD5 hash to hex string (32 hex chars = 128 bits)
+                var hashHex = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                hash = new Unity.Entities.Hash128(hashHex);
+            }
+            
             if (!hash.IsValid)
             {
                 return false;
@@ -97,7 +108,7 @@ namespace PureDOTS.Runtime.Components
 
     public static class PresentationRegistryUtility
     {
-        public static bool TryGetDescriptor(ref PresentationRegistryReference registryRef, Hash128 key, out PresentationDescriptor descriptor)
+        public static bool TryGetDescriptor(ref PresentationRegistryReference registryRef, Unity.Entities.Hash128 key, out PresentationDescriptor descriptor)
         {
             descriptor = default;
 
@@ -107,7 +118,7 @@ namespace PureDOTS.Runtime.Components
             }
 
             ref var blob = ref registryRef.Registry.Value;
-            var descriptors = blob.Descriptors;
+            ref var descriptors = ref blob.Descriptors;
             for (int i = 0; i < descriptors.Length; i++)
             {
                 if (descriptors[i].KeyHash == key)

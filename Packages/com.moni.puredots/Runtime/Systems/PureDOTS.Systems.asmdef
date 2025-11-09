@@ -3,6 +3,7 @@
     "rootNamespace": "PureDOTS.Systems",
     "references": [
         "PureDOTS.Runtime",
+        "PureDOTS.Input",
         "Unity.Burst",
         "Unity.Entities",
         "Unity.Mathematics",

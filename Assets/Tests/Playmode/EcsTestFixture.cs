@@ -33,6 +33,22 @@ namespace PureDOTS.Tests.Playmode
                 World.Dispose();
             }
         }
+
+        /// <summary>
+        /// Helper for tests to fetch singleton entities without relying on SystemAPI, which
+        /// requires running inside a system context.
+        /// </summary>
+        protected Entity RequireSingletonEntity<T>() where T : unmanaged, IComponentData
+        {
+            using var query = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<T>());
+            return query.GetSingletonEntity();
+        }
+
+        protected void RunSystem<T>() where T : unmanaged, ISystem
+        {
+            var handle = World.GetOrCreateSystem<T>();
+            handle.Update(World.Unmanaged);
+        }
     }
 }
 

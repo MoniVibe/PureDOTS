@@ -150,28 +150,55 @@ namespace PureDOTS.Systems.Environment
 
             state.Dependency.Complete();
 
+            // Check terrain version and propagate to grids
+            uint currentTerrainVersion = 0;
+            if (SystemAPI.TryGetSingleton<PureDOTS.Environment.TerrainVersion>(out var terrainVersion))
+            {
+                currentTerrainVersion = terrainVersion.Value;
+            }
+
             if (updateMoisture && scalarMoisturePrepared)
             {
+                if (currentTerrainVersion != moistureGrid.ValueRO.LastTerrainVersion)
+                {
+                    moistureGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                }
                 moistureGrid.ValueRW.LastUpdateTick = currentTick;
             }
 
             if (updateTemperature && scalarTemperaturePrepared)
             {
+                if (currentTerrainVersion != temperatureGrid.ValueRO.LastTerrainVersion)
+                {
+                    temperatureGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                }
                 temperatureGrid.ValueRW.LastUpdateTick = currentTick;
             }
 
             if (updateBiome && scalarBiomePrepared)
             {
+                if (currentTerrainVersion != biomeGrid.ValueRO.LastTerrainVersion)
+                {
+                    biomeGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                }
                 biomeGrid.ValueRW.LastUpdateTick = currentTick;
             }
 
             if (updateSunlight && vectorSunlightPrepared)
             {
+                if (currentTerrainVersion != sunlightGrid.ValueRO.LastTerrainVersion)
+                {
+                    sunlightGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                }
                 sunlightGrid.ValueRW.LastUpdateTick = currentTick;
             }
 
             if (updateWind && vectorWindPrepared)
             {
+                if (currentTerrainVersion != windGrid.ValueRO.LastTerrainVersion)
+                {
+                    windGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                }
                 windGrid.ValueRW.LastUpdateTick = currentTick;
             }
         }

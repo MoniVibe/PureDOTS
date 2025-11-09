@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Hybrid;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -192,6 +193,12 @@ namespace Godgame.Camera
         private void CaptureInput()
         {
             EnsureInputActions();
+
+            if (!HybridControlCoordinator.GodgameInputEnabled)
+            {
+                _snapshot = default;
+                return;
+            }
 
             var mouse = Mouse.current;
             var keyboard = Keyboard.current;

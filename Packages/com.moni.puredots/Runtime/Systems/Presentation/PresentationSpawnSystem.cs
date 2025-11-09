@@ -20,6 +20,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Skip during rewind playback (visuals are regenerated or restored from state)
+            if (SystemAPI.TryGetSingleton<RewindState>(out var rewindState) && rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
             if (!SystemAPI.TryGetSingleton(out PresentationRegistryReference registryRef))
             {
                 return;

@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Spatial;

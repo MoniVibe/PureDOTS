@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
+using System;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spatial;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -21,14 +23,33 @@ namespace PureDOTS.Authoring
         [Range(0f, 100f)] public float initialEnergy = 80f;
         [Range(0f, 100f)] public float initialMorale = 75f;
 
-        [Header("Movement")]
+        [Header("Resource Pools")]
+        [Range(0f, 500f)] public float maxMana = 10f;
+        [Range(0f, 500f)] public float initialMana = 10f;
+
+        [Header("Movement & Senses")]
         [Range(0.1f, 10f)] public float baseSpeed = 3f;
-        [Range(1f, 50f)] public float visionRange = 20f;
-        [Range(1f, 30f)] public float hearingRange = 15f;
+        [Range(1f, 80f)] public float visionLitRange = 50f;
+        [Range(1f, 80f)] public float visionDimRange = 30f;
+        [Range(0.5f, 80f)] public float visionObscuredRange = 10f;
+        [Range(0.5f, 60f)] public float hearingQuietRange = 20f;
+        [Range(0.5f, 60f)] public float hearingNoisyRange = 10f;
+        [Range(0.5f, 60f)] public float hearingCrowdedRange = 3f;
 
         [Header("Job")]
         public VillagerJob.JobType initialJob = VillagerJob.JobType.None;
         public GameObject initialWorksite;
+
+        [Header("Attributes - Primary (0-10)")]
+        [Range(0f, 10f)] public float physique = 5f;
+        [Range(0f, 10f)] public float finesse = 5f;
+        [Range(0f, 10f)] public float willpower = 5f;
+
+        [Header("Attributes - Derived Bonuses (max 200)")]
+        [Range(0f, 190f)] public float strengthBonus = 5f;
+        [Range(0f, 190f)] public float agilityBonus = 5f;
+        [Range(0f, 190f)] public float intelligenceBonus = 5f;
+        [Range(0f, 190f)] public float wisdomBonus = 5f;
 
         [Header("Discipline & Mood")]
         public VillagerDisciplineType initialDiscipline = VillagerDisciplineType.Unassigned;
@@ -36,6 +57,22 @@ namespace PureDOTS.Authoring
         [Range(0f, 100f)] public float initialMood = 50f;
         [Range(0.1f, 5f)] public float moodChangeRate = 1f;
         public bool startAvailableForJobs = true;
+
+        [Header("Comfort & Environment")]
+        public float preferredTemperature = 20f;
+        public float coldTolerance = -15f;
+        public float heatTolerance = 35f;
+
+        [Header("Belief & Reputation")]
+        public string primaryDeityId = "divine.hand";
+        [Range(0f, 1f)] public float faith = 0.5f;
+        [Range(0f, 1f)] public float worshipProgress = 0f;
+        public float fame;
+        public float infamy;
+        public float honor;
+        public float glory;
+        public float renown;
+        public float reputation;
 
         [Header("Combat (Optional)")]
         public bool isCombatCapable;
@@ -61,10 +98,62 @@ namespace PureDOTS.Authoring
             {
                 Health = authoring.initialHealth,
                 MaxHealth = authoring.maxHealth,
-                Hunger = authoring.initialHunger,
-                Energy = authoring.initialEnergy,
-                Morale = authoring.initialMorale,
-                Temperature = 20f
+                Hunger = (ushort)math.clamp(math.round(authoring.initialHunger * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
+                Energy = (ushort)math.clamp(math.round(authoring.initialEnergy * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
+                Morale = (ushort)math.clamp(math.round(authoring.initialMorale * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
+                Temperature = (short)math.clamp(math.round(authoring.preferredTemperature * 10f), -1000f, 1000f)
+            });
+
+            var maxMana = math.max(0f, authoring.maxMana);
+            var currentMana = math.clamp(authoring.initialMana, 0f, maxMana > 0f ? maxMana : authoring.initialMana);
+            AddComponent(entity, new VillagerMana
+            {
+                MaxMana = maxMana,
+                CurrentMana = currentMana
+            });
+
+            float ClampPrimary(float value) => math.clamp(value, 0f, 10f);
+            float ClampDerived(float value) => math.clamp(value, 0f, 200f);
+
+            var physique = ClampPrimary(authoring.physique);
+            var finesse = ClampPrimary(authoring.finesse);
+            var willpower = ClampPrimary(authoring.willpower);
+            const float derivedBaseline = 10f;
+
+            AddComponent(entity, new VillagerAttributes
+            {
+                Physique = physique,
+                Finesse = finesse,
+                Willpower = willpower,
+                Strength = ClampDerived(derivedBaseline + physique + authoring.strengthBonus),
+                Agility = ClampDerived(derivedBaseline + finesse + authoring.agilityBonus),
+                Intelligence = ClampDerived(derivedBaseline + willpower + authoring.intelligenceBonus),
+                Wisdom = ClampDerived(derivedBaseline + willpower + authoring.wisdomBonus)
+            });
+
+            AddComponent(entity, new VillagerTemperatureProfile
+            {
+                PreferredTemperature = authoring.preferredTemperature,
+                ColdTolerance = authoring.coldTolerance,
+                HeatTolerance = authoring.heatTolerance
+            });
+
+            var deityId = new FixedString64Bytes(string.IsNullOrWhiteSpace(authoring.primaryDeityId) ? "none" : authoring.primaryDeityId.Trim());
+            AddComponent(entity, new VillagerBelief
+            {
+                PrimaryDeityId = deityId,
+                Faith = math.clamp(authoring.faith, 0f, 1f),
+                WorshipProgress = math.clamp(authoring.worshipProgress, 0f, 1f)
+            });
+
+            AddComponent(entity, new VillagerReputation
+            {
+                Fame = authoring.fame,
+                Infamy = authoring.infamy,
+                Honor = authoring.honor,
+                Glory = authoring.glory,
+                Renown = authoring.renown,
+                Reputation = authoring.reputation
             });
 
             AddComponent(entity, new VillagerAIState
@@ -146,13 +235,23 @@ namespace PureDOTS.Authoring
 
             AddComponent(entity, new VillagerSensors
             {
-                VisionRange = authoring.visionRange,
-                HearingRange = authoring.hearingRange,
+                VisionRange = authoring.visionLitRange,
+                HearingRange = authoring.hearingQuietRange,
                 NearestThreat = Entity.Null,
                 NearestFood = Entity.Null,
                 NearestShelter = Entity.Null,
                 LastKnownThreatPosition = float3.zero,
                 LastSensorUpdateTick = 0
+            });
+
+            AddComponent(entity, new VillagerSensorProfile
+            {
+                VisionLitRange = authoring.visionLitRange,
+                VisionDimRange = authoring.visionDimRange,
+                VisionObscuredRange = authoring.visionObscuredRange,
+                HearingQuietRange = authoring.hearingQuietRange,
+                HearingNoisyRange = authoring.hearingNoisyRange,
+                HearingCrowdedRange = authoring.hearingCrowdedRange
             });
 
             if (authoring.isCombatCapable)
@@ -195,6 +294,9 @@ namespace PureDOTS.Authoring
             AddBuffer<VillagerMemoryEvent>(entity);
             AddBuffer<VillagerHistorySample>(entity);
             AddBuffer<VillagerJobHistorySample>(entity);
+
+            // Add VillagerFlags for SoA optimization (replaces legacy tags)
+            AddComponent(entity, new VillagerFlags());
 
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier

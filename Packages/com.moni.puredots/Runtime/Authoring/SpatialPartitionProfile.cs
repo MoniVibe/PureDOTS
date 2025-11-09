@@ -62,6 +62,7 @@ namespace PureDOTS.Authoring
         public float MinCellSize => _minCellSize;
         public bool OverrideCellCounts => _overrideCellCounts;
         public Vector3Int ManualCellCounts => _manualCellCounts;
+        public bool LockYAxisToOne => _lockYAxisToOne;
         public SpatialProviderType Provider => _providerType;
         public string ProviderName
         {
@@ -251,10 +252,68 @@ namespace PureDOTS.Authoring
             }
 
             var bounds = profile.ToBounds();
+            var cellSize = profile.CellSize;
+            var config = profile.ToComponent();
+            var cellCounts = config.CellCounts;
+            
+            // Draw bounds wireframe
             Gizmos.color = profile.GizmoColor;
             Gizmos.DrawWireCube(bounds.center, bounds.size);
-            Gizmos.color = new Color(profile.GizmoColor.r, profile.GizmoColor.g, profile.GizmoColor.b, Mathf.Clamp01(profile.GizmoColor.a));
+            
+            // Draw semi-transparent fill
+            Gizmos.color = new Color(profile.GizmoColor.r, profile.GizmoColor.g, profile.GizmoColor.b, Mathf.Clamp01(profile.GizmoColor.a * 0.3f));
             Gizmos.DrawCube(bounds.center, bounds.size);
+            
+            // Draw cell grid lines (limit to reasonable count to avoid performance issues)
+            if (cellCounts.x <= 64 && cellCounts.z <= 64)
+            {
+                var min = bounds.min;
+                var max = bounds.max;
+                var gridColor = new Color(profile.GizmoColor.r, profile.GizmoColor.g, profile.GizmoColor.b, profile.GizmoColor.a * 0.5f);
+                Gizmos.color = gridColor;
+                
+                // Draw XZ plane grid lines (for 2D navigation)
+                if (profile.LockYAxisToOne || cellCounts.y == 1)
+                {
+                    var y = bounds.center.y;
+                    
+                    // Draw lines along X axis
+                    for (int z = 0; z <= cellCounts.z; z++)
+                    {
+                        var zPos = min.z + (z * cellSize);
+                        if (zPos <= max.z)
+                        {
+                            Gizmos.DrawLine(
+                                new Vector3(min.x, y, zPos),
+                                new Vector3(max.x, y, zPos));
+                        }
+                    }
+                    
+                    // Draw lines along Z axis
+                    for (int x = 0; x <= cellCounts.x; x++)
+                    {
+                        var xPos = min.x + (x * cellSize);
+                        if (xPos <= max.x)
+                        {
+                            Gizmos.DrawLine(
+                                new Vector3(xPos, y, min.z),
+                                new Vector3(xPos, y, max.z));
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void OnDrawGizmos()
+        {
+            // Draw bounds outline even when not selected (subtle)
+            if (profile != null && profile.DrawGizmo)
+            {
+                var bounds = profile.ToBounds();
+                var outlineColor = new Color(profile.GizmoColor.r, profile.GizmoColor.g, profile.GizmoColor.b, profile.GizmoColor.a * 0.2f);
+                Gizmos.color = outlineColor;
+                Gizmos.DrawWireCube(bounds.center, bounds.size);
+            }
         }
 #endif
     }

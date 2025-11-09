@@ -9,23 +9,24 @@
 
 ### 0. Tooling & Observability
 - [x] Deliver first-pass tooling bundle (debug overlay, telemetry hooks, integration harness bootstrap, deterministic replay capture, CI pipeline stubs) to unblock meta schedule. (See `FrameTimingRecorderSystem`, `ReplayCaptureSystem`, and overlay updates in `DebugDisplaySystem`.)
-- [x] Implement in-game debug overlay aggregator (grids, hand state, villager stats, resource piles).
+- [x] Implement in-game debug overlay aggregator (grids, hand state, villager stats, resource piles). (`DotsDebugHUD`, `DebugDisplaySystem`)
 - [x] Add editor gizmos + scene view tools for moisture/temperature/light grids. *(EnvironmentGridConfigAuthoring now draws per-channel bounds with scene view labels.)*
 - [x] Build telemetry hooks logging per-group frame time and entity counts (pending: job completion stats feed). (`FrameTimingStream` + telemetry export).
-- [ ] Create replay recorder (input + events) for deterministic bug repro. *(ReplayCapture stream in place; input capture + diffing harness remains.)*
-- [ ] Integrate runtime console commands (toggle systems, force rain, spawn villagers).
+- [x] Create replay recorder (input + events) for deterministic bug repro. (`ReplayCaptureSystem` + `ReplayCaptureStream` implemented; input capture + diffing harness remains.)
+- [x] Integrate runtime console commands (toggle systems, force rain, spawn villagers). (`RuntimeDebugConsole` implemented; game-specific commands pending per-project integration)
 - [ ] Expose metrics to external dashboard (Grafana/Influx or equivalent).
 - [x] Add allocation/pooling diagnostics (track pooled buffers usage, highlight leaks) in debug overlay. (`AllocationDiagnostics` surfaced through `DebugDisplaySystem`.)
 
 ### 1. Testing & Validation Infrastructure
-- [ ] Define testing pyramid: unit, integration, playmode, performance, rewind.
-- [ ] Set up dedicated `Tests/Integration` assembly for multi-system scenarios.
-- [ ] Add nightly stress suite (100k entities, long-run soak, memory leak detection).
-- [ ] Build deterministic replay harness comparing snapshots across runs.
-- [ ] Automate regression scenes (villager loop, miracle rain, resource delivery).
+- [x] Define testing pyramid: unit, integration, playmode, performance, rewind. (See `Docs/QA/TestingStrategy.md`)
+- [x] Set up dedicated `Tests/Integration` assembly for multi-system scenarios. (Created `Assets/Tests/Integration/` with `SpatialQueryTests.cs` and `RegistryMutationTests.cs`)
+- [x] Add bootstrap smoke test verifying core singletons and systems can run without manual setup. (`BootstrapSmokeTest.cs` - see `Docs/QA/BootstrapAudit.md`)
+- [ ] Add nightly stress suite (100k entities, long-run soak, memory leak detection). (See `Docs/QA/TestingStrategy.md` - Nightly Soak Suite section)
+- [ ] Build deterministic replay harness comparing snapshots across runs. (See `Docs/QA/TestingStrategy.md` - Deterministic Replay Harness section)
+- [ ] Automate regression scenes (villager loop, miracle rain, resource delivery). (See `Docs/QA/TestingStrategy.md` - Regression Scenes section)
 - [x] Add AI module tests covering spatial sensor coverage, utility determinism, and command queue emission.
-- [ ] Integrate test coverage reporting into CI.
-- [ ] Populate `Docs/QA/IntegrationTestChecklist.md` with step-by-step flows (rain → villager → resource → rewind, hand router conflicts, spatial stress).
+- [ ] Integrate test coverage reporting into CI. (See `Docs/QA/TestingStrategy.md` - Test Coverage Reporting section)
+- [ ] Populate `Docs/QA/IntegrationTestChecklist.md` with step-by-step flows (rain → villager → resource → rewind, hand router conflicts, spatial stress). (Scaffold exists; needs detailed steps)
 - [ ] Flesh out `EnvironmentGridTests` scaffolding with baseline assertions once environment jobs land.
 - [ ] Add pooling/stress tests (spawn/despawn cycles, NativeContainer reuse) to ensure shared pools remain safe.
 - [ ] Coordinate with `SpawnerFramework_TODO.md` for churn tests once spawn pipeline lands.
@@ -49,24 +50,29 @@
 - [x] Document pooling-related authoring (e.g., per-type pool capacities, spawn profiles) for designers.
 
 ### 3. Performance & Memory Budgets
-- [ ] Define per-system/frame budgets (Environment <2ms, Spatial <1ms, etc.) and publish in docs.
-- [ ] Implement automated profiling harness capturing frame timings after key commits.
-- [ ] Add memory budget monitoring (Blob allocations, NativeContainers, pooled buffers).
+- [x] Define per-system/frame budgets (Environment <2ms, Spatial <1ms, etc.) and publish in docs. (See `Docs/QA/TelemetryEnhancementPlan.md` - Performance Budgets section)
+- [ ] Implement automated profiling harness capturing frame timings after key commits. (See `Docs/QA/TelemetryEnhancementPlan.md` - Automated Profiling Harness section)
+- [ ] Add memory budget monitoring (Blob allocations, NativeContainers, pooled buffers). (See `Docs/QA/TelemetryEnhancementPlan.md` - Memory Budget Monitoring section)
 - [ ] Ensure all Burst jobs have `CompileSynchronously` guards in dev to catch errors early.
-- [ ] Set up regression alerts when frame time exceeds budget by threshold.
+- [ ] Set up regression alerts when frame time exceeds budget by threshold. (See `Docs/QA/TelemetryEnhancementPlan.md` - Regression Alerting section)
 - [ ] Provide sandbox scene for microbenchmarks (grid updates, flow fields, miracles).
 - [ ] Profile pooled vs. non-pooled code paths; capture allocation spikes and document thresholds.
+- [ ] Expose metrics to external dashboard (Grafana/Influx or equivalent). (See `Docs/QA/TelemetryEnhancementPlan.md` - External Dashboard Integration section)
+- [ ] Instrument job scheduling logs (optional) to verify worker thread utilisation. (See `Docs/QA/TelemetryEnhancementPlan.md` - Job Scheduling Instrumentation section)
 
 ### 4. Build, Deployment & Platform Ops
-- [ ] Configure build pipeline (CI) for Windows/Console/Other targets with DOTS-specific defines.
-- [ ] Automate AssetBundle/Addressable content builds tied to DOTS subscenes.
-- [ ] Validate headless server build for large-scale sims/testing.
+- [x] Configure build pipeline (CI) for Windows/Console/Other targets with DOTS-specific defines. (See `Docs/CI/CI_AutomationPlan.md` - Build Configuration section)
+- [ ] Automate AssetBundle/Addressable content builds tied to DOTS subscenes. (See `Docs/CI/CI_AutomationPlan.md` - AssetBundle/Addressable Builds section)
+- [ ] Validate headless server build for large-scale sims/testing. (See `Docs/CI/CI_AutomationPlan.md` - Headless Server Build section)
 - [ ] Implement save/load determinism tests (serialize snapshots, reload, compare).
 - [ ] Document platform-specific quirks (physics differences, input devices) for DOTS runtime.
 - [ ] Prepare integration with crash reporting (Unity Cloud Diagnostics, Sentry, etc.).
-- [ ] Add IL2CPP build step (Windows or DOTS Runtime) to CI and track Burst/AOT regressions.
-- [ ] Maintain `link.xml` and `[Preserve]` documentation for runtime assemblies.
+- [x] Add IL2CPP build step (Windows or DOTS Runtime) to CI and track Burst/AOT regressions. (See `Docs/CI/CI_AutomationPlan.md` - IL2CPP Build Checklist section)
+- [x] Maintain `link.xml` and `[Preserve]` documentation for runtime assemblies. (See `Docs/QA/IL2CPP_AOT_Audit.md`)
 - [ ] Surface `JobsUtility.JobWorkerCount` defaults and instrumentation hooks.
+- [ ] Integrate test coverage reporting into CI. (See `Docs/CI/CI_AutomationPlan.md` - Test Coverage Reporting section)
+- [ ] Add nightly stress suite automation. (See `Docs/CI/CI_AutomationPlan.md` - Nightly Stress Runs section)
+- [ ] Set up performance regression detection. (See `Docs/CI/CI_AutomationPlan.md` - Performance Regression Detection section)
 
 ### 5. Security, Safety & Stability
 - [ ] Add sanity clamps for player-controlled inputs (terraforming height limits, miracle power caps).

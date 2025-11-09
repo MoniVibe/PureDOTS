@@ -1,10 +1,14 @@
 using PureDOTS.Environment;
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Pooling;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Streaming;
 using PureDOTS.Runtime.Telemetry;
+#if DEVTOOLS_ENABLED
+using PureDOTS.Runtime.Devtools;
+#endif
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -134,9 +138,13 @@ namespace PureDOTS.Systems
             UpdatePoolingDiagnostics(ref debugData.ValueRW);
             UpdateSpatialDiagnostics(ref state, ref debugData.ValueRW);
             UpdateSunlightDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateEnvironmentGridDiagnostics(ref state, ref debugData.ValueRW);
             UpdateStreamingDiagnostics(ref state, ref debugData.ValueRW);
             UpdateFrameTiming(ref state, ref debugData.ValueRW);
             UpdateReplayDiagnostics(ref state, ref debugData.ValueRW);
+#if DEVTOOLS_ENABLED
+            UpdateSpawnTelemetry(ref debugData.ValueRW, ref state);
+#endif
             WriteTelemetrySnapshot(ref state, in debugData.ValueRO);
         }
 
@@ -173,6 +181,21 @@ namespace PureDOTS.Systems
             debugData.BandSpatialResolved = 0;
             debugData.BandSpatialFallback = 0;
             debugData.BandSpatialUnmapped = 0;
+            debugData.FactionRegistryCount = 0;
+            debugData.FactionEntryCount = 0;
+            debugData.TotalFactionTerritoryCells = 0;
+            debugData.TotalFactionResources = 0f;
+            debugData.ClimateHazardRegistryCount = 0;
+            debugData.ClimateHazardEntryCount = 0;
+            debugData.ClimateHazardActiveCount = 0;
+            debugData.ClimateHazardGlobalIntensity = 0f;
+            debugData.AreaEffectRegistryCount = 0;
+            debugData.AreaEffectEntryCount = 0;
+            debugData.AreaEffectActiveCount = 0;
+            debugData.AreaEffectAverageStrength = 0f;
+            debugData.CultureRegistryCount = 0;
+            debugData.CultureEntryCount = 0;
+            debugData.CultureGlobalAlignmentScore = 0f;
 
             if (!SystemAPI.TryGetSingletonEntity<RegistryDirectory>(out var registryEntity))
             {
@@ -204,6 +227,14 @@ namespace PureDOTS.Systems
             int villagerEntries = 0;
             int bandRegistries = 0;
             int bandEntries = 0;
+            int factionRegistries = 0;
+            int factionEntries = 0;
+            int hazardRegistries = 0;
+            int hazardEntries = 0;
+            int areaEffectRegistries = 0;
+            int areaEffectEntries = 0;
+            int cultureRegistries = 0;
+            int cultureEntries = 0;
             int healthyCount = 0;
             int warningCount = 0;
             int criticalCount = 0;
@@ -248,6 +279,22 @@ namespace PureDOTS.Systems
                             bandRegistries++;
                             bandEntries += metadata.EntryCount;
                             break;
+                        case RegistryKind.Faction:
+                            factionRegistries++;
+                            factionEntries += metadata.EntryCount;
+                            break;
+                        case RegistryKind.ClimateHazard:
+                            hazardRegistries++;
+                            hazardEntries += metadata.EntryCount;
+                            break;
+                        case RegistryKind.AreaEffect:
+                            areaEffectRegistries++;
+                            areaEffectEntries += metadata.EntryCount;
+                            break;
+                        case RegistryKind.CultureAlignment:
+                            cultureRegistries++;
+                            cultureEntries += metadata.EntryCount;
+                            break;
                     }
                 }
                 else
@@ -258,6 +305,14 @@ namespace PureDOTS.Systems
 
             debugData.BandRegistryCount = bandRegistries;
             debugData.BandEntryCount = bandEntries;
+            debugData.FactionRegistryCount = factionRegistries;
+            debugData.FactionEntryCount = factionEntries;
+            debugData.ClimateHazardRegistryCount = hazardRegistries;
+            debugData.ClimateHazardEntryCount = hazardEntries;
+            debugData.AreaEffectRegistryCount = areaEffectRegistries;
+            debugData.AreaEffectEntryCount = areaEffectEntries;
+            debugData.CultureRegistryCount = cultureRegistries;
+            debugData.CultureEntryCount = cultureEntries;
 
             var displayHealthy = healthyCount;
             var displayWarning = warningCount;
@@ -413,6 +468,123 @@ namespace PureDOTS.Systems
                         text.Append(storehouseRegistry.SpatialUnmappedCount);
                     }
                 }
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<FactionRegistry>(out var factionRegistryEntity))
+            {
+                var factionRegistry = SystemAPI.GetComponentRO<FactionRegistry>(factionRegistryEntity).ValueRO;
+                debugData.FactionRegistryCount = math.max(debugData.FactionRegistryCount, factionRegistry.FactionCount > 0 ? 1 : 0);
+                debugData.FactionEntryCount = math.max(debugData.FactionEntryCount, factionRegistry.FactionCount);
+                debugData.TotalFactionResources = factionRegistry.TotalResources;
+                debugData.TotalFactionTerritoryCells = factionRegistry.TotalTerritoryCells;
+
+                if (factionRegistry.FactionCount > 0)
+                {
+                    text.Append(" | Fact ");
+                    text.Append(factionRegistry.FactionCount);
+                    text.Append(" terr=");
+                    text.Append(factionRegistry.TotalTerritoryCells);
+                    if (factionRegistry.TotalResources > 0f)
+                    {
+                        text.Append(" res=");
+                        text.Append(math.round(factionRegistry.TotalResources * 10f) / 10f);
+                    }
+                }
+            }
+            else if (debugData.FactionRegistryCount > 0)
+            {
+                text.Append(" | Fact ");
+                text.Append(debugData.FactionRegistryCount);
+                text.Append("/");
+                text.Append(debugData.FactionEntryCount);
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<ClimateHazardRegistry>(out var hazardRegistryEntity))
+            {
+                var hazardRegistry = SystemAPI.GetComponentRO<ClimateHazardRegistry>(hazardRegistryEntity).ValueRO;
+                debugData.ClimateHazardRegistryCount = math.max(debugData.ClimateHazardRegistryCount, hazardRegistry.ActiveHazardCount > 0 ? 1 : debugData.ClimateHazardRegistryCount);
+                debugData.ClimateHazardEntryCount = math.max(debugData.ClimateHazardEntryCount, hazardRegistry.ActiveHazardCount);
+                debugData.ClimateHazardActiveCount = hazardRegistry.ActiveHazardCount;
+                debugData.ClimateHazardGlobalIntensity = hazardRegistry.GlobalHazardIntensity;
+
+                if (hazardRegistry.ActiveHazardCount > 0)
+                {
+                    text.Append(" | Hazard ");
+                    text.Append(hazardRegistry.ActiveHazardCount);
+                    text.Append(" I=");
+                    text.Append(math.round(hazardRegistry.GlobalHazardIntensity * 100f) / 100f);
+                }
+            }
+            else if (debugData.ClimateHazardRegistryCount > 0)
+            {
+                text.Append(" | Hazard ");
+                text.Append(debugData.ClimateHazardRegistryCount);
+                text.Append("/");
+                text.Append(debugData.ClimateHazardEntryCount);
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<AreaEffectRegistry>(out var areaRegistryEntity))
+            {
+                var areaRegistry = SystemAPI.GetComponentRO<AreaEffectRegistry>(areaRegistryEntity).ValueRO;
+                debugData.AreaEffectActiveCount = areaRegistry.ActiveEffectCount;
+
+                if (state.EntityManager.HasBuffer<AreaEffectRegistryEntry>(areaRegistryEntity))
+                {
+                    var buffer = state.EntityManager.GetBuffer<AreaEffectRegistryEntry>(areaRegistryEntity, true);
+                    if (buffer.Length > 0)
+                    {
+                        float totalStrength = 0f;
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            totalStrength += buffer[i].CurrentStrength;
+                        }
+                        debugData.AreaEffectAverageStrength = totalStrength / buffer.Length;
+                        debugData.AreaEffectEntryCount = math.max(debugData.AreaEffectEntryCount, buffer.Length);
+                    }
+                }
+
+                debugData.AreaEffectRegistryCount = math.max(debugData.AreaEffectRegistryCount, areaRegistry.ActiveEffectCount > 0 ? 1 : debugData.AreaEffectRegistryCount);
+
+                if (areaRegistry.ActiveEffectCount > 0)
+                {
+                    text.Append(" | Effects ");
+                    text.Append(areaRegistry.ActiveEffectCount);
+                    if (debugData.AreaEffectAverageStrength > 0f)
+                    {
+                        text.Append(" avg=");
+                        text.Append(math.round(debugData.AreaEffectAverageStrength * 100f) / 100f);
+                    }
+                }
+            }
+            else if (debugData.AreaEffectRegistryCount > 0)
+            {
+                text.Append(" | Effects ");
+                text.Append(debugData.AreaEffectRegistryCount);
+                text.Append("/");
+                text.Append(debugData.AreaEffectEntryCount);
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<CultureAlignmentRegistry>(out var cultureRegistryEntity))
+            {
+                var cultureRegistry = SystemAPI.GetComponentRO<CultureAlignmentRegistry>(cultureRegistryEntity).ValueRO;
+                debugData.CultureRegistryCount = math.max(debugData.CultureRegistryCount, cultureRegistry.CultureCount > 0 ? 1 : debugData.CultureRegistryCount);
+                debugData.CultureEntryCount = math.max(debugData.CultureEntryCount, cultureRegistry.CultureCount);
+                debugData.CultureGlobalAlignmentScore = cultureRegistry.GlobalAlignmentScore;
+
+                if (cultureRegistry.CultureCount > 0)
+                {
+                    text.Append(" | Culture ");
+                    text.Append(cultureRegistry.CultureCount);
+                    text.Append(" align=");
+                    text.Append(math.round(cultureRegistry.GlobalAlignmentScore * 100f) / 100f);
+                }
+            }
+            else if (debugData.CultureRegistryCount > 0)
+            {
+                text.Append(" | Culture ");
+                text.Append(debugData.CultureRegistryCount);
+                text.Append("/");
+                text.Append(debugData.CultureEntryCount);
             }
 
             var worstLevel = (RegistryHealthLevel)worstLevelValue;
@@ -828,6 +1000,243 @@ namespace PureDOTS.Systems
             debugData.SunlightStateText = text;
         }
 
+        private void UpdateEnvironmentGridDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            // Initialize defaults
+            debugData.MoistureStateText = default;
+            debugData.MoistureAverage = 0f;
+            debugData.MoistureMin = 0f;
+            debugData.MoistureMax = 0f;
+            debugData.MoistureLastUpdateTick = 0;
+            debugData.MoistureLastTerrainVersion = 0;
+            
+            debugData.TemperatureStateText = default;
+            debugData.TemperatureAverage = 0f;
+            debugData.TemperatureMin = 0f;
+            debugData.TemperatureMax = 0f;
+            debugData.TemperatureLastUpdateTick = 0;
+            debugData.TemperatureLastTerrainVersion = 0;
+            
+            debugData.WindStateText = default;
+            debugData.WindAverageStrength = 0f;
+            debugData.WindGlobalDirection = float2.zero;
+            debugData.WindGlobalStrength = 0f;
+            debugData.WindLastUpdateTick = 0;
+            debugData.WindLastTerrainVersion = 0;
+            
+            debugData.BiomeStateText = default;
+            debugData.BiomeUnknownCount = 0;
+            debugData.BiomeTundraCount = 0;
+            debugData.BiomeTaigaCount = 0;
+            debugData.BiomeGrasslandCount = 0;
+            debugData.BiomeForestCount = 0;
+            debugData.BiomeDesertCount = 0;
+            debugData.BiomeRainforestCount = 0;
+            debugData.BiomeSavannaCount = 0;
+            debugData.BiomeSwampCount = 0;
+            debugData.BiomeLastUpdateTick = 0;
+            debugData.BiomeLastTerrainVersion = 0;
+            
+            debugData.TerrainVersionText = default;
+            debugData.TerrainVersion = 0;
+            debugData.TerrainChangeEventCount = 0;
+
+            // Update moisture grid diagnostics
+            if (SystemAPI.TryGetSingletonEntity<PureDOTS.Environment.MoistureGrid>(out var moistureEntity))
+            {
+                var moistureGrid = SystemAPI.GetComponent<PureDOTS.Environment.MoistureGrid>(moistureEntity);
+                debugData.MoistureLastUpdateTick = moistureGrid.LastUpdateTick;
+                debugData.MoistureLastTerrainVersion = moistureGrid.LastTerrainVersion;
+                
+                if (state.EntityManager.HasBuffer<PureDOTS.Environment.MoistureGridRuntimeCell>(moistureEntity))
+                {
+                    var cells = state.EntityManager.GetBuffer<PureDOTS.Environment.MoistureGridRuntimeCell>(moistureEntity);
+                    if (cells.Length > 0)
+                    {
+                        float sum = 0f;
+                        float min = float.MaxValue;
+                        float max = float.MinValue;
+                        for (int i = 0; i < cells.Length; i++)
+                        {
+                            var moisture = cells[i].Moisture;
+                            sum += moisture;
+                            min = math.min(min, moisture);
+                            max = math.max(max, moisture);
+                        }
+                        debugData.MoistureAverage = sum / cells.Length;
+                        debugData.MoistureMin = min;
+                        debugData.MoistureMax = max;
+                        
+                        var text = new FixedString128Bytes();
+                        text.Append("Moisture avg=");
+                        text.Append(math.round(debugData.MoistureAverage * 10f) * 0.1f);
+                        text.Append(" min=");
+                        text.Append(math.round(debugData.MoistureMin * 10f) * 0.1f);
+                        text.Append(" max=");
+                        text.Append(math.round(debugData.MoistureMax * 10f) * 0.1f);
+                        text.Append(" TV=");
+                        text.Append(debugData.MoistureLastTerrainVersion);
+                        debugData.MoistureStateText = text;
+                    }
+                }
+            }
+
+            // Update temperature grid diagnostics
+            if (SystemAPI.TryGetSingletonEntity<PureDOTS.Environment.TemperatureGrid>(out var tempEntity))
+            {
+                var tempGrid = SystemAPI.GetComponent<PureDOTS.Environment.TemperatureGrid>(tempEntity);
+                debugData.TemperatureLastUpdateTick = tempGrid.LastUpdateTick;
+                debugData.TemperatureLastTerrainVersion = tempGrid.LastTerrainVersion;
+                
+                if (tempGrid.IsCreated)
+                {
+                    ref var temps = ref tempGrid.Blob.Value.TemperatureCelsius;
+                    if (temps.Length > 0)
+                    {
+                        float sum = 0f;
+                        float min = float.MaxValue;
+                        float max = float.MinValue;
+                        for (int i = 0; i < temps.Length; i++)
+                        {
+                            var temp = temps[i];
+                            sum += temp;
+                            min = math.min(min, temp);
+                            max = math.max(max, temp);
+                        }
+                        debugData.TemperatureAverage = sum / temps.Length;
+                        debugData.TemperatureMin = min;
+                        debugData.TemperatureMax = max;
+                        
+                        var text = new FixedString128Bytes();
+                        text.Append("Temp avg=");
+                        text.Append(math.round(debugData.TemperatureAverage * 10f) * 0.1f);
+                        text.Append("°C min=");
+                        text.Append(math.round(debugData.TemperatureMin * 10f) * 0.1f);
+                        text.Append(" max=");
+                        text.Append(math.round(debugData.TemperatureMax * 10f) * 0.1f);
+                        text.Append(" TV=");
+                        text.Append(debugData.TemperatureLastTerrainVersion);
+                        debugData.TemperatureStateText = text;
+                    }
+                }
+            }
+
+            // Update wind field diagnostics
+            if (SystemAPI.TryGetSingletonEntity<PureDOTS.Environment.WindField>(out var windEntity))
+            {
+                var windField = SystemAPI.GetComponent<PureDOTS.Environment.WindField>(windEntity);
+                debugData.WindLastUpdateTick = windField.LastUpdateTick;
+                debugData.WindLastTerrainVersion = windField.LastTerrainVersion;
+                debugData.WindGlobalDirection = windField.GlobalWindDirection;
+                debugData.WindGlobalStrength = windField.GlobalWindStrength;
+                
+                if (windField.IsCreated)
+                {
+                    ref var samples = ref windField.Blob.Value.Samples;
+                    if (samples.Length > 0)
+                    {
+                        float strengthSum = 0f;
+                        for (int i = 0; i < samples.Length; i++)
+                        {
+                            strengthSum += samples[i].Strength;
+                        }
+                        debugData.WindAverageStrength = strengthSum / samples.Length;
+                        
+                        var text = new FixedString128Bytes();
+                        text.Append("Wind avg=");
+                        text.Append(math.round(debugData.WindAverageStrength * 10f) * 0.1f);
+                        text.Append("m/s global=");
+                        text.Append(math.round(debugData.WindGlobalStrength * 10f) * 0.1f);
+                        text.Append(" dir=(");
+                        text.Append(math.round(debugData.WindGlobalDirection.x * 100f) * 0.01f);
+                        text.Append(",");
+                        text.Append(math.round(debugData.WindGlobalDirection.y * 100f) * 0.01f);
+                        text.Append(") TV=");
+                        text.Append(debugData.WindLastTerrainVersion);
+                        debugData.WindStateText = text;
+                    }
+                }
+            }
+
+            // Update biome grid diagnostics
+            if (SystemAPI.TryGetSingletonEntity<PureDOTS.Environment.BiomeGrid>(out var biomeEntity))
+            {
+                var biomeGrid = SystemAPI.GetComponent<PureDOTS.Environment.BiomeGrid>(biomeEntity);
+                debugData.BiomeLastUpdateTick = biomeGrid.LastUpdateTick;
+                debugData.BiomeLastTerrainVersion = biomeGrid.LastTerrainVersion;
+                
+                if (state.EntityManager.HasBuffer<PureDOTS.Environment.BiomeGridRuntimeCell>(biomeEntity))
+                {
+                    var cells = state.EntityManager.GetBuffer<PureDOTS.Environment.BiomeGridRuntimeCell>(biomeEntity);
+                    for (int i = 0; i < cells.Length; i++)
+                    {
+                        var biome = cells[i].Value;
+                        switch (biome)
+                        {
+                            case PureDOTS.Environment.BiomeType.Unknown:
+                                debugData.BiomeUnknownCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Tundra:
+                                debugData.BiomeTundraCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Taiga:
+                                debugData.BiomeTaigaCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Grassland:
+                                debugData.BiomeGrasslandCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Forest:
+                                debugData.BiomeForestCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Desert:
+                                debugData.BiomeDesertCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Rainforest:
+                                debugData.BiomeRainforestCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Savanna:
+                                debugData.BiomeSavannaCount++;
+                                break;
+                            case PureDOTS.Environment.BiomeType.Swamp:
+                                debugData.BiomeSwampCount++;
+                                break;
+                        }
+                    }
+                    
+                    var text = new FixedString128Bytes();
+                    text.Append("Biomes F:");
+                    text.Append(debugData.BiomeForestCount);
+                    text.Append(" G:");
+                    text.Append(debugData.BiomeGrasslandCount);
+                    text.Append(" D:");
+                    text.Append(debugData.BiomeDesertCount);
+                    text.Append(" TV=");
+                    text.Append(debugData.BiomeLastTerrainVersion);
+                    debugData.BiomeStateText = text;
+                }
+            }
+
+            // Update terrain version diagnostics
+            if (SystemAPI.TryGetSingletonEntity<PureDOTS.Environment.TerrainVersion>(out var terrainVersionEntity))
+            {
+                var terrainVersion = SystemAPI.GetComponent<PureDOTS.Environment.TerrainVersion>(terrainVersionEntity);
+                debugData.TerrainVersion = terrainVersion.Value;
+                
+                if (state.EntityManager.HasBuffer<PureDOTS.Environment.TerrainChangeEvent>(terrainVersionEntity))
+                {
+                    var events = state.EntityManager.GetBuffer<PureDOTS.Environment.TerrainChangeEvent>(terrainVersionEntity);
+                    debugData.TerrainChangeEventCount = events.Length;
+                }
+                
+                var text = new FixedString128Bytes();
+                text.Append("Terrain v=");
+                text.Append(debugData.TerrainVersion);
+                text.Append(" events=");
+                text.Append(debugData.TerrainChangeEventCount);
+                debugData.TerrainVersionText = text;
+            }
+        }
+
         private void UpdateStreamingDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
         {
             debugData.StreamingDesiredCount = 0;
@@ -1129,6 +1538,36 @@ namespace PureDOTS.Systems
             key = "registry.band.spatial.unmapped";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BandSpatialUnmapped, Unit = TelemetryMetricUnit.Count });
 
+            key = "registry.faction.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.FactionRegistryCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.faction.entries";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.FactionEntryCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.faction.territory";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.TotalFactionTerritoryCells, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.faction.resources";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.TotalFactionResources, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.hazard.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ClimateHazardActiveCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.hazard.intensity";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ClimateHazardGlobalIntensity, Unit = TelemetryMetricUnit.Ratio });
+
+            key = "registry.area.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.AreaEffectActiveCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.area.strength";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.AreaEffectAverageStrength, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.culture.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CultureRegistryCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.culture.alignment";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CultureGlobalAlignmentScore, Unit = TelemetryMetricUnit.Ratio });
+
             key = "villagers.count";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.VillagerCount, Unit = TelemetryMetricUnit.Count });
 
@@ -1247,5 +1686,41 @@ namespace PureDOTS.Systems
                 buffer.Add(new TelemetryMetric { Key = key, Value = replayStream.EventCount, Unit = TelemetryMetricUnit.Count });
             }
         }
+
+#if DEVTOOLS_ENABLED
+        private void UpdateSpawnTelemetry(ref DebugDisplayData debugData, ref SystemState state)
+        {
+            if (!SystemAPI.HasSingleton<SpawnTelemetry>())
+            {
+                return;
+            }
+
+            var spawnTelemetry = SystemAPI.GetSingleton<SpawnTelemetry>();
+            debugData.SpawnRequestsThisTick = spawnTelemetry.RequestsThisTick;
+            debugData.SpawnSpawnedThisTick = spawnTelemetry.SpawnedThisTick;
+            debugData.SpawnFailuresThisTick = spawnTelemetry.FailuresThisTick;
+
+            var reasons = new FixedString128Bytes();
+            if (spawnTelemetry.FailuresByReason_TooSteep > 0)
+            {
+                reasons.Append("TooSteep:");
+                reasons.Append(spawnTelemetry.FailuresByReason_TooSteep);
+                reasons.Append(" ");
+            }
+            if (spawnTelemetry.FailuresByReason_Overlap > 0)
+            {
+                reasons.Append("Overlap:");
+                reasons.Append(spawnTelemetry.FailuresByReason_Overlap);
+                reasons.Append(" ");
+            }
+            if (spawnTelemetry.FailuresByReason_OutOfBounds > 0)
+            {
+                reasons.Append("OutOfBounds:");
+                reasons.Append(spawnTelemetry.FailuresByReason_OutOfBounds);
+                reasons.Append(" ");
+            }
+            debugData.SpawnFailureReasons = reasons;
+        }
+#endif
     }
 }

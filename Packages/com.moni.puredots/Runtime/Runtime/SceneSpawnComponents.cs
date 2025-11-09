@@ -12,7 +12,11 @@ namespace PureDOTS.Runtime.Components
         Miracle = 3,
         Animal = 4,
         Structure = 5,
-        Generic = 6
+        Generic = 6,
+        Faction = 7,
+        ClimateHazard = 8,
+        AreaEffect = 9,
+        Culture = 10
     }
 
     public enum SpawnPlacementMode : byte

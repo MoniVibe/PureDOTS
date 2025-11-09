@@ -115,12 +115,13 @@ namespace PureDOTS.Systems
                 }
 
                 var resourceTypeIndex = resourceCatalog.LookupIndex(resourceTypeId);
-                if (resourceTypeIndex < 0)
+                if (resourceTypeIndex < 0 || resourceTypeIndex > ushort.MaxValue)
                 {
                     result = VegetationHarvestResult.InvalidEntities;
                     receipts.Add(CreateReceipt(command, resourceTypeId, 0f, result, timeState.Tick));
                     continue;
                 }
+                var ushortTypeIndex = (ushort)resourceTypeIndex;
 
                 if (!_readyTagLookup.IsComponentEnabled(command.Vegetation))
                 {
@@ -192,7 +193,7 @@ namespace PureDOTS.Systems
 
                 // Deliver yield to villager inventory
                 var inventory = _villagerInventoryLookup[command.Villager];
-                var delivered = TryAddToInventory(ref inventory, resourceTypeId, harvestedAmount);
+                var delivered = TryAddToInventory(ref inventory, ushortTypeIndex, harvestedAmount);
                 harvestedAmount = delivered;
 
                 if (harvestedAmount > 0f && _villagerCarryLookup.HasBuffer(command.Villager))
@@ -264,7 +265,10 @@ namespace PureDOTS.Systems
             };
         }
 
-        private static float TryAddToInventory(ref DynamicBuffer<VillagerInventoryItem> inventory, FixedString64Bytes resourceTypeId, float amount)
+        private static float TryAddToInventory(
+            ref DynamicBuffer<VillagerInventoryItem> inventory,
+            ushort resourceTypeIndex,
+            float amount)
         {
             if (amount <= 0f)
             {
@@ -274,7 +278,7 @@ namespace PureDOTS.Systems
             for (var i = 0; i < inventory.Length; i++)
             {
                 var item = inventory[i];
-                if (!item.ResourceTypeId.Equals(resourceTypeId))
+                if (item.ResourceTypeIndex != resourceTypeIndex)
                 {
                     continue;
                 }
@@ -286,7 +290,7 @@ namespace PureDOTS.Systems
 
             inventory.Add(new VillagerInventoryItem
             {
-                ResourceTypeId = resourceTypeId,
+                ResourceTypeIndex = resourceTypeIndex,
                 Amount = amount,
                 MaxCarryCapacity = math.max(50f, amount)
             });

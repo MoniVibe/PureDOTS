@@ -29,8 +29,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerId, VillagerJob, VillagerAvailability, LocalTransform>()
-                .WithNone<VillagerDeadTag>()
+                .WithAll<VillagerId, VillagerJob, VillagerAvailability, LocalTransform, VillagerFlags>()
                 .Build();
 
             _ticketLookup = state.GetComponentLookup<VillagerJobTicket>(true);
@@ -102,10 +101,16 @@ namespace PureDOTS.Systems
 
             var expectedCount = math.max(32, _villagerQuery.CalculateEntityCount());
             using var builder = new DeterministicRegistryBuilder<VillagerRegistryEntry>(expectedCount, Allocator.Temp);
-            foreach (var (villagerId, job, availability, transform, entity) in SystemAPI.Query<RefRO<VillagerId>, RefRO<VillagerJob>, RefRO<VillagerAvailability>, RefRO<LocalTransform>>()
-                         .WithNone<VillagerDeadTag, PlaybackGuardTag>()
+            foreach (var (villagerId, job, availability, transform, flags, entity) in SystemAPI.Query<RefRO<VillagerId>, RefRO<VillagerJob>, RefRO<VillagerAvailability>, RefRO<LocalTransform>, RefRO<VillagerFlags>>()
+                         .WithNone<PlaybackGuardTag>()
                          .WithEntityAccess())
             {
+                // Skip dead villagers
+                if (flags.ValueRO.IsDead)
+                {
+                    continue;
+                }
+                
                 var position = transform.ValueRO.Position;
                 var cellId = -1;
                 var entrySpatialVersion = spatialVersionSource;
@@ -170,7 +175,7 @@ namespace PureDOTS.Systems
                         healthSampleCount++;
                     }
 
-                    energyPercentFloat = math.clamp(needs.Energy, 0f, 100f);
+                    energyPercentFloat = math.clamp(needs.EnergyFloat, 0f, 100f);
                     energyAccumulator += energyPercentFloat;
                     energySampleCount++;
                 }

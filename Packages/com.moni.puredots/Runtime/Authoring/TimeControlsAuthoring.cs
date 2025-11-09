@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using PureDOTS.Input;
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using UnityEngine;
@@ -38,6 +39,17 @@ namespace PureDOTS.Authoring
             AddComponent(entity, config);
 
             AddComponent<TimeControlSingletonTag>(entity);
+            AddComponent(entity, new TimeControlInputState
+            {
+                SampleTick = 0,
+                RewindHeld = 0,
+                RewindPressedThisFrame = 0,
+                RewindSpeedLevel = 0,
+                EnterGhostPreview = 0,
+                StepDownTriggered = 0,
+                StepUpTriggered = 0,
+                PauseToggleTriggered = 0
+            });
         }
     }
 }

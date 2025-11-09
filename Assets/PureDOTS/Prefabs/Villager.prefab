@@ -138,16 +138,41 @@ MonoBehaviour:
   initialHunger: 30
   initialEnergy: 80
   initialMorale: 75
+  maxMana: 10
+  initialMana: 10
   baseSpeed: 3
-  visionRange: 20
-  hearingRange: 15
+  visionLitRange: 50
+  visionDimRange: 30
+  visionObscuredRange: 10
+  hearingQuietRange: 20
+  hearingNoisyRange: 10
+  hearingCrowdedRange: 3
   initialJob: 3
   initialWorksite: {fileID: 0}
+  physique: 5
+  finesse: 5
+  willpower: 5
+  strengthBonus: 5
+  agilityBonus: 5
+  intelligenceBonus: 5
+  wisdomBonus: 5
   initialDiscipline: 0
   initialDisciplineLevel: 0
   initialMood: 50
   moodChangeRate: 1
   startAvailableForJobs: 1
+  preferredTemperature: 20
+  coldTolerance: -15
+  heatTolerance: 35
+  primaryDeityId: divine.hand
+  faith: 0.5
+  worshipProgress: 0
+  fame: 0
+  infamy: 0
+  honor: 0
+  glory: 0
+  renown: 0
+  reputation: 0
   isCombatCapable: 0
   attackDamage: 5
   attackSpeed: 1

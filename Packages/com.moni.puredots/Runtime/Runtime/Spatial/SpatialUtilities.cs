@@ -150,9 +150,173 @@ namespace PureDOTS.Runtime.Spatial
 
     /// <summary>
     /// Burst-friendly helpers for common spatial queries.
+    /// All vector and array parameters use ref for Burst compatibility.
     /// </summary>
+    [BurstCompile]
     public static class SpatialQueryHelper
     {
+        /// <summary>
+        /// Gets all entities within a radius of a position.
+        /// </summary>
+        [BurstCompile]
+        public static void GetEntitiesWithinRadius(
+            ref float3 position,
+            float radius,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results)
+        {
+            CollectEntitiesInRadius(ref position, radius, config, ranges, entries, ref results);
+        }
+
+        /// <summary>
+        /// Finds the nearest entity to a position, optionally filtered by EntityQuery criteria.
+        /// Note: EntityQuery filtering must be done externally; this method searches all entities in the grid.
+        /// </summary>
+        [BurstCompile]
+        public static bool FindNearestEntity(
+            ref float3 position,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            out Entity nearest,
+            out float distance)
+        {
+            if (TryFindClosest(ref position, config, ranges, entries, out nearest, out var distanceSq))
+            {
+                distance = math.sqrt(distanceSq);
+                return true;
+            }
+
+            nearest = Entity.Null;
+            distance = float.MaxValue;
+            return false;
+        }
+
+        /// <summary>
+        /// Gets all entities in a specific grid cell.
+        /// </summary>
+        [BurstCompile]
+        public static void GetCellEntities(
+            ref int3 cellCoords,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results)
+        {
+            GetCellEntitiesInternal(ref cellCoords, config, ranges, entries, ref results);
+        }
+
+        /// <summary>
+        /// Finds entities overlapping an axis-aligned bounding box.
+        /// Note: Parameters use ref for Burst compatibility.
+        /// </summary>
+        [BurstCompile]
+        public static void OverlapAABB(
+            ref float3 min,
+            ref float3 max,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results)
+        {
+            OverlapAABBInternal(ref min, ref max, config, ranges, entries, ref results);
+        }
+
+        /// <summary>
+        /// Finds k nearest entities within a radius, with optional filter.
+        /// </summary>
+        [BurstCompile]
+        public static void FindKNearestInRadius<TFilter>(
+            ref float3 position,
+            float radius,
+            int k,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<KNearestResult> results,
+            in TFilter filter)
+            where TFilter : struct, ISpatialQueryFilter
+        {
+            results.Clear();
+            if (k <= 0 || radius <= 0f)
+            {
+                return;
+            }
+
+            var entryArray = entries.AsNativeArray();
+            if (entryArray.Length == 0)
+            {
+                return;
+            }
+
+            var descriptor = new SpatialQueryDescriptor
+            {
+                Origin = position,
+                Radius = radius,
+                MaxResults = k,
+                Options = SpatialQueryOptions.RequireDeterministicSorting,
+                Tolerance = 1e-4f,
+                ExcludedEntity = Entity.Null
+            };
+
+            var capacity = math.min(k, entryArray.Length);
+            if (capacity <= 0)
+            {
+                return;
+            }
+
+            results.ResizeUninitialized(capacity);
+            var slice = new NativeSlice<KNearestResult>(results.AsArray(), 0, capacity);
+            var count = CollectKNearest(0, in descriptor, in config, ranges.AsNativeArray(), entryArray, slice, in filter);
+            results.ResizeUninitialized(count);
+        }
+
+        /// <summary>
+        /// Batch query for multiple radius searches from different origins.
+        /// Returns results grouped by query index.
+        /// </summary>
+        [BurstCompile]
+        public static void BatchRadiusQueries(
+            ref NativeArray<float3> origins,
+            ref NativeArray<float> radii,
+            in SpatialGridConfig config,
+            in DynamicBuffer<SpatialGridCellRange> ranges,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<BatchRadiusResult> results)
+        {
+            results.Clear();
+            if (!origins.IsCreated || !radii.IsCreated || origins.Length != radii.Length || origins.Length == 0)
+            {
+                return;
+            }
+
+            var entryArray = entries.AsNativeArray();
+            if (entryArray.Length == 0)
+            {
+                return;
+            }
+
+            results.ResizeUninitialized(origins.Length);
+            for (int i = 0; i < origins.Length; i++)
+            {
+                var queryResults = new NativeList<Entity>(64, Allocator.Temp);
+                var origin = origins[i];
+                CollectEntitiesInRadius(ref origin, radii[i], config, ranges, entries, ref queryResults);
+                
+                results[i] = new BatchRadiusResult
+                {
+                    QueryIndex = i,
+                    Origin = origins[i],
+                    Radius = radii[i],
+                    ResultCount = queryResults.Length
+                };
+                
+                queryResults.Dispose();
+            }
+        }
+
         public static bool TryGetCellSlice(in DynamicBuffer<SpatialGridCellRange> ranges, in DynamicBuffer<SpatialGridEntry> entries, int cellId, out NativeSlice<SpatialGridEntry> slice)
         {
             if ((uint)cellId >= ranges.Length)
@@ -174,7 +338,7 @@ namespace PureDOTS.Runtime.Spatial
         }
 
         public static void CollectEntitiesInRadius(
-            float3 position,
+            ref float3 position,
             float radius,
             in SpatialGridConfig config,
             in DynamicBuffer<SpatialGridCellRange> ranges,
@@ -196,7 +360,7 @@ namespace PureDOTS.Runtime.Spatial
         }
 
         public static void CollectEntitiesInRadiusFiltered(
-            float3 position,
+            ref float3 position,
             float radius,
             in SpatialGridConfig config,
             in DynamicBuffer<SpatialGridCellRange> ranges,
@@ -333,8 +497,8 @@ namespace PureDOTS.Runtime.Spatial
             }
         }
 
-        public static void GetCellEntities(
-            int3 cellCoords,
+        private static void GetCellEntitiesInternal(
+            ref int3 cellCoords,
             in SpatialGridConfig config,
             in DynamicBuffer<SpatialGridCellRange> ranges,
             in DynamicBuffer<SpatialGridEntry> entries,
@@ -364,16 +528,16 @@ namespace PureDOTS.Runtime.Spatial
             }
         }
 
-        public static void OverlapAABB(
-            float3 aabbMin,
-            float3 aabbMax,
+        private static void OverlapAABBInternal(
+            ref float3 aabbMin,
+            ref float3 aabbMax,
             in SpatialGridConfig config,
             in DynamicBuffer<SpatialGridCellRange> ranges,
             in DynamicBuffer<SpatialGridEntry> entries,
             ref NativeList<Entity> results)
         {
-            SpatialHash.Quantize(aabbMin, config, out var minCell);
-            SpatialHash.Quantize(aabbMax, config, out var maxCell);
+            SpatialHash.Quantize(in aabbMin, config, out var minCell);
+            SpatialHash.Quantize(in aabbMax, config, out var maxCell);
 
             minCell = math.clamp(minCell, int3.zero, config.CellCounts - 1);
             maxCell = math.clamp(maxCell, int3.zero, config.CellCounts - 1);
@@ -424,7 +588,7 @@ namespace PureDOTS.Runtime.Spatial
         }
 
         public static bool TryFindClosest(
-            float3 position,
+            ref float3 position,
             in SpatialGridConfig config,
             in DynamicBuffer<SpatialGridCellRange> ranges,
             in DynamicBuffer<SpatialGridEntry> entries,
@@ -432,7 +596,7 @@ namespace PureDOTS.Runtime.Spatial
             out float closestDistanceSq)
         {
             var maxOffset = 1;
-            SpatialHash.Quantize(position, config, out var cellCoords);
+            SpatialHash.Quantize(in position, config, out var cellCoords);
             var entryArray = entries.AsNativeArray();
 
             closestEntity = Entity.Null;
@@ -873,6 +1037,22 @@ namespace PureDOTS.Runtime.Spatial
             }
 
             return Entity.Index.CompareTo(other.Entity.Index);
+        }
+    }
+
+    /// <summary>
+    /// Result entry emitted when batching radius queries.
+    /// </summary>
+    public struct BatchRadiusResult : System.IComparable<BatchRadiusResult>
+    {
+        public int QueryIndex;
+        public float3 Origin;
+        public float Radius;
+        public int ResultCount;
+
+        public int CompareTo(BatchRadiusResult other)
+        {
+            return QueryIndex.CompareTo(other.QueryIndex);
         }
     }
 }

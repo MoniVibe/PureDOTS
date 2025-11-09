@@ -50,16 +50,19 @@ Coordinate with TruthSources and the legacy repo for reference data and design c
    - Review domain TODOs (Spatial, Climate, Villagers, Resources, Miracles) for feature-specific expectations.
 
 2. **Authoring Assets Required**  
-   - `EnvironmentGridConfig` ScriptableObject (terrain bounds, grid resolution, climate defaults).  
-   - `SpatialPartitionProfile` ScriptableObject (cell size, provider selection).  
-   - `HandCameraInputProfile`, `ResourceTypeCatalog`, `VegetationSpeciesCatalog`, and registry-related profiles as needed.  
-   - Bake these via SubScenes/Bakers; see asset validation notes in `Docs/Guides/Authoring/` (added below).
+   - **Minimum**: `PureDotsConfigAuthoring` GameObject with `PureDotsRuntimeConfig` asset containing `ResourceTypes` catalog (at least one entry)
+   - **Optional**: `EnvironmentGridConfig` ScriptableObject (terrain bounds, grid resolution, climate defaults)  
+   - **Optional**: `SpatialPartitionProfile` ScriptableObject (cell size, provider selection)  
+   - **Optional**: `HandCameraInputProfile`, `ResourceTypeCatalog`, `VegetationSpeciesCatalog`, and registry-related profiles as needed  
+   - Bake these via SubScenes/Bakers; see asset validation notes in `Docs/Guides/Authoring/` (added below).  
+   - **See**: `Docs/QA/BootstrapAudit.md` for complete bootstrap coverage and authoring requirements
 
 3. **Bootstrap Steps**  
-   - Add `PureDotsWorldBootstrap` to the project; ensure `CoreSingletonBootstrapSystem` seeds time/rewind/environment/spatial singletons.  
-   - Register environment and spatial groups (`EnvironmentSystemGroup`, `SpatialSystemGroup`, `GameplaySystemGroup`).  
-   - Hook `FixedStepSimulationSystemGroup` to `TimeState` where deterministic fixed-step is required.  
-   - Include `link.xml` and Burst options per Platform Performance truth-source when creating builds.
+   - ✅ **Automatic**: `PureDotsWorldBootstrap` creates world and system groups automatically (no MonoBehaviour required)
+   - ✅ **Automatic**: `CoreSingletonBootstrapSystem` seeds all core singletons (time, rewind, spatial, registries, navigation)
+   - ✅ **Automatic**: System groups are registered and sorted automatically
+   - ✅ **Automatic**: `FixedStepSimulationSystemGroup` is configured with 60 FPS timestep
+   - Include `link.xml` and Burst options per Platform Performance truth-source when creating builds
 
 4. **Project Setup Checklist**  
    - Enable Burst, Entities Collections, and Jobs packages (already in manifest).  

@@ -59,12 +59,16 @@
 ### EnvironmentSystemGroup
 - Runs every tick before spatial/gameplay; houses deterministic world-state updates.
 - Expected order:
-  1. EnvironmentEffectUpdateSystem (evaluates scalar/vector/pulse effects defined in EnvironmentEffectCatalogData).
-  2. BiomeDerivationSystem repopulates `BiomeGridRuntimeCell` using moisture + temperature fields.
-  3. Additional derivations (rainfall accumulation, etc.) consume the refreshed channels.
+  1. ClimateStateUpdateSystem (updates global climate state, seasonal progression)
+  2. EnvironmentEffectUpdateSystem (evaluates scalar/vector/pulse effects defined in EnvironmentEffectCatalogData, propagates terrain version to grids)
+  3. MoistureEvaporationSystem (applies evaporation, checks terrain version)
+  4. MoistureSeepageSystem (diffuses moisture between cells, checks terrain version)
+  5. MoistureRainSystem (adds moisture from rain clouds/miracles to grid)
+  6. BiomeDerivationSystem (repopulates `BiomeGridRuntimeCell` using moisture + temperature fields, checks terrain version)
 - Group budget: <2 ms aggregated.
 - All systems check RewindState.Mode and skip logic during playback.
 - Effect dispatcher writes additive contributions into channel buffers; consumers must read via EnvironmentSampling helpers to obtain base + contributions without mutating blobs.
+- Terrain version propagation: All environment grid systems check `TerrainVersion` singleton and update their `LastTerrainVersion` field when terrain changes, ensuring grids invalidate appropriately.
 
 ### SpatialSystemGroup
 - Maintains spatial indices and nav data.
@@ -140,9 +144,24 @@
 - Runs after resource updates so miracles interact with the latest registries and spatial caches.
 - Ensure miracles honour rewind by buffering commands and checking RewindState.Mode.
 
+### CameraInputSystemGroup
+- Runs `OrderFirst` in SimulationSystemGroup to ensure input is available for all downstream systems.
+- Execution order:
+  1. `CopyInputToEcsSystem` - Copies input snapshots from Mono bridge to ECS (state + edge buffers)
+  2. `IntentMappingSystem` - Maps device-level input to gameplay intent (`GodIntent`)
+  3. `CameraSystem` - Single-writer for `CameraState` based on intent
+- Input pipeline: Unity Input System (Mono) → `InputSnapshotBridge` (accumulates per frame) → `CopyInputToEcsSystem` (flushes per tick) → `IntentMappingSystem` (produces intent) → gameplay systems (consume intent)
+- Edge events (`HandInputEdge`, `CameraInputEdge`) capture single-frame button transitions for deterministic handling
+- `InputRecordingSystem` (HistorySystemGroup) captures per-tick snapshots for replay
+- `InputPlaybackSystem` (SimulationSystemGroup OrderFirst) injects recorded snapshots during playback mode
+
 ### HandSystemGroup
 - Contains divine hand interaction, right-click routing, and presentation bridges.
-- `HandInputRouterSystem` runs `OrderFirst` to resolve RMB priority requests before `DivineHandSystem` processes them. Hybrid bridges (`DivineHandInteractionBridge`) enqueue requests; future DOTS modules should do the same instead of mutating `DivineHandCommand` directly.
+- Execution order:
+  1. `HandInputRouterSystem` (OrderFirst) - Resolves RMB priority requests, gates routing based on `GodIntent`
+  2. `DivineHandSystem` - Single-writer for `DivineHandState`, consumes `GodIntent` for state transitions
+- `HandInputRouterSystem` now consumes `GodIntent` to gate routing deterministically based on player intent
+- Hybrid bridges (`DivineHandInteractionBridge`) enqueue requests; future DOTS modules should do the same instead of mutating `DivineHandCommand` directly.
 - Must execute after BuildPhysicsWorld (to read collision data) and before ExportPhysicsWorld.
 - Input routers share state with miracles/resources via `HandInteractionState` and `ResourceSiphonState`; document changes in DivineHandCamera_TODO.md when adding new routes.
 
@@ -158,6 +177,8 @@
 - Systems emitting history snapshots should either live in HistorySystemGroup or [UpdateBefore(typeof(HistorySystemGroup))] to guarantee ordering.
 - ReplayCaptureSystem executes here to stream recent replay events into tooling (`ReplayCaptureStream`) ahead of presentation/telemetry consumption.
 - MoistureGridTimeAdapterSystem and StorehouseInventoryTimeAdapterSystem snapshot deterministic state for playback/catch-up using the shared `TimeAwareController` contract; extend this pattern for other rewind-sensitive domains.
+- SpatialGridSnapshotSystem (HistorySystemGroup) captures spatial grid state snapshots for rewind/replay validation using `SpatialGridSnapshot` and `SpatialGridBufferSnapshot` contracts.
+- RewindTelemetrySystem (LateSimulationSystemGroup) tracks rewind guard violations and exposes telemetry via DebugDisplayData.
 
 ### PresentationSystemGroup
 - Post-simulation translators to rendering/UI (hand visuals, grid overlays).
@@ -167,8 +188,11 @@
 - `MaterialOverrideSystem` copies `MaterialColorOverride` / `MaterialEmissionOverride` values into URP material property components, enabling ECS-friendly tint swaps similar to the Entities RenderSwap sample.
 
 ### Rewind Guard Systems
-- EnvironmentRewindGuardSystem, SpatialRewindGuardSystem, GameplayRewindGuardSystem, and PresentationRewindGuardSystem toggle group execution based on RewindState.Mode.
+- EnvironmentRewindGuardSystem, SpatialRewindGuardSystem, GameplayRewindGuardSystem, CameraInputRewindGuardSystem, HandRewindGuardSystem, and PresentationRewindGuardSystem toggle group execution based on RewindState.Mode.
 - Guards run inside SimulationSystemGroup (presentation guard runs last) and are the authoritative way to pause heavy systems during playback/catch-up.
+- CameraInputRewindGuardSystem runs OrderFirst to guard camera input systems.
+- HandRewindGuardSystem runs in PhysicsSystemGroup to guard hand interaction systems.
+- RewindTelemetrySystem (LateSimulationSystemGroup) tracks guard violations and exposes telemetry via DebugDisplayData.
 - Any new top-level group must piggy-back on an existing guard or provide its own guard system mirroring this contract.
 
 ## Bootstrap Responsibilities (Detailed)
@@ -208,7 +232,9 @@
 - Enforce BurstCompilerOptions.CompileSynchronously in development to surface compile errors early.
 - Document job worker policies (default JobsUtility.JobWorkerCount, main-thread vs. jobs) and scheduling expectations.
 - Separate hot vs. cold execution paths; throttle background systems to keep critical loops responsive.
-- Link to Docs/TruthSources/PlatformPerformance_TruthSource.md (to be authored) for detailed platform/IL2CPP/Burst guidelines.
+- Link to Docs/TruthSources/PlatformPerformance_TruthSource.md for detailed platform/IL2CPP/Burst guidelines.
+- See Docs/DesignNotes/ThreadingAndScheduling.md for threading policy and hot/cold execution strategy.
+- See Docs/DesignNotes/HistoryBufferPatterns.md for double-buffering, ring buffers, and history capture patterns.
 
 ## Testing Expectations
 - **Playmode smoke:** Boot + 10 s simulation without assertions.

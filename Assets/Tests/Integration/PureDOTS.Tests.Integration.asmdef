@@ -1,0 +1,34 @@
+{
+    "name": "PureDOTS.Tests.Integration",
+    "rootNamespace": "PureDOTS.Tests.Integration",
+    "references": [
+        "PureDOTS.Tests",
+        "PureDOTS.Runtime",
+        "PureDOTS.Systems",
+        "PureDOTS.Authoring",
+        "PureDOTS.Input",
+        "PureDOTS.Tests.Support",
+        "Space4X.Gameplay",
+        "Space4X.Placeholder",
+        "Unity.Entities",
+        "Unity.Entities.Tests",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Transforms",
+        "Unity.Physics",
+        "Unity.Physics.Hybrid",
+        "Unity.Physics.Systems",
+        "Unity.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

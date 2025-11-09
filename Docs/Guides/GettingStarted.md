@@ -15,12 +15,22 @@ This primer helps new engineers ramp onto the PureDOTS runtime. It summarises sy
 See `Docs/DesignNotes/SystemExecutionOrder.md` for the precise `[UpdateInGroup]` ordering and dependency list.
 
 ## Shared Singletons (Must Exist Before Simulation)
-- `TimeState`, `HistorySettings`, `RewindState` (time engine / rewind hooks).
-- `EnvironmentGridConfigData`, `MoistureGrid`, `TemperatureGrid`, `WindField`, `SunlightGrid` (environment cadence).
-- `SpatialGridConfig`, `SpatialGridState`, and spatial buffers (cell ranges, entries, staging).
-- `HandInteractionState`, `ResourceSiphonState` (central hand/router state).
-- Registry singletons (`ResourceRegistry`, `StorehouseRegistry`, `VillagerRegistry`, etc.).
-- Ensure `CoreSingletonBootstrapSystem` seeds these via `RequireForUpdate` before simulation begins.
+
+**Automatically Bootstrapped** (via `CoreSingletonBootstrapSystem`):
+- ✅ `TimeState`, `HistorySettings`, `RewindState` (time engine / rewind hooks)
+- ✅ `SpatialGridConfig`, `SpatialGridState`, and spatial buffers (cell ranges, entries, staging)
+- ✅ Registry singletons (`ResourceRegistry`, `StorehouseRegistry`, `VillagerRegistry`, etc.)
+- ✅ `FlowFieldConfig` and navigation buffers
+- ✅ `AICommandQueue`, telemetry streams, presentation command queue
+- ✅ Configuration defaults (`VillagerBehaviorConfig`, `ResourceInteractionConfig`)
+
+**Requires Authoring Assets**:
+- ⚠️ `ResourceTypeIndex` - Created by `PureDotsConfigAuthoring` (required for resource systems)
+- ⚠️ `ResourceRecipeSet` - Created by `PureDotsConfigAuthoring` (optional, for resource processing)
+- ⚠️ `EnvironmentGridConfigData` - Created by `EnvironmentGridConfigAuthoring` (optional, for environment systems)
+- ⚠️ `TimeSettingsConfig`, `HistorySettingsConfig`, `PoolingSettingsConfig` - Optional configs
+
+See `Docs/QA/BootstrapAudit.md` for complete bootstrap coverage and authoring requirements.
 
 ## Rewind Expectations
 - All systems must guard against playback/catch-up by checking `RewindState.Mode` (skip heavy logic outside `Record`).
@@ -36,8 +46,21 @@ See `Docs/DesignNotes/SystemExecutionOrder.md` for the precise `[UpdateInGroup]`
 - **Editor Scripts**: Ensure `Assets/Scripts/Editor/` contains validation steps (future task) that warn about missing environment/spatial profiles.
 
 ## Required Assets/SubScenes
-- Scene should include SubScene with `EnvironmentGridConfigAuthoring`, `SpatialPartitionAuthoring`, and time/rewind authoring components as required.
-- Designer-owned data: `Assets/Data/` contains profiles (resource types, vegetation species, miracles) consumed by bakers.
+
+**Minimum Required** (for core functionality):
+- `PureDotsConfigAuthoring` GameObject with `PureDotsRuntimeConfig` asset
+  - Configure at minimum: `ResourceTypes` catalog (at least one entry, e.g., "Wood")
+  - `ResourceRecipes` can be empty for basic gather/deposit flows
+
+**Optional** (for specific features):
+- `EnvironmentGridConfigAuthoring` - For environment systems (moisture, temperature, wind, sunlight)
+- `EnvironmentEffectCatalogAuthoring` - For environment effects
+- `SpatialPartitionAuthoring` - Custom spatial grid configuration
+- Time/History/Pooling configs - Custom settings (defaults used if missing)
+
+Designer-owned data: `Assets/Data/` contains profiles (resource types, vegetation species, miracles) consumed by bakers.
+
+**See**: `Docs/QA/BootstrapAudit.md` for detailed bootstrap coverage and validation checklist.
 
 ## Useful References
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`

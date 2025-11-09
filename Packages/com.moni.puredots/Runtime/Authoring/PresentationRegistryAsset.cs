@@ -42,7 +42,7 @@ namespace PureDOTS.Authoring
     {
         private struct DescriptorBuildData
         {
-            public Hash128 Hash;
+            public Unity.Entities.Hash128 Hash;
             public PresentationDescriptor Descriptor;
         }
 
@@ -61,7 +61,7 @@ namespace PureDOTS.Authoring
 
             var definitions = authoring.registry.descriptors;
             var buildList = new List<DescriptorBuildData>(definitions.Count);
-            var seenHashes = new HashSet<Hash128>();
+            var seenHashes = new HashSet<Unity.Entities.Hash128>();
 
             for (int i = 0; i < definitions.Count; i++)
             {
@@ -131,7 +131,7 @@ namespace PureDOTS.Authoring
             var blob = builder.CreateBlobAssetReference<PresentationRegistryBlob>(Allocator.Persistent);
             builder.Dispose();
 
-            AddBlobAsset(ref blob);
+            AddBlobAsset(ref blob, out _);
 
             AddComponent(entity, new PresentationRegistryReference
             {

@@ -1,5 +1,7 @@
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
@@ -20,6 +22,9 @@ namespace Godgame.Registry
     {
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
+        private EntityQuery _resourceNodeQuery;
+        private EntityQuery _spawnerQuery;
+        private EntityQuery _bandQuery;
         private Entity _snapshotEntity;
         private ComponentLookup<SpatialGridResidency> _spatialResidencyLookup;
         private ComponentLookup<MiracleRuntimeState> _miracleRuntimeLookup;
@@ -30,6 +35,9 @@ namespace Godgame.Registry
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<VillagerRegistry>();
             state.RequireForUpdate<StorehouseRegistry>();
+            state.RequireForUpdate<ResourceRegistry>();
+            state.RequireForUpdate<SpawnerRegistry>();
+            state.RequireForUpdate<BandRegistry>();
 
             _villagerQuery = SystemAPI.QueryBuilder()
                 .WithAll<GodgameVillager, LocalTransform>()
@@ -37,6 +45,18 @@ namespace Godgame.Registry
 
             _storehouseQuery = SystemAPI.QueryBuilder()
                 .WithAll<GodgameStorehouse, LocalTransform>()
+                .Build();
+
+            _resourceNodeQuery = SystemAPI.QueryBuilder()
+                .WithAll<GodgameResourceNodeMirror, LocalTransform>()
+                .Build();
+
+            _spawnerQuery = SystemAPI.QueryBuilder()
+                .WithAll<GodgameSpawnerMirror, LocalTransform>()
+                .Build();
+
+            _bandQuery = SystemAPI.QueryBuilder()
+                .WithAll<GodgameBand, LocalTransform>()
                 .Build();
 
             _spatialResidencyLookup = state.GetComponentLookup<SpatialGridResidency>(isReadOnly: true);
@@ -66,6 +86,9 @@ namespace Godgame.Registry
 
             UpdateVillagerRegistry(ref state, ref summary);
             UpdateStorehouseRegistry(ref state, ref summary);
+            UpdateResourceRegistry(ref state, ref summary);
+            UpdateSpawnerRegistry(ref state, ref summary);
+            UpdateBandRegistry(ref state, ref summary);
 
             ref var snapshot = ref SystemAPI.GetComponentRW<GodgameRegistrySnapshot>(_snapshotEntity).ValueRW;
             snapshot.VillagerCount = summary.VillagerCount;
@@ -80,6 +103,17 @@ namespace Godgame.Registry
             snapshot.TotalStorehouseCapacity = summary.TotalStorehouseCapacity;
             snapshot.TotalStorehouseStored = summary.TotalStorehouseStored;
             snapshot.TotalStorehouseReserved = summary.TotalStorehouseReserved;
+            snapshot.ResourceNodeCount = summary.ResourceNodeCount;
+            snapshot.ActiveResourceNodes = summary.ActiveResourceNodes;
+            snapshot.TotalResourceUnitsRemaining = summary.TotalResourceUnitsRemaining;
+            snapshot.SpawnerCount = summary.SpawnerCount;
+            snapshot.ActiveSpawnerCount = summary.ActiveSpawnerCount;
+            snapshot.PendingSpawnerCount = summary.PendingSpawnerCount;
+            snapshot.BandCount = summary.BandCount;
+            snapshot.BandMemberCount = summary.BandMemberCount;
+            snapshot.AverageBandMorale = summary.BandCount > 0 ? summary.BandMoraleSum / summary.BandCount : 0f;
+            snapshot.AverageBandCohesion = summary.BandCount > 0 ? summary.BandCohesionSum / summary.BandCount : 0f;
+            snapshot.AverageBandDiscipline = summary.BandCount > 0 ? summary.BandDisciplineSum / summary.BandCount : 0f;
             snapshot.LastRegistryTick = summary.Tick;
         }
 
@@ -384,6 +418,125 @@ namespace Godgame.Registry
             registry.SpatialUnmappedCount = unmappedCount;
         }
 
+        private void UpdateResourceRegistry(ref SystemState state, ref BridgeSummary summary)
+        {
+            var registryEntity = SystemAPI.GetSingletonEntity<ResourceRegistry>();
+            var buffer = state.EntityManager.GetBuffer<ResourceRegistryEntry>(registryEntity);
+            ref var metadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
+            ref var registry = ref SystemAPI.GetComponentRW<ResourceRegistry>(registryEntity).ValueRW;
+
+            if (metadata.ArchetypeId == 0)
+            {
+                metadata.ArchetypeId = GodgameRegistryIds.ResourceNodeArchetype;
+            }
+
+            var expectedCount = math.max(2, _resourceNodeQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<ResourceRegistryEntry>(expectedCount, Allocator.Temp);
+
+            var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);
+            var hasSpatialState = SystemAPI.TryGetSingleton(out SpatialGridState spatialState);
+            var hasSpatialGrid = hasSpatialConfig && hasSpatialState && spatialConfig.CellCount > 0 && spatialConfig.CellSize > 0f;
+            var hasSpatialSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState spatialSyncState);
+            var spatialVersionSource = hasSpatialGrid ? spatialState.Version : (hasSpatialSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
+            var requireSpatialSync = metadata.SupportsSpatialQueries && hasSpatialSyncState && spatialSyncState.HasSpatialData;
+
+            var resolvedCount = 0;
+            var fallbackCount = 0;
+            var unmappedCount = 0;
+
+            foreach (var (resourceNode, transform, entity) in SystemAPI
+                         .Query<RefRO<GodgameResourceNodeMirror>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
+            {
+                var data = resourceNode.ValueRO;
+                var position = transform.ValueRO.Position;
+
+                var cellId = -1;
+                var entrySpatialVersion = 0u;
+
+                if (hasSpatialGrid)
+                {
+                    var resolved = false;
+                    var fallback = false;
+
+                    if (_spatialResidencyLookup.HasComponent(entity))
+                    {
+                        var residency = _spatialResidencyLookup[entity];
+                        if ((uint)residency.CellId < (uint)spatialConfig.CellCount && residency.Version == spatialState.Version)
+                        {
+                            cellId = residency.CellId;
+                            entrySpatialVersion = residency.Version;
+                            resolved = true;
+                        }
+                    }
+
+                    if (!resolved)
+                    {
+                        SpatialHash.Quantize(position, spatialConfig, out var coords);
+                        var computedCell = SpatialHash.Flatten(in coords, in spatialConfig);
+                        if ((uint)computedCell < (uint)spatialConfig.CellCount)
+                        {
+                            cellId = computedCell;
+                            entrySpatialVersion = spatialState.Version;
+                            fallback = true;
+                        }
+                        else
+                        {
+                            cellId = -1;
+                            entrySpatialVersion = 0;
+                            unmappedCount++;
+                        }
+                    }
+
+                    if (resolved)
+                    {
+                        resolvedCount++;
+                    }
+                    else if (fallback)
+                    {
+                        fallbackCount++;
+                    }
+                }
+
+                builder.Add(new ResourceRegistryEntry
+                {
+                    ResourceTypeIndex = data.ResourceTypeIndex,
+                    SourceEntity = entity,
+                    Position = position,
+                    UnitsRemaining = data.RemainingAmount,
+                    ActiveTickets = 0,
+                    ClaimFlags = 0,
+                    LastMutationTick = data.LastMutationTick != 0 ? data.LastMutationTick : summary.Tick,
+                    CellId = cellId,
+                    SpatialVersion = entrySpatialVersion,
+                    FamilyIndex = 0,
+                    Tier = ResourceTier.Raw
+                });
+
+                summary.ResourceNodeCount++;
+                if (data.IsDepleted == 0)
+                {
+                    summary.ActiveResourceNodes++;
+                }
+
+                summary.TotalResourceUnitsRemaining += data.RemainingAmount;
+            }
+
+            var continuity = hasSpatialGrid
+                ? RegistryContinuitySnapshot.WithSpatialData(spatialVersionSource, resolvedCount, fallbackCount, unmappedCount, requireSpatialSync)
+                : RegistryContinuitySnapshot.WithoutSpatialData(requireSpatialSync);
+
+            builder.ApplyTo(ref buffer, ref metadata, summary.Tick, continuity);
+
+            registry.TotalResources = summary.ResourceNodeCount;
+            registry.TotalActiveResources = summary.ActiveResourceNodes;
+            registry.LastUpdateTick = summary.Tick;
+            registry.LastSpatialVersion = spatialVersionSource;
+            registry.SpatialResolvedCount = resolvedCount;
+            registry.SpatialFallbackCount = fallbackCount;
+            registry.SpatialUnmappedCount = unmappedCount;
+        }
+
         private static byte BuildAvailabilityFlags(byte available, byte reserved)
         {
             byte flags = 0;
@@ -398,6 +551,245 @@ namespace Godgame.Registry
             }
 
             return flags;
+        }
+
+        private void UpdateSpawnerRegistry(ref SystemState state, ref BridgeSummary summary)
+        {
+            var registryEntity = SystemAPI.GetSingletonEntity<SpawnerRegistry>();
+            var buffer = state.EntityManager.GetBuffer<SpawnerRegistryEntry>(registryEntity);
+            ref var metadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
+            ref var registry = ref SystemAPI.GetComponentRW<SpawnerRegistry>(registryEntity).ValueRW;
+
+            if (metadata.ArchetypeId == 0)
+            {
+                metadata.ArchetypeId = GodgameRegistryIds.SpawnerArchetype;
+            }
+
+            var expectedCount = math.max(2, _spawnerQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<SpawnerRegistryEntry>(expectedCount, Allocator.Temp);
+
+            var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);
+            var hasSpatialState = SystemAPI.TryGetSingleton(out SpatialGridState spatialState);
+            var hasSpatialGrid = hasSpatialConfig && hasSpatialState && spatialConfig.CellCount > 0 && spatialConfig.CellSize > 0f;
+            var hasSpatialSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState spatialSyncState);
+            var spatialVersionSource = hasSpatialGrid ? spatialState.Version : (hasSpatialSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
+            var requireSpatialSync = metadata.SupportsSpatialQueries && hasSpatialSyncState && spatialSyncState.HasSpatialData;
+
+            var resolvedCount = 0;
+            var fallbackCount = 0;
+            var unmappedCount = 0;
+
+            foreach (var (spawner, transform, entity) in SystemAPI
+                         .Query<RefRO<GodgameSpawnerMirror>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
+            {
+                var data = spawner.ValueRO;
+                var position = transform.ValueRO.Position;
+
+                var cellId = -1;
+                var entrySpatialVersion = 0u;
+
+                if (hasSpatialGrid)
+                {
+                    var resolved = false;
+                    var fallback = false;
+
+                    if (_spatialResidencyLookup.HasComponent(entity))
+                    {
+                        var residency = _spatialResidencyLookup[entity];
+                        if ((uint)residency.CellId < (uint)spatialConfig.CellCount && residency.Version == spatialState.Version)
+                        {
+                            cellId = residency.CellId;
+                            entrySpatialVersion = residency.Version;
+                            resolved = true;
+                        }
+                    }
+
+                    if (!resolved)
+                    {
+                        SpatialHash.Quantize(position, spatialConfig, out var coords);
+                        var computedCell = SpatialHash.Flatten(in coords, in spatialConfig);
+                        if ((uint)computedCell < (uint)spatialConfig.CellCount)
+                        {
+                            cellId = computedCell;
+                            entrySpatialVersion = spatialState.Version;
+                            fallback = true;
+                        }
+                        else
+                        {
+                            cellId = -1;
+                            entrySpatialVersion = 0;
+                            unmappedCount++;
+                        }
+                    }
+
+                    if (resolved)
+                    {
+                        resolvedCount++;
+                    }
+                    else if (fallback)
+                    {
+                        fallbackCount++;
+                    }
+                }
+
+                var flags = data.IsActive != 0 ? SpawnerStatusFlags.Active : SpawnerStatusFlags.Disabled;
+                builder.Add(new SpawnerRegistryEntry
+                {
+                    SpawnerEntity = entity,
+                    SpawnerTypeId = data.SpawnerTypeId,
+                    OwnerFaction = Entity.Null,
+                    ActiveSpawnCount = data.PendingSpawnCount,
+                    Capacity = data.TotalCapacity,
+                    CooldownSeconds = 0f,
+                    RemainingCooldown = 0f,
+                    Flags = flags,
+                    Position = position,
+                    CellId = cellId,
+                    SpatialVersion = entrySpatialVersion
+                });
+
+                summary.SpawnerCount++;
+                if (data.IsActive != 0)
+                {
+                    summary.ActiveSpawnerCount++;
+                }
+
+                summary.PendingSpawnerCount += data.PendingSpawnCount;
+            }
+
+            var continuity = hasSpatialGrid
+                ? RegistryContinuitySnapshot.WithSpatialData(spatialVersionSource, resolvedCount, fallbackCount, unmappedCount, requireSpatialSync)
+                : RegistryContinuitySnapshot.WithoutSpatialData(requireSpatialSync);
+
+            builder.ApplyTo(ref buffer, ref metadata, summary.Tick, continuity);
+
+            registry.TotalSpawners = summary.SpawnerCount;
+            registry.ActiveSpawnerCount = summary.ActiveSpawnerCount;
+            registry.LastUpdateTick = summary.Tick;
+            registry.LastSpatialVersion = spatialVersionSource;
+            registry.SpatialResolvedCount = resolvedCount;
+            registry.SpatialFallbackCount = fallbackCount;
+            registry.SpatialUnmappedCount = unmappedCount;
+        }
+
+        private void UpdateBandRegistry(ref SystemState state, ref BridgeSummary summary)
+        {
+            var registryEntity = SystemAPI.GetSingletonEntity<BandRegistry>();
+            var buffer = state.EntityManager.GetBuffer<BandRegistryEntry>(registryEntity);
+            ref var metadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
+            ref var registry = ref SystemAPI.GetComponentRW<BandRegistry>(registryEntity).ValueRW;
+
+            if (metadata.ArchetypeId == 0)
+            {
+                metadata.ArchetypeId = GodgameRegistryIds.BandArchetype;
+            }
+
+            var expectedCount = math.max(1, _bandQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<BandRegistryEntry>(expectedCount, Allocator.Temp);
+
+            var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);
+            var hasSpatialState = SystemAPI.TryGetSingleton(out SpatialGridState spatialState);
+            var hasSpatialGrid = hasSpatialConfig && hasSpatialState && spatialConfig.CellCount > 0 && spatialConfig.CellSize > 0f;
+            var hasSpatialSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState spatialSyncState);
+            var spatialVersionSource = hasSpatialGrid ? spatialState.Version : (hasSpatialSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
+            var requireSpatialSync = metadata.SupportsSpatialQueries && hasSpatialSyncState && spatialSyncState.HasSpatialData;
+
+            var resolvedCount = 0;
+            var fallbackCount = 0;
+            var unmappedCount = 0;
+
+            foreach (var (band, transform, entity) in SystemAPI
+                         .Query<RefRO<GodgameBand>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
+            {
+                var data = band.ValueRO;
+                var position = transform.ValueRO.Position;
+
+                var cellId = -1;
+                var entrySpatialVersion = 0u;
+
+                if (hasSpatialGrid)
+                {
+                    var resolved = false;
+                    var fallback = false;
+
+                    if (_spatialResidencyLookup.HasComponent(entity))
+                    {
+                        var residency = _spatialResidencyLookup[entity];
+                        if ((uint)residency.CellId < (uint)spatialConfig.CellCount && residency.Version == spatialState.Version)
+                        {
+                            cellId = residency.CellId;
+                            entrySpatialVersion = residency.Version;
+                            resolved = true;
+                        }
+                    }
+
+                    if (!resolved)
+                    {
+                        SpatialHash.Quantize(position, spatialConfig, out var coords);
+                        var computedCell = SpatialHash.Flatten(in coords, in spatialConfig);
+                        if ((uint)computedCell < (uint)spatialConfig.CellCount)
+                        {
+                            cellId = computedCell;
+                            entrySpatialVersion = spatialState.Version;
+                            fallback = true;
+                        }
+                        else
+                        {
+                            cellId = -1;
+                            entrySpatialVersion = 0;
+                            unmappedCount++;
+                        }
+                    }
+
+                    if (resolved)
+                    {
+                        resolvedCount++;
+                    }
+                    else if (fallback)
+                    {
+                        fallbackCount++;
+                    }
+                }
+
+                builder.Add(new BandRegistryEntry
+                {
+                    BandEntity = entity,
+                    BandId = data.BandId,
+                    Position = position,
+                    MemberCount = data.MemberCount,
+                    Morale = data.Morale,
+                    Cohesion = data.Cohesion,
+                    AverageDiscipline = data.AverageDiscipline,
+                    Flags = data.StatusFlags,
+                    CellId = cellId,
+                    SpatialVersion = entrySpatialVersion
+                });
+
+                summary.BandCount++;
+                summary.BandMemberCount += data.MemberCount;
+                summary.BandMoraleSum += data.Morale;
+                summary.BandCohesionSum += data.Cohesion;
+                summary.BandDisciplineSum += data.AverageDiscipline;
+            }
+
+            var continuity = hasSpatialGrid
+                ? RegistryContinuitySnapshot.WithSpatialData(spatialVersionSource, resolvedCount, fallbackCount, unmappedCount, requireSpatialSync)
+                : RegistryContinuitySnapshot.WithoutSpatialData(requireSpatialSync);
+
+            builder.ApplyTo(ref buffer, ref metadata, summary.Tick, continuity);
+
+            registry.TotalBands = summary.BandCount;
+            registry.TotalMembers = summary.BandMemberCount;
+            registry.AverageMorale = summary.BandCount > 0 ? summary.BandMoraleSum / summary.BandCount : 0f;
+            registry.AverageCohesion = summary.BandCount > 0 ? summary.BandCohesionSum / summary.BandCount : 0f;
+            registry.AverageDiscipline = summary.BandCount > 0 ? summary.BandDisciplineSum / summary.BandCount : 0f;
+            registry.LastUpdateTick = summary.Tick;
+            registry.LastSpatialVersion = spatialVersionSource;
+            registry.SpatialResolvedCount = resolvedCount;
+            registry.SpatialFallbackCount = fallbackCount;
+            registry.SpatialUnmappedCount = unmappedCount;
         }
 
         private struct BridgeSummary
@@ -415,6 +807,17 @@ namespace Godgame.Registry
             public float AverageHealth;
             public float AverageMorale;
             public float AverageEnergy;
+            public int ResourceNodeCount;
+            public int ActiveResourceNodes;
+            public float TotalResourceUnitsRemaining;
+            public int SpawnerCount;
+            public int ActiveSpawnerCount;
+            public int PendingSpawnerCount;
+            public int BandCount;
+            public int BandMemberCount;
+            public float BandMoraleSum;
+            public float BandCohesionSum;
+            public float BandDisciplineSum;
 
             public BridgeSummary(uint tick)
             {
@@ -431,6 +834,17 @@ namespace Godgame.Registry
                 AverageHealth = 0f;
                 AverageMorale = 0f;
                 AverageEnergy = 0f;
+                ResourceNodeCount = 0;
+                ActiveResourceNodes = 0;
+                TotalResourceUnitsRemaining = 0f;
+                SpawnerCount = 0;
+                ActiveSpawnerCount = 0;
+                PendingSpawnerCount = 0;
+                BandCount = 0;
+                BandMemberCount = 0;
+                BandMoraleSum = 0f;
+                BandCohesionSum = 0f;
+                BandDisciplineSum = 0f;
             }
         }
     }
@@ -455,6 +869,17 @@ namespace Godgame.Registry
         private static readonly FixedString64Bytes MetricStorehousesCapacity = new FixedString64Bytes("godgame.registry.storehouses.capacity");
         private static readonly FixedString64Bytes MetricStorehousesStored = new FixedString64Bytes("godgame.registry.storehouses.stored");
         private static readonly FixedString64Bytes MetricStorehousesReserved = new FixedString64Bytes("godgame.registry.storehouses.reserved");
+        private static readonly FixedString64Bytes MetricResourceNodes = new FixedString64Bytes("godgame.registry.resources.nodes");
+        private static readonly FixedString64Bytes MetricResourceNodesActive = new FixedString64Bytes("godgame.registry.resources.nodes.active");
+        private static readonly FixedString64Bytes MetricResourceUnits = new FixedString64Bytes("godgame.registry.resources.units");
+        private static readonly FixedString64Bytes MetricSpawners = new FixedString64Bytes("godgame.registry.spawners");
+        private static readonly FixedString64Bytes MetricSpawnersActive = new FixedString64Bytes("godgame.registry.spawners.active");
+        private static readonly FixedString64Bytes MetricSpawnersPending = new FixedString64Bytes("godgame.registry.spawners.pending");
+        private static readonly FixedString64Bytes MetricBands = new FixedString64Bytes("godgame.registry.bands");
+        private static readonly FixedString64Bytes MetricBandMembers = new FixedString64Bytes("godgame.registry.bands.members");
+        private static readonly FixedString64Bytes MetricBandMorale = new FixedString64Bytes("godgame.registry.bands.morale.avg");
+        private static readonly FixedString64Bytes MetricBandCohesion = new FixedString64Bytes("godgame.registry.bands.cohesion.avg");
+        private static readonly FixedString64Bytes MetricBandDiscipline = new FixedString64Bytes("godgame.registry.bands.discipline.avg");
         private static readonly FixedString64Bytes MetricTick = new FixedString64Bytes("godgame.registry.tick");
 
         public void OnCreate(ref SystemState state)
@@ -484,6 +909,17 @@ namespace Godgame.Registry
             buffer.Add(new TelemetryMetric { Key = MetricStorehousesCapacity, Value = snapshot.TotalStorehouseCapacity, Unit = TelemetryMetricUnit.Count });
             buffer.Add(new TelemetryMetric { Key = MetricStorehousesStored, Value = snapshot.TotalStorehouseStored, Unit = TelemetryMetricUnit.Count });
             buffer.Add(new TelemetryMetric { Key = MetricStorehousesReserved, Value = snapshot.TotalStorehouseReserved, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricResourceNodes, Value = snapshot.ResourceNodeCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricResourceNodesActive, Value = snapshot.ActiveResourceNodes, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricResourceUnits, Value = snapshot.TotalResourceUnitsRemaining, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricSpawners, Value = snapshot.SpawnerCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricSpawnersActive, Value = snapshot.ActiveSpawnerCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricSpawnersPending, Value = snapshot.PendingSpawnerCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricBands, Value = snapshot.BandCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricBandMembers, Value = snapshot.BandMemberCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricBandMorale, Value = snapshot.AverageBandMorale, Unit = TelemetryMetricUnit.Ratio });
+            buffer.Add(new TelemetryMetric { Key = MetricBandCohesion, Value = snapshot.AverageBandCohesion, Unit = TelemetryMetricUnit.Ratio });
+            buffer.Add(new TelemetryMetric { Key = MetricBandDiscipline, Value = snapshot.AverageBandDiscipline, Unit = TelemetryMetricUnit.Ratio });
             buffer.Add(new TelemetryMetric { Key = MetricTick, Value = snapshot.LastRegistryTick, Unit = TelemetryMetricUnit.Count });
         }
     }

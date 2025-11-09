@@ -26,6 +26,29 @@ namespace PureDOTS.Runtime.Components
 
     public struct RainMiracleCommandQueue : IComponentData { }
 
+    /// <summary>
+    /// Per-player miracle selection & casting state. One singleton per hand/god.
+    /// </summary>
+    public struct MiracleCasterState : IComponentData
+    {
+        public Entity HandEntity;
+        public byte SelectedSlot;        // 0-based index for miracle list
+        public byte SustainedCastHeld;   // 1 = channeling
+        public byte ThrowCastTriggered;  // 1 this frame
+    }
+
+    /// <summary>
+    /// Mapping between slot indices and miracle prefab/config.
+    /// </summary>
+    [InternalBufferCapacity(6)]
+    public struct MiracleSlotDefinition : IBufferElementData
+    {
+        public byte SlotIndex;
+        public Entity MiraclePrefab;
+        public MiracleType Type;
+        public Entity ConfigEntity;
+    }
+
     public struct RainMiracleCommand : IBufferElementData
     {
         public float3 Center;
@@ -85,6 +108,23 @@ namespace PureDOTS.Runtime.Components
     public struct MiracleCaster : IComponentData
     {
         public Entity CasterEntity;
+        public Entity HandEntity;
+    }
+
+    public struct MiracleToken : IComponentData
+    {
+        public MiracleType Type;
+        public Entity ConfigEntity;
+    }
+
+    [InternalBufferCapacity(4)]
+    public struct MiracleReleaseEvent : IBufferElementData
+    {
+        public MiracleType Type;
+        public float3 Position;
+        public float3 Direction;
+        public float Impulse;
+        public Entity ConfigEntity;
     }
 
     /// <summary>

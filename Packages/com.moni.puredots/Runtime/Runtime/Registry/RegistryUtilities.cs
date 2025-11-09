@@ -24,6 +24,10 @@ namespace PureDOTS.Runtime.Registry
         Band = 12,
         Ability = 13,
         Spawner = 14,
+        Faction = 15,
+        ClimateHazard = 16,
+        AreaEffect = 17,
+        CultureAlignment = 18,
         Custom = 250
     }
 

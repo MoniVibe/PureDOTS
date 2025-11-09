@@ -9,6 +9,7 @@ using UnityEngine.TestTools;
 using PureDOTS.Runtime.Components;
 using Unity.Mathematics;
 using Space4X.Registry;
+using Space4X.Runtime.Transport;
 
 public class DualMiningDeterminismTests
 {

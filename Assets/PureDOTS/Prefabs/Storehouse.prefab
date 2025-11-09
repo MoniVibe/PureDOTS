@@ -49,5 +49,9 @@ MonoBehaviour:
   inputRate: 25
   outputRate: 15
   capacities:
+  - resourceTypeId: ore
+    maxCapacity: 300
+  - resourceTypeId: food
+    maxCapacity: 400
   - resourceTypeId: wood
     maxCapacity: 500

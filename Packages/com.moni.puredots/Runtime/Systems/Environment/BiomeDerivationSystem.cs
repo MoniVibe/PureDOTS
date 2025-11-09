@@ -58,6 +58,19 @@ namespace PureDOTS.Systems.Environment
             var biomeGrid = SystemAPI.GetSingletonRW<BiomeGrid>();
             var moistureGrid = SystemAPI.GetSingleton<MoistureGrid>();
             var temperatureGrid = SystemAPI.GetSingleton<TemperatureGrid>();
+            
+            // Check terrain version - if terrain changed, force biome recalculation
+            uint currentTerrainVersion = 0;
+            if (SystemAPI.TryGetSingleton<PureDOTS.Environment.TerrainVersion>(out var terrainVersion))
+            {
+                currentTerrainVersion = terrainVersion.Value;
+                if (currentTerrainVersion != biomeGrid.ValueRO.LastTerrainVersion)
+                {
+                    // Terrain changed, force biome update
+                    biomeGrid.ValueRW.LastTerrainVersion = currentTerrainVersion;
+                    biomeGrid.ValueRW.LastUpdateTick = uint.MaxValue; // Force rebuild
+                }
+            }
 
             NativeArray<MoistureGridRuntimeCell> moistureRuntime = default;
             var hasMoistureRuntime = false;

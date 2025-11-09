@@ -1,7 +1,9 @@
 using System;
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Godgame.Registry
 {
@@ -58,6 +60,58 @@ namespace Godgame.Registry
     }
 
     /// <summary>
+    /// Mirror component caching resource node summary data prior to registry export.
+    /// </summary>
+    public struct GodgameResourceNodeMirror : IComponentData
+    {
+        public ushort ResourceTypeIndex;
+        public float RemainingAmount;
+        public float MaxAmount;
+        public float RegenerationRate;
+        public byte IsDepleted;
+        public uint LastMutationTick;
+    }
+
+    /// <summary>
+    /// Mirror component describing the state of a villager spawner before registry export.
+    /// </summary>
+    public struct GodgameSpawnerMirror : IComponentData
+    {
+        public FixedString64Bytes SpawnerTypeId;
+        public int TotalCapacity;
+        public int SpawnedCount;
+        public int PendingSpawnCount;
+        public float SpawnRadius;
+        public VillagerJob.JobType DefaultJobType;
+        public VillagerAIState.Goal DefaultAIGoal;
+        public byte IsActive;
+        public uint LastMutationTick;
+    }
+
+    /// <summary>
+    /// Mirror component describing the tactical summary of a band for registry publishing and presentation.
+    /// </summary>
+    public struct GodgameBand : IComponentData
+    {
+        public FixedString64Bytes DisplayName;
+        public int BandId;
+        public int FactionId;
+        public Entity Leader;
+        public int MemberCount;
+        public float Morale;
+        public float Cohesion;
+        public float AverageDiscipline;
+        public float Fatigue;
+        public BandStatusFlags StatusFlags;
+        public BandFormationType Formation;
+        public float FormationSpacing;
+        public float FormationWidth;
+        public float FormationDepth;
+        public float3 Anchor;
+        public float3 Facing;
+    }
+
+    /// <summary>
     /// Snapshot cached by the registry bridge so presentation systems can publish telemetry.
     /// </summary>
     public struct GodgameRegistrySnapshot : IComponentData
@@ -74,6 +128,17 @@ namespace Godgame.Registry
         public float TotalStorehouseCapacity;
         public float TotalStorehouseStored;
         public float TotalStorehouseReserved;
+        public int ResourceNodeCount;
+        public int ActiveResourceNodes;
+        public float TotalResourceUnitsRemaining;
+        public int SpawnerCount;
+        public int ActiveSpawnerCount;
+        public int PendingSpawnerCount;
+        public int BandCount;
+        public int BandMemberCount;
+        public float AverageBandMorale;
+        public float AverageBandCohesion;
+        public float AverageBandDiscipline;
         public uint LastRegistryTick;
     }
 
@@ -85,5 +150,9 @@ namespace Godgame.Registry
     {
         public const ushort VillagerArchetype = 0x4701;
         public const ushort StorehouseArchetype = 0x4702;
+        public const ushort ResourceNodeArchetype = 0x4703;
+        public const ushort MiracleArchetype = 0x4704;
+        public const ushort SpawnerArchetype = 0x4705;
+        public const ushort BandArchetype = 0x4706;
     }
 }

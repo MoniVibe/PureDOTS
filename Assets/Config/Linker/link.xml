@@ -1,8 +1,18 @@
 <linker>
   <!-- Preserve runtime-only types accessed via reflection or generated at runtime -->
   <assembly fullname="PureDOTS.Runtime">
+    <!-- System Registry (for bootstrap) -->
+    <type fullname="PureDOTS.Systems.SystemRegistry" preserve="all" />
+    <type fullname="PureDOTS.Systems.BootstrapWorldProfile" preserve="all" />
+    
+    <!-- Enum reflection (debug console) -->
+    <type fullname="PureDOTS.Runtime.VillagerComponents.VillagerJob" preserve="all" />
+    
+    <!-- Components and configs -->
     <type fullname="PureDOTS.Runtime.Components.ResourceTypeIndex" preserve="all" />
     <type fullname="PureDOTS.Runtime.Components.DivineHandConfig" preserve="all" />
+    
+    <!-- Visuals -->
     <type fullname="PureDOTS.Runtime.Visuals.MiningVisualManifest" preserve="all" />
     <type fullname="PureDOTS.Runtime.Visuals.MiningVisualPrefab" preserve="all" />
     <type fullname="PureDOTS.Runtime.Visuals.MiningVisualRequest" preserve="all" />

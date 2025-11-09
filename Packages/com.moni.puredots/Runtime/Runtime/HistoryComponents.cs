@@ -48,6 +48,7 @@ namespace PureDOTS.Runtime.Components
         public float MinTicksPerSecond;
         public float MaxTicksPerSecond;
         public float StrideScale;
+        public bool EnableInputRecording;
     }
 
     /// <summary>
@@ -87,7 +88,8 @@ namespace PureDOTS.Runtime.Components
             DefaultTicksPerSecond = DefaultTicksPerSecond,
             MinTicksPerSecond = MinTicksPerSecond,
             MaxTicksPerSecond = MaxTicksPerSecond,
-            StrideScale = 1f
+            StrideScale = 1f,
+            EnableInputRecording = true
         };
     }
 

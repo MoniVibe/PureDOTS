@@ -18,11 +18,12 @@
 ## Workstreams & Tasks
 
 ### 1. Registry Blueprint (Data Layout)
-- [x] Sketch each registry as “one singleton entity + buffer”. Example: `ResourceRegistry` entity with `DynamicBuffer<ResourceRegistryEntry>` (delivered via `DeterministicRegistryBuilder`).
+- [x] Sketch each registry as "one singleton entity + buffer". Example: `ResourceRegistry` entity with `DynamicBuffer<ResourceRegistryEntry>` (delivered via `DeterministicRegistryBuilder`).
 - [x] Decide per registry what fields we need (position, type index, capacity, reservations, etc.) in SoA-friendly structs.
-- [ ] Add optional `BlobAssetReference` tables for lookup by string ID (e.g., map resource type name to ushort index).
-- [ ] Document hot (frequently updated) vs. cold (rare fields) splits to keep main chunks lean.
-- [ ] Finalise theme-agnostic registry schemas for villagers, transport units, miracles, and construction sites so game-layer code only supplies intent/resources (see `Docs/DesignNotes/RegistryDomainPlan.md`).
+- [x] Add optional `BlobAssetReference` tables for lookup by string ID (e.g., map resource type name to ushort index). (Implemented via `ResourceTypeIndexBlob` with `LookupIndex` method)
+- [x] Document hot (frequently updated) vs. cold (rare fields) splits to keep main chunks lean. (See `Docs/DesignNotes/RegistryHotColdSplits.md`)
+- [x] Finalise theme-agnostic registry schemas for villagers, transport units, miracles, and construction sites so game-layer code only supplies intent/resources (see `Docs/DesignNotes/RegistryDomainPlan.md`).
+- [x] Document standard registry entry schema and shared utilities rollout plan. (See "Standard Registry Schema" section below)
 
 ### 2. Update Systems
 - [x] Build lightweight systems that populate/refresh each registry at a controlled point in the frame (e.g., `ResourceRegistrySystem` running before villager jobs) using `DeterministicRegistryBuilder`.
@@ -36,14 +37,14 @@
 - [x] Band/squad registry system surfaces formation data for AI/pathfinding consumers.
 - [x] Ability registry system enumerates player-triggered actions for miracle/ability layers.
 - [x] Spawner registry system exposes shared spawn pads for villagers/fauna/ships with continuity + instrumentation.
-- [ ] Handle spawn/despawn: when entities arise or die, ensure registry entries are inserted/removed deterministically (use ECB and predictable sorting).
-- [ ] Integrate with rewind: either rebuild registries every frame from authoritative components or record minimal history to reapply on playback.
-- [ ] Provide helper static methods (or extension structs) so other systems can query registries from Burst without copying data.
+- [x] Handle spawn/despawn: when entities arise or die, ensure registry entries are inserted/removed deterministically (use ECB and predictable sorting). (Implemented via deterministic rebuild every frame from queries; entities matching query are included/excluded automatically - see `Docs/DesignNotes/RegistryLifecycle.md`)
+- [x] Integrate with rewind: either rebuild registries every frame from authoritative components or record minimal history to reapply on playback. (Rebuild-every-frame strategy implemented; registries rebuild from queries deterministically, skip during playback as state is already deterministic - see `Docs/DesignNotes/RegistryLifecycle.md`)
+- [x] Provide helper static methods (or extension structs) so other systems can query registries from Burst without copying data. (Implemented in `RegistryQueryHelpers` - methods accept `NativeArray<TEntry>` which can be obtained from buffers via `AsNativeArray()` without copying; `RegistryEntryLookup.TryFindEntryIndex` provides binary search lookup)
 
 ### 3. Memory & Pooling Utilities
-- [ ] Implement pooled `NativeList<T>` / `NativeQueue<T>` wrappers for temporary per-system scratch use (ties into SoA utilities).
-- [ ] Introduce a “command buffer pool” or reuse existing ECB systems to avoid repeated allocations.
-- [ ] Ensure all pooling utilities dispose correctly on world shutdown and respect determinism.
+- [x] Implement pooled `NativeList<T>` / `NativeQueue<T>` wrappers for temporary per-system scratch use (ties into SoA utilities). (See `Runtime/Pooling/NativeContainerPools.cs`)
+- [x] Introduce a "command buffer pool" or reuse existing ECB systems to avoid repeated allocations. (Implemented in `NxPoolingService` with ECB pooling)
+- [x] Ensure all pooling utilities dispose correctly on world shutdown and respect determinism. (Pooling services dispose correctly; determinism maintained)
 
 ### 4. Migration of Existing Systems
 - [ ] Resource gathering/storehouse systems: switch lookups to the new registries instead of ad-hoc queries.
@@ -67,6 +68,22 @@
 - [ ] Stress tests with 50k entities verifying no GC allocations and acceptable frame time.
 - [ ] Regression checks for deterministic ordering (sorted indexes stable between runs).
 - [x] Playmode smoke test for console instrumentation output (`ResourceRegistry_ConsoleInstrumentation_LogsSummary`).
+
+## Standard Registry Schema
+
+**Current State**: Each registry uses domain-specific entry structs (`ResourceRegistryEntry`, `VillagerRegistryEntry`, etc.) but follows consistent patterns documented in `RegistryHotColdSplits.md`.
+
+**Proposed Standard Base** (Future Refactor):
+- Consider introducing `IRegistryEntry` interface with common fields (`Entity`, `float3 Position`, `int CellId`, `uint SpatialVersion`, `uint LastMutationTick`)
+- Domain-specific entries embed or extend base pattern
+- Shared utilities (`RegistryQueryHelpers`) work with `IRegistryEntry` for generic queries
+
+**Rollout Plan**:
+1. **Phase 1** (Current): Domain-specific entries with consistent hot/cold splits ✅
+2. **Phase 2** (Future): Extract common base interface, migrate existing entries gradually
+3. **Phase 3** (Future): Consolidate shared utilities (`RegistryCommon.cs`) if duplication emerges
+
+**Reference**: See `Docs/DesignNotes/RegistryHotColdSplits.md` for current layout patterns and `Docs/DesignNotes/SoA_Expectations.md` for SoA guidelines.
 
 ## Open Questions
 - Which registries require historical data for rewind vs. live-only caches?

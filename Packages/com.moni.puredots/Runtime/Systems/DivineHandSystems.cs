@@ -1,12 +1,30 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Spatial;
+using PureDOTS.Runtime.Hand;
+using PureDOTS.Input;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.Physics;
 
 namespace PureDOTS.Systems
 {
+    public readonly partial struct DivineHandAspect : IAspect
+    {
+        public readonly Entity Entity;
+        public readonly RefRW<DivineHandState> HandState;
+        public readonly RefRO<DivineHandConfig> HandConfig;
+        public readonly RefRO<DivineHandInput> HandInput;
+        public readonly RefRW<DivineHandCommand> Command;
+        public readonly RefRW<HandInteractionState> Interaction;
+        public readonly DynamicBuffer<DivineHandEvent> Events;
+        public readonly DynamicBuffer<HandQueuedThrowElement> QueuedEntries;
+        public readonly DynamicBuffer<MiracleReleaseEvent> MiracleEvents;
+        public readonly RefRO<GodIntent> Intent;
+    }
+
     [BurstCompile]
     [UpdateInGroup(typeof(HandSystemGroup))]
     public partial struct DivineHandSystem : ISystem
@@ -20,6 +38,10 @@ namespace PureDOTS.Systems
         private ComponentLookup<StorehouseInventory> _storehouseInventoryLookup;
         private BufferLookup<StorehouseInventoryItem> _storeItemsLookup;
         private BufferLookup<StorehouseCapacityElement> _storeCapacityLookup;
+        private ComponentLookup<HandQueuedTag> _queuedTagLookup;
+        private ComponentLookup<MiracleToken> _miracleTokenLookup;
+        private ComponentLookup<PhysicsVelocity> _physicsVelocityLookup;
+        private ComponentLookup<PhysicsGravityFactor> _physicsGravityLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -30,7 +52,7 @@ namespace PureDOTS.Systems
                 .WithAllRW<ResourceSiphonState>()
                 .WithAllRW<DivineHandEvent>()
                 .WithAllRW<DivineHandCommand>()
-                .WithAll<DivineHandTag, DivineHandConfig, DivineHandInput>()
+                .WithAll<DivineHandTag, DivineHandConfig, DivineHandInput, PureDOTS.Runtime.Hand.GodIntent>()
                 .Build();
 
             state.RequireForUpdate(_handQuery);
@@ -45,6 +67,10 @@ namespace PureDOTS.Systems
             _storehouseInventoryLookup = state.GetComponentLookup<StorehouseInventory>(false);
             _storeItemsLookup = state.GetBufferLookup<StorehouseInventoryItem>(false);
             _storeCapacityLookup = state.GetBufferLookup<StorehouseCapacityElement>(true);
+            _queuedTagLookup = state.GetComponentLookup<HandQueuedTag>(false);
+            _physicsVelocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _physicsGravityLookup = state.GetComponentLookup<PhysicsGravityFactor>(false);
+            _miracleTokenLookup = state.GetComponentLookup<MiracleToken>(true);
 
             state.RequireForUpdate<ResourceTypeIndex>();
         }
@@ -70,21 +96,28 @@ namespace PureDOTS.Systems
             _storehouseInventoryLookup.Update(ref state);
             _storeItemsLookup.Update(ref state);
             _storeCapacityLookup.Update(ref state);
+            _queuedTagLookup.Update(ref state);
+            _physicsVelocityLookup.Update(ref state);
+            _physicsGravityLookup.Update(ref state);
+            _miracleTokenLookup.Update(ref state);
 
             var entityManager = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
             var catalogRef = resourceCatalog.Catalog;
 
-            foreach (var (handState, handConfigRO, handInputRO, commandRef, interactionRef, siphonRef, eventBuffer, entity) in
-                     SystemAPI.Query<RefRW<DivineHandState>, RefRO<DivineHandConfig>, RefRO<DivineHandInput>, RefRW<DivineHandCommand>, RefRW<HandInteractionState>, RefRW<ResourceSiphonState>, DynamicBuffer<DivineHandEvent>>()
-                         .WithEntityAccess())
+            foreach (var hand in SystemAPI.Query<DivineHandAspect>())
             {
-                ref var stateData = ref handState.ValueRW;
-                var config = handConfigRO.ValueRO;
-                var input = handInputRO.ValueRO;
-                ref var command = ref commandRef.ValueRW;
-                var events = eventBuffer;
+                var entity = hand.Entity;
+                RefRW<ResourceSiphonState> siphonRef = SystemAPI.GetComponentRW<ResourceSiphonState>(entity);
+                ref var stateData = ref hand.HandState.ValueRW;
+                var config = hand.HandConfig.ValueRO;
+                var input = hand.HandInput.ValueRO;
+                var intent = hand.Intent.ValueRO;
+                ref var command = ref hand.Command.ValueRW;
+                var events = hand.Events;
+                var queuedBuffer = hand.QueuedEntries;
+                var miracleEvents = hand.MiracleEvents;
 
                 events.Clear();
 
@@ -93,7 +126,7 @@ namespace PureDOTS.Systems
                 int previousAmount = stateData.HeldAmount;
 
                 stateData.HeldCapacity = math.max(1, config.HeldCapacity);
-                stateData.CursorPosition = input.CursorPosition;
+                stateData.CursorPosition = input.CursorWorldPosition;
                 stateData.AimDirection = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f));
 
                 if (command.Type != DivineHandCommandType.None)
@@ -117,7 +150,9 @@ namespace PureDOTS.Systems
 
                 bool hasHeldEntity = stateData.HeldEntity != Entity.Null && entityManager.Exists(stateData.HeldEntity);
 
-                if (input.GrabPressed != 0 && !hasHeldEntity && stateData.CooldownTimer <= 0f)
+                // Consume intent for state transitions
+                // Intent.StartSelect triggers grab
+                if (intent.StartSelect != 0 && !hasHeldEntity && stateData.CooldownTimer <= 0f)
                 {
                     var candidate = FindPickable(ref state, stateData.CursorPosition, config);
                     if (candidate != Entity.Null)
@@ -232,10 +267,25 @@ namespace PureDOTS.Systems
                 {
                     MaintainHeldTransform(ref stateData, in config);
 
-                    bool releaseRequested = input.GrabReleased != 0 || input.ThrowPressed != 0;
+                    // Release is triggered by CancelAction or ConfirmPlace intent
+                    bool releaseRequested = intent.CancelAction != 0 || intent.ConfirmPlace != 0;
+                    bool queuedInstead = releaseRequested && input.QueueModifierHeld != 0 &&
+                                         TryQueueHeldEntity(ref ecb, entityManager, entity, ref stateData, in config, in input, queuedBuffer);
+                    if (!queuedInstead && releaseRequested && _miracleTokenLookup.HasComponent(stateData.HeldEntity))
+                    {
+                        HandleMiracleTokenRelease(ref ecb, ref stateData, in config, in input, miracleEvents);
+                        hasHeldEntity = false;
+                        releaseRequested = false;
+                    }
+                    if (queuedInstead)
+                    {
+                        hasHeldEntity = false;
+                        releaseRequested = false;
+                    }
+
                     if (releaseRequested)
                     {
-                        bool appliedThrow = ReleaseHeldEntity(ref ecb, ref stateData, in config, in input);
+                        bool appliedThrow = ReleaseHeldEntity(ref ecb, ref stateData, in config, in input, in intent);
                         hasHeldEntity = false;
                         stateData.HeldAmount = 0;
                         stateData.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
@@ -258,9 +308,10 @@ namespace PureDOTS.Systems
 
                 stateData.Flags = hasCargo ? (byte)(stateData.Flags | 0x1) : (byte)(stateData.Flags & 0xFE);
 
+                // Slingshot aim is active when holding cargo, charging, and not releasing
                 bool slingshotAimActive = hasCargo && config.MinChargeSeconds > 0f &&
                                            stateData.ChargeTimer >= config.MinChargeSeconds &&
-                                           input.ThrowPressed == 0 && input.GrabReleased == 0;
+                                           intent.ConfirmPlace == 0 && intent.CancelAction == 0;
 
                 HandState nextState;
                 if (command.Type == DivineHandCommandType.DumpToStorehouse || command.Type == DivineHandCommandType.GroundDrip)
@@ -284,7 +335,7 @@ namespace PureDOTS.Systems
                     nextState = HandState.Empty;
                 }
 
-                ref var interaction = ref interactionRef.ValueRW;
+                ref var interaction = ref hand.Interaction.ValueRW;
                 interaction.HandEntity = entity;
                 interaction.PreviousState = previousState;
                 interaction.CurrentState = nextState;
@@ -338,7 +389,19 @@ namespace PureDOTS.Systems
                     events.Add(DivineHandEvent.AmountChange(stateData.HeldAmount, stateData.HeldCapacity));
                 }
 
-                commandRef.ValueRW = command;
+                if (queuedBuffer.Length > 0)
+                {
+                    if (input.ReleaseAllTriggered != 0)
+                    {
+                        ReleaseQueuedEntries(ref ecb, entityManager, queuedBuffer, queuedBuffer.Length, in config, ref stateData);
+                    }
+                    else if (input.ReleaseSingleTriggered != 0)
+                    {
+                        ReleaseQueuedEntries(ref ecb, entityManager, queuedBuffer, 1, in config, ref stateData);
+                    }
+                }
+
+                hand.Command.ValueRW = command;
             }
 
             ecb.Playback(entityManager);
@@ -379,6 +442,67 @@ namespace PureDOTS.Systems
             Entity bestEntity = Entity.Null;
             float bestDistanceSq = config.PickupRadius * config.PickupRadius;
 
+            // Try spatial query first if available
+            if (SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig) &&
+                SystemAPI.TryGetSingleton(out SpatialGridState spatialState))
+            {
+                var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+                var ranges = SystemAPI.GetBuffer<SpatialGridCellRange>(gridEntity);
+                var entries = SystemAPI.GetBuffer<SpatialGridEntry>(gridEntity);
+                
+                var nearbyEntities = new NativeList<Entity>(32, Allocator.Temp);
+                SpatialQueryHelper.GetEntitiesWithinRadius(
+                    ref cursorPosition,
+                    config.PickupRadius,
+                    spatialConfig,
+                    ranges,
+                    entries,
+                    ref nearbyEntities);
+
+                // Filter by HandPickable and check held status
+                foreach (var entity in nearbyEntities)
+                {
+                    if (!state.EntityManager.Exists(entity) || 
+                        !_pickableLookup.HasComponent(entity) ||
+                        _heldLookup.HasComponent(entity))
+                    {
+                        continue;
+                    }
+
+                    if (!_transformLookup.HasComponent(entity))
+                    {
+                        continue;
+                    }
+
+                    float3 position = _transformLookup[entity].Position;
+                    float distanceSq = math.lengthsq(position - cursorPosition);
+                    if (distanceSq > bestDistanceSq)
+                    {
+                        continue;
+                    }
+
+                    if (config.MaxGrabDistance > 0f)
+                    {
+                        float vertical = math.abs(position.y - cursorPosition.y);
+                        if (vertical > config.MaxGrabDistance)
+                        {
+                            continue;
+                        }
+                    }
+
+                    bestDistanceSq = distanceSq;
+                    bestEntity = entity;
+                }
+
+                nearbyEntities.Dispose();
+                
+                if (bestEntity != Entity.Null)
+                {
+                    return bestEntity;
+                }
+            }
+
+            // Fallback to full entity scan if spatial grid unavailable
             foreach (var (pickable, transform, entity) in SystemAPI.Query<RefRO<HandPickable>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
             {
@@ -413,27 +537,195 @@ namespace PureDOTS.Systems
         private bool ReleaseHeldEntity(ref EntityCommandBuffer ecb,
             ref DivineHandState state,
             in DivineHandConfig config,
-            in DivineHandInput input)
+            in DivineHandInput input,
+            in GodIntent intent)
         {
             if (state.HeldEntity == Entity.Null)
             {
                 return false;
             }
 
-            bool appliedThrow = input.ThrowPressed != 0 && state.ChargeTimer >= math.max(0f, config.MinChargeSeconds);
+            if (_heldLookup.HasComponent(state.HeldEntity))
+            {
+                ecb.RemoveComponent<HandHeldTag>(state.HeldEntity);
+            }
+
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
+
+            bool appliedThrow = intent.ConfirmPlace != 0;
+            if (appliedThrow)
+            {
+                ApplyThrowToEntity(ref ecb, state.HeldEntity, direction, impulse);
+            }
+
+            state.HeldEntity = Entity.Null;
+            state.HeldLocalOffset = float3.zero;
+            state.ChargeTimer = 0f;
+            state.Flags &= 0xFE;
+
+            return appliedThrow;
+        }
+
+        private bool TryQueueHeldEntity(ref EntityCommandBuffer ecb,
+            EntityManager entityManager,
+            Entity handEntity,
+            ref DivineHandState state,
+            in DivineHandConfig config,
+            in DivineHandInput input,
+            DynamicBuffer<HandQueuedThrowElement> queuedBuffer)
+        {
+            if (state.HeldEntity == Entity.Null || !entityManager.Exists(state.HeldEntity))
+            {
+                return false;
+            }
+
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
+
+            queuedBuffer.Add(new HandQueuedThrowElement
+            {
+                Entity = state.HeldEntity,
+                Direction = direction,
+                Impulse = impulse
+            });
+
+            FreezeQueuedEntity(ref ecb, state.HeldEntity, handEntity);
 
             if (_heldLookup.HasComponent(state.HeldEntity))
             {
                 ecb.RemoveComponent<HandHeldTag>(state.HeldEntity);
             }
 
-            float baseImpulse = config.ThrowImpulse;
-            float minCharge = config.MinChargeSeconds;
+            state.HeldEntity = Entity.Null;
+            state.HeldLocalOffset = float3.zero;
+            state.HeldAmount = 0;
+            state.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
+            state.ChargeTimer = 0f;
+            state.Flags &= 0xFE;
+
+            return true;
+        }
+
+        private void FreezeQueuedEntity(ref EntityCommandBuffer ecb, Entity entity, Entity handEntity)
+        {
+            float3 storedLinear = float3.zero;
+            float3 storedAngular = float3.zero;
+            float storedGravity = 1f;
+
+            if (_physicsVelocityLookup.HasComponent(entity))
+            {
+                var velocity = _physicsVelocityLookup[entity];
+                storedLinear = velocity.Linear;
+                storedAngular = velocity.Angular;
+                velocity.Linear = float3.zero;
+                velocity.Angular = float3.zero;
+                _physicsVelocityLookup[entity] = velocity;
+            }
+
+            if (_physicsGravityLookup.HasComponent(entity))
+            {
+                storedGravity = _physicsGravityLookup[entity].Value;
+                var gravity = _physicsGravityLookup[entity];
+                gravity.Value = 0f;
+                _physicsGravityLookup[entity] = gravity;
+            }
+
+            if (_queuedTagLookup.HasComponent(entity))
+            {
+                ecb.SetComponent(entity, new HandQueuedTag
+                {
+                    Holder = handEntity,
+                    StoredLinearVelocity = storedLinear,
+                    StoredAngularVelocity = storedAngular,
+                    StoredGravityFactor = storedGravity
+                });
+            }
+            else
+            {
+                ecb.AddComponent(entity, new HandQueuedTag
+                {
+                    Holder = handEntity,
+                    StoredLinearVelocity = storedLinear,
+                    StoredAngularVelocity = storedAngular,
+                    StoredGravityFactor = storedGravity
+                });
+            }
+        }
+
+        private void ReleaseQueuedEntries(ref EntityCommandBuffer ecb,
+            EntityManager entityManager,
+            DynamicBuffer<HandQueuedThrowElement> queuedBuffer,
+            int releaseCount,
+            in DivineHandConfig config,
+            ref DivineHandState state)
+        {
+            releaseCount = math.clamp(releaseCount, 0, queuedBuffer.Length);
+            if (releaseCount <= 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < releaseCount; i++)
+            {
+                var entry = queuedBuffer[i];
+                if (entry.Entity == Entity.Null || !entityManager.Exists(entry.Entity))
+                {
+                    continue;
+                }
+
+                ApplyQueuedThrow(ref ecb, entry);
+            }
+
+            queuedBuffer.RemoveRange(0, releaseCount);
+            state.CooldownTimer = math.max(state.CooldownTimer, config.CooldownAfterThrowSeconds);
+        }
+
+        private void ApplyQueuedThrow(ref EntityCommandBuffer ecb, HandQueuedThrowElement entry)
+        {
+            RestoreQueuedEntity(ref ecb, entry.Entity);
+            ApplyThrowToEntity(ref ecb, entry.Entity, entry.Direction, entry.Impulse);
+        }
+
+        private void RestoreQueuedEntity(ref EntityCommandBuffer ecb, Entity entity)
+        {
+            if (!_queuedTagLookup.HasComponent(entity))
+            {
+                return;
+            }
+
+            var queued = _queuedTagLookup[entity];
+
+            if (_physicsVelocityLookup.HasComponent(entity))
+            {
+                var velocity = _physicsVelocityLookup[entity];
+                velocity.Linear = queued.StoredLinearVelocity;
+                velocity.Angular = queued.StoredAngularVelocity;
+                _physicsVelocityLookup[entity] = velocity;
+            }
+
+            if (_physicsGravityLookup.HasComponent(entity))
+            {
+                var gravity = _physicsGravityLookup[entity];
+                gravity.Value = queued.StoredGravityFactor;
+                _physicsGravityLookup[entity] = gravity;
+            }
+
+            ecb.RemoveComponent<HandQueuedTag>(entity);
+        }
+
+        private void ComputeThrowParameters(ref DivineHandState state,
+            in DivineHandConfig config,
+            in DivineHandInput input,
+            out float3 direction,
+            out float impulse)
+        {
+            direction = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f));
+            float baseImpulse = math.max(1f, config.ThrowImpulse);
+            float chargeDuration = math.max(0f, state.ChargeTimer);
+            float minCharge = math.max(0f, config.MinChargeSeconds);
             float maxCharge = math.max(minCharge, config.MaxChargeSeconds);
-            float chargeDuration = state.ChargeTimer;
 
             float normalizedCharge;
-            if (maxCharge > minCharge && maxCharge > 0f)
+            if (maxCharge > minCharge)
             {
                 float clamped = math.clamp(chargeDuration, minCharge, maxCharge);
                 normalizedCharge = math.saturate((clamped - minCharge) / math.max(0.0001f, maxCharge - minCharge));
@@ -448,20 +740,75 @@ namespace PureDOTS.Systems
             }
 
             float chargeMultiplier = math.max(1f, 1f + normalizedCharge * config.ThrowChargeMultiplier);
+            impulse = baseImpulse * chargeMultiplier;
+        }
 
-            if (appliedThrow && _rainCloudStateLookup.HasComponent(state.HeldEntity))
+        private void ApplyThrowToEntity(ref EntityCommandBuffer ecb, Entity entity, float3 direction, float impulse)
+        {
+            var normalizedDir = math.normalizesafe(direction, new float3(0f, -1f, 0f));
+
+            if (_rainCloudStateLookup.HasComponent(entity))
             {
-                var rainState = _rainCloudStateLookup[state.HeldEntity];
-                rainState.Velocity = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f)) * baseImpulse * chargeMultiplier;
-                _rainCloudStateLookup[state.HeldEntity] = rainState;
+                var rainState = _rainCloudStateLookup[entity];
+                rainState.Velocity = normalizedDir * impulse;
+                _rainCloudStateLookup[entity] = rainState;
             }
+
+            if (_physicsVelocityLookup.HasComponent(entity))
+            {
+                var velocity = _physicsVelocityLookup[entity];
+                velocity.Linear = normalizedDir * impulse;
+                velocity.Angular = float3.zero;
+                _physicsVelocityLookup[entity] = velocity;
+            }
+
+            if (_physicsGravityLookup.HasComponent(entity))
+            {
+                var gravity = _physicsGravityLookup[entity];
+                if (gravity.Value == 0f)
+                {
+                    gravity.Value = 1f;
+                    _physicsGravityLookup[entity] = gravity;
+                }
+            }
+
+            if (_queuedTagLookup.HasComponent(entity))
+            {
+                ecb.RemoveComponent<HandQueuedTag>(entity);
+            }
+        }
+
+        private void HandleMiracleTokenRelease(ref EntityCommandBuffer ecb,
+            ref DivineHandState state,
+            in DivineHandConfig config,
+            in DivineHandInput input,
+            DynamicBuffer<MiracleReleaseEvent> miracleEvents)
+        {
+            if (state.HeldEntity == Entity.Null)
+            {
+                return;
+            }
+
+            var token = _miracleTokenLookup[state.HeldEntity];
+            ecb.DestroyEntity(state.HeldEntity);
+
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
+
+            miracleEvents.Add(new MiracleReleaseEvent
+            {
+                Type = token.Type,
+                Position = state.CursorPosition,
+                Direction = direction,
+                Impulse = impulse,
+                ConfigEntity = token.ConfigEntity
+            });
 
             state.HeldEntity = Entity.Null;
             state.HeldLocalOffset = float3.zero;
+            state.HeldAmount = 0;
+            state.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
             state.ChargeTimer = 0f;
             state.Flags &= 0xFE;
-
-            return appliedThrow;
         }
 
         private int DepositToStorehouse(ref SystemState state, float3 targetPosition, ushort resourceTypeIndex, int units, BlobAssetReference<ResourceTypeIndexBlob> catalog, uint currentTick)

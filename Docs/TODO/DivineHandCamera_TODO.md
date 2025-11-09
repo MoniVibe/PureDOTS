@@ -5,9 +5,40 @@
 ## Goal
 - Maintain deterministic DOTS hand/camera logic (input routing, state machines, fixed-step transforms) inside the PureDOTS foundation; presentation parity with Black & White 2 remains deferred to downstream game builds.
 - Document future parity ambitions so game teams can extend the logical core once they add presentation and fiction-specific feedback.
-- Ensure every input flows through deterministic DOTS systems (New Input System → router → DOTS components) with no Mono-only side effects.
+- Ensure every input flows through deterministic DOTS systems (New Input System → Mono bridge → ECS snapshot → intent mapping → state systems) with no Mono-only side effects.
 - Provide designers with configurable knobs (ScriptableObjects + blobs) for sensitivity, launch behaviour, highlights, and HUD when game layers are ready to consume them.
 - Keep contracts in sync with `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` and shared integration tasks in `Docs/TODO/SystemIntegration_TODO.md`.
+
+## Phase 5 Input Architecture (Implemented)
+**Input Snapshot Infrastructure**
+- `DivineHandInput`, `CameraInputState` components with tick stamps and `PlayerId` support
+- `HandInputEdge`, `CameraInputEdge` buffers for single-frame button transitions (Down/Up events)
+- Edge events ensure deterministic handling of button presses/releases under variable framerates
+
+**Mono Bridge**
+- `InputSnapshotBridge` MonoBehaviour accumulates Unity Input System events per frame
+- Flushes once per DOTS tick via `CopyInputToEcsSystem` (OrderFirst in SimulationSystemGroup)
+- Handles focus lost (synthesizes Up events), cursor lock, multi-tick catch-up
+
+**Intent Mapping Layer**
+- `GodIntent` component maps device-level input to gameplay actions (pan, zoom, select, etc.)
+- `IntentMappingSystem` produces intent deterministically, making rebinding/device variety trivial
+- Supports multi-hand/multi-camera via `PlayerId` field
+
+**State Writers (Single-Writer Pattern)**
+- `DivineHandSystem` - Single-writer for `DivineHandState`, consumes `GodIntent` for state transitions
+- `CameraSystem` - Single-writer for `CameraState`, computes deterministic camera transforms from intent
+- Both systems respect rewind guards and execute deterministically
+
+**Recording & Playback**
+- `InputRecordingSystem` (HistorySystemGroup) captures per-tick snapshots for replay
+- `InputPlaybackSystem` (SimulationSystemGroup OrderFirst) injects recorded snapshots during playback mode
+- Enables deterministic repro and input-driven tests
+
+**Presentation Bridges**
+- `CameraPresentationBridge` reads `CameraState` and applies visual-only smoothing (never feeds back into ECS)
+- UI focus gating: `PointerOverUI` flag prevents input actions when pointer is over UI
+- Pattern documented for game-specific extensions
 
 > **Baseline scope note (2025-10-28):** PureDOTS ships only the logical DOTS data flow for hand/camera features. Visuals, feel matching, and fiction-specific behaviours are flagged as deferred below for the first game to implement.
 

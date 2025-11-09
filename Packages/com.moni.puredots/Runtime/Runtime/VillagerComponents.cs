@@ -17,15 +17,99 @@ namespace PureDOTS.Runtime.Components
 
     /// <summary>
     /// Villager needs that must be satisfied.
+    /// Optimized for SoA: uses ushort for 0-100 range values to reduce memory footprint.
     /// </summary>
     public struct VillagerNeeds : IComponentData
     {
-        public float Health;
-        public float MaxHealth;
-        public float Hunger;       // 0-100, increases over time
-        public float Energy;       // 0-100, decreases with work
-        public float Morale;       // 0-100, affects productivity
-        public float Temperature;  // Comfort level
+        public float Health;           // Full precision for health (may exceed 100)
+        public float MaxHealth;         // Full precision for max health
+        public ushort Hunger;          // 0-100, increases over time (0.1% precision)
+        public ushort Energy;          // 0-100, decreases with work (0.1% precision)
+        public ushort Morale;          // 0-100, affects productivity (0.1% precision)
+        public short Temperature;       // Comfort level (-100 to +100, 0.1°C precision)
+
+        // Helper methods for conversion
+        public float HungerFloat => Hunger * 0.1f;
+        public float EnergyFloat => Energy * 0.1f;
+        public float MoraleFloat => Morale * 0.1f;
+        public float TemperatureFloat => Temperature * 0.1f;
+
+        public void SetHunger(float value) => Hunger = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
+        public void SetEnergy(float value) => Energy = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
+        public void SetMorale(float value) => Morale = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
+        public void SetTemperature(float value) => Temperature = (short)math.clamp(math.round(value * 10f), -1000f, 1000f);
+    }
+
+    /// <summary>
+    /// Simple mana / worship pool for miracle interactions.
+    /// </summary>
+    public struct VillagerMana : IComponentData
+    {
+        public float CurrentMana;
+        public float MaxMana;
+    }
+
+    /// <summary>
+    /// Primary and derived attribute values used for combat / skill checks.
+    /// </summary>
+    public struct VillagerAttributes : IComponentData
+    {
+        // Primary attributes (0-10 typical range)
+        public float Physique;
+        public float Finesse;
+        public float Willpower;
+
+        // Derived attributes (0-200 range)
+        public float Strength;
+        public float Agility;
+        public float Intelligence;
+        public float Wisdom;
+    }
+
+    /// <summary>
+    /// Belief + faith metadata used for worship flows.
+    /// </summary>
+    public struct VillagerBelief : IComponentData
+    {
+        public FixedString64Bytes PrimaryDeityId;
+        public float Faith;            // 0-1 belief strength
+        public float WorshipProgress;  // Normalized worship progress
+    }
+
+    /// <summary>
+    /// Reputation / fame counters used by social systems.
+    /// </summary>
+    public struct VillagerReputation : IComponentData
+    {
+        public float Fame;
+        public float Infamy;
+        public float Honor;
+        public float Glory;
+        public float Renown;
+        public float Reputation;
+    }
+
+    /// <summary>
+    /// Comfort profile for thermal systems.
+    /// </summary>
+    public struct VillagerTemperatureProfile : IComponentData
+    {
+        public float PreferredTemperature; // Degrees Celsius
+        public float ColdTolerance;        // Lowest comfortable temp
+        public float HeatTolerance;        // Highest comfortable temp
+    }
+
+    /// <summary>
+    /// Contextual sensor ranges for vision/hearing modifiers.
+    /// </summary>
+    public struct VillagerSensorProfile : IComponentData
+    {
+        public float VisionLitRange;
+        public float VisionDimRange;
+        public float VisionObscuredRange;
+        public float HearingQuietRange;
+        public float HearingNoisyRange;
+        public float HearingCrowdedRange;
     }
 
     /// <summary>
@@ -162,11 +246,20 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Inventory of carried resources.
+    /// Reference to companion entity containing inventory buffer (SoA optimization).
+    /// Hot archetype holds only the reference (4 bytes) instead of the full buffer.
+    /// </summary>
+    public struct VillagerInventoryRef : IComponentData
+    {
+        public Entity CompanionEntity;  // Reference to companion entity with inventory buffer
+    }
+
+    /// <summary>
+    /// Inventory of carried resources (moved to companion entity for SoA optimization).
     /// </summary>
     public struct VillagerInventoryItem : IBufferElementData
     {
-        public FixedString64Bytes ResourceTypeId;
+        public ushort ResourceTypeIndex;  // Optimized: use index instead of FixedString64Bytes
         public float Amount;
         public float MaxCarryCapacity;
     }
@@ -228,12 +321,103 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Tags for special villager states.
+    /// Packed flags component replacing multiple tag components for SoA optimization.
+    /// Reduces memory footprint from 5×16 bytes (80 bytes) to 2 bytes.
     /// </summary>
+    public struct VillagerFlags : IComponentData
+    {
+        private byte _flags1;
+        private byte _flags2;
+
+        // Flags byte 1 (bits 0-7)
+        public bool IsSelected
+        {
+            get => (_flags1 & 0x01) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x01 : _flags1 & ~0x01);
+        }
+
+        public bool IsHighlighted
+        {
+            get => (_flags1 & 0x02) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x02 : _flags1 & ~0x02);
+        }
+
+        public bool IsInCombat
+        {
+            get => (_flags1 & 0x04) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x04 : _flags1 & ~0x04);
+        }
+
+        public bool IsCarrying
+        {
+            get => (_flags1 & 0x08) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x08 : _flags1 & ~0x08);
+        }
+
+        public bool IsDead
+        {
+            get => (_flags1 & 0x10) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x10 : _flags1 & ~0x10);
+        }
+
+        public bool IsIdle
+        {
+            get => (_flags1 & 0x20) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x20 : _flags1 & ~0x20);
+        }
+
+        public bool IsWorking
+        {
+            get => (_flags1 & 0x40) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x40 : _flags1 & ~0x40);
+        }
+
+        public bool IsFleeing
+        {
+            get => (_flags1 & 0x80) != 0;
+            set => _flags1 = (byte)(value ? _flags1 | 0x80 : _flags1 & ~0x80);
+        }
+
+        // Flags byte 2 (bits 8-15) - reserved for future use
+        public bool IsPlayerPriority
+        {
+            get => (_flags2 & 0x01) != 0;
+            set => _flags2 = (byte)(value ? _flags2 | 0x01 : _flags2 & ~0x01);
+        }
+
+        public bool IsScheduled
+        {
+            get => (_flags2 & 0x02) != 0;
+            set => _flags2 = (byte)(value ? _flags2 | 0x02 : _flags2 & ~0x02);
+        }
+
+        public bool IsReserved
+        {
+            get => (_flags2 & 0x04) != 0;
+            set => _flags2 = (byte)(value ? _flags2 | 0x04 : _flags2 & ~0x04);
+        }
+
+        public byte RawFlags1 => _flags1;
+        public byte RawFlags2 => _flags2;
+    }
+
+    /// <summary>
+    /// Legacy tag components maintained for backward compatibility during migration.
+    /// These will be removed once all systems migrate to VillagerFlags.
+    /// </summary>
+    [Obsolete("Use VillagerFlags.IsSelected instead")]
     public struct VillagerSelectedTag : IComponentData { }
+    
+    [Obsolete("Use VillagerFlags.IsHighlighted instead")]
     public struct VillagerHighlightedTag : IComponentData { }
+    
+    [Obsolete("Use VillagerFlags.IsInCombat instead")]
     public struct VillagerInCombatTag : IComponentData { }
+    
+    [Obsolete("Use VillagerFlags.IsCarrying instead")]
     public struct VillagerCarryingTag : IComponentData { }
+    
+    [Obsolete("Use VillagerFlags.IsDead instead")]
     public struct VillagerDeadTag : IComponentData { }
 
     /// <summary>
@@ -275,7 +459,16 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Tracks villager animations and visual state.
+    /// Reference to companion entity containing stats, animation state, and memory buffer (SoA optimization).
+    /// Hot archetype holds only the reference (4 bytes) instead of multiple components.
+    /// </summary>
+    public struct VillagerCompanionRef : IComponentData
+    {
+        public Entity CompanionEntity;  // Reference to companion entity with stats, animation, memory
+    }
+
+    /// <summary>
+    /// Tracks villager animations and visual state (moved to companion entity for SoA optimization).
     /// </summary>
     public struct VillagerAnimationState : IComponentData
     {
@@ -299,7 +492,7 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Villager statistics for gameplay tracking.
+    /// Villager statistics for gameplay tracking (moved to companion entity for SoA optimization).
     /// </summary>
     public struct VillagerStats : IComponentData
     {
@@ -313,7 +506,7 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Memory of recent events for decision making.
+    /// Memory of recent events for decision making (moved to companion entity buffer for SoA optimization).
     /// </summary>
     public struct VillagerMemoryEvent : IBufferElementData
     {

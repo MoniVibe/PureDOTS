@@ -120,17 +120,23 @@ com.moni.puredots/
 
 ## Dependencies
 
-- Unity Entities 1.4.2
+**Version Lock** (see `Docs/Vision/core.md` for details):
+- Unity Entities **1.4.2** (NOT 1.5+)
+- Unity NetCode **1.8** (integration on hold until single-player runtime is stable)
+- Unity Input System **1.7.0** (NOT legacy `UnityEngine.Input`)
 - Unity Burst 1.8.24
 - Unity Collections 2.6.2
 - Unity Mathematics 1.3.2
 - Unity Physics 1.0.16
-- Unity Input System 1.7.0
+
+**IMPORTANT**: Do NOT upgrade to Entities 1.5+ or use legacy Input APIs. See `Docs/Vision/core.md` for version lock details.
 
 ## Documentation
 
+- **Version Lock**: `Docs/Vision/core.md` - Critical version compatibility information
 - **Architecture**: `Docs/Architecture/PureDOTS_As_Framework.md`
-- **Integration Guide**: `Docs/Guides/LinkingExternalGameProjects.md`
+- **Integration Guide**: `Docs/Guides/UsingPureDOTSInAGame.md`
+- **Vision**: `Docs/Vision.md` - Design pillars and roadmap
 - **API Reference**: See source code documentation
 
 ## Versioning
@@ -147,6 +153,10 @@ For issues, questions, or contributions, see the main repository documentation.
 ## License
 
 [Your License Here]
+
+
+
+
 
 
 

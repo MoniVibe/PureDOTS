@@ -21,7 +21,7 @@ namespace PureDOTS.Systems
         {
             _villagerQuery = SystemAPI.QueryBuilder()
                 .WithAll<VillagerId, VillagerNeeds>()
-                .WithNone<VillagerDeadTag, PlaybackGuardTag>()
+                .WithNone<PlaybackGuardTag>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -88,30 +88,44 @@ namespace PureDOTS.Systems
 
             public void Execute(ref VillagerNeeds needs, in VillagerAIState aiState)
             {
-                needs.Hunger = math.min(100f, needs.Hunger + HungerIncreaseRate * DeltaTime);
+                // Convert ushort to float for calculations
+                var hunger = needs.HungerFloat;
+                var energy = needs.EnergyFloat;
+                var morale = needs.MoraleFloat;
 
+                // Update hunger
+                hunger = math.min(100f, hunger + HungerIncreaseRate * DeltaTime);
+
+                // Update energy based on state
                 if (aiState.CurrentState == VillagerAIState.State.Working)
                 {
-                    needs.Energy = math.max(0f, needs.Energy - EnergyDecreaseRate * DeltaTime);
+                    energy = math.max(0f, energy - EnergyDecreaseRate * DeltaTime);
                 }
-                else                 if (aiState.CurrentState == VillagerAIState.State.Sleeping)
+                else if (aiState.CurrentState == VillagerAIState.State.Sleeping)
                 {
-                    needs.Energy = math.min(100f, needs.Energy + EnergyDecreaseRate * EnergyRecoveryMultiplier * DeltaTime);
+                    energy = math.min(100f, energy + EnergyDecreaseRate * EnergyRecoveryMultiplier * DeltaTime);
                 }
 
-                if (needs.Hunger >= StarvationHungerThreshold)
+                // Health and morale updates based on hunger
+                if (hunger >= StarvationHungerThreshold)
                 {
                     needs.Health = math.max(0f, needs.Health - StarvationDamageRate * DeltaTime);
-                    needs.Morale = math.max(0f, needs.Morale - StarvationMoraleDecreaseRate * DeltaTime);
+                    morale = math.max(0f, morale - StarvationMoraleDecreaseRate * DeltaTime);
                 }
-                else if (needs.Hunger < RegenHungerThreshold && needs.Health < needs.MaxHealth)
+                else if (hunger < RegenHungerThreshold && needs.Health < needs.MaxHealth)
                 {
                     needs.Health = math.min(needs.MaxHealth, needs.Health + HealthRegenRate * DeltaTime);
                 }
 
+                // Calculate satisfaction-based morale
                 var maxHealthSafe = math.max(1f, needs.MaxHealth);
-                var satisfaction = (100f - needs.Hunger) * SatisfactionHungerWeight + needs.Energy * SatisfactionEnergyWeight + (needs.Health / maxHealthSafe) * 100f * SatisfactionHealthWeight;
-                needs.Morale = math.lerp(needs.Morale, satisfaction, DeltaTime * MoraleLerpRate);
+                var satisfaction = (100f - hunger) * SatisfactionHungerWeight + energy * SatisfactionEnergyWeight + (needs.Health / maxHealthSafe) * 100f * SatisfactionHealthWeight;
+                morale = math.lerp(morale, satisfaction, DeltaTime * MoraleLerpRate);
+
+                // Convert back to ushort
+                needs.SetHunger(hunger);
+                needs.SetEnergy(energy);
+                needs.SetMorale(morale);
             }
         }
     }
