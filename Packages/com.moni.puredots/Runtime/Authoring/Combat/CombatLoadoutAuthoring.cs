@@ -13,6 +13,11 @@ namespace PureDOTS.Authoring.Combat
         public float engagementRange = 5f;
         public float weaponCooldownSeconds = 3f;
         public float retreatThreshold = 0.2f;
+        [Header("Pilot & Vessel")]
+        public float pilotExperience = 0f;
+        public float strafeThreshold = 10f;
+        public float kiteThreshold = 25f;
+        public float jTurnThreshold = 40f;
     }
 
     public sealed class CombatLoadoutBaker : Baker<CombatLoadoutAuthoring>
@@ -35,6 +40,18 @@ namespace PureDOTS.Authoring.Combat
                 WeaponCooldown = 0f,
                 Target = Entity.Null,
                 LastKnownTargetPosition = float3.zero
+            });
+
+            AddComponent(entity, new PilotExperience
+            {
+                Experience = authoring.pilotExperience
+            });
+
+            AddComponent(entity, new VesselManeuverProfile
+            {
+                StrafeThreshold = authoring.strafeThreshold,
+                KiteThreshold = authoring.kiteThreshold,
+                JTurnThreshold = authoring.jTurnThreshold
             });
         }
     }
