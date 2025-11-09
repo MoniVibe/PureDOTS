@@ -18,6 +18,12 @@ namespace PureDOTS.Authoring.Combat
         public float strafeThreshold = 10f;
         public float kiteThreshold = 25f;
         public float jTurnThreshold = 40f;
+        [Header("Pilot Attributes")]
+        public float intelligence = 10f;
+        public float finesse = 10f;
+        public float perception = 10f;
+        [Header("Instrumentation")]
+        public float instrumentTechLevel = 1f;
     }
 
     public sealed class CombatLoadoutBaker : Baker<CombatLoadoutAuthoring>
@@ -52,6 +58,18 @@ namespace PureDOTS.Authoring.Combat
                 StrafeThreshold = authoring.strafeThreshold,
                 KiteThreshold = authoring.kiteThreshold,
                 JTurnThreshold = authoring.jTurnThreshold
+            });
+
+            AddComponent(entity, new PilotAttributes
+            {
+                Intelligence = authoring.intelligence,
+                Finesse = authoring.finesse,
+                Perception = authoring.perception
+            });
+
+            AddComponent(entity, new InstrumentTechLevel
+            {
+                TechLevel = authoring.instrumentTechLevel
             });
         }
     }
