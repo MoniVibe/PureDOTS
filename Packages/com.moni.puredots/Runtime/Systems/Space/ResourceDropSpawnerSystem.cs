@@ -20,7 +20,8 @@ namespace PureDOTS.Systems.Space
             state.RequireForUpdate<ResourceDropConfig>();
             _pileArchetype = state.EntityManager.CreateArchetype(
                 typeof(ResourcePile),
-                typeof(ResourcePileMeta));
+                typeof(ResourcePileMeta),
+                typeof(ResourcePileVelocity));
         }
 
         [BurstCompile]
@@ -60,6 +61,11 @@ namespace PureDOTS.Systems.Space
                     DecaySeconds = dropConfig.ValueRO.DecaySeconds,
                     MaxCapacity = dropConfig.ValueRO.MaxStack
                 });
+                ecb.SetComponent(pileEntity, new ResourcePileVelocity
+                {
+                    Velocity = jitterDir * 0.1f
+                });
+                loopState.ValueRW.CurrentCargo = math.max(0f, loopState.ValueRW.CurrentCargo - amount);
             }
 
             ecb.Playback(state.EntityManager);

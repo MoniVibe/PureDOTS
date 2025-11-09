@@ -20,7 +20,8 @@ namespace PureDOTS.Systems.Space
             state.RequireForUpdate<DropOnlyHarvesterTag>();
             _pileArchetype = state.EntityManager.CreateArchetype(
                 typeof(ResourcePile),
-                typeof(ResourcePileMeta));
+                typeof(ResourcePileMeta),
+                typeof(ResourcePileVelocity));
         }
 
         [BurstCompile]
@@ -52,6 +53,10 @@ namespace PureDOTS.Systems.Space
                     ResourceTypeId = dropConfig.ValueRO.ResourceTypeId,
                     DecaySeconds = dropConfig.ValueRO.DecaySeconds,
                     MaxCapacity = dropConfig.ValueRO.MaxStack
+                });
+                ecb.SetComponent(pileEntity, new ResourcePileVelocity
+                {
+                    Velocity = jitterDir * 0.25f
                 });
 
                 loopState.CurrentCargo = 0f;

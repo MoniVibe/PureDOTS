@@ -3,6 +3,7 @@ Logs/
 Temp/
 UserSettings/
 Packages/Coplay/
+projects/*/Packages/Coplay/Editor/Checkpoints/
 Assets/Readme.asset
 Assets/Readme.asset.meta
 Assets/Settings/

@@ -44,6 +44,21 @@ namespace PureDOTS.Authoring.Space
                 var parentEntity = GetEntity(authoring.parentCarrier, TransformUsageFlags.Dynamic);
                 AddComponent(entity, new ParentCarrierRef { Carrier = parentEntity });
             }
+
+            AddComponent(entity, new HaulerRole
+            {
+                IsDedicatedFreighter = 1
+            });
+
+            AddComponent(entity, new HaulingJob
+            {
+                Priority = HaulingJobPriority.Normal,
+                SourceEntity = Entity.Null,
+                DestinationEntity = Entity.Null,
+                RequestedAmount = 0f,
+                Urgency = 0f,
+                ResourceValue = 0f
+            });
         }
     }
 }
