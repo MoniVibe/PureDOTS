@@ -17,6 +17,7 @@ namespace Godgame.Debugging
         [Header("UI References")]
         [SerializeField] private Text villagerSummaryText;
         [SerializeField] private Text storehouseSummaryText;
+        [SerializeField] private Text miracleSummaryText;
         [SerializeField] private Text telemetrySummaryText;
 
         private World _world;
@@ -52,6 +53,7 @@ namespace Godgame.Debugging
             {
                 ClearText(villagerSummaryText);
                 ClearText(storehouseSummaryText);
+                ClearText(miracleSummaryText);
                 ClearText(telemetrySummaryText);
                 return;
             }
@@ -110,6 +112,7 @@ namespace Godgame.Debugging
             {
                 ClearText(villagerSummaryText);
                 ClearText(storehouseSummaryText);
+                ClearText(miracleSummaryText);
                 return;
             }
 
@@ -147,6 +150,24 @@ namespace Godgame.Debugging
                 _builder.Append("  Reserved:");
                 _builder.Append(snapshot.TotalStorehouseReserved.ToString("0"));
                 storehouseSummaryText.text = _builder.ToString();
+            }
+
+            if (miracleSummaryText != null)
+            {
+                _builder.Clear();
+                _builder.Append("Miracles  ");
+                _builder.Append(snapshot.MiracleCount);
+                _builder.Append("  Active:");
+                _builder.Append(snapshot.ActiveMiracles);
+                _builder.Append("  Sustained:");
+                _builder.Append(snapshot.SustainedMiracles);
+                _builder.Append("  Cooling:");
+                _builder.Append(snapshot.CoolingMiracles);
+                _builder.Append("  Energy:");
+                _builder.Append(snapshot.TotalMiracleEnergyCost.ToString("0.0"));
+                _builder.Append("  Cooldown:");
+                _builder.Append(snapshot.TotalMiracleCooldownSeconds.ToString("0.0"));
+                miracleSummaryText.text = _builder.ToString();
             }
         }
 

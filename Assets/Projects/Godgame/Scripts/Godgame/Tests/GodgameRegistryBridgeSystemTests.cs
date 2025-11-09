@@ -304,6 +304,10 @@ namespace Godgame.Tests.Registry
             Assert.Contains("godgame.registry.bands.morale.avg", keys);
             Assert.Contains("godgame.registry.bands.cohesion.avg", keys);
             Assert.Contains("godgame.registry.bands.discipline.avg", keys);
+            Assert.Contains("godgame.registry.miracles", keys);
+            Assert.Contains("godgame.registry.miracles.active", keys);
+            Assert.Contains("godgame.registry.miracles.sustained", keys);
+            Assert.Contains("godgame.registry.miracles.cooling", keys);
 
             var miracleMetadata = _entityManager.GetComponentData<RegistryMetadata>(_miracleRegistryEntity);
             Assert.AreEqual(21u, miracleMetadata.LastUpdateTick);
@@ -427,6 +431,88 @@ namespace Godgame.Tests.Registry
                 CurrentSpeedMultiplier = 1f,
                 IsPaused = false
             });
+        }
+
+        [Test]
+        public void BridgeRegistersMiracles()
+        {
+            var sustainedMiracle = CreateMiracle(
+                type: MiracleType.Rain,
+                castingMode: MiracleCastingMode.Sustained,
+                lifecycle: MiracleLifecycleState.Active,
+                position: new float3(3f, 0f, 1f),
+                baseCost: 15f,
+                sustainedCost: 4f,
+                cooldownSeconds: 1.5f);
+
+            var coolingMiracle = CreateMiracle(
+                type: MiracleType.Fireball,
+                castingMode: MiracleCastingMode.Token,
+                lifecycle: MiracleLifecycleState.CoolingDown,
+                position: new float3(-6f, 0f, 4f),
+                baseCost: 25f,
+                sustainedCost: 0f,
+                cooldownSeconds: 4f);
+
+            StepSpatialSystems();
+
+            UpdateSystem(_bridgeHandle);
+            UpdateSystem(_directoryHandle);
+            UpdateSystem(_telemetryHandle);
+
+            var registry = _entityManager.GetComponentData<MiracleRegistry>(_miracleRegistryEntity);
+            Assert.AreEqual(2, registry.TotalMiracles);
+            Assert.AreEqual(1, registry.ActiveMiracles);
+            Assert.AreEqual(1, registry.SustainedMiracles);
+            Assert.AreEqual(1, registry.CoolingMiracles);
+            Assert.Greater(registry.TotalEnergyCost, 0f);
+            Assert.Greater(registry.TotalCooldownSeconds, 0f);
+
+            var entries = _entityManager.GetBuffer<MiracleRegistryEntry>(_miracleRegistryEntity);
+            Assert.AreEqual(2, entries.Length);
+
+            var sustainedFound = false;
+            var coolingFound = false;
+
+            for (var i = 0; i < entries.Length; i++)
+            {
+                var entry = entries[i];
+                if (entry.MiracleEntity == sustainedMiracle)
+                {
+                    sustainedFound = true;
+                    Assert.AreEqual(MiracleLifecycleState.Active, entry.Lifecycle);
+                    Assert.AreEqual(MiracleCastingMode.Sustained, entry.CastingMode);
+                    Assert.AreNotEqual(-1, entry.TargetCellId);
+                    Assert.AreEqual(MiracleRegistryFlags.Active | MiracleRegistryFlags.Sustained, entry.Flags & (MiracleRegistryFlags.Active | MiracleRegistryFlags.Sustained));
+                }
+                else if (entry.MiracleEntity == coolingMiracle)
+                {
+                    coolingFound = true;
+                    Assert.AreEqual(MiracleLifecycleState.CoolingDown, entry.Lifecycle);
+                    Assert.AreEqual(MiracleRegistryFlags.CoolingDown, entry.Flags & MiracleRegistryFlags.CoolingDown);
+                }
+            }
+
+            Assert.IsTrue(sustainedFound, "Expected sustained miracle entry");
+            Assert.IsTrue(coolingFound, "Expected cooling miracle entry");
+
+            var snapshot = _entityManager.CreateEntityQuery(typeof(GodgameRegistrySnapshot)).GetSingleton<GodgameRegistrySnapshot>();
+            Assert.AreEqual(2, snapshot.MiracleCount);
+            Assert.AreEqual(1, snapshot.ActiveMiracles);
+            Assert.AreEqual(1, snapshot.SustainedMiracles);
+            Assert.AreEqual(1, snapshot.CoolingMiracles);
+            Assert.Greater(snapshot.TotalMiracleEnergyCost, 10f);
+            Assert.Greater(snapshot.TotalMiracleCooldownSeconds, 4f);
+
+            var telemetryBuffer = _entityManager.GetBuffer<TelemetryMetric>(_telemetryEntity);
+            var miracleKeys = new List<string>(telemetryBuffer.Length);
+            for (var i = 0; i < telemetryBuffer.Length; i++)
+            {
+                miracleKeys.Add(telemetryBuffer[i].Key.ToString());
+            }
+
+            Assert.Contains("godgame.registry.miracles.energy", miracleKeys);
+            Assert.Contains("godgame.registry.miracles.cooldown", miracleKeys);
         }
 
         private void EnsureRegistryDirectory()
@@ -1029,6 +1115,53 @@ namespace Godgame.Tests.Registry
             ticket.ResourceTypeIndex = 6;
             _entityManager.SetComponentData(entity, ticket);
         }
+
+        private Entity CreateMiracle(MiracleType type, MiracleCastingMode castingMode, MiracleLifecycleState lifecycle, float3 position, float baseCost, float sustainedCost, float cooldownSeconds)
+        {
+            var entity = _entityManager.CreateEntity(
+                typeof(MiracleDefinition),
+                typeof(MiracleRuntimeState),
+                typeof(MiracleTarget),
+                typeof(LocalTransform),
+                typeof(MiracleCaster));
+
+            _entityManager.SetComponentData(entity, LocalTransform.FromPositionRotationScale(position, quaternion.identity, 1f));
+            _entityManager.SetComponentData(entity, new MiracleDefinition
+            {
+                Type = type,
+                CastingMode = castingMode,
+                BaseRadius = 6f,
+                BaseIntensity = 1f,
+                BaseCost = baseCost,
+                SustainedCostPerSecond = sustainedCost
+            });
+
+            _entityManager.SetComponentData(entity, new MiracleRuntimeState
+            {
+                Lifecycle = lifecycle,
+                ChargePercent = 50f,
+                CurrentRadius = 6f,
+                CurrentIntensity = 1f,
+                CooldownSecondsRemaining = cooldownSeconds,
+                LastCastTick = 24,
+                AlignmentDelta = 0
+            });
+
+            _entityManager.SetComponentData(entity, new MiracleTarget
+            {
+                TargetPosition = position,
+                TargetEntity = Entity.Null
+            });
+
+            _entityManager.SetComponentData(entity, new MiracleCaster
+            {
+                CasterEntity = Entity.Null,
+                HandEntity = Entity.Null
+            });
+
+            return entity;
+        }
+
 
         private void MutateStorehouse(Entity entity, float stored, float reserved)
         {

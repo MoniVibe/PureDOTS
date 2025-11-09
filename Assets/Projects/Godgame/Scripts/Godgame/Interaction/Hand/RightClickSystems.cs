@@ -1,5 +1,6 @@
 using Godgame.Interaction;
 using Godgame.Registry;
+using Godgame.Resources;
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
@@ -18,6 +19,7 @@ namespace Godgame.Interaction.HandSystems
         private EntityQuery _handQuery;
         private ComponentLookup<StorehouseInventory> _storehouseInventoryLookup;
         private ComponentLookup<GodgameStorehouse> _storehouseMirrorLookup;
+        private ComponentLookup<AggregatePile> _aggregatePileLookup;
         private ComponentLookup<ResourceChunkState> _resourceChunkLookup;
         private ComponentLookup<Parent> _parentLookup;
 
@@ -36,6 +38,7 @@ namespace Godgame.Interaction.HandSystems
 
             _storehouseInventoryLookup = state.GetComponentLookup<StorehouseInventory>(isReadOnly: true);
             _storehouseMirrorLookup = state.GetComponentLookup<GodgameStorehouse>(isReadOnly: true);
+            _aggregatePileLookup = state.GetComponentLookup<AggregatePile>(isReadOnly: true);
             _resourceChunkLookup = state.GetComponentLookup<ResourceChunkState>(isReadOnly: true);
             _parentLookup = state.GetComponentLookup<Parent>(isReadOnly: true);
         }
@@ -44,6 +47,7 @@ namespace Godgame.Interaction.HandSystems
         {
             _storehouseInventoryLookup.Update(ref state);
             _storehouseMirrorLookup.Update(ref state);
+            _aggregatePileLookup.Update(ref state);
             _resourceChunkLookup.Update(ref state);
             _parentLookup.Update(ref state);
 
@@ -100,7 +104,7 @@ namespace Godgame.Interaction.HandSystems
                 : default;
 
             var pile = hitEntity != Entity.Null
-                ? ResolvePile(hitEntity, _parentLookup, _resourceChunkLookup)
+                ? ResolvePile(hitEntity, _parentLookup, _aggregatePileLookup, _resourceChunkLookup)
                 : default;
 
             var pileType = pile.Found ? ResolveResourceType(pile.ResourceTypeIndex, resourceCatalog) : ResourceType.None;
@@ -248,6 +252,7 @@ namespace Godgame.Interaction.HandSystems
         private static PileResolution ResolvePile(
             Entity hitEntity,
             ComponentLookup<Parent> parentLookup,
+            ComponentLookup<AggregatePile> aggregatePileLookup,
             ComponentLookup<ResourceChunkState> resourceChunkLookup)
         {
             var result = new PileResolution
@@ -263,6 +268,16 @@ namespace Godgame.Interaction.HandSystems
 
             while (current != Entity.Null && depth++ < 16)
             {
+                if (aggregatePileLookup.HasComponent(current))
+                {
+                    var aggregatePile = aggregatePileLookup[current];
+                    result.Entity = current;
+                    result.Units = aggregatePile.Amount;
+                    result.ResourceTypeIndex = aggregatePile.ResourceTypeIndex;
+                    result.Found = true;
+                    return result;
+                }
+
                 if (resourceChunkLookup.HasComponent(current))
                 {
                     var chunk = resourceChunkLookup[current];

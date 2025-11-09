@@ -139,6 +139,12 @@ namespace Godgame.Registry
         public float AverageBandMorale;
         public float AverageBandCohesion;
         public float AverageBandDiscipline;
+        public int MiracleCount;
+        public int ActiveMiracles;
+        public int SustainedMiracles;
+        public int CoolingMiracles;
+        public float TotalMiracleEnergyCost;
+        public float TotalMiracleCooldownSeconds;
         public uint LastRegistryTick;
     }
 

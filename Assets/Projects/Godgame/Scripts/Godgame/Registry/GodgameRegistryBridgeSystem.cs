@@ -25,9 +25,12 @@ namespace Godgame.Registry
         private EntityQuery _resourceNodeQuery;
         private EntityQuery _spawnerQuery;
         private EntityQuery _bandQuery;
+        private EntityQuery _miracleQuery;
         private Entity _snapshotEntity;
         private ComponentLookup<SpatialGridResidency> _spatialResidencyLookup;
-        private ComponentLookup<MiracleRuntimeState> _miracleRuntimeLookup;
+        private ComponentLookup<MiracleTarget> _miracleTargetLookup;
+        private ComponentLookup<MiracleCaster> _miracleCasterLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
 
         public void OnCreate(ref SystemState state)
         {
@@ -38,6 +41,7 @@ namespace Godgame.Registry
             state.RequireForUpdate<ResourceRegistry>();
             state.RequireForUpdate<SpawnerRegistry>();
             state.RequireForUpdate<BandRegistry>();
+            state.RequireForUpdate<MiracleRegistry>();
 
             _villagerQuery = SystemAPI.QueryBuilder()
                 .WithAll<GodgameVillager, LocalTransform>()
@@ -60,7 +64,14 @@ namespace Godgame.Registry
                 .Build();
 
             _spatialResidencyLookup = state.GetComponentLookup<SpatialGridResidency>(isReadOnly: true);
-            _miracleRuntimeLookup = state.GetComponentLookup<MiracleRuntimeState>(isReadOnly: true);
+            _miracleTargetLookup = state.GetComponentLookup<MiracleTarget>(isReadOnly: true);
+            _miracleCasterLookup = state.GetComponentLookup<MiracleCaster>(isReadOnly: true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+
+            _miracleQuery = SystemAPI.QueryBuilder()
+                .WithAll<MiracleDefinition, MiracleRuntimeState>()
+                .WithNone<PlaybackGuardTag>()
+                .Build();
 
             using var snapshotQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<GodgameRegistrySnapshot>());
             if (snapshotQuery.IsEmptyIgnoreFilter)
@@ -80,7 +91,9 @@ namespace Godgame.Registry
         public void OnUpdate(ref SystemState state)
         {
             _spatialResidencyLookup.Update(ref state);
-            _miracleRuntimeLookup.Update(ref state);
+            _miracleTargetLookup.Update(ref state);
+            _miracleCasterLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
             var tick = SystemAPI.GetSingleton<TimeState>().Tick;
             var summary = new BridgeSummary(tick);
 
@@ -89,6 +102,7 @@ namespace Godgame.Registry
             UpdateResourceRegistry(ref state, ref summary);
             UpdateSpawnerRegistry(ref state, ref summary);
             UpdateBandRegistry(ref state, ref summary);
+            UpdateMiracleRegistry(ref state, ref summary);
 
             ref var snapshot = ref SystemAPI.GetComponentRW<GodgameRegistrySnapshot>(_snapshotEntity).ValueRW;
             snapshot.VillagerCount = summary.VillagerCount;
@@ -114,6 +128,12 @@ namespace Godgame.Registry
             snapshot.AverageBandMorale = summary.BandCount > 0 ? summary.BandMoraleSum / summary.BandCount : 0f;
             snapshot.AverageBandCohesion = summary.BandCount > 0 ? summary.BandCohesionSum / summary.BandCount : 0f;
             snapshot.AverageBandDiscipline = summary.BandCount > 0 ? summary.BandDisciplineSum / summary.BandCount : 0f;
+            snapshot.MiracleCount = summary.MiracleCount;
+            snapshot.ActiveMiracles = summary.ActiveMiracles;
+            snapshot.SustainedMiracles = summary.SustainedMiracles;
+            snapshot.CoolingMiracles = summary.CoolingMiracles;
+            snapshot.TotalMiracleEnergyCost = summary.TotalMiracleEnergyCost;
+            snapshot.TotalMiracleCooldownSeconds = summary.TotalMiracleCooldownSeconds;
             snapshot.LastRegistryTick = summary.Tick;
         }
 
@@ -411,6 +431,147 @@ namespace Godgame.Registry
             registry.TotalStorehouses = summary.StorehouseCount;
             registry.TotalCapacity = summary.TotalStorehouseCapacity;
             registry.TotalStored = summary.TotalStorehouseStored;
+            registry.LastUpdateTick = summary.Tick;
+            registry.LastSpatialVersion = spatialVersionSource;
+            registry.SpatialResolvedCount = resolvedCount;
+            registry.SpatialFallbackCount = fallbackCount;
+            registry.SpatialUnmappedCount = unmappedCount;
+        }
+
+        private void UpdateMiracleRegistry(ref SystemState state, ref BridgeSummary summary)
+        {
+            var registryEntity = SystemAPI.GetSingletonEntity<MiracleRegistry>();
+            var buffer = state.EntityManager.GetBuffer<MiracleRegistryEntry>(registryEntity);
+            ref var metadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
+            ref var registry = ref SystemAPI.GetComponentRW<MiracleRegistry>(registryEntity).ValueRW;
+
+            if (metadata.ArchetypeId == 0)
+            {
+                metadata.ArchetypeId = GodgameRegistryIds.MiracleArchetype;
+            }
+
+            var expectedCount = math.max(2, _miracleQuery.CalculateEntityCount());
+            using var builder = new DeterministicRegistryBuilder<MiracleRegistryEntry>(expectedCount, Allocator.Temp);
+
+            var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);
+            var hasSpatialState = SystemAPI.TryGetSingleton(out SpatialGridState spatialState);
+            var hasSpatialGrid = hasSpatialConfig && hasSpatialState && spatialConfig.CellCount > 0 && spatialConfig.CellSize > 0f;
+            var hasSpatialSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState spatialSyncState);
+            var spatialVersionSource = hasSpatialGrid ? spatialState.Version : (hasSpatialSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
+            var requireSpatialSync = metadata.SupportsSpatialQueries && hasSpatialSyncState && spatialSyncState.HasSpatialData;
+
+            var resolvedCount = 0;
+            var fallbackCount = 0;
+            var unmappedCount = 0;
+
+            foreach (var (definition, runtime, entity) in SystemAPI
+                         .Query<RefRO<MiracleDefinition>, RefRO<MiracleRuntimeState>>()
+                         .WithNone<PlaybackGuardTag>()
+                         .WithEntityAccess())
+            {
+                var targetPosition = float3.zero;
+                if (_miracleTargetLookup.HasComponent(entity))
+                {
+                    targetPosition = _miracleTargetLookup[entity].TargetPosition;
+                }
+                else if (_localTransformLookup.HasComponent(entity))
+                {
+                    targetPosition = _localTransformLookup[entity].Position;
+                }
+
+                var cellId = -1;
+                var entrySpatialVersion = spatialVersionSource;
+
+                if (hasSpatialGrid)
+                {
+                    SpatialHash.Quantize(targetPosition, spatialConfig, out var coords);
+                    var computedCell = SpatialHash.Flatten(in coords, in spatialConfig);
+                    if ((uint)computedCell < (uint)spatialConfig.CellCount)
+                    {
+                        cellId = computedCell;
+                        entrySpatialVersion = spatialState.Version;
+                        fallbackCount++;
+                    }
+                    else
+                    {
+                        cellId = -1;
+                        entrySpatialVersion = 0;
+                        unmappedCount++;
+                    }
+                }
+
+                var flags = MiracleRegistryFlags.None;
+                if (runtime.ValueRO.Lifecycle == MiracleLifecycleState.Active)
+                {
+                    flags |= MiracleRegistryFlags.Active;
+                }
+
+                if (definition.ValueRO.CastingMode == MiracleCastingMode.Sustained)
+                {
+                    flags |= MiracleRegistryFlags.Sustained;
+                }
+
+                if (runtime.ValueRO.Lifecycle == MiracleLifecycleState.CoolingDown)
+                {
+                    flags |= MiracleRegistryFlags.CoolingDown;
+                }
+
+                var casterEntity = _miracleCasterLookup.HasComponent(entity)
+                    ? _miracleCasterLookup[entity].CasterEntity
+                    : Entity.Null;
+
+                builder.Add(new MiracleRegistryEntry
+                {
+                    MiracleEntity = entity,
+                    CasterEntity = casterEntity,
+                    Type = definition.ValueRO.Type,
+                    CastingMode = definition.ValueRO.CastingMode,
+                    Lifecycle = runtime.ValueRO.Lifecycle,
+                    Flags = flags,
+                    TargetPosition = targetPosition,
+                    TargetCellId = cellId,
+                    SpatialVersion = entrySpatialVersion,
+                    ChargePercent = runtime.ValueRO.ChargePercent,
+                    CurrentRadius = runtime.ValueRO.CurrentRadius,
+                    CurrentIntensity = runtime.ValueRO.CurrentIntensity,
+                    CooldownSecondsRemaining = runtime.ValueRO.CooldownSecondsRemaining,
+                    EnergyCostThisCast = definition.ValueRO.BaseCost,
+                    LastCastTick = runtime.ValueRO.LastCastTick
+                });
+
+                summary.MiracleCount++;
+                if ((flags & MiracleRegistryFlags.Active) != 0)
+                {
+                    summary.ActiveMiracles++;
+                    summary.TotalMiracleEnergyCost += definition.ValueRO.BaseCost;
+                }
+
+                if ((flags & MiracleRegistryFlags.Sustained) != 0 && (flags & MiracleRegistryFlags.Active) != 0)
+                {
+                    summary.SustainedMiracles++;
+                    summary.TotalMiracleEnergyCost += definition.ValueRO.SustainedCostPerSecond;
+                }
+
+                if ((flags & MiracleRegistryFlags.CoolingDown) != 0)
+                {
+                    summary.CoolingMiracles++;
+                }
+
+                summary.TotalMiracleCooldownSeconds += math.max(0f, runtime.ValueRO.CooldownSecondsRemaining);
+            }
+
+            var continuity = hasSpatialGrid
+                ? RegistryContinuitySnapshot.WithSpatialData(spatialVersionSource, resolvedCount, fallbackCount, unmappedCount, requireSpatialSync)
+                : RegistryContinuitySnapshot.WithoutSpatialData(requireSpatialSync);
+
+            builder.ApplyTo(ref buffer, ref metadata, summary.Tick, continuity);
+
+            registry.TotalMiracles = summary.MiracleCount;
+            registry.ActiveMiracles = summary.ActiveMiracles;
+            registry.SustainedMiracles = summary.SustainedMiracles;
+            registry.CoolingMiracles = summary.CoolingMiracles;
+            registry.TotalEnergyCost = summary.TotalMiracleEnergyCost;
+            registry.TotalCooldownSeconds = summary.TotalMiracleCooldownSeconds;
             registry.LastUpdateTick = summary.Tick;
             registry.LastSpatialVersion = spatialVersionSource;
             registry.SpatialResolvedCount = resolvedCount;
@@ -818,6 +979,12 @@ namespace Godgame.Registry
             public float BandMoraleSum;
             public float BandCohesionSum;
             public float BandDisciplineSum;
+            public int MiracleCount;
+            public int ActiveMiracles;
+            public int SustainedMiracles;
+            public int CoolingMiracles;
+            public float TotalMiracleEnergyCost;
+            public float TotalMiracleCooldownSeconds;
 
             public BridgeSummary(uint tick)
             {
@@ -845,6 +1012,12 @@ namespace Godgame.Registry
                 BandMoraleSum = 0f;
                 BandCohesionSum = 0f;
                 BandDisciplineSum = 0f;
+                MiracleCount = 0;
+                ActiveMiracles = 0;
+                SustainedMiracles = 0;
+                CoolingMiracles = 0;
+                TotalMiracleEnergyCost = 0f;
+                TotalMiracleCooldownSeconds = 0f;
             }
         }
     }
@@ -880,6 +1053,12 @@ namespace Godgame.Registry
         private static readonly FixedString64Bytes MetricBandMorale = new FixedString64Bytes("godgame.registry.bands.morale.avg");
         private static readonly FixedString64Bytes MetricBandCohesion = new FixedString64Bytes("godgame.registry.bands.cohesion.avg");
         private static readonly FixedString64Bytes MetricBandDiscipline = new FixedString64Bytes("godgame.registry.bands.discipline.avg");
+        private static readonly FixedString64Bytes MetricMiracles = new FixedString64Bytes("godgame.registry.miracles");
+        private static readonly FixedString64Bytes MetricMiraclesActive = new FixedString64Bytes("godgame.registry.miracles.active");
+        private static readonly FixedString64Bytes MetricMiraclesSustained = new FixedString64Bytes("godgame.registry.miracles.sustained");
+        private static readonly FixedString64Bytes MetricMiraclesCooling = new FixedString64Bytes("godgame.registry.miracles.cooling");
+        private static readonly FixedString64Bytes MetricMiracleEnergy = new FixedString64Bytes("godgame.registry.miracles.energy");
+        private static readonly FixedString64Bytes MetricMiracleCooldown = new FixedString64Bytes("godgame.registry.miracles.cooldown");
         private static readonly FixedString64Bytes MetricTick = new FixedString64Bytes("godgame.registry.tick");
 
         public void OnCreate(ref SystemState state)
@@ -920,6 +1099,12 @@ namespace Godgame.Registry
             buffer.Add(new TelemetryMetric { Key = MetricBandMorale, Value = snapshot.AverageBandMorale, Unit = TelemetryMetricUnit.Ratio });
             buffer.Add(new TelemetryMetric { Key = MetricBandCohesion, Value = snapshot.AverageBandCohesion, Unit = TelemetryMetricUnit.Ratio });
             buffer.Add(new TelemetryMetric { Key = MetricBandDiscipline, Value = snapshot.AverageBandDiscipline, Unit = TelemetryMetricUnit.Ratio });
+            buffer.Add(new TelemetryMetric { Key = MetricMiracles, Value = snapshot.MiracleCount, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricMiraclesActive, Value = snapshot.ActiveMiracles, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricMiraclesSustained, Value = snapshot.SustainedMiracles, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricMiraclesCooling, Value = snapshot.CoolingMiracles, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricMiracleEnergy, Value = snapshot.TotalMiracleEnergyCost, Unit = TelemetryMetricUnit.Count });
+            buffer.Add(new TelemetryMetric { Key = MetricMiracleCooldown, Value = snapshot.TotalMiracleCooldownSeconds, Unit = TelemetryMetricUnit.Time });
             buffer.Add(new TelemetryMetric { Key = MetricTick, Value = snapshot.LastRegistryTick, Unit = TelemetryMetricUnit.Count });
         }
     }
