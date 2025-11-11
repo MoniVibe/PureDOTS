@@ -6,9 +6,61 @@ using UnityEngine;
 
 namespace PureDOTS.Authoring
 {
-    public class AggregateBehaviorProfileBaker : Baker<AggregateBehaviorProfileAsset>
+    public class AggregateBehaviorProfileAuthoring : MonoBehaviour
     {
-        public override void Bake(AggregateBehaviorProfileAsset authoring)
+        [Tooltip("Optional ScriptableObject source. If assigned, fields are pulled from the asset.")]
+        public AggregateBehaviorProfileAsset profileAsset;
+
+        [Header("Cadence")]
+        public uint initiativeIntervalTicks = 240u;
+        public uint initiativeJitterTicks = 12u;
+
+        [Header("Collective vs Individual Weights")]
+        public float collectiveNeedWeight = 1f;
+        public float personalAmbitionWeight = 1f;
+        public float emergencyOverrideWeight = 2f;
+
+        [Header("Alignment / Outlook Multipliers")]
+        public AnimationCurve lawfulnessComplianceCurve = AnimationCurve.Linear(-1f, 0.5f, 1f, 1.5f);
+        public AnimationCurve chaosFreedomCurve = AnimationCurve.Linear(-1f, 0.5f, 1f, 1.5f);
+
+        [Header("Discipline Preferences")]
+        public float disciplineResistanceWeight = 1.25f;
+        public float shortageThreshold = 0.35f;
+
+        [Header("Emergency Flags")]
+        public bool allowConscriptionOverrides = true;
+        public float conscriptionWeight = 3f;
+        public float defenseEmergencyWeight = 2.5f;
+
+        public AggregateBehaviorProfileBlob.BuildData ToBuildData()
+        {
+            if (profileAsset != null)
+            {
+                return profileAsset.ToBuildData();
+            }
+
+            return new AggregateBehaviorProfileBlob.BuildData
+            {
+                InitiativeIntervalTicks = initiativeIntervalTicks,
+                InitiativeJitterTicks = initiativeJitterTicks,
+                CollectiveNeedWeight = collectiveNeedWeight,
+                PersonalAmbitionWeight = personalAmbitionWeight,
+                EmergencyOverrideWeight = emergencyOverrideWeight,
+                LawfulnessComplianceCurve = lawfulnessComplianceCurve,
+                ChaosFreedomCurve = chaosFreedomCurve,
+                DisciplineResistanceWeight = disciplineResistanceWeight,
+                ShortageThreshold = shortageThreshold,
+                AllowConscriptionOverrides = allowConscriptionOverrides,
+                ConscriptionWeight = conscriptionWeight,
+                DefenseEmergencyWeight = defenseEmergencyWeight
+            };
+        }
+    }
+
+    public class AggregateBehaviorProfileBaker : Baker<AggregateBehaviorProfileAuthoring>
+    {
+        public override void Bake(AggregateBehaviorProfileAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.None);
             var buildData = authoring.ToBuildData();

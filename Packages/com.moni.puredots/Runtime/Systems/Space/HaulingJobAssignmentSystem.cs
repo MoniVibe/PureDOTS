@@ -12,29 +12,39 @@ namespace PureDOTS.Systems.Space
     [UpdateAfter(typeof(HaulingJobManagerSystem))]
     public partial struct HaulingJobAssignmentSystem : ISystem
     {
-        private HaulingJobManagerSystem _jobManager;
         private ComponentLookup<ResourcePile> _pileLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private BufferLookup<HaulingJobQueueEntry> _queueLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _pileLookup = state.GetComponentLookup<ResourcePile>(true);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _queueLookup = state.GetBufferLookup<HaulingJobQueueEntry>(false);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _jobManager = state.WorldUnmanaged.GetExistingSystemState<HaulingJobManagerSystem>().GetManagedSystem<HaulingJobManagerSystem>();
-            var queueLookup = _jobManager.GetQueueLookup(ref state);
-            var queueEntity = _jobManager.GetQueueEntity();
-            if (!queueLookup.HasBuffer(queueEntity))
+            _queueLookup.Update(ref state);
+            _pileLookup.Update(ref state);
+            _transformLookup.Update(ref state);
+
+            // Find the queue entity (created by HaulingJobManagerSystem)
+            Entity queueEntity = Entity.Null;
+            foreach (var (queueBuffer, entity) in SystemAPI.Query<DynamicBuffer<HaulingJobQueueEntry>>().WithEntityAccess())
+            {
+                queueEntity = entity;
+                break;
+            }
+
+            if (queueEntity == Entity.Null || !_queueLookup.HasBuffer(queueEntity))
             {
                 return;
             }
 
-            var queue = queueLookup[queueEntity];
+            var queue = _queueLookup[queueEntity];
             if (queue.Length == 0)
             {
                 return;

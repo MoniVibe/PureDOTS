@@ -14,7 +14,6 @@ namespace PureDOTS.Systems.Space
     {
         private EntityArchetype _pileArchetype;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<DropOnlyHarvesterTag>();

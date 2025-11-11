@@ -157,7 +157,9 @@ namespace PureDOTS.Systems
                 }
             }
 
+#if UNITY_EDITOR
             Debug.Log(text);
+#endif
         }
 
         private static void AppendKind(ref FixedString512Bytes builder, RegistryKind kind)

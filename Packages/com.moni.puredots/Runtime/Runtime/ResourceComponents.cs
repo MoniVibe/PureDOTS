@@ -27,6 +27,9 @@ namespace PureDOTS.Runtime.Components
     public struct ResourceSourceState : IComponentData
     {
         public float UnitsRemaining;
+        public ResourceQualityTier QualityTier;
+        public ushort BaseQuality;
+        public ushort QualityVariance;
     }
 
     public struct StorehouseConfig : IComponentData
@@ -52,6 +55,8 @@ namespace PureDOTS.Runtime.Components
         public FixedString64Bytes ResourceTypeId;
         public float Amount;
         public float Reserved;
+        public byte TierId;
+        public ushort AverageQuality;
     }
 
     public struct ResourceChunkConfig : IComponentData
@@ -80,6 +85,8 @@ namespace PureDOTS.Runtime.Components
         public ResourceChunkFlags Flags;
         public float3 Velocity;
         public float Age;
+        public ResourceQualityTier QualityTier;
+        public ushort AverageQuality;
     }
 
     [System.Flags]
@@ -189,6 +196,9 @@ namespace PureDOTS.Runtime.Components
         public uint SpatialVersion;
         public ushort FamilyIndex;
         public ResourceTier Tier;
+        public ResourceQualityTier QualityTier;
+        public ushort AverageQuality;
+        public uint KnowledgeMask;
 
         public int CompareTo(ResourceRegistryEntry other)
         {
@@ -218,6 +228,8 @@ namespace PureDOTS.Runtime.Components
         public float Capacity;
         public float Stored;
         public float Reserved;
+        public byte TierId;
+        public ushort AverageQuality;
     }
 
     public struct StorehouseRegistryEntry : IBufferElementData, IComparable<StorehouseRegistryEntry>, IRegistryEntry
@@ -226,10 +238,12 @@ namespace PureDOTS.Runtime.Components
         public float3 Position;
         public float TotalCapacity;
         public float TotalStored;
-        public FixedList32Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
+        public FixedList64Bytes<StorehouseRegistryCapacitySummary> TypeSummaries;
         public uint LastMutationTick;
         public int CellId;
         public uint SpatialVersion;
+        public ResourceQualityTier DominantTier;
+        public ushort AverageQuality;
 
         public int CompareTo(StorehouseRegistryEntry other)
         {

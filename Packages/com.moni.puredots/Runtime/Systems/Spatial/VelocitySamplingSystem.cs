@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Spatial

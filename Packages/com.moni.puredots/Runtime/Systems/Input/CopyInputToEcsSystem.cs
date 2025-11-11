@@ -4,7 +4,6 @@ using PureDOTS.Runtime.Camera;
 #if DEVTOOLS_ENABLED
 using PureDOTS.Runtime.Devtools;
 #endif
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -13,20 +12,33 @@ namespace PureDOTS.Systems.Input
 {
     /// <summary>
     /// Copies input snapshots from Mono bridge to ECS once per DOTS tick.
-    /// Runs OrderFirst in SimulationSystemGroup to ensure input is available for all downstream systems.
+    /// Runs in CameraInputSystemGroup (before SimulationSystemGroup) to ensure input is processed
+    /// with highest priority for instant camera/control response.
     /// Handles multi-tick catch-up by clamping deltas if multiple ticks occur in one frame.
+    /// 
+    /// Note: This system cannot be Burst-compiled because it accesses managed InputSnapshotBridge.
+    /// ISystem structs must be unmanaged, so we cannot cache the bridge reference as a field.
+    /// Using Object.FindFirstObjectByType is acceptable here since the system is non-Burst anyway.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(CameraInputSystemGroup))]
     public partial struct CopyInputToEcsSystem : ISystem
     {
+        private Entity _cursorCacheEntity;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            
+#if DEVTOOLS_ENABLED
+            // Create cursor hit cache entity once in OnCreate
+            _cursorCacheEntity = state.EntityManager.CreateEntity(typeof(CursorHitCache));
+#endif
         }
 
         public void OnUpdate(ref SystemState state)
         {
-            // Find Mono bridge (ISystem structs must be unmanaged, so we can't cache the reference)
+            // Find Mono bridge (ISystem structs must be unmanaged, so we can't cache the managed reference)
+            // This is acceptable since this system cannot be Burst-compiled anyway due to managed bridge access
             var bridge = Object.FindFirstObjectByType<InputSnapshotBridge>();
             if (bridge == null)
             {
@@ -88,18 +100,13 @@ namespace PureDOTS.Systems.Input
                 return;
             }
 
-            // Find or create cursor hit cache entity
-            Entity cacheEntity;
-            using (var query = SystemAPI.QueryBuilder().WithAll<CursorHitCache>().Build())
+            // Use the entity created in OnCreate
+            Entity cacheEntity = _cursorCacheEntity;
+            if (!state.EntityManager.Exists(cacheEntity))
             {
-                if (!query.IsEmptyIgnoreFilter)
-                {
-                    cacheEntity = query.GetSingletonEntity();
-                }
-                else
-                {
-                    cacheEntity = state.EntityManager.CreateEntity(typeof(CursorHitCache));
-                }
+                // Entity was destroyed, recreate it (shouldn't happen, but handle gracefully)
+                cacheEntity = state.EntityManager.CreateEntity(typeof(CursorHitCache));
+                _cursorCacheEntity = cacheEntity;
             }
 
             // Get raycast hit from bridge

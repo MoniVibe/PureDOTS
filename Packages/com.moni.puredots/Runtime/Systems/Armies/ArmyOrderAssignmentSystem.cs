@@ -19,10 +19,9 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _villageQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<VillageId>(),
-                ComponentType.ReadOnly<LocalTransform>(),
-                ComponentType.ReadOnly<VillageWorkforcePolicy>());
+            _villageQuery = SystemAPI.QueryBuilder()
+                .WithAll<VillageId, LocalTransform, VillageWorkforcePolicy>()
+                .Build();
             state.RequireForUpdate<ArmyIntent>();
             state.RequireForUpdate(_villageQuery);
         }
@@ -48,7 +47,8 @@ namespace PureDOTS.Systems
             }
 
             foreach (var (intent, order, armyId, entity) in SystemAPI
-                         .Query<RefRO<ArmyIntent>, RefRW<ArmyOrder>, RefRO<ArmyId>>())
+                         .Query<RefRO<ArmyIntent>, RefRW<ArmyOrder>, RefRO<ArmyId>>()
+                         .WithEntityAccess())
             {
                 if (!villageLookup.TryGetValue(armyId.ValueRO.FactionId, out var village))
                 {

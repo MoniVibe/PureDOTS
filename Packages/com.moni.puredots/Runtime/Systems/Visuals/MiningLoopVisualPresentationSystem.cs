@@ -1,72 +1,70 @@
 using PureDOTS.Runtime.Config;
 using PureDOTS.Runtime.Visuals;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace PureDOTS.Systems.Visuals
 {
+    [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    public partial class MiningLoopVisualPresentationSystem : SystemBase
+    public partial struct MiningLoopVisualPresentationSystem : ISystem
     {
         private EntityQuery _prefabQuery;
         private EntityQuery _visualQuery;
-        private RuntimeConfigVar _visualToggleVar;
-        private bool _visualToggleAssigned;
-        private bool _loggedMissingPrefabs;
+        private bool _hasVisualToggle;
+        private bool _visualToggleEnabled;
 
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            RequireForUpdate<MiningVisualManifest>();
-            _prefabQuery = GetEntityQuery(ComponentType.ReadOnly<MiningVisualPrefab>());
-            _visualQuery = GetEntityQuery(ComponentType.ReadOnly<MiningVisual>(), ComponentType.ReadWrite<LocalTransform>());
+            state.RequireForUpdate<MiningVisualManifest>();
+            _prefabQuery = state.GetEntityQuery(ComponentType.ReadOnly<MiningVisualPrefab>());
+            _visualQuery = state.GetEntityQuery(ComponentType.ReadOnly<MiningVisual>(), ComponentType.ReadWrite<LocalTransform>());
             RuntimeConfigRegistry.Initialize();
-            _visualToggleAssigned = RuntimeConfigRegistry.TryGetVar("visuals.mining.enabled", out _visualToggleVar!);
+            if (RuntimeConfigRegistry.TryGetVar("visuals.mining.enabled", out var configVar))
+            {
+                _hasVisualToggle = true;
+                _visualToggleEnabled = configVar.BoolValue;
+            }
+            else
+            {
+                _hasVisualToggle = false;
+                _visualToggleEnabled = true;
+            }
         }
 
-        protected override void OnUpdate()
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
-            if (_visualToggleAssigned && !_visualToggleVar.BoolValue)
+            if (_hasVisualToggle && !_visualToggleEnabled)
             {
-                CleanupAllVisuals();
+                CleanupAllVisuals(ref state);
                 return;
             }
 
-            if (_prefabQuery.IsEmpty)
+            if (_prefabQuery.IsEmptyIgnoreFilter)
             {
-                if (!_loggedMissingPrefabs)
-                {
-                    Debug.LogWarning("[MiningLoopVisualPresentationSystem] No MiningVisualPrefab found. Skipping visual presentation.");
-                    _loggedMissingPrefabs = true;
-                }
-
-                CleanupAllVisuals();
+                CleanupAllVisuals(ref state);
                 return;
             }
-
-            _loggedMissingPrefabs = false;
 
             var manifestEntity = SystemAPI.GetSingletonEntity<MiningVisualManifest>();
-            var requestBuffer = EntityManager.GetBuffer<MiningVisualRequest>(manifestEntity);
+            var requestBuffer = state.EntityManager.GetBuffer<MiningVisualRequest>(manifestEntity);
             var requests = requestBuffer.ToNativeArray(Allocator.Temp);
 
-            var prefabMap = GatherPrefabs();
-            var entityManager = EntityManager;
+            var prefabMap = GatherPrefabs(ref state);
+            var entityManager = state.EntityManager;
 
-            var existingMap = new NativeParallelHashMap<Entity, Entity>(_visualQuery.CalculateEntityCount(), Allocator.Temp);
+            var existingMap = new NativeParallelHashMap<Entity, Entity>(math.max(1, _visualQuery.CalculateEntityCount()), Allocator.Temp);
             var duplicateVisuals = new NativeList<Entity>(Allocator.Temp);
 
             foreach (var (visual, entity) in SystemAPI.Query<MiningVisual>().WithEntityAccess())
             {
-                if (visual.SourceEntity == Entity.Null)
-                {
-                    duplicateVisuals.Add(entity);
-                    continue;
-                }
-
-                if (!existingMap.TryAdd(visual.SourceEntity, entity))
+                if (visual.SourceEntity == Entity.Null || !existingMap.TryAdd(visual.SourceEntity, entity))
                 {
                     duplicateVisuals.Add(entity);
                 }
@@ -81,7 +79,7 @@ namespace PureDOTS.Systems.Visuals
                 }
             }
 
-            var usedSources = new NativeParallelHashSet<Entity>(requests.Length, Allocator.Temp);
+            var usedSources = new NativeParallelHashSet<Entity>(math.max(1, requests.Length), Allocator.Temp);
 
             for (var i = 0; i < requests.Length; i++)
             {
@@ -91,12 +89,7 @@ namespace PureDOTS.Systems.Visuals
                     continue;
                 }
 
-                if (!prefabMap.TryGetValue((byte)request.VisualType, out var prefabInfo))
-                {
-                    continue;
-                }
-
-                if (prefabInfo.PrefabEntity == Entity.Null)
+                if (!prefabMap.TryGetValue((byte)request.VisualType, out var prefabInfo) || prefabInfo.PrefabEntity == Entity.Null)
                 {
                     continue;
                 }
@@ -106,29 +99,13 @@ namespace PureDOTS.Systems.Visuals
                 if (existingMap.TryGetValue(request.SourceEntity, out var visualEntity) && entityManager.Exists(visualEntity))
                 {
                     usedSources.Add(request.SourceEntity);
-
-                    if (!entityManager.HasComponent<LocalTransform>(visualEntity))
-                    {
-                        entityManager.AddComponentData(visualEntity, LocalTransform.FromPositionRotationScale(request.Position, quaternion.identity, targetScale));
-                    }
-                    else
-                    {
-                        entityManager.SetComponentData(visualEntity, LocalTransform.FromPositionRotationScale(request.Position, quaternion.identity, targetScale));
-                    }
+                    SetTransform(ref entityManager, visualEntity, request.Position, targetScale);
                 }
                 else
                 {
                     usedSources.Add(request.SourceEntity);
                     var instance = entityManager.Instantiate(prefabInfo.PrefabEntity);
-
-                    if (!entityManager.HasComponent<LocalTransform>(instance))
-                    {
-                        entityManager.AddComponentData(instance, LocalTransform.FromPositionRotationScale(request.Position, quaternion.identity, targetScale));
-                    }
-                    else
-                    {
-                        entityManager.SetComponentData(instance, LocalTransform.FromPositionRotationScale(request.Position, quaternion.identity, targetScale));
-                    }
+                    SetTransform(ref entityManager, instance, request.Position, targetScale);
 
                     if (entityManager.HasComponent<MiningVisual>(instance))
                     {
@@ -171,7 +148,7 @@ namespace PureDOTS.Systems.Visuals
             requests.Dispose();
         }
 
-        private void CleanupAllVisuals()
+        private void CleanupAllVisuals(ref SystemState state)
         {
             using var visuals = _visualQuery.ToEntityArray(Allocator.Temp);
             if (visuals.Length == 0)
@@ -185,13 +162,14 @@ namespace PureDOTS.Systems.Visuals
                 ecb.DestroyEntity(visuals[i]);
             }
 
-            ecb.Playback(EntityManager);
+            ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
 
-        private NativeParallelHashMap<byte, PrefabInfo> GatherPrefabs()
+        private NativeParallelHashMap<byte, PrefabInfo> GatherPrefabs(ref SystemState state)
         {
-            var map = new NativeParallelHashMap<byte, PrefabInfo>(_prefabQuery.CalculateEntityCount(), Allocator.Temp);
+            var capacity = math.max(1, _prefabQuery.CalculateEntityCount());
+            var map = new NativeParallelHashMap<byte, PrefabInfo>(capacity, Allocator.Temp);
 
             foreach (var (prefab, entity) in SystemAPI.Query<MiningVisualPrefab>().WithEntityAccess())
             {
@@ -205,6 +183,19 @@ namespace PureDOTS.Systems.Visuals
             return map;
         }
 
+        private static void SetTransform(ref EntityManager entityManager, Entity target, float3 position, float scale)
+        {
+            var transform = LocalTransform.FromPositionRotationScale(position, quaternion.identity, scale);
+            if (entityManager.HasComponent<LocalTransform>(target))
+            {
+                entityManager.SetComponentData(target, transform);
+            }
+            else
+            {
+                entityManager.AddComponentData(target, transform);
+            }
+        }
+
         private struct PrefabInfo
         {
             public Entity PrefabEntity;
@@ -212,4 +203,3 @@ namespace PureDOTS.Systems.Visuals
         }
     }
 }
-

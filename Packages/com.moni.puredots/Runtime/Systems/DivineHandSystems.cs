@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Hand;
 using PureDOTS.Input;
@@ -883,6 +884,14 @@ namespace PureDOTS.Systems
             {
                 var item = itemsBuffer[itemIndex];
                 item.Amount += depositUnits;
+                if (item.TierId == 0)
+                {
+                    item.TierId = (byte)ResourceQualityTier.Unknown;
+                }
+                if (item.AverageQuality == 0)
+                {
+                    item.AverageQuality = 200;
+                }
                 itemsBuffer[itemIndex] = item;
             }
             else
@@ -891,7 +900,9 @@ namespace PureDOTS.Systems
                 {
                     ResourceTypeId = resourceId,
                     Amount = depositUnits,
-                    Reserved = 0f
+                    Reserved = 0f,
+                    TierId = (byte)ResourceQualityTier.Unknown,
+                    AverageQuality = 200
                 });
             }
 

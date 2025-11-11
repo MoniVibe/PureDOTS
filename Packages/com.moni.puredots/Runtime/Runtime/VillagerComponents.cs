@@ -297,6 +297,13 @@ namespace PureDOTS.Runtime.Components
         public byte RelationType; // Friend, Enemy, Family, etc.
     }
 
+    public static class VillagerRelationshipTypes
+    {
+        public const byte Family = 1;
+        public const byte Mentor = 2;
+        public const byte Squad = 3;
+    }
+
     /// <summary>
     /// Path waypoints for navigation.
     /// </summary>
@@ -597,6 +604,28 @@ namespace PureDOTS.Runtime.Components
         public byte RegistryFlags => AvailabilityFlags;
     }
 
+    /// <summary>
+    /// Supplementary per-lesson entry that mirrors villager knowledge inside registry buffers.
+    /// </summary>
+    public struct VillagerLessonRegistryEntry : IBufferElementData, IComparable<VillagerLessonRegistryEntry>, IRegistryEntry
+    {
+        public Entity VillagerEntity;
+        public FixedString64Bytes LessonId;
+        public FixedString64Bytes AxisId;
+        public FixedString64Bytes OppositeLessonId;
+        public float Progress;
+        public byte Difficulty;
+        public byte MetadataFlags;
+
+        public int CompareTo(VillagerLessonRegistryEntry other)
+        {
+            var compare = VillagerEntity.Index.CompareTo(other.VillagerEntity.Index);
+            return compare != 0 ? compare : LessonId.CompareTo(other.LessonId);
+        }
+
+        public Entity RegistryEntity => VillagerEntity;
+    }
+
     public static class VillagerAvailabilityFlags
     {
         public const byte Available = 1 << 0;
@@ -625,6 +654,278 @@ namespace PureDOTS.Runtime.Components
     public struct VillagerAIUtilityBinding : IComponentData
     {
         public FixedList32Bytes<VillagerAIState.Goal> Goals;
+    }
+
+    public struct VillagerLessonProgress
+    {
+        public FixedString64Bytes LessonId;
+        public float Progress;
+    }
+
+    public struct VillagerKnowledge : IComponentData
+    {
+        public uint Flags;
+        public FixedList32Bytes<VillagerLessonProgress> Lessons;
+
+        public int FindLessonIndex(FixedString64Bytes lessonId)
+        {
+            if (lessonId.Length == 0)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < Lessons.Length; i++)
+            {
+                if (Lessons[i].LessonId.Equals(lessonId))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public float GetProgress(FixedString64Bytes lessonId)
+        {
+            var index = FindLessonIndex(lessonId);
+            return index >= 0 ? Lessons[index].Progress : 0f;
+        }
+
+        public bool TryAddLesson(FixedString64Bytes lessonId, float initialProgress = 1f)
+        {
+            if (lessonId.Length == 0 || Lessons.Length >= Lessons.Capacity || FindLessonIndex(lessonId) >= 0)
+            {
+                return false;
+            }
+
+            Lessons.Add(new VillagerLessonProgress
+            {
+                LessonId = lessonId,
+                Progress = math.saturate(initialProgress)
+            });
+            return true;
+        }
+
+        public bool AddProgress(FixedString64Bytes lessonId, float delta, out float newProgress)
+        {
+            newProgress = 0f;
+            if (lessonId.Length == 0 || math.abs(delta) < 1e-5f)
+            {
+                return false;
+            }
+
+            var index = EnsureLesson(lessonId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var entry = Lessons[index];
+            entry.Progress = math.saturate(entry.Progress + delta);
+            Lessons[index] = entry;
+            newProgress = entry.Progress;
+            return true;
+        }
+
+        public bool TrySetProgress(FixedString64Bytes lessonId, float value)
+        {
+            var index = FindLessonIndex(lessonId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var entry = Lessons[index];
+            entry.Progress = math.saturate(value);
+            Lessons[index] = entry;
+            return true;
+        }
+
+        private int EnsureLesson(FixedString64Bytes lessonId)
+        {
+            var existing = FindLessonIndex(lessonId);
+            if (existing >= 0)
+            {
+                return existing;
+            }
+
+            if (Lessons.Length >= Lessons.Capacity || lessonId.Length == 0)
+            {
+                return -1;
+            }
+
+            Lessons.Add(new VillagerLessonProgress
+            {
+                LessonId = lessonId,
+                Progress = 0f
+            });
+            return Lessons.Length - 1;
+        }
+    }
+
+    /// <summary>
+    /// Knowledge store for aggregate entities (villages, guilds, companies, cultures, etc.).
+    /// Mirrors the villager lesson schema but omits individual flags.
+    /// </summary>
+    public struct AggregateKnowledge : IComponentData
+    {
+        public FixedList32Bytes<VillagerLessonProgress> Lessons;
+
+        public int FindLessonIndex(FixedString64Bytes lessonId)
+        {
+            if (lessonId.Length == 0)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < Lessons.Length; i++)
+            {
+                if (Lessons[i].LessonId.Equals(lessonId))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public float GetProgress(FixedString64Bytes lessonId)
+        {
+            var index = FindLessonIndex(lessonId);
+            return index >= 0 ? Lessons[index].Progress : 0f;
+        }
+
+        public bool TryAddLesson(FixedString64Bytes lessonId, float initialProgress = 0f)
+        {
+            if (lessonId.Length == 0 || Lessons.Length >= Lessons.Capacity || FindLessonIndex(lessonId) >= 0)
+            {
+                return false;
+            }
+
+            Lessons.Add(new VillagerLessonProgress
+            {
+                LessonId = lessonId,
+                Progress = math.saturate(initialProgress)
+            });
+            return true;
+        }
+
+        public bool AddProgress(FixedString64Bytes lessonId, float delta, out float newProgress)
+        {
+            newProgress = 0f;
+            if (lessonId.Length == 0 || math.abs(delta) < 1e-5f)
+            {
+                return false;
+            }
+
+            var index = EnsureLesson(lessonId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var entry = Lessons[index];
+            entry.Progress = math.saturate(entry.Progress + delta);
+            Lessons[index] = entry;
+            newProgress = entry.Progress;
+            return true;
+        }
+
+        public bool TrySetProgress(FixedString64Bytes lessonId, float value)
+        {
+            var index = FindLessonIndex(lessonId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var entry = Lessons[index];
+            entry.Progress = math.saturate(value);
+            Lessons[index] = entry;
+            return true;
+        }
+
+        public void ApplyDecay(float decayDelta)
+        {
+            if (decayDelta <= 0f)
+            {
+                return;
+            }
+
+            for (int i = 0; i < Lessons.Length; i++)
+            {
+                var entry = Lessons[i];
+                entry.Progress = math.max(0f, entry.Progress - decayDelta);
+                Lessons[i] = entry;
+            }
+        }
+
+        private int EnsureLesson(FixedString64Bytes lessonId)
+        {
+            var existing = FindLessonIndex(lessonId);
+            if (existing >= 0)
+            {
+                return existing;
+            }
+
+            if (Lessons.Length >= Lessons.Capacity || lessonId.Length == 0)
+            {
+                return -1;
+            }
+
+            Lessons.Add(new VillagerLessonProgress
+            {
+                LessonId = lessonId,
+                Progress = 0f
+            });
+            return Lessons.Length - 1;
+        }
+    }
+
+    public static class VillagerKnowledgeFlags
+    {
+        public const uint HarvestLegendary = 1u << 0;
+        public const uint HarvestRelic = 1u << 1;
+    }
+
+    public enum VillagerLessonShareSource : byte
+    {
+        Family = 0,
+        Mentor = 1,
+        Squad = 2,
+        Aggregate = 3
+    }
+
+    public struct VillagerLessonShare : IBufferElementData
+    {
+        public FixedString64Bytes LessonId;
+        public float Progress;
+        public VillagerLessonShareSource Source;
+    }
+
+    /// <summary>
+    /// Tracks which share producers have already contributed to a villager and when the last pulses occurred.
+    /// </summary>
+    public struct VillagerLessonShareState : IComponentData
+    {
+        public const byte FlagFamilyApplied = 1 << 0;
+
+        public byte Flags;
+        public uint LastFamilyShareTick;
+        public uint LastMentorShareTick;
+        public uint LastSquadShareTick;
+
+        public readonly bool HasFamilyApplied => (Flags & FlagFamilyApplied) != 0;
+    }
+
+    /// <summary>
+    /// Remembers which aggregate provided a lesson so we can decay or reinforce it when memberships change.
+    /// </summary>
+    public struct VillagerAggregateLessonTracker : IBufferElementData
+    {
+        public FixedString64Bytes LessonId;
+        public Entity Aggregate;
+        public float Support;
     }
 
 }

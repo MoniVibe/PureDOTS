@@ -170,19 +170,6 @@ When external projects are linked:
    - Systems from external Godgame project run automatically
    - Components from `Godgame.*` namespaces
 
-## Dual Mining Demo Scene Setup
-
-Run the automated setup tool:
-- **Menu:** `Space4X > Setup Dual Mining Demo Scene`
-
-This will:
-1. Create root scene with PureDOTS framework
-2. Create Space4X SubScene using external Space4X authoring components
-3. Create Godgame SubScene using external Godgame authoring components
-4. Configure all systems correctly
-
-**Both external projects' systems will run simultaneously!**
-
 ## Troubleshooting
 
 ### Symlink Not Working

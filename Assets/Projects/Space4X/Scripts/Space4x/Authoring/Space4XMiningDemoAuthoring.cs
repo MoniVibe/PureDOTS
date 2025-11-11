@@ -1,5 +1,9 @@
 using System;
 using PureDOTS.Authoring;
+using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Knowledge;
+using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
 using Unity.Entities;
@@ -108,6 +112,12 @@ namespace Space4X.Registry
             
             [Tooltip("Starting position of the carrier")]
             public float3 Position;
+
+            [Header("Strike Group Skills & Knowledge")]
+            [Range(0f, 200f)] public float strikeGroupSkillLevel;
+            public bool strikeGroupKnowsLegendary;
+            public bool strikeGroupKnowsRelic;
+            public string[] lessonIds;
         }
 
         [Serializable]
@@ -133,6 +143,12 @@ namespace Space4X.Registry
             
             [Tooltip("Carrier ID that this vessel belongs to (must match a CarrierId)")]
             public string CarrierId;
+
+            [Header("Pilot Skills & Knowledge")]
+            [Range(0f, 200f)] public float pilotSkillLevel;
+            public bool pilotKnowsLegendary;
+            public bool pilotKnowsRelic;
+            public string[] lessonIds;
         }
 
         [Serializable]
@@ -158,6 +174,11 @@ namespace Space4X.Registry
             
             [Tooltip("Position of the asteroid")]
             public float3 Position;
+
+            [Header("Quality")]
+            public ResourceQualityTier qualityTier;
+            [Range(1, 600)] public int baseQuality;
+            [Range(0, 200)] public int qualityVariance;
         }
 
         [Serializable]
@@ -281,6 +302,16 @@ namespace Space4X.Registry
                         ArrivalThreshold = 1f
                     });
 
+                    var skillSet = new SkillSet();
+                    skillSet.SetLevel(SkillId.Mining, (byte)math.clamp(carrier.strikeGroupSkillLevel, 0f, 255f));
+                    AddComponent(entity, skillSet);
+
+                    var knowledge = CreateKnowledge(
+                        carrier.strikeGroupKnowsLegendary,
+                        carrier.strikeGroupKnowsRelic,
+                        carrier.lessonIds);
+                    AddComponent(entity, knowledge);
+
                     // Add ResourceStorage buffer for the carrier
                     var resourceBuffer = AddBuffer<ResourceStorage>(entity);
                     // Buffer starts empty, will be populated by mining vessels
@@ -331,7 +362,9 @@ namespace Space4X.Registry
                         MiningEfficiency = math.clamp(vessel.MiningEfficiency, 0f, 1f),
                         Speed = math.max(0.1f, vessel.Speed),
                         CargoCapacity = math.max(1f, vessel.CargoCapacity),
-                        CurrentCargo = 0f
+                        CurrentCargo = 0f,
+                        CargoTier = (byte)ResourceQualityTier.Unknown,
+                        AverageCargoQuality = 0
                     });
 
                     AddComponent(entity, new MiningJob
@@ -340,6 +373,16 @@ namespace Space4X.Registry
                         TargetAsteroid = Entity.Null,
                         MiningProgress = 0f
                     });
+
+                    var vesselSkillSet = new SkillSet();
+                    vesselSkillSet.SetLevel(SkillId.Mining, (byte)math.clamp(vessel.pilotSkillLevel, 0f, 255f));
+                    AddComponent(entity, vesselSkillSet);
+
+                    var vesselKnowledge = CreateKnowledge(
+                        vessel.pilotKnowsLegendary,
+                        vessel.pilotKnowsRelic,
+                        vessel.lessonIds);
+                    AddComponent(entity, vesselKnowledge);
                 }
             }
 
@@ -368,7 +411,10 @@ namespace Space4X.Registry
                         ResourceType = asteroid.ResourceType,
                         ResourceAmount = math.max(0f, asteroid.ResourceAmount),
                         MaxResourceAmount = math.max(asteroid.ResourceAmount, asteroid.MaxResourceAmount),
-                        MiningRate = math.max(0.1f, asteroid.MiningRate)
+                        MiningRate = math.max(0.1f, asteroid.MiningRate),
+                        QualityTier = asteroid.qualityTier,
+                        BaseQuality = (ushort)math.clamp(asteroid.baseQuality, 1, 600),
+                        QualityVariance = (ushort)math.clamp(asteroid.qualityVariance, 0, 200)
                     });
                 }
             }
@@ -376,6 +422,47 @@ namespace Space4X.Registry
             private static float4 ToFloat4(Color color)
             {
                 return new float4(color.r, color.g, color.b, color.a);
+            }
+
+            private static VillagerKnowledge CreateKnowledge(bool knowsLegendary, bool knowsRelic, string[] lessonIds)
+            {
+                var knowledge = new VillagerKnowledge
+                {
+                    Flags = 0
+                };
+
+                if (knowsLegendary)
+                {
+                    knowledge.Flags |= VillagerKnowledgeFlags.HarvestLegendary;
+                    knowledge.AddLesson(ToLessonId("lesson.harvest.legendary"));
+                }
+
+                if (knowsRelic)
+                {
+                    knowledge.Flags |= VillagerKnowledgeFlags.HarvestRelic;
+                    knowledge.AddLesson(ToLessonId("lesson.harvest.relic"));
+                }
+
+                if (lessonIds != null)
+                {
+                    for (int i = 0; i < lessonIds.Length; i++)
+                    {
+                        knowledge.AddLesson(ToLessonId(lessonIds[i]));
+                    }
+                }
+
+                return knowledge;
+            }
+
+            private static FixedString64Bytes ToLessonId(string value)
+            {
+                FixedString64Bytes str = default;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    str = new FixedString64Bytes(value.Trim());
+                }
+
+                return str;
             }
         }
     }

@@ -252,7 +252,7 @@ Docs/
 └── Guides/
     ├── GameProject_Integration.md      # Integration guide
     ├── LinkingExternalGameProjects.md  # Multi-project setup
-    └── CreatingDualMiningDemoScene.md   # Demo scene setup
+
 
 Packages/com.moni.puredots/
 ├── package.json                        # Package manifest

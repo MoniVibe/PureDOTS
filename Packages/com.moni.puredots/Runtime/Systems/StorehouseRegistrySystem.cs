@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
@@ -104,7 +105,7 @@ namespace PureDOTS.Systems
                 .WithAll<StorehouseConfig>()
                 .WithEntityAccess())
             {
-                var typeSummaries = new FixedList32Bytes<StorehouseRegistryCapacitySummary>();
+                var typeSummaries = new FixedList64Bytes<StorehouseRegistryCapacitySummary>();
                 var reservation = _reservationLookup.HasComponent(entity)
                     ? _reservationLookup[entity]
                     : default;
@@ -116,12 +117,14 @@ namespace PureDOTS.Systems
                     reservationItems = _reservationItemsLookup[entity];
                 }
 
-                if (_capacityLookup.HasBuffer(entity))
+                DynamicBuffer<StorehouseCapacityElement> capacities = default;
+                var hasCapacities = _capacityLookup.HasBuffer(entity);
+                if (hasCapacities)
                 {
-                    var capacityBuffer = _capacityLookup[entity];
-                    for (int i = 0; i < capacityBuffer.Length; i++)
+                    capacities = _capacityLookup[entity];
+                    for (int i = 0; i < capacities.Length; i++)
                     {
-                        var capacity = capacityBuffer[i];
+                        var capacity = capacities[i];
                         var typeIndex = catalog.LookupIndex(capacity.ResourceTypeId);
                         if (typeIndex < 0)
                         {
@@ -133,7 +136,9 @@ namespace PureDOTS.Systems
                             ResourceTypeIndex = (ushort)typeIndex,
                             Capacity = capacity.MaxCapacity,
                             Stored = 0f,
-                            Reserved = 0f
+                            Reserved = 0f,
+                            TierId = (byte)ResourceQualityTier.Unknown,
+                            AverageQuality = 0
                         });
                     }
                 }
@@ -150,22 +155,28 @@ namespace PureDOTS.Systems
                             continue;
                         }
 
-                        var summaryIndex = FindSummaryIndex(ref typeSummaries, (ushort)typeIndex);
+                        var tierId = item.TierId;
+                        var summaryIndex = FindSummaryIndex(ref typeSummaries, (ushort)typeIndex, tierId);
                         if (summaryIndex >= 0)
                         {
                             var summary = typeSummaries[summaryIndex];
                             summary.Stored = item.Amount;
                             summary.Reserved = item.Reserved;
+                            summary.TierId = tierId;
+                            summary.AverageQuality = item.AverageQuality;
                             typeSummaries[summaryIndex] = summary;
                         }
                         else
                         {
+                            var maxCapacity = hasCapacities ? ResolveCapacity(catalogRef, capacities, (ushort)typeIndex) : 0f;
                             TryAddSummary(ref typeSummaries, new StorehouseRegistryCapacitySummary
                             {
                                 ResourceTypeIndex = (ushort)typeIndex,
-                                Capacity = 0f,
+                                Capacity = maxCapacity,
                                 Stored = item.Amount,
-                                Reserved = item.Reserved
+                                Reserved = item.Reserved,
+                                TierId = tierId,
+                                AverageQuality = item.AverageQuality
                             });
                         }
                     }
@@ -176,7 +187,7 @@ namespace PureDOTS.Systems
                     for (int i = 0; i < reservationItems.Length; i++)
                     {
                         var item = reservationItems[i];
-                        var idx = FindSummaryIndex(ref typeSummaries, item.ResourceTypeIndex);
+                        var idx = FindSummaryIndex(ref typeSummaries, item.ResourceTypeIndex, (byte)ResourceQualityTier.Unknown);
                         if (idx >= 0)
                         {
                             var summary = typeSummaries[idx];
@@ -185,12 +196,15 @@ namespace PureDOTS.Systems
                         }
                         else
                         {
+                            var maxCapacity = hasCapacities ? ResolveCapacity(catalogRef, capacities, item.ResourceTypeIndex) : 0f;
                             TryAddSummary(ref typeSummaries, new StorehouseRegistryCapacitySummary
                             {
                                 ResourceTypeIndex = item.ResourceTypeIndex,
-                                Capacity = 0f,
+                                Capacity = maxCapacity,
                                 Stored = 0f,
-                                Reserved = item.Reserved
+                                Reserved = item.Reserved,
+                                TierId = (byte)ResourceQualityTier.Unknown,
+                                AverageQuality = 0
                             });
                         }
                     }
@@ -226,6 +240,59 @@ namespace PureDOTS.Systems
                     }
                 }
 
+                // Refresh aggregate (tier unknown) entries so capacity math reflects per-tier storage.
+                for (int summaryIndex = 0; summaryIndex < typeSummaries.Length; summaryIndex++)
+                {
+                    if (typeSummaries[summaryIndex].TierId != (byte)ResourceQualityTier.Unknown)
+                    {
+                        continue;
+                    }
+
+                    var resourceType = typeSummaries[summaryIndex].ResourceTypeIndex;
+                    var aggregate = typeSummaries[summaryIndex];
+                    for (int other = 0; other < typeSummaries.Length; other++)
+                    {
+                        if (other == summaryIndex)
+                        {
+                            continue;
+                        }
+
+                        var otherSummary = typeSummaries[other];
+                        if (otherSummary.ResourceTypeIndex != resourceType)
+                        {
+                            continue;
+                        }
+
+                        aggregate.Stored += otherSummary.Stored;
+                        aggregate.Reserved += otherSummary.Reserved;
+                    }
+
+                    typeSummaries[summaryIndex] = aggregate;
+                }
+
+                var dominantTier = ResourceQualityTier.Unknown;
+                var weightedQuality = 0f;
+                var totalQualityWeight = 0f;
+                for (int s = 0; s < typeSummaries.Length; s++)
+                {
+                    var summary = typeSummaries[s];
+                    if (summary.Stored <= 0f)
+                    {
+                        continue;
+                    }
+
+                    totalQualityWeight += summary.Stored;
+                    weightedQuality += summary.AverageQuality * summary.Stored;
+                    if (summary.TierId > (byte)dominantTier)
+                    {
+                        dominantTier = (ResourceQualityTier)summary.TierId;
+                    }
+                }
+
+                var avgQuality = totalQualityWeight > 0f
+                    ? (ushort)math.clamp(math.round(weightedQuality / totalQualityWeight), 0f, 600f)
+                    : (ushort)0;
+
                 builder.Add(new StorehouseRegistryEntry
                 {
                     StorehouseEntity = entity,
@@ -235,7 +302,9 @@ namespace PureDOTS.Systems
                     TypeSummaries = typeSummaries,
                     LastMutationTick = math.max(inventory.ValueRO.LastUpdateTick, reservation.LastMutationTick),
                     CellId = cellId,
-                    SpatialVersion = spatialVersion
+                    SpatialVersion = spatialVersion,
+                    DominantTier = dominantTier,
+                    AverageQuality = avgQuality
                 });
 
                 totalStorehouses++;
@@ -262,11 +331,11 @@ namespace PureDOTS.Systems
             };
         }
 
-        private static int FindSummaryIndex(ref FixedList32Bytes<StorehouseRegistryCapacitySummary> summaries, ushort resourceTypeIndex)
+        private static int FindSummaryIndex(ref FixedList64Bytes<StorehouseRegistryCapacitySummary> summaries, ushort resourceTypeIndex, byte tierId)
         {
             for (int i = 0; i < summaries.Length; i++)
             {
-                if (summaries[i].ResourceTypeIndex == resourceTypeIndex)
+                if (summaries[i].ResourceTypeIndex == resourceTypeIndex && summaries[i].TierId == tierId)
                 {
                     return i;
                 }
@@ -275,7 +344,7 @@ namespace PureDOTS.Systems
             return -1;
         }
 
-        private static bool TryAddSummary(ref FixedList32Bytes<StorehouseRegistryCapacitySummary> summaries, in StorehouseRegistryCapacitySummary summary)
+        private static bool TryAddSummary(ref FixedList64Bytes<StorehouseRegistryCapacitySummary> summaries, in StorehouseRegistryCapacitySummary summary)
         {
             if (summaries.Length >= summaries.Capacity)
             {
@@ -284,6 +353,25 @@ namespace PureDOTS.Systems
 
             summaries.Add(summary);
             return true;
+        }
+
+        private static float ResolveCapacity(in BlobAssetReference<ResourceTypeIndexBlob> catalog, DynamicBuffer<StorehouseCapacityElement> capacities, ushort resourceTypeIndex)
+        {
+            if (!catalog.IsCreated)
+            {
+                return 0f;
+            }
+
+            var resourceId = catalog.Value.Ids[resourceTypeIndex];
+            for (int i = 0; i < capacities.Length; i++)
+            {
+                if (capacities[i].ResourceTypeId.Equals(resourceId))
+                {
+                    return capacities[i].MaxCapacity;
+                }
+            }
+
+            return 0f;
         }
     }
 }

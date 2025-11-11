@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Space;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -13,13 +14,14 @@ namespace PureDOTS.Systems.Space
     public partial struct HaulingJobManagerSystem : ISystem
     {
         private Entity _jobQueueEntity;
-        private EntityQuery _storehouseQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _jobQueueEntity = state.EntityManager.CreateEntity(typeof(HaulingJobQueueEntry));
-            _storehouseQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<StorehouseInventory>(), ComponentType.ReadOnly<LocalTransform>());
+            // Create the job queue singleton without using managed ComponentType[] arrays.
+            var archetypeEntity = state.EntityManager.CreateEntity();
+            state.EntityManager.AddBuffer<HaulingJobQueueEntry>(archetypeEntity);
+            _jobQueueEntity = archetypeEntity;
         }
 
         [BurstCompile]
@@ -28,12 +30,20 @@ namespace PureDOTS.Systems.Space
             var queue = state.EntityManager.GetBuffer<HaulingJobQueueEntry>(_jobQueueEntity);
             queue.Clear();
 
-            var storehouseEntities = _storehouseQuery.ToEntityArray(Allocator.Temp);
-            var storehouseTransforms = _storehouseQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            // Use ComponentLookup instead of ToEntityArray/ToComponentDataArray for zero-GC access
+            var storehouseTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            storehouseTransformLookup.Update(ref state);
+
+            // Collect storehouse entities into a NativeList for efficient iteration
+            var storehouseList = new NativeList<Entity>(Allocator.TempJob);
+            foreach (var (inventory, storehouseEntity) in SystemAPI.Query<RefRO<StorehouseInventory>>().WithEntityAccess())
+            {
+                storehouseList.Add(storehouseEntity);
+            }
 
             foreach (var (pile, urgency, entity) in SystemAPI.Query<RefRO<ResourcePile>, RefRO<ResourceUrgency>>().WithEntityAccess())
             {
-                var destination = FindNearestStorehouse(pile.ValueRO.Position, storehouseEntities, storehouseTransforms);
+                var destination = FindNearestStorehouse(pile.ValueRO.Position, storehouseList, storehouseTransformLookup);
                 queue.Add(new HaulingJobQueueEntry
                 {
                     Priority = HaulingJobPriority.Normal,
@@ -45,11 +55,10 @@ namespace PureDOTS.Systems.Space
                 });
             }
 
-            storehouseEntities.Dispose();
-            storehouseTransforms.Dispose();
+            storehouseList.Dispose();
         }
 
-        private static Entity FindNearestStorehouse(float3 origin, NativeArray<Entity> entities, NativeArray<LocalTransform> transforms)
+        private static Entity FindNearestStorehouse(float3 origin, NativeList<Entity> entities, ComponentLookup<LocalTransform> transformLookup)
         {
             if (entities.Length == 0)
             {
@@ -60,11 +69,17 @@ namespace PureDOTS.Systems.Space
             var bestDist = float.MaxValue;
             for (int i = 0; i < entities.Length; i++)
             {
-                var dist = math.lengthsq(transforms[i].Position - origin);
+                var entity = entities[i];
+                if (!transformLookup.HasComponent(entity))
+                {
+                    continue;
+                }
+                var transform = transformLookup[entity];
+                var dist = math.lengthsq(transform.Position - origin);
                 if (dist < bestDist)
                 {
                     bestDist = dist;
-                    best = entities[i];
+                    best = entity;
                 }
             }
 

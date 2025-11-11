@@ -455,7 +455,6 @@ After integration:
 
 - `PureDOTS_As_Framework.md` - Framework architecture overview
 - `LinkingExternalGameProjects.md` - Linking multiple game projects
-- `CreatingDualMiningDemoScene.md` - Creating demo scenes
 
 
 

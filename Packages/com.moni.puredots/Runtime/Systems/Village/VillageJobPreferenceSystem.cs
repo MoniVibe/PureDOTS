@@ -39,17 +39,18 @@ namespace PureDOTS.Systems
             _alignmentLookup.Update(ref state);
             _outlookLookup.Update(ref state);
 
-            foreach (var (villageId, buffer, entity) in SystemAPI
-                         .Query<RefRO<VillageId>, DynamicBuffer<VillageJobPreferenceEntry>>()
+            foreach (var (villageId, entity) in SystemAPI
+                         .Query<RefRO<VillageId>>()
                          .WithEntityAccess())
             {
-                ref readonly var alignment = ref _alignmentLookup.HasComponent(entity)
+                var alignment = _alignmentLookup.HasComponent(entity)
                     ? _alignmentLookup[entity]
-                    : default;
+                    : default(VillageAlignmentState);
                 var outlookFlags = _outlookLookup.HasComponent(entity)
                     ? _outlookLookup[entity].Flags
                     : VillageOutlookFlags.None;
 
+                var buffer = state.EntityManager.GetBuffer<VillageJobPreferenceEntry>(entity);
                 buffer.Clear();
 
                 AppendPreference(ref buffer, VillagerJob.JobType.Farmer, ComputeEssentialWeight(alignment, outlookFlags));

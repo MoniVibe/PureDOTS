@@ -9,18 +9,17 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Applies workforce intents when villagers are idle or their job becomes irrelevant.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(VillageWorkforceDecisionSystem))]
     public partial struct VillagerWorkforceIntentSystem : ISystem
     {
-        [BurstCompile]
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<VillagerWorkforceIntent>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -30,6 +29,13 @@ namespace PureDOTS.Systems
             {
                 return;
             }
+
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
+            {
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (intent, job, entity) in SystemAPI
                          .Query<RefRO<VillagerWorkforceIntent>, RefRW<VillagerJob>>()
@@ -50,11 +56,10 @@ namespace PureDOTS.Systems
                     SystemAPI.SetComponent(entity, newJob);
                 }
 
-                SystemAPI.RemoveComponent<VillagerWorkforceIntent>(entity);
+                ecb.RemoveComponent<VillagerWorkforceIntent>(entity);
             }
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
         }

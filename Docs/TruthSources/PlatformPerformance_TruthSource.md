@@ -63,6 +63,13 @@
 - Validate deterministic behaviour by running Burst-enabled tests on build machines.
 - `EnvironmentEffectUpdateSystem` evaluates scalar/vector/pulse effects via catalog indices; keep effect parameter structs blittable and avoid delegates/reflection so the dispatcher remains Burst/AOT compliant.
 
+### Burst Safety Checks
+- **Enable Burst Safety Checks**: Set in Unity Editor via `Jobs → Burst → Safety Checks → Enable Safety Checks`
+- **Safety Checks Mode**: Set to `Error` (not `Warning`) to fail fast on violations
+- **Validation**: Run `CI/run_burst_compile.ps1` to validate all assemblies compile with Burst enabled
+- **CI Integration**: Burst compilation validation runs automatically on all PRs to catch regressions early
+- **Settings Location**: Burst settings are stored in `ProjectSettings/` and should be committed to version control
+
 ## Job Scheduling & Thread Policy
 - Define default job worker count (`JobsUtility.JobWorkerCount`) and document when it changes (e.g., heavy AI scenes).
 - Keep main thread workloads minimal; offload deterministic logic to jobs inside relevant system groups.

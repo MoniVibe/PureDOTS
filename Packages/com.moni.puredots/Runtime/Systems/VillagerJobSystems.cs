@@ -1,6 +1,8 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
@@ -604,6 +606,12 @@ namespace PureDOTS.Systems
         private ComponentLookup<ResourceJobReservation> _resourceReservationLookup;
         private BufferLookup<ResourceActiveTicket> _resourceActiveTicketLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<SkillSet> _skillSetLookup;
+        private ComponentLookup<VillagerKnowledge> _knowledgeLookup;
+        private ComponentLookup<VillagerStats> _statsLookup;
+        private ComponentLookup<VillagerAttributes> _attributesLookup;
+        private BufferLookup<VillagerLessonShare> _lessonShareLookup;
+        private const float SecondsPerSimYear = 600f;
 
         public void OnCreate(ref SystemState state)
         {
@@ -612,11 +620,18 @@ namespace PureDOTS.Systems
             _resourceReservationLookup = state.GetComponentLookup<ResourceJobReservation>(false);
             _resourceActiveTicketLookup = state.GetBufferLookup<ResourceActiveTicket>(false);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _skillSetLookup = state.GetComponentLookup<SkillSet>(false);
+            _knowledgeLookup = state.GetComponentLookup<VillagerKnowledge>(false);
+            _statsLookup = state.GetComponentLookup<VillagerStats>(true);
+            _attributesLookup = state.GetComponentLookup<VillagerAttributes>(true);
+            _lessonShareLookup = state.GetBufferLookup<VillagerLessonShare>(false);
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<VillagerJobTicket>();
             state.RequireForUpdate<VillagerJobEventStream>();
+            state.RequireForUpdate<ResourceTypeIndex>();
+            state.RequireForUpdate<KnowledgeLessonEffectCatalog>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -633,11 +648,26 @@ namespace PureDOTS.Systems
             _resourceReservationLookup.Update(ref state);
             _resourceActiveTicketLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _skillSetLookup.Update(ref state);
+            _knowledgeLookup.Update(ref state);
+            _statsLookup.Update(ref state);
+            _attributesLookup.Update(ref state);
+            _lessonShareLookup.Update(ref state);
 
             var gatherDistanceSq = 9f;
             var deltaTime = timeState.FixedDeltaTime;
             var eventEntity = SystemAPI.GetSingletonEntity<VillagerJobEventStream>();
             var events = state.EntityManager.GetBuffer<VillagerJobEvent>(eventEntity);
+            var lessonCatalog = SystemAPI.GetSingleton<KnowledgeLessonEffectCatalog>();
+            var lessonBlob = lessonCatalog.Blob;
+            var xpCurve = SystemAPI.TryGetSingleton(out SkillXpCurveConfig xpConfig)
+                ? xpConfig
+                : SkillXpCurveConfig.CreateDefaults();
+            var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
+            if (!resourceCatalog.Catalog.IsCreated)
+            {
+                return;
+            }
 
             foreach (var (job, ticket, progress, needs, transform, carry, entity) in SystemAPI.Query<RefRW<VillagerJob>, RefRW<VillagerJobTicket>, RefRW<VillagerJobProgress>, RefRO<VillagerNeeds>, RefRO<LocalTransform>, DynamicBuffer<VillagerJobCarryItem>>()
                          .WithEntityAccess())
@@ -659,6 +689,23 @@ namespace PureDOTS.Systems
                 }
 
                 var resourceState = _resourceStateLookup[ticket.ValueRO.ResourceEntity];
+                var hasKnowledge = _knowledgeLookup.HasComponent(entity);
+                var knowledge = hasKnowledge ? _knowledgeLookup[entity] : default;
+                var knowledgeDirty = false;
+                DynamicBuffer<VillagerLessonShare> lessonShares = default;
+                if (_lessonShareLookup.HasBuffer(entity))
+                {
+                    lessonShares = _lessonShareLookup[entity];
+                }
+                var ageYears = ResolveAgeYears(entity, timeState.Tick, timeState.FixedDeltaTime);
+                ResolveMindStats(entity, out var intelligence, out var wisdom);
+
+                var resourceId = ResolveResourceId(resourceCatalog.Catalog, ticket.ValueRO.ResourceTypeIndex);
+                var harvestModifiers = lessonBlob.IsCreated
+                    ? KnowledgeLessonEffectUtility.EvaluateHarvestModifiers(ref lessonBlob.Value, knowledge.Lessons, resourceId, resourceState.QualityTier)
+                    : HarvestLessonModifiers.Identity;
+
+                var knowledgeFlags = knowledge.Flags;
                 var resourceTransform = _transformLookup[ticket.ValueRO.ResourceEntity];
                 var distSq = math.distancesq(transform.ValueRO.Position, resourceTransform.Position);
 
@@ -685,8 +732,18 @@ namespace PureDOTS.Systems
                     ? _resourceConfigLookup[ticket.ValueRO.ResourceEntity]
                     : new ResourceSourceConfig { GatherRatePerWorker = 10f };
 
-                var gatherRate = math.max(0.1f, config.GatherRatePerWorker);
-                var gatherAmount = gatherRate * job.ValueRO.Productivity * deltaTime;
+                var skillId = ResolveSkillId(job.ValueRO.Type);
+                var skillLevel = 0f;
+                if (_skillSetLookup.HasComponent(entity))
+                {
+                    var skillSet = _skillSetLookup[entity];
+                    skillLevel = skillSet.GetLevel(skillId);
+                }
+
+                var gatherRate = math.max(0.1f, config.GatherRatePerWorker) * harvestModifiers.YieldMultiplier;
+                var timeMultiplier = math.max(0.1f, harvestModifiers.HarvestTimeMultiplier);
+                var harvestMultiplier = math.max(0.1f, ResourceQualityUtility.GetHarvestTimeMultiplier(skillLevel)) * timeMultiplier;
+                var gatherAmount = (gatherRate * job.ValueRO.Productivity * deltaTime) / harvestMultiplier;
                 // Extension point: job-type specific modifiers can adjust gatherAmount here.
                 var energyMultiplier = math.saturate(needs.ValueRO.Energy / 50f);
                 gatherAmount *= energyMultiplier;
@@ -712,31 +769,46 @@ namespace PureDOTS.Systems
                 var ticketReserved = ticket.ValueRO.ReservedUnits;
                 ticket.ValueRW.ReservedUnits = math.max(0f, ticketReserved - gatherAmount);
 
+                var knowledgeFlags2 = knowledge.Flags;
+
+                var villagerQuality = KnowledgeLessonEffectUtility.EvaluateHarvestQuality(
+                    resourceState.BaseQuality,
+                    resourceState.QualityVariance,
+                    resourceState.QualityTier,
+                    skillLevel,
+                    harvestModifiers,
+                    knowledgeFlags2);
+                var carryTier = (byte)ResourceQualityUtility.DetermineTier(villagerQuality);
+
                 var carryIndex = -1;
                 var mutableCarry = carry;
                 for (int i = 0; i < mutableCarry.Length; i++)
                 {
-                    if (mutableCarry[i].ResourceTypeIndex == ticket.ValueRO.ResourceTypeIndex)
+                    if (mutableCarry[i].ResourceTypeIndex == ticket.ValueRO.ResourceTypeIndex && mutableCarry[i].TierId == carryTier)
                     {
                         carryIndex = i;
                         break;
                     }
                 }
 
+                var incomingPayload = ResourcePayloadUtility.Create(
+                    ticket.ValueRO.ResourceTypeIndex,
+                    gatherAmount,
+                    carryTier,
+                    villagerQuality);
+
                 if (carryIndex >= 0)
                 {
-                    var tmp = mutableCarry[carryIndex];
-                    tmp.Amount = tmp.Amount + gatherAmount;
-                    mutableCarry[carryIndex] = tmp;
+                    var payload = mutableCarry[carryIndex].AsPayload();
+                    ResourcePayloadUtility.Merge(ref payload, in incomingPayload);
+                    mutableCarry[carryIndex].ApplyPayload(payload);
                 }
                 else
                 {
-                    mutableCarry.Add(new VillagerJobCarryItem
-                    {
-                        ResourceTypeIndex = ticket.ValueRO.ResourceTypeIndex,
-                        Amount = gatherAmount
-                    });
+                    mutableCarry.Add(VillagerJobCarryItem.FromPayload(in incomingPayload));
                 }
+
+                GrantHarvestXp(entity, skillId, gatherAmount, xpCurve);
 
                 progress.ValueRW.Gathered += gatherAmount;
                 progress.ValueRW.TimeInPhase += deltaTime;
@@ -753,6 +825,11 @@ namespace PureDOTS.Systems
                     TicketId = ticket.ValueRO.TicketId
                 });
 
+                if (hasKnowledge && TryLearnResourceLesson(ref knowledge, resourceId, skillLevel, gatherAmount, ageYears, intelligence, wisdom, lessonShares, ref lessonBlob.Value))
+                {
+                    knowledgeDirty = true;
+                }
+
                 if (resourceState.UnitsRemaining <= 0f ||
                     GetCarryAmount(carry, ticket.ValueRO.ResourceTypeIndex) >= 40f)
                 {
@@ -760,19 +837,278 @@ namespace PureDOTS.Systems
                     job.ValueRW.LastStateChangeTick = timeState.Tick;
                     ticket.ValueRW.Phase = (byte)VillagerJob.JobPhase.Delivering;
                 }
+
+                if (knowledgeDirty)
+                {
+                    _knowledgeLookup[entity] = knowledge;
+                }
             }
         }
 
         private static float GetCarryAmount(DynamicBuffer<VillagerJobCarryItem> carry, ushort resourceTypeIndex)
         {
+            var total = 0f;
             for (int i = 0; i < carry.Length; i++)
             {
                 if (carry[i].ResourceTypeIndex == resourceTypeIndex)
                 {
-                    return carry[i].Amount;
+                    total += carry[i].Amount;
                 }
             }
-            return 0f;
+            return total;
+        }
+
+        private static SkillId ResolveSkillId(VillagerJob.JobType jobType)
+        {
+            return jobType switch
+            {
+                VillagerJob.JobType.Hunter => SkillId.AnimalHandling,
+                VillagerJob.JobType.Crafter => SkillId.Processing,
+                _ => SkillId.HarvestBotany
+            };
+        }
+
+        private static XpPool ResolveXpPool(SkillId skillId)
+        {
+            return skillId switch
+            {
+                SkillId.AnimalHandling => XpPool.Will,
+                SkillId.Processing => XpPool.Finesse,
+                SkillId.Mining => XpPool.Physique,
+                SkillId.HarvestBotany => XpPool.Physique,
+                _ => XpPool.General
+            };
+        }
+
+        private void GrantHarvestXp(Entity villager, SkillId skillId, float gatherAmount, in SkillXpCurveConfig xpCurve)
+        {
+            if (!_skillSetLookup.HasComponent(villager) || gatherAmount <= 0f)
+            {
+                return;
+            }
+
+            var skillSet = _skillSetLookup[villager];
+            var pool = ResolveXpPool(skillId);
+            var scalar = xpCurve.GetScalar(pool);
+            var adjusted = gatherAmount * scalar;
+            skillSet.AddSkillXp(skillId, adjusted);
+            switch (pool)
+            {
+                case XpPool.Physique:
+                    skillSet.PhysiqueXp += adjusted;
+                    break;
+                case XpPool.Finesse:
+                    skillSet.FinesseXp += adjusted;
+                    break;
+                case XpPool.Will:
+                    skillSet.WillXp += adjusted;
+                    break;
+                default:
+                    skillSet.GeneralXp += adjusted;
+                    break;
+            }
+            _skillSetLookup[villager] = skillSet;
+        }
+
+        private static readonly FixedString64Bytes ResourceIdIronOre = new FixedString64Bytes("space4x.minerals");
+        private static readonly FixedString64Bytes ResourceIdRareMetals = new FixedString64Bytes("space4x.rare_metals");
+        private static readonly FixedString64Bytes ResourceIdIronOak = new FixedString64Bytes("resource.tree.ironoak");
+        private static readonly FixedString64Bytes LessonIdIronOre = new FixedString64Bytes("lesson.harvest.iron_ore");
+        private static readonly FixedString64Bytes LessonIdRareMetals = new FixedString64Bytes("lesson.harvest.legendary_alloy");
+        private static readonly FixedString64Bytes LessonIdIronOak = new FixedString64Bytes("lesson.harvest.ironoak");
+        private static readonly FixedString64Bytes LessonIdGeneral = new FixedString64Bytes("lesson.harvest.general");
+
+        private static FixedString64Bytes MapPlaceholderLesson(in FixedString64Bytes resourceId)
+        {
+            if (resourceId.Equals(ResourceIdIronOre))
+            {
+                return LessonIdIronOre;
+            }
+
+            if (resourceId.Equals(ResourceIdRareMetals))
+            {
+                return LessonIdRareMetals;
+            }
+
+            if (resourceId.Equals(ResourceIdIronOak))
+            {
+                return LessonIdIronOak;
+            }
+
+            return LessonIdGeneral;
+        }
+
+        private static FixedString64Bytes ResolveResourceId(BlobAssetReference<ResourceTypeIndexBlob> catalog, ushort resourceTypeIndex)
+        {
+            if (!catalog.IsCreated)
+            {
+                return default;
+            }
+
+            ref var blob = ref catalog.Value;
+            if (resourceTypeIndex >= blob.Ids.Length)
+            {
+                return default;
+            }
+
+            return blob.Ids[resourceTypeIndex];
+        }
+
+        private float ResolveAgeYears(Entity entity, uint currentTick, float fixedDeltaTime)
+        {
+            if (!_statsLookup.HasComponent(entity))
+            {
+                return 25f;
+            }
+
+            var stats = _statsLookup[entity];
+            var livedTicks = currentTick >= stats.BirthTick ? currentTick - stats.BirthTick : 0u;
+            var livedSeconds = livedTicks * fixedDeltaTime;
+            return math.max(1f, livedSeconds / SecondsPerSimYear);
+        }
+
+        private void ResolveMindStats(Entity entity, out float intelligence, out float wisdom)
+        {
+            if (_attributesLookup.HasComponent(entity))
+            {
+                var attributes = _attributesLookup[entity];
+                intelligence = attributes.Intelligence;
+                wisdom = attributes.Wisdom;
+            }
+            else
+            {
+                intelligence = 50f;
+                wisdom = 50f;
+            }
+        }
+
+        private static float ComputeAgeLearningScalar(float ageYears)
+        {
+            if (ageYears <= 12f)
+            {
+                return math.lerp(1.75f, 1.3f, math.saturate(ageYears / 12f));
+            }
+
+            if (ageYears <= 25f)
+            {
+                return math.lerp(1.3f, 1f, (ageYears - 12f) / 13f);
+            }
+
+            if (ageYears <= 45f)
+            {
+                return 1f;
+            }
+
+            if (ageYears <= 70f)
+            {
+                return math.lerp(1f, 0.85f, (ageYears - 45f) / 25f);
+            }
+
+            return 0.7f;
+        }
+
+        private static float ComputeMindScalar(float intelligence, float wisdom)
+        {
+            var combined = math.max(5f, (intelligence + wisdom) * 0.5f);
+            return math.clamp(0.6f + combined / 200f, 0.6f, 1.8f);
+        }
+
+        private static float ConsumeLessonShares(ref DynamicBuffer<VillagerLessonShare> shares, in FixedString64Bytes lessonId)
+        {
+            if (!shares.IsCreated || shares.Length == 0)
+            {
+                return 0f;
+            }
+
+            float granted = 0f;
+            for (int i = 0; i < shares.Length; i++)
+            {
+                if (!shares[i].LessonId.Equals(lessonId) || shares[i].Progress <= 0f)
+                {
+                    continue;
+                }
+
+                granted += shares[i].Progress;
+                var entry = shares[i];
+                entry.Progress = 0f;
+                shares[i] = entry;
+            }
+
+            return granted;
+        }
+
+        private static float ApplyOppositionRules(ref VillagerKnowledge knowledge, in KnowledgeLessonMetadata metadata, float delta)
+        {
+            if (delta <= 0f || metadata.OppositeLessonId.Length == 0)
+            {
+                return delta;
+            }
+
+            var oppositeProgress = knowledge.GetProgress(metadata.OppositeLessonId);
+            if (oppositeProgress > 0f)
+            {
+                var penalty = delta * 0.33f;
+                knowledge.AddProgress(metadata.OppositeLessonId, -penalty, out _);
+            }
+
+            if ((metadata.Flags & KnowledgeLessonFlags.AllowParallelOpposites) == 0 && oppositeProgress < 1f)
+            {
+                delta *= 0.4f;
+            }
+
+            return delta;
+        }
+
+        private bool TryLearnResourceLesson(
+            ref VillagerKnowledge knowledge,
+            in FixedString64Bytes resourceId,
+            float skillLevel,
+            float gatherAmount,
+            float ageYears,
+            float intelligence,
+            float wisdom,
+            DynamicBuffer<VillagerLessonShare> lessonShares,
+            ref KnowledgeLessonEffectBlob lessonBlob)
+        {
+            if (resourceId.Length == 0 || gatherAmount <= 0f)
+            {
+                return false;
+            }
+
+            var lessonId = MapPlaceholderLesson(resourceId);
+            if (lessonId.Length == 0)
+            {
+                return false;
+            }
+
+            if (knowledge.FindLessonIndex(lessonId) < 0 && knowledge.Lessons.Length >= knowledge.Lessons.Capacity)
+            {
+                return false;
+            }
+
+            var previousProgress = knowledge.GetProgress(lessonId);
+            var hasMetadata = KnowledgeLessonEffectUtility.TryGetLessonMetadata(ref lessonBlob, lessonId, out var metadata);
+            var difficulty = hasMetadata && metadata.Difficulty > 0 ? metadata.Difficulty : (byte)25;
+
+            var baseDelta = gatherAmount * 0.001f;
+            baseDelta *= math.max(0.35f, skillLevel / 120f);
+            baseDelta /= math.max(10f, difficulty);
+
+            var delta = baseDelta * ComputeAgeLearningScalar(ageYears) * ComputeMindScalar(intelligence, wisdom);
+            delta += ConsumeLessonShares(ref lessonShares, lessonId);
+
+            if (hasMetadata)
+            {
+                delta = ApplyOppositionRules(ref knowledge, metadata, delta);
+            }
+
+            if (delta <= 0f)
+            {
+                return false;
+            }
+
+            knowledge.AddProgress(lessonId, delta, out var newProgress);
+            return newProgress > previousProgress;
         }
 
     }

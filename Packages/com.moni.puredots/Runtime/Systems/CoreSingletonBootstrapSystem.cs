@@ -1,8 +1,11 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
@@ -109,7 +112,9 @@ namespace PureDOTS.Systems
 
             EnsureRegistry<ResourceRegistry, ResourceRegistryEntry>(entityManager, RegistryKind.Resource, "ResourceRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureRegistry<StorehouseRegistry, StorehouseRegistryEntry>(entityManager, RegistryKind.Storehouse, "StorehouseRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureRegistry<ProcessingStationRegistry, ProcessingStationRegistryEntry>(entityManager, RegistryKind.ProcessingStation, "ProcessingStationRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
             EnsureRegistry<VillagerRegistry, VillagerRegistryEntry>(entityManager, RegistryKind.Villager, "VillagerRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
+            EnsureVillagerLessonRegistryBuffer(entityManager);
             EnsureRegistry<MiracleRegistry, MiracleRegistryEntry>(entityManager, RegistryKind.Miracle, "MiracleRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
             // Game-specific transport registries (MinerVessel, Hauler, Freighter, Wagon) are now created by Space4X.Systems.TransportBootstrapSystem
             EnsureRegistry<CreatureRegistry, CreatureRegistryEntry>(entityManager, RegistryKind.Creature, "CreatureRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
@@ -131,6 +136,8 @@ namespace PureDOTS.Systems
             EnsureRegistryDirectory(entityManager);
             EnsureRegistrySpatialSyncState(entityManager);
 
+            EnsureKnowledgeLessonCatalog(entityManager);
+            EnsureSkillXpCurveConfig(entityManager);
             EnsureTelemetryStream(entityManager);
             EnsureFrameTimingStream(entityManager);
             EnsureReplayCaptureStream(entityManager);
@@ -558,6 +565,43 @@ namespace PureDOTS.Systems
             {
                 entityManager.AddBuffer<TBuffer>(entity);
             }
+        }
+
+        private static void EnsureVillagerLessonRegistryBuffer(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<VillagerRegistry>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var entity = query.GetSingletonEntity();
+            EnsureBuffer<VillagerLessonRegistryEntry>(entityManager, entity);
+        }
+
+        private static void EnsureKnowledgeLessonCatalog(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<KnowledgeLessonEffectCatalog>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var blobRef = KnowledgeLessonEffectDefaults.CreateDefaultCatalog();
+            var entity = entityManager.CreateEntity(typeof(KnowledgeLessonEffectCatalog));
+            entityManager.SetComponentData(entity, new KnowledgeLessonEffectCatalog { Blob = blobRef });
+        }
+
+        private static void EnsureSkillXpCurveConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SkillXpCurveConfig>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var entity = entityManager.CreateEntity(typeof(SkillXpCurveConfig));
+            entityManager.SetComponentData(entity, SkillXpCurveConfig.CreateDefaults());
         }
     }
 }

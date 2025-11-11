@@ -42,7 +42,6 @@ Updated: 2025-10-25
 ## Guides & Authoring
 - `Docs/Guides/GameProject_Integration.md` - Integrating PureDOTS into game projects
 - `Docs/Guides/LinkingExternalGameProjects.md` - Linking external game projects
-- `Docs/Guides/CreatingDualMiningDemoScene.md` - Creating dual mining demo scenes
 - `Docs/Guides/SceneSetup.md`
 - `Docs/Guides/Authoring/EnvironmentAndSpatialValidation.md`
 - `Docs/Guides/GettingStarted.md`

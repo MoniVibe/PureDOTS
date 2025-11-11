@@ -28,6 +28,7 @@ namespace PureDOTS.Systems
             _policyLookup = state.GetComponentLookup<VillageWorkforcePolicy>(true);
             _demandLookup = state.GetBufferLookup<VillageWorkforceDemandEntry>(true);
             _preferenceLookup = state.GetBufferLookup<VillageJobPreferenceEntry>(true);
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             state.RequireForUpdate<VillageId>();
             state.RequireForUpdate<AggregateBehaviorProfile>();
@@ -56,7 +57,13 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            ref readonly var profileBlob = ref profile.Blob.Value;
+            ref var profileBlob = ref profile.Blob.Value;
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
+            {
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             _alignmentLookup.Update(ref state);
             _policyLookup.Update(ref state);
@@ -80,7 +87,7 @@ namespace PureDOTS.Systems
 
                 if (!SystemAPI.HasComponent<WorkforceDecisionCooldown>(entity))
                 {
-                    SystemAPI.AddComponent(entity, new WorkforceDecisionCooldown { NextCheckTick = 0 });
+                    ecb.AddComponent(entity, new WorkforceDecisionCooldown { NextCheckTick = 0 });
                 }
 
                 var cooldown = SystemAPI.GetComponentRW<WorkforceDecisionCooldown>(entity);
@@ -129,7 +136,7 @@ namespace PureDOTS.Systems
                     continue;
                 }
 
-                var belongingMultiplier = DetermineBelongingMultiplier(belonging, villageId.ValueRO.Value, snapshot.PreferenceWeight);
+                var belongingMultiplier = DetermineBelongingMultiplier(belonging, villagerId.ValueRO.FactionId, snapshot.PreferenceWeight);
                 var finalScore = (collectiveScore - personalResistance) * belongingMultiplier;
                 if (finalScore <= 0f)
                 {
@@ -148,7 +155,7 @@ namespace PureDOTS.Systems
                 }
                 else
                 {
-                    SystemAPI.AddComponent(entity, intent);
+                    ecb.AddComponent(entity, intent);
                 }
             }
         }
@@ -158,7 +165,7 @@ namespace PureDOTS.Systems
         {
         }
 
-        private NativeParallelHashMap<int, VillageSnapshot> BuildVillageSnapshots(ref SystemState state, ref readonly AggregateBehaviorProfileBlob profileBlob)
+        private NativeParallelHashMap<int, VillageSnapshot> BuildVillageSnapshots(ref SystemState state, ref AggregateBehaviorProfileBlob profileBlob)
         {
             var allocator = state.WorldUpdateAllocator;
             var villageCount = math.max(1, SystemAPI.QueryBuilder().WithAll<VillageId>().Build().CalculateEntityCount());

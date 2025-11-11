@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Registry;
 using Unity.Entities;
 using Unity.Mathematics;
 

@@ -7,7 +7,13 @@ using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    /// <summary>
+    /// Queues presentation spawn requests for the next frame.
+    /// Structural changes are deferred to EndSimulationEntityCommandBufferSystem to avoid
+    /// race conditions with rendering systems that read ECS data after PresentationSystemGroup.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateBefore(typeof(EndSimulationEntityCommandBufferSystem))]
     public partial struct PresentationSpawnSystem : ISystem
     {
         private ComponentLookup<PresentationHandle> _handleLookup;
@@ -16,6 +22,7 @@ namespace PureDOTS.Systems
         {
             _handleLookup = state.GetComponentLookup<PresentationHandle>();
             state.RequireForUpdate<PresentationCommandQueue>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -43,7 +50,12 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
+            {
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             _handleLookup.Update(ref state);
 
             for (int i = 0; i < spawnBuffer.Length; i++)
@@ -107,10 +119,7 @@ namespace PureDOTS.Systems
             }
 
             spawnBuffer.Clear();
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
+            // ECB playback is handled by EndSimulationEntityCommandBufferSystem
         }
     }
 }
-

@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1597354822538452301
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8473165022467709205}
+  m_Layer: 0
+  m_Name: KnowledgeLessonCatalog
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &8473165022467709205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1597354822538452301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf1bf796a7dd40949ddd129a80265c00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  harvestLessons:
+  - lessonId: lesson.harvest.general
+    resourceTypeId: 
+    tierMask: 0
+    qualityCapBonus: 10
+    flatQualityBonus: 5
+    yieldMultiplier: 1.05
+    harvestTimeMultiplier: 0.95
+    resourceValueMultiplier: 1.02
+    aggregateValueMultiplier: 1.02
+  - lessonId: lesson.harvest.iron_ore
+    resourceTypeId: space4x.minerals
+    tierMask: 28
+    qualityCapBonus: 25
+    flatQualityBonus: 12
+    yieldMultiplier: 1.1
+    harvestTimeMultiplier: 0.9
+    resourceValueMultiplier: 1.05
+    aggregateValueMultiplier: 1.05
+  - lessonId: lesson.harvest.ironoak
+    resourceTypeId: resource.tree.ironoak
+    tierMask: 112
+    qualityCapBonus: 50
+    flatQualityBonus: 35
+    yieldMultiplier: 1.2
+    harvestTimeMultiplier: 0.85
+    resourceValueMultiplier: 1.12
+    aggregateValueMultiplier: 1.08
+  processingLessons:
+  - lessonId: lesson.processing.ore_refinery
+    inputResourceTypeId: space4x.minerals
+    outputResourceTypeId: space4x.rare_metals
+    tierMask: 56
+    yieldMultiplier: 1.2
+    qualityBonus: 40
+    processTimeMultiplier: 0.85
+    resourceValueMultiplier: 1.15
+    aggregateValueMultiplier: 1.15
+  lessonMetadata:
+  - lessonId: lesson.harvest.general
+    axisId: axis.harvest.core
+    oppositeLessonId: 
+    difficulty: 10
+    allowParallelOpposites: 1
+  - lessonId: lesson.harvest.iron_ore
+    axisId: axis.harvest.metals
+    oppositeLessonId: 
+    difficulty: 35
+    allowParallelOpposites: 0
+  - lessonId: lesson.harvest.ironoak
+    axisId: axis.harvest.ancient_woods
+    oppositeLessonId: 
+    difficulty: 60
+    allowParallelOpposites: 0
+  - lessonId: lesson.processing.ore_refinery
+    axisId: axis.processing.metals
+    oppositeLessonId: 
+    difficulty: 45
+    allowParallelOpposites: 0
+  - lessonId: lesson.myth.dragons_caution
+    axisId: axis.attitude.dragons
+    oppositeLessonId: lesson.myth.dragons_bravery
+    difficulty: 65
+    allowParallelOpposites: 0
+  - lessonId: lesson.myth.dragons_bravery
+    axisId: axis.attitude.dragons
+    oppositeLessonId: lesson.myth.dragons_caution
+    difficulty: 75
+    allowParallelOpposites: 0

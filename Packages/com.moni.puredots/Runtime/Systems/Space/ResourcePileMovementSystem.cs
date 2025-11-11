@@ -19,10 +19,12 @@ namespace PureDOTS.Systems.Space
         public void OnUpdate(ref SystemState state)
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
-            foreach (var (pile, velocity) in SystemAPI.Query<RefRW<ResourcePile>, RefRO<ResourcePileVelocity>>())
+            foreach (var (pile, velocity) in SystemAPI.Query<RefRW<ResourcePile>, RefRW<ResourcePileVelocity>>())
             {
                 pile.ValueRW.Position += velocity.ValueRO.Velocity * deltaTime;
-                velocity.ValueRO.Velocity *= 0.99f; // slight damping
+                var vel = velocity.ValueRW;
+                vel.Velocity *= 0.99f; // slight damping
+                velocity.ValueRW = vel;
             }
         }
 

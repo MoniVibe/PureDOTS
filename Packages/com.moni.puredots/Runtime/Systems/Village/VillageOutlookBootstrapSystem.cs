@@ -46,8 +46,8 @@ namespace PureDOTS.Systems
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
-            var alignments = state.GetComponentDataFromEntity<VillageAlignmentState>(true);
-            var outlooks = state.GetComponentDataFromEntity<VillageOutlook>();
+            var alignments = state.GetComponentLookup<VillageAlignmentState>(true);
+            var outlooks = state.GetComponentLookup<VillageOutlook>();
 
             foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithEntityAccess())
             {

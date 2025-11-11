@@ -14,8 +14,8 @@ namespace PureDOTS.Systems.Performance
     /// Stress test system for benchmarking villager systems at scale (50k, 200k, 500k agents).
     /// Measures frame time per system and verifies zero GC allocations.
     /// Only runs when explicitly enabled via StressTestConfig.
+    /// NOTE: Not Burst-compiled because it requires UnityEngine.Time for accurate performance measurement.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup), OrderLast = true)]
     public partial struct VillagerStressTestSystem : ISystem
     {
@@ -23,7 +23,6 @@ namespace PureDOTS.Systems.Performance
         private float _accumulatedFrameTime;
         private int _frameCount;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _lastMeasureTick = 0;
@@ -87,7 +86,9 @@ namespace PureDOTS.Systems.Performance
                     .Build()
                     .CalculateEntityCount();
 
+#if UNITY_EDITOR
                 Debug.Log($"[StressTest] Tick={currentTick} Villagers={villagerCount} AvgFrameTime={avgFrameTime * 1000f:F2}ms Frames={_frameCount}");
+#endif
 
                 _accumulatedFrameTime = 0f;
                 _frameCount = 0;

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using PureDOTS.Runtime.Space;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;

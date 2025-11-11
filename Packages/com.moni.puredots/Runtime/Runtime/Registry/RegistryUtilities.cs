@@ -28,6 +28,7 @@ namespace PureDOTS.Runtime.Registry
         ClimateHazard = 16,
         AreaEffect = 17,
         CultureAlignment = 18,
+        ProcessingStation = 19,
         Custom = 250
     }
 

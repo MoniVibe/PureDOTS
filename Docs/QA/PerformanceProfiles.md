@@ -1,111 +1,77 @@
-# Performance Profiles & Soak Testing
+# Performance Profiles
 
-## Overview
+This document tracks performance metrics for Burst-enabled builds across different entity counts and scenarios.
 
-PureDOTS includes deterministic performance soak scenes and telemetry collection to validate scalability targets and catch regressions.
+## Test Scenarios
 
-## Performance Soak Scene
+### 100k Villager Stress Test
 
-**Location**: `Assets/Scenes/Perf/PerformanceSoakScene.unity`
+**Scene**: `PureDOTS/Assets/Scenes/Perf/PerformanceSoakScene.unity`
 
-### Purpose
+**Configuration**:
+- Target villager count: 100,000
+- Measurement interval: Every 10 ticks
+- Log interval: Every 20 measurements
 
-- Validate 50k+ entity performance targets
-- Catch frame time regressions
-- Measure deterministic execution costs
-- Profile registry/spatial/navigation systems under load
+**Baseline (Before Burst Re-enablement)**:
+- Frame time: TBD
+- Job stats: TBD
+- Memory: TBD
 
-### Usage
+**Burst-Enabled (After Re-enablement)**:
+- Frame time: TBD
+- Job stats: TBD
+- Memory: TBD
 
-1. Open `PerformanceSoakScene.unity`
-2. Configure entity count and spawn patterns via scene bootstrap
-3. Run in Play Mode or via CI runner
-4. Telemetry is automatically collected via `FrameTimingRecorderSystem`
-5. Export metrics via `TelemetryExportSystem` (CSV/JSON)
+**Target Performance**:
+- Frame time: < 16.67ms (60 FPS) for 100k entities
+- Job utilization: > 80% worker utilization
+- Memory: < 2GB for 100k entities
 
-### Target Metrics
+## Aggregate Lesson Telemetry Performance
 
-- **Frame Time**: <16ms (60 FPS) with 50k entities
-- **Registry Updates**: <2ms per registry per frame
-- **Spatial Grid Rebuild**: <3ms for full rebuild (256x256 grid)
-- **Flow Field Build**: <3ms per layer (30-60 tick cadence)
-- **Memory**: <500MB for 50k entities + registries
+**System**: `GodgameLessonTelemetrySystem`
 
-### CI Integration
+**Configuration**:
+- Update group: `PresentationSystemGroup`
+- Burst compilation: Not applicable (presentation system)
 
-```bash
-# Run performance soak test
-UNITY_PATH=/path/to/Unity PureDOTS/CI/run_performance_soak.sh
+**Metrics**:
+- Update time: TBD
+- Buffer operations: TBD
+- Memory allocations: TBD
 
-# Results land in PureDOTS/CI/TestResults/Performance/
-```
+## Space4X Manual Groups Performance
 
-## Meta Registry Soak Harness (Automated)
+**Systems**:
+- `Space4XTransportUpdateGroup`
+- `Space4XVesselUpdateGroup`
+- `Space4XCameraUpdateGroup`
 
-- **Location**: `Assets/Tests/Playmode/SoakHarness.cs`
-- **Command**: `Unity -batchmode -projectPath PureDOTS -runTests -testPlatform playmode -testFilter MetaRegistrySoakHarness_RunsForMultipleTicks`
+**Configuration**:
+- Burst compilation: Enabled for simulation systems
+- Presentation systems: Non-Burst (use Unity GameObjects)
 
-### What It Covers
+**Metrics**:
+- Transport update time: TBD
+- Vessel update time: TBD
+- Camera update time: TBD
 
-- Spawns representative counts of factions, climate hazards, area effects, and cultures
-- Runs meta registry systems and `DebugDisplaySystem` for 128 ticks
-- Verifies debug HUD aggregates (`DebugDisplayData`) and telemetry metrics (registry counts/intensity/averages)
+## Profiling Methodology
 
-### Metrics Checked
+1. **Setup**: Enable Burst compilation for all hot-path assemblies
+2. **Warmup**: Run scene for 60 seconds to stabilize
+3. **Measurement**: Record frame times, job stats, and memory for 300 frames
+4. **Analysis**: Calculate averages, percentiles (p50, p95, p99), and identify bottlenecks
 
-- `registry.faction.count`, `registry.faction.resources`, `registry.hazard.count`, `registry.area.count`, `registry.culture.count`
-- Average area effect strength
-- Global culture alignment score and hazard intensity saturation
+## Tools
 
-### Usage
+- Unity Profiler (CPU, Memory, Jobs)
+- Burst Inspector (compilation validation)
+- Custom telemetry systems (frame time, entity counts)
 
-1. Ensure `CoreSingletonBootstrapSystem` bootstraps the world (handled inside the test)
-2. Run the playmode test locally or through CI
-3. Review assertions to confirm telemetry keys and HUD fields stay in sync with registry outputs
+## Notes
 
-## Telemetry Collection
-
-### Frame Timing
-
-- Per-system frame time (microseconds)
-- Entity counts per archetype
-- Memory allocations
-- Burst job completion times
-
-### Registry Metrics
-
-- Entry counts per registry
-- Update frequencies
-- Spatial sync version deltas
-- Continuity violation counts
-
-### Navigation Metrics
-
-- Flow field rebuild times
-- Agent pathfinding queries
-- Steering computation costs
-- Sensor update frequencies
-
-## Profiling Tips
-
-1. **Use Unity Profiler** with Burst-compiled jobs enabled
-2. **Enable Frame Timing Stream** for per-system breakdowns
-3. **Check Registry Health Monitoring** for anomalies
-4. **Review Spatial Grid Dirty Counts** for optimization opportunities
-
-## Regression Detection
-
-Performance tests should fail if:
-- Frame time exceeds target by >20%
-- Memory usage exceeds baseline by >30%
-- Any system exceeds its budget consistently (>5 consecutive frames)
-
-## Custom Profiles
-
-Games can extend performance profiles by:
-1. Creating scene-specific bootstrap scripts
-2. Configuring entity spawn patterns
-3. Adding custom telemetry hooks
-4. Defining game-specific targets
-
-See `Docs/TODO/Utilities_TODO.md` for implementation details.
+- Performance profiles should be updated after major system changes
+- Compare before/after metrics when enabling Burst on new systems
+- Document any regressions and their root causes

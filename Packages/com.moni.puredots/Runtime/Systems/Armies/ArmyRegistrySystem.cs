@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Armies;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -18,7 +19,6 @@ namespace PureDOTS.Systems
         private Entity _registryEntity;
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _armyQuery = SystemAPI.QueryBuilder()
@@ -75,8 +75,10 @@ namespace PureDOTS.Systems
             }
 
             var metadata = state.EntityManager.GetComponentData<RegistryMetadata>(_registryEntity);
-            var continuity = RegistryContinuitySnapshot.WithSpatialData(metadata.SupportsSpatialQueries, resolved, fallback, unmapped, false);
-            builder.ApplyTo(ref state.EntityManager.GetBuffer<ArmyRegistryEntry>(_registryEntity), ref metadata, tick, continuity);
+            var spatialVersion = metadata.SupportsSpatialQueries ? (uint)1 : (uint)0; // Convert bool to uint for spatial version
+            var continuity = RegistryContinuitySnapshot.WithSpatialData(spatialVersion, resolved, fallback, unmapped, false);
+            var buffer = state.EntityManager.GetBuffer<ArmyRegistryEntry>(_registryEntity);
+            builder.ApplyTo(ref buffer, ref metadata, tick, continuity);
 
             state.EntityManager.SetComponentData(_registryEntity, new ArmyRegistry
             {

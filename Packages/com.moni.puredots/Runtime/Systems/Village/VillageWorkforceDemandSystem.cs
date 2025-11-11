@@ -70,10 +70,11 @@ namespace PureDOTS.Systems
             _policyLookup.Update(ref state);
             _residencyLookup.Update(ref state);
 
-            foreach (var (villageId, stats, demandBuffer, entity) in SystemAPI
-                         .Query<RefRO<VillageId>, RefRO<VillageStats>, DynamicBuffer<VillageWorkforceDemandEntry>>()
+            foreach (var (villageId, stats, entity) in SystemAPI
+                         .Query<RefRO<VillageId>, RefRO<VillageStats>>()
                          .WithEntityAccess())
             {
+                var demandBuffer = state.EntityManager.GetBuffer<VillageWorkforceDemandEntry>(entity);
                 demandBuffer.Clear();
 
                 var pop = math.max(1, stats.ValueRO.Population);

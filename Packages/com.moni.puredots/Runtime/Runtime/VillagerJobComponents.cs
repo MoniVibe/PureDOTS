@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Resource;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -30,6 +31,38 @@ namespace PureDOTS.Runtime.Components
     {
         public ushort ResourceTypeIndex;
         public float Amount;
+        public byte TierId;
+        public ushort AverageQuality;
+
+        public ResourcePayloadSummary AsPayload()
+        {
+            return new ResourcePayloadSummary
+            {
+                ResourceTypeIndex = ResourceTypeIndex,
+                Amount = Amount,
+                TierId = TierId,
+                AverageQuality = AverageQuality
+            };
+        }
+
+        public void ApplyPayload(in ResourcePayloadSummary payload)
+        {
+            ResourceTypeIndex = payload.ResourceTypeIndex;
+            Amount = payload.Amount;
+            TierId = payload.TierId;
+            AverageQuality = payload.AverageQuality;
+        }
+
+        public static VillagerJobCarryItem FromPayload(in ResourcePayloadSummary payload)
+        {
+            return new VillagerJobCarryItem
+            {
+                ResourceTypeIndex = payload.ResourceTypeIndex,
+                Amount = payload.Amount,
+                TierId = payload.TierId,
+                AverageQuality = payload.AverageQuality
+            };
+        }
     }
 
     public struct VillagerJobHistorySample : IBufferElementData

@@ -98,7 +98,9 @@ namespace PureDOTS.Systems
                     carrySnapshot.Add(new VillagerJobCarrySnapshot
                     {
                         ResourceTypeIndex = item.ResourceTypeIndex,
-                        Amount = item.Amount
+                        Amount = item.Amount,
+                        TierId = item.TierId,
+                        AverageQuality = item.AverageQuality
                     });
                 }
 
@@ -155,7 +157,9 @@ namespace PureDOTS.Systems
                         buffer.Add(new VillagerJobCarryItem
                         {
                             ResourceTypeIndex = snapshot.ResourceTypeIndex,
-                            Amount = snapshot.Amount
+                            Amount = snapshot.Amount,
+                            TierId = snapshot.TierId,
+                            AverageQuality = snapshot.AverageQuality
                         });
                     }
                 }
@@ -176,6 +180,8 @@ namespace PureDOTS.Systems
         {
             public ushort ResourceTypeIndex;
             public float Amount;
+            public byte TierId;
+            public ushort AverageQuality;
         }
 
         private struct VillagerJobTimeRecord

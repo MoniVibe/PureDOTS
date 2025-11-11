@@ -19,18 +19,25 @@ namespace PureDOTS.Systems.Formations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (config, slots, leaderTransform) in SystemAPI
-                         .Query<RefRO<FormationConfig>, DynamicBuffer<FormationSlot>, RefRO<LocalTransform>>())
+            foreach (var (config, leaderTransform, entity) in SystemAPI
+                         .Query<RefRO<FormationConfig>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
             {
+                if (!state.EntityManager.HasBuffer<FormationSlot>(entity))
+                {
+                    continue;
+                }
+                var slots = state.EntityManager.GetBuffer<FormationSlot>(entity);
                 var forward = leaderTransform.ValueRO.Forward();
                 var right = leaderTransform.ValueRO.Right();
                 for (int i = 0; i < slots.Length; i++)
                 {
                     var offset = ComputeOffset(config.ValueRO, i, forward, right);
+                    var existingSlot = slots[i];
                     slots[i] = new FormationSlot
                     {
                         LocalOffset = offset,
-                        AssignedEntity = slots[i].AssignedEntity
+                        AssignedEntity = existingSlot.AssignedEntity
                     };
                 }
             }

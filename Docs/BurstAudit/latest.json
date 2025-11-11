@@ -1,0 +1,5026 @@
+{
+  "summary": {
+    "total_systems": 185,
+    "with_burst_compile": 134,
+    "without_burst_compile": 51,
+    "hot_path_systems": 92,
+    "systems_with_blockers": 185,
+    "total_blockers": 454
+  },
+  "by_category": {
+    "puredots_runtime": {
+      "count": 159,
+      "with_burst": 126,
+      "without_burst": 33,
+      "with_blockers": 159
+    },
+    "space4x_bridge": {
+      "count": 9,
+      "with_burst": 7,
+      "without_burst": 2,
+      "with_blockers": 9
+    },
+    "godgame_bridge": {
+      "count": 10,
+      "with_burst": 0,
+      "without_burst": 10,
+      "with_blockers": 10
+    },
+    "presentation": {
+      "count": 7,
+      "with_burst": 1,
+      "without_burst": 6,
+      "with_blockers": 7
+    },
+    "unknown": {
+      "count": 0,
+      "with_burst": 0,
+      "without_burst": 0,
+      "with_blockers": 0
+    }
+  },
+  "hot_path_missing_burst": [
+    {
+      "name": "HistorySettingsConfigSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\HistorySettingsConfigSystem.cs",
+      "group": "TimeSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "PoolingCoordinatorSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\PoolingCoordinatorSystem.cs",
+      "group": "TimeSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "RegistryContinuityValidationSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryContinuityValidationSystem.cs",
+      "group": "ResourceSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "RegistryHealthSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryHealthSystem.cs",
+      "group": "ResourceSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "RegistrySpatialSyncSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistrySpatialSyncSystem.cs",
+      "group": "SpatialSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "EnvironmentRewindGuardSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindGuardSystems.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 13
+    },
+    {
+      "name": "RewindModeRoutingSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindRoutingSystems.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 7
+    },
+    {
+      "name": "VillagerAggregateLessonTrackerBootstrapSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerAggregateLessonSystems.cs",
+      "group": "VillagerSystemGroup",
+      "blockers": 5
+    },
+    {
+      "name": "PresentationRecycleSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Presentation\\PresentationRecycleSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 3
+    },
+    {
+      "name": "PresentationSpawnSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Presentation\\PresentationSpawnSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "VillagerWorkforceIntentSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillagerWorkforceIntentSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "MiningLoopVisualBootstrapSystem",
+      "file": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Visuals\\MiningLoopVisualBootstrapSystem.cs",
+      "group": "TimeSystemGroup",
+      "blockers": 3
+    },
+    {
+      "name": "Space4XAffiliationComplianceSystem",
+      "file": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XAffiliationComplianceSystem.cs",
+      "group": "SpatialSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "Space4XRegistryBridgeSystem",
+      "file": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4xRegistryBridgeSystem.cs",
+      "group": "SpatialSystemGroup",
+      "blockers": 6
+    },
+    {
+      "name": "GodgameBandSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameBandSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "GodgameLogisticsSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameLogisticsSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "GodgameMiracleSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameMiracleSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "GodgameSpawnerSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameSpawnerSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "GodgameStorehouseSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameStorehouseSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    },
+    {
+      "name": "GodgameVillagerSyncSystem",
+      "file": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameVillagerSyncSystem.cs",
+      "group": "SimulationSystemGroup",
+      "blockers": 2
+    }
+  ],
+  "systems": [
+    {
+      "name": "AbilityRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\AbilityRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AbilityRegistrySystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(MiracleEffectSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "AggregateKnowledgeBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\AggregateKnowledgeSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "GameplaySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AggregateKnowledgeSystems.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "AggregateKnowledgeSystems.cs:38",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "AggregateKnowledgeSystems.cs:39",
+          "description": "Reflection usage: [UpdateAfter(typeof(AggregateKnowledgeBootstrapSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "WorshipSiteSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\BuildingSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "MiracleEffectSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BuildingSystems.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(MiracleEffectSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BuildingSystems.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(PrayerPowerSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BuildingSystems.cs:105",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BuildingSystems.cs:239",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ConstructionProgressSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ConstructionProgressSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ConstructionSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ConstructionProgressSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ConstructionSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ConstructionProgressSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(ConstructionRegistrySystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ConstructionRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ConstructionRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ConstructionRegistrySystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ConstructionSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CoreSingletonBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\CoreSingletonBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:23",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:44",
+          "description": "Reflection usage: timeEntity = entityManager.CreateEntity(typeof(TimeState));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:80",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(HistorySettings));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:90",
+          "description": "Reflection usage: rewindEntity = entityManager.CreateEntity(typeof(RewindState));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:159",
+          "description": "Reflection usage: syncEntity = entityManager.CreateEntity(typeof(RegistrySpatialSyncState));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:189",
+          "description": "Reflection usage: registryEntity = entityManager.CreateEntity(typeof(TComponent));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:230",
+          "description": "Reflection usage: queueEntity = entityManager.CreateEntity(typeof(AICommandQueueTag));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:250",
+          "description": "Reflection usage: gridEntity = entityManager.CreateEntity(typeof(SpatialGridConfig), typeof(Spatia"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:315",
+          "description": "Reflection usage: directoryEntity = entityManager.CreateEntity(typeof(RegistryDirectory));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:349",
+          "description": "Reflection usage: telemetryEntity = entityManager.CreateEntity(typeof(TelemetryStream));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:374",
+          "description": "Reflection usage: frameEntity = entityManager.CreateEntity(typeof(FrameTimingStream));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:404",
+          "description": "Reflection usage: replayEntity = entityManager.CreateEntity(typeof(ReplayCaptureStream));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:432",
+          "description": "Reflection usage: registryEntity = entityManager.CreateEntity(typeof(SpatialProviderRegistry));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:447",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(VillagerBehaviorConfig));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:457",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(ResourceInteractionConfig));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:467",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(PureDOTS.Environment.TerrainVersi"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:477",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(PrayerPower));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:495",
+          "description": "Reflection usage: flowFieldEntity = entityManager.CreateEntity(typeof(FlowFieldConfig));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:528",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(RegistryHealthMonitoring), typeof"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:591",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(KnowledgeLessonEffectCatalog));"
+        },
+        {
+          "type": "reflection",
+          "location": "CoreSingletonBootstrapSystem.cs:603",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(SkillXpCurveConfig));"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CreatureRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\CreatureRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CreatureRegistrySystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "DebugDisplaySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\DebugDisplaySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "PresentationSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DebugDisplaySystem.cs:23",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "DivineHandSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\DivineHandSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": true,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HandSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DivineHandSystems.cs:30",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HandSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "HandInputRouterSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\HandInputRouterSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HandInputRouterSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HandSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "HistorySettingsConfigSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\HistorySettingsConfigSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HistorySettingsConfigSystem.cs:7",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "HistorySettingsConfigSystem.cs:8",
+          "description": "Reflection usage: [UpdateAfter(typeof(TimeSettingsConfigSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "LogisticsRequestRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\LogisticsRequestRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TransportPhaseGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "LogisticsRequestRegistrySystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TransportPhaseGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "FactionRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\MetaRegistryStubSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MetaRegistryStubSystems.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "MetaRegistryStubSystems.cs:140",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "MetaRegistryStubSystems.cs:272",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "MetaRegistryStubSystems.cs:395",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "MiracleRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\MiracleRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "GameplaySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MiracleRegistrySystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(GameplaySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationPlaceholderScaleSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\PlaceholderVisualSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PlaceholderVisualSystems.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PlaceholderVisualSystems.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(VegetationGrowthSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PlaceholderVisualSystems.cs:77",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PlaceholderVisualSystems.cs:116",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PlaceholderVisualSystems.cs:117",
+          "description": "Reflection usage: [UpdateAfter(typeof(MiraclePlaceholderPulseSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "PoolingCoordinatorSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\PoolingCoordinatorSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PoolingCoordinatorSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PoolingCoordinatorSystem.cs:9",
+          "description": "Reflection usage: [UpdateAfter(typeof(TimeSettingsConfigSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "PrayerPowerSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\PrayerPowerSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "MiracleEffectSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PrayerPowerSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(MiracleEffectSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ProcessingStationRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ProcessingStationRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ProcessingStationRegistrySystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup), OrderLast = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "RainCloudMovementSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RainCloudSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RainCloudSystems.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RainCloudSystems.cs:98",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RainMiracleCommandBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RainMiracleSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RainMiracleSystems.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RainMiracleSystems.cs:22",
+          "description": "Reflection usage: queueEntity = entityManager.CreateEntity(typeof(RainMiracleCommandQueue));"
+        },
+        {
+          "type": "reflection",
+          "location": "RainMiracleSystems.cs:41",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HandSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "RegistryConsoleInstrumentationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryConsoleInstrumentationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "LateSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistryConsoleInstrumentationSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(LateSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "RegistryContinuityValidationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryContinuityValidationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistryContinuityValidationSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistryContinuityValidationSystem.cs:12",
+          "description": "Reflection usage: [UpdateAfter(typeof(RegistryHealthSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RegistryDirectorySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryDirectorySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistryDirectorySystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistryDirectorySystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceRegistrySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistryDirectorySystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(StorehouseRegistrySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistryDirectorySystem.cs:18",
+          "description": "Reflection usage: [UpdateBefore(typeof(RegistryHealthSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RegistryHealthSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryHealthSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistryHealthSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistryHealthSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(RegistryDirectorySystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RegistryInstrumentationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistryInstrumentationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "LateSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistryInstrumentationSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(LateSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "RegistrySpatialSyncSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RegistrySpatialSyncSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RegistrySpatialSyncSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RegistrySpatialSyncSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(SpatialGridBuildSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourceProcessingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ResourceProcessingSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourceProcessingSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceProcessingSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceRegistrySystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourceRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ResourceRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourceRegistrySystem.cs:19",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ResourceReservationBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\ResourceSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:66",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:115",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:116",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceGatheringSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:410",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceSystems.cs:411",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceDepositSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RewindCoordinatorSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindCoordinatorSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RewindCoordinatorSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindCoordinatorSystem.cs:15",
+          "description": "Reflection usage: [UpdateBefore(typeof(TimeTickSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "EnvironmentRewindGuardSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindGuardSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:13",
+          "description": "Reflection usage: [UpdateBefore(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:42",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:43",
+          "description": "Reflection usage: [UpdateAfter(typeof(EnvironmentRewindGuardSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:44",
+          "description": "Reflection usage: [UpdateBefore(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:73",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:74",
+          "description": "Reflection usage: [UpdateAfter(typeof(SpatialRewindGuardSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:75",
+          "description": "Reflection usage: [UpdateBefore(typeof(GameplaySystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:105",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:106",
+          "description": "Reflection usage: [UpdateBefore(typeof(CameraInputSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:136",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PhysicsSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:137",
+          "description": "Reflection usage: [UpdateBefore(typeof(HandSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindGuardSystems.cs:166",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RewindModeRoutingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindRoutingSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:6",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:12",
+          "description": "Reflection usage: [UpdateAfter(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(CatchUpSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:23",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindRoutingSystems.cs:24",
+          "description": "Reflection usage: [UpdateBefore(typeof(RecordSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "RewindTelemetrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\RewindTelemetrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "LateSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(LateSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:37",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(EnvironmentSystemGroup), \"Environment\", re"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:38",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(SpatialSystemGroup), \"Spatial\", ref violat"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:39",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(GameplaySystemGroup), \"Gameplay\", ref viol"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:40",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(CameraInputSystemGroup), \"CameraInput\", re"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:41",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(HandSystemGroup), \"Hand\", ref violationCou"
+        },
+        {
+          "type": "reflection",
+          "location": "RewindTelemetrySystem.cs:46",
+          "description": "Reflection usage: CheckGroupViolation(ref state, typeof(PresentationSystemGroup), \"Presentation\", "
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SceneSpawnSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\SceneSpawnSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SceneSpawnSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpawnerRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\SpawnerRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpawnerRegistrySystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StorehouseInventoryTimeAdapterSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\StorehouseInventoryTimeAdapterSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HistorySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StorehouseInventoryTimeAdapterSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StorehouseRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\StorehouseRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StorehouseRegistrySystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseRegistrySystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceRegistrySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseRegistrySystem.cs:20",
+          "description": "Reflection usage: [UpdateBefore(typeof(ResourceDepositSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "StorehouseInventorySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\StorehouseSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "ResourceSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourceDepositSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:115",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:116",
+          "description": "Reflection usage: [UpdateAfter(typeof(StorehouseInventorySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:143",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:144",
+          "description": "Reflection usage: [UpdateAfter(typeof(StorehouseInventorySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:237",
+          "description": "Reflection usage: [UpdateInGroup(typeof(ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StorehouseSystems.cs:238",
+          "description": "Reflection usage: [UpdateAfter(typeof(StorehouseInventorySystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "TimeSettingsConfigSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\TimeSettingsConfigSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TimeSettingsConfigSystem.cs:6",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "TimeStepSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\TimeStepSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TimeStepSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "TimeStepSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "TimeTickSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\TimeTickSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TimeTickSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "TimeTickSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(HistorySettingsConfigSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VegetationCommandBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationCommandBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationCommandBootstrapSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationCommandBootstrapSystem.cs:21",
+          "description": "Reflection usage: harvestQueueEntity = entityManager.CreateEntity(typeof(VegetationHarvestCommandQ"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationCommandBootstrapSystem.cs:43",
+          "description": "Reflection usage: var spawnQueueEntity = entityManager.CreateEntity(typeof(VegetationSpawnCommandQ"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationDecaySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationDecaySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationDecaySystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationDecaySystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(VegetationHealthSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationGrowthSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationGrowthSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationGrowthSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationHarvestSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationHarvestSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationHarvestSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationHarvestSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(VegetationGrowthSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationHealthSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationHealthSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationHealthSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationHealthSystem.cs:19",
+          "description": "Reflection usage: [UpdateBefore(typeof(VegetationGrowthSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationReproductionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationReproductionSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationReproductionSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationReproductionSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(VegetationGrowthSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VegetationSpawnSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VegetationSpawnSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VegetationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VegetationSpawnSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VegetationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VegetationSpawnSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(VegetationReproductionSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerAggregateLessonTrackerBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerAggregateLessonSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateLessonSystems.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateLessonSystems.cs:38",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateLessonSystems.cs:39",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerFamilyLessonShareSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateLessonSystems.cs:143",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateLessonSystems.cs:144",
+          "description": "Reflection usage: [UpdateAfter(typeof(AggregateLessonPropagationSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerAISystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerAISystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerAISystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAISystem.cs:14",
+          "description": "Reflection usage: [UpdateBefore(typeof(VillagerTargetingSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerCommandSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerCommandSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerCommandSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerCommandSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerAISystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerFlagsMigrationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerFlagsMigrationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerFlagsMigrationSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerHistorySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerHistorySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HistorySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerHistorySystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerJobBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerJobSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:43",
+          "description": "Reflection usage: eventEntity = entityManager.CreateEntity(typeof(VillagerJobEventStream), typeof("
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:66",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(VillagerJobRequestQueue));"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:84",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(VillagerJobDeliveryQueue));"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:102",
+          "description": "Reflection usage: var entity = entityManager.CreateEntity(typeof(VillagerJobDiagnostics));"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:109",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:208",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:209",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobInitializationSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:281",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:282",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobRequestSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:600",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:601",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobAssignmentSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1117",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1118",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobExecutionSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1473",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1474",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobDeliverySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1616",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1644",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1713",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PlaybackSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1773",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerJobSystems.cs:1774",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobAssignmentSystem))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "VillagerJobSystems.cs:1834",
+          "description": "UnityEngine reference: Frame = (uint)UnityEngine.Time.frameCount,"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerJobTimeAdapterSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerJobTimeAdapterSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerJobTimeAdapterSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerFamilyLessonShareSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerLessonShareSystems.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerJobFixedStepGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerLessonShareSystems.cs:21",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerLessonShareSystems.cs:60",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerLessonShareSystems.cs:61",
+          "description": "Reflection usage: [UpdateBefore(typeof(VillagerJobExecutionSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerLessonShareSystems.cs:123",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerLessonShareSystems.cs:124",
+          "description": "Reflection usage: [UpdateBefore(typeof(VillagerJobExecutionSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerMoodSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerMoodSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerMoodSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerMoodSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerStatusSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerMovementSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerMovementSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerMovementSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerMovementSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerTargetingSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerMovementSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(FlowFieldFollowSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerNeedsSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerNeedsSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerNeedsSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerRegistrySystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerStatusSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerStatusSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerStatusSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerStatusSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerNeedsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerTargetingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\VillagerTargetingSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerTargetingSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "AggregateAggregationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\AggregateAggregationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AggregateAggregationSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "AggregateFactionMaintenanceSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\AggregateFactionMaintenanceSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AggregateFactionMaintenanceSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "AggregateMembershipRestrictionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\AggregateMembershipRestrictionSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AggregateMembershipRestrictionSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BandFormationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\BandFormationSystem.cs",
+      "namespace": "PureDOTS.Systems.Aggregates",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BandFormationSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "BandFormationSystem.cs:37",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[BandFormationSystem] STUB: Band formation detecti"
+        },
+        {
+          "type": "reflection",
+          "location": "BandFormationSystem.cs:48",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "BandFormationSystem.cs:70",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[BandFormationProcessingSystem] STUB: Band formati"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GuildFormationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\GuildFormationSystem.cs",
+      "namespace": "PureDOTS.Systems.Aggregates",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GuildFormationSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GuildFormationSystem.cs:41",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GuildFormationSystem] STUB: Guild formation not y"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerAggregateBelongingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\VillagerAggregateBelongingSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateBelongingSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAggregateBelongingSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerNeedsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerVillageMembershipSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Aggregates\\VillagerVillageMembershipSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerVillageMembershipSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "AISensorUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\AI\\AISystems.cs",
+      "namespace": "PureDOTS.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "AISystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:88",
+          "description": "Reflection usage: [UpdateInGroup(typeof(AISystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:364",
+          "description": "Reflection usage: [UpdateInGroup(typeof(AISystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:365",
+          "description": "Reflection usage: [UpdateAfter(typeof(AISensorUpdateSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:481",
+          "description": "Reflection usage: [UpdateInGroup(typeof(AISystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:482",
+          "description": "Reflection usage: [UpdateAfter(typeof(AIUtilityScoringSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:565",
+          "description": "Reflection usage: [UpdateInGroup(typeof(AISystemGroup), OrderLast = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "AISystems.cs:566",
+          "description": "Reflection usage: [UpdateAfter(typeof(AISteeringSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ArmyIntentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmyIntentSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmyIntentSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmyMovementSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmyMovementSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmyMovementSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmyOrderAssignmentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmyOrderAssignmentSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmyOrderAssignmentSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmyOrderAssignmentSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(ArmyIntentSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmyRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmyRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmyRegistrySystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmyRegistrySystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(RegistrySpatialSyncSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmyRegistrySystem.cs:30",
+          "description": "Reflection usage: typeof(ArmyRegistry),"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmyRegistrySystem.cs:31",
+          "description": "Reflection usage: typeof(RegistryMetadata),"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmyRegistrySystem.cs:32",
+          "description": "Reflection usage: typeof(ArmyRegistryEntry));"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmySupplyDispatchSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmySupplyDispatchSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmySupplyDispatchSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmySupplyDispatchSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(ArmySupplyRequestSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmySupplyRequestSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmySupplyRequestSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmySupplyRequestSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmySupplyRequestSystem.cs:11",
+          "description": "Reflection usage: [UpdateAfter(typeof(ArmySupplySystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ArmySupplySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Armies\\ArmySupplySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ArmySupplySystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ArmySupplySystem.cs:11",
+          "description": "Reflection usage: [UpdateAfter(typeof(ArmyMovementSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BandAggregationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Bands\\BandAggregationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BandAggregationSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BandAggregationSystem.cs:10",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerNeedsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BandFormationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Bands\\BandFormationSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BandFormationSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BandFormationSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(BandAggregationSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BandMoraleSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Bands\\BandMoraleSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BandMoraleSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BandMoraleSystem.cs:11",
+          "description": "Reflection usage: [UpdateAfter(typeof(BandAggregationSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BandRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Bands\\BandRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BandRegistrySystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BandRegistrySystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(RegistrySpatialSyncSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CameraSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Camera\\CameraSystem.cs",
+      "namespace": "PureDOTS.Systems.Camera",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "CameraInputSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CameraSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(CameraInputSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CombatLoopSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\CombatLoopSystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CombatLoopSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CombatManeuverSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\CombatManeuverSystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CombatManeuverSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "CombatManeuverSystem.cs:9",
+          "description": "Reflection usage: [UpdateAfter(typeof(CombatLoopSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CombatPersonalitySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\CombatPersonalitySystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "CombatSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CombatPersonalitySystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(CombatSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "CombatPersonalitySystem.cs:18",
+          "description": "Reflection usage: [UpdateBefore(typeof(CombatResolutionSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CombatResolutionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\CombatResolutionSystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "CombatSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CombatResolutionSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(CombatSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "CombatResolutionSystem.cs:49",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[CombatResolutionSystem] STUB: Combat resolution n"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "DangerZoneAwarenessSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\DangerZoneAwarenessSystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DangerZoneAwarenessSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "DangerZoneAwarenessSystem.cs:10",
+          "description": "Reflection usage: [UpdateAfter(typeof(CombatLoopSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "TargetingPredictionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Combat\\TargetingPredictionSystem.cs",
+      "namespace": "PureDOTS.Systems.Combat",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TargetingPredictionSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "BuildSpawnCandidatesSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\BuildSpawnCandidatesSystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "FixedStepSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BuildSpawnCandidatesSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BuildSpawnCandidatesSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(Input.CopyInputToEcsSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CleanupSpawnRequestsSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\CleanupSpawnRequestsSystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "FixedStepSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CleanupSpawnRequestsSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "CleanupSpawnRequestsSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(InstantiateSpawnSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "InstantiateSpawnSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\InstantiateSpawnSystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "FixedStepSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "InstantiateSpawnSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "InstantiateSpawnSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(ValidateSpawnCandidatesSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ProcessAggregateSpawnSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\ProcessAggregateSpawnSystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "FixedStepSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ProcessAggregateSpawnSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ProcessAggregateSpawnSystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(BuildSpawnCandidatesSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpawnTelemetrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\SpawnTelemetrySystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "LateSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpawnTelemetrySystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(LateSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ValidateSpawnCandidatesSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Devtools\\ValidateSpawnCandidatesSystem.cs",
+      "namespace": "PureDOTS.Systems.Devtools",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "FixedStepSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ValidateSpawnCandidatesSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ValidateSpawnCandidatesSystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(BuildSpawnCandidatesSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "BiomeDerivationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\BiomeDerivationSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "EnvironmentSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "BiomeDerivationSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "BiomeDerivationSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(MoistureSeepageSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "ClimateStateUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\ClimateStateUpdateSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ClimateStateUpdateSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "EnvironmentEffectBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\EnvironmentEffectBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "EnvironmentEffectBootstrapSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "EnvironmentEffectBootstrapSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(EnvironmentGridBootstrapSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "EnvironmentEffectUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\EnvironmentEffectUpdateSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "EnvironmentEffectUpdateSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "EnvironmentGridBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\EnvironmentGridBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "EnvironmentGridBootstrapSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "EnvironmentGridBootstrapSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "MoistureEvaporationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\MoistureGridSystems.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "EnvironmentSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MoistureGridSystems.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MoistureGridSystems.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(ClimateStateUpdateSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MoistureGridSystems.cs:172",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MoistureGridSystems.cs:173",
+          "description": "Reflection usage: [UpdateAfter(typeof(MoistureEvaporationSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "MoistureGridTimeAdapterSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\MoistureGridTimeAdapterSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HistorySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MoistureGridTimeAdapterSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "MoistureRainSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\MoistureRainSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "EnvironmentSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MoistureRainSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MoistureRainSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(MoistureSeepageSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SunlightGridUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\SunlightGridUpdateSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "EnvironmentSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SunlightGridUpdateSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "SunlightGridUpdateSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(ClimateStateUpdateSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "TerrainChangeProcessorSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Environment\\TerrainChangeProcessorSystem.cs",
+      "namespace": "PureDOTS.Systems.Environment",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "EnvironmentSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TerrainChangeProcessorSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(EnvironmentSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "FormationAssignmentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Formations\\FormationAssignmentSystem.cs",
+      "namespace": "PureDOTS.Systems.Formations",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "FormationAssignmentSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "HybridControlToggleSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Hybrid\\HybridControlToggleSystem.cs",
+      "namespace": "PureDOTS.Systems.Hybrid",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "HybridControlToggleSystem.cs:3",
+          "description": "UnityEngine reference: using UnityEngine.InputSystem;"
+        },
+        {
+          "type": "reflection",
+          "location": "HybridControlToggleSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "HybridControlToggleSystem.cs:20",
+          "description": "UnityEngine reference: UnityEngine.Debug.Log(\"[HybridControlToggleSystem] System registered in Initiali"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CopyInputToEcsSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Input\\CopyInputToEcsSystem.cs",
+      "namespace": "PureDOTS.Systems.Input",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "CameraInputSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CopyInputToEcsSystem.cs:23",
+          "description": "Reflection usage: [UpdateInGroup(typeof(CameraInputSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "CopyInputToEcsSystem.cs:34",
+          "description": "Reflection usage: _cursorCacheEntity = state.EntityManager.CreateEntity(typeof(CursorHitCache));"
+        },
+        {
+          "type": "reflection",
+          "location": "CopyInputToEcsSystem.cs:108",
+          "description": "Reflection usage: cacheEntity = state.EntityManager.CreateEntity(typeof(CursorHitCache));"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "InputPlaybackSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Input\\InputPlaybackSystem.cs",
+      "namespace": "PureDOTS.Systems.Input",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "InputPlaybackSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "InputPlaybackSystem.cs:15",
+          "description": "Reflection usage: [UpdateBefore(typeof(CopyInputToEcsSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "InputRecordingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Input\\InputRecordingSystem.cs",
+      "namespace": "PureDOTS.Systems.Input",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HistorySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "InputRecordingSystem.cs:29",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "IntentMappingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Input\\IntentMappingSystem.cs",
+      "namespace": "PureDOTS.Systems.Input",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "IntentMappingSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "IntentMappingSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(CopyInputToEcsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "TimeControlInputSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Input\\TimeControlInputSystem.cs",
+      "namespace": "PureDOTS.Systems.Input",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "TimeControlInputSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "TimeControlInputSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(CopyInputToEcsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "FlowFieldBuildSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Navigation\\FlowFieldBuildSystem.cs",
+      "namespace": "PureDOTS.Systems.Navigation",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "FlowFieldBuildSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "FlowFieldBuildSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(SpatialGridBuildSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "FlowFieldFollowSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Navigation\\FlowFieldFollowSystem.cs",
+      "namespace": "PureDOTS.Systems.Navigation",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "FlowFieldFollowSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "FlowFieldFollowSystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerTargetingSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "FlowFieldRequestSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Navigation\\FlowFieldRequestSystem.cs",
+      "namespace": "PureDOTS.Systems.Navigation",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "FlowFieldRequestSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "LocalSteeringSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Navigation\\LocalSteeringSystem.cs",
+      "namespace": "PureDOTS.Systems.Navigation",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "LocalSteeringSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "LocalSteeringSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(FlowFieldFollowSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "SpatialSensorUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Navigation\\SpatialSensorUpdateSystem.cs",
+      "namespace": "PureDOTS.Systems.Navigation",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "AISystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialSensorUpdateSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(AISystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillagerStressTestSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Performance\\VillagerStressTestSystem.cs",
+      "namespace": "PureDOTS.Systems.Performance",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerStressTestSystem.cs:19",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup), OrderLast = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "PresentationBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Presentation\\PresentationBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PresentationBootstrapSystem.cs:6",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "PresentationRecycleSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Presentation\\PresentationRecycleSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PresentationRecycleSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PresentationRecycleSystem.cs:13",
+          "description": "Reflection usage: [UpdateBefore(typeof(EndSimulationEntityCommandBufferSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PresentationRecycleSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(PresentationSpawnSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "PresentationSpawnSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Presentation\\PresentationSpawnSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "PresentationSpawnSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "PresentationSpawnSystem.cs:16",
+          "description": "Reflection usage: [UpdateBefore(typeof(EndSimulationEntityCommandBufferSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CrewAggregationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Ships\\CrewAggregationSystem.cs",
+      "namespace": "PureDOTS.Systems.Ships",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CrewAggregationSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "CrewContractSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Ships\\CrewContractSystem.cs",
+      "namespace": "PureDOTS.Systems.Ships",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "CrewContractSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ShipActivationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Ships\\ShipActivationSystem.cs",
+      "namespace": "PureDOTS.Systems.Ships",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ShipActivationSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "DropOnlyHarvestDepositSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\DropOnlyHarvestDepositSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDepositSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDepositSystem.cs:12",
+          "description": "Reflection usage: [UpdateAfter(typeof(MiningLoopSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDepositSystem.cs:21",
+          "description": "Reflection usage: typeof(ResourcePile),"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDepositSystem.cs:22",
+          "description": "Reflection usage: typeof(ResourcePileMeta),"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDepositSystem.cs:23",
+          "description": "Reflection usage: typeof(ResourcePileVelocity));"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "DropOnlyHarvestDropIntervalSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\DropOnlyHarvestDropIntervalSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDropIntervalSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvestDropIntervalSystem.cs:9",
+          "description": "Reflection usage: [UpdateBefore(typeof(DropOnlyHarvestDepositSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "DropOnlyHarvesterSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\DropOnlyHarvesterSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvesterSystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "DropOnlyHarvesterSystem.cs:9",
+          "description": "Reflection usage: [UpdateAfter(typeof(MiningLoopSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "HaulingJobAssignmentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\HaulingJobAssignmentSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HaulingJobAssignmentSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "HaulingJobAssignmentSystem.cs:12",
+          "description": "Reflection usage: [UpdateAfter(typeof(HaulingJobManagerSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "HaulingJobManagerSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\HaulingJobManagerSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HaulingJobManagerSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "HaulingJobManagerSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(ResourcePileSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "HaulingJobPrioritySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\HaulingJobPrioritySystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HaulingJobPrioritySystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "HaulingJobPrioritySystem.cs:10",
+          "description": "Reflection usage: [UpdateBefore(typeof(HaulingJobManagerSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "HaulingLoopSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\HaulingLoopSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "HaulingLoopSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "MiningLoopSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\MiningLoopSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MiningLoopSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourceDropSpawnerSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\ResourceDropSpawnerSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourceDropSpawnerSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "ResourceDropSpawnerSystem.cs:12",
+          "description": "Reflection usage: [UpdateAfter(typeof(DropOnlyHarvestDepositSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourcePileDecaySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\ResourcePileDecaySystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourcePileDecaySystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourcePileMovementSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\ResourcePileMovementSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourcePileMovementSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourcePileSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\ResourcePileSystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourcePileSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "ResourceUrgencySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Space\\ResourceUrgencySystem.cs",
+      "namespace": "PureDOTS.Systems.Space",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "ResourceUrgencySystem.cs:8",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "SpatialGridBuildSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialGridBuildSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialGridBuildSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(global::PureDOTS.Systems.SpatialSystemGroup), OrderFirst ="
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpatialGridDirtyTrackingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialGridDirtyTrackingSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialGridDirtyTrackingSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(global::PureDOTS.Systems.SpatialSystemGroup), OrderFirst ="
+        },
+        {
+          "type": "reflection",
+          "location": "SpatialGridDirtyTrackingSystem.cs:17",
+          "description": "Reflection usage: [UpdateBefore(typeof(SpatialGridBuildSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpatialGridInitialBuildSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialGridInitialBuildSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialGridInitialBuildSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpatialGridSnapshotSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialGridSnapshotSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HistorySystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialGridSnapshotSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HistorySystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpatialInstrumentationSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialInstrumentationSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialInstrumentationSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(global::PureDOTS.Systems.SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "SpatialInstrumentationSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(SpatialGridBuildSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "SpatialProviderRegistrySystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\SpatialProviderRegistrySystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "SpatialProviderRegistrySystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VelocitySamplingSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Spatial\\VelocitySamplingSystem.cs",
+      "namespace": "PureDOTS.Systems.Spatial",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VelocitySamplingSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "StreamingCoordinatorBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingCoordinatorBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StreamingCoordinatorBootstrapSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingCoordinatorBootstrapSystem.cs:31",
+          "description": "Reflection usage: coordinatorEntity = entityManager.CreateEntity(typeof(StreamingCoordinator));"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingFocusUpdateSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingFocusUpdateSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StreamingFocusUpdateSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingFocusUpdateSystem.cs:12",
+          "description": "Reflection usage: [UpdateBefore(typeof(StreamingScannerSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingGuardrailSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingGuardrailSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StreamingGuardrailSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingGuardrailSystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingScannerSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingGuardrailSystem.cs:15",
+          "description": "Reflection usage: [UpdateBefore(typeof(StreamingLoaderSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingLoaderSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingLoaderSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "StreamingLoaderSystem.cs:9",
+          "description": "UnityEngine reference: using UnityEngine.Assertions;"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingLoaderSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingLoaderSystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingScannerSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingScannerSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingScannerSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "StreamingScannerSystem.cs:6",
+          "description": "UnityEngine reference: using UnityEngine.Assertions;"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingScannerSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingSectionBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingSectionBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StreamingSectionBootstrapSystem.cs:10",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingSectionBootstrapSystem.cs:11",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingCoordinatorBootstrapSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingSectionContentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingSectionContentSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "StreamingSectionContentSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingSectionContentSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingLoaderSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingStateSyncSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingStateSyncSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "StreamingStateSyncSystem.cs:5",
+          "description": "UnityEngine reference: using UnityEngine.Assertions;"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingStateSyncSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingStateSyncSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingLoaderSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "StreamingStatisticsSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Streaming\\StreamingStatisticsSystem.cs",
+      "namespace": "PureDOTS.Systems.Streaming",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "StreamingStatisticsSystem.cs:5",
+          "description": "UnityEngine reference: using UnityEngine.Assertions;"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingStatisticsSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "StreamingStatisticsSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(StreamingStateSyncSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VillageJobPreferenceSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillageJobPreferenceSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillageJobPreferenceSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillageOutlookBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillageOutlookBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillageOutlookBootstrapSystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillageOutlookBootstrapSystem.cs:14",
+          "description": "Reflection usage: [UpdateBefore(typeof(VillageJobPreferenceSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerWorkforceIntentSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillagerWorkforceIntentSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerWorkforceIntentSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerWorkforceIntentSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillageWorkforceDecisionSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillageWorkforceDecisionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillageWorkforceDecisionSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillageWorkforceDecisionSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillageWorkforceDecisionSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerNeedsSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillageWorkforceDemandSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillageWorkforceDemandSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillageWorkforceDemandSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillageWorkforceDemandSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerJobAssignmentSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillageWorkforcePolicyBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Village\\VillageWorkforcePolicyBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillageWorkforcePolicyBootstrapSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillageWorkforcePolicyBootstrapSystem.cs:13",
+          "description": "Reflection usage: [UpdateBefore(typeof(VillageWorkforceDemandSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerAutonomousActionSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Villagers\\VillagerAutonomousActionSystem.cs",
+      "namespace": "PureDOTS.Systems.Villagers",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerAutonomousActionSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerAutonomousActionSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerInitiativeSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VillagerInitiativeSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Villagers\\VillagerInitiativeSystem.cs",
+      "namespace": "PureDOTS.Systems.Villagers",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "VillagerSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VillagerInitiativeSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerInitiativeSystem.cs:17",
+          "description": "Reflection usage: [UpdateAfter(typeof(VillagerGrudgeDecaySystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VillagerInitiativeSystem.cs:126",
+          "description": "Reflection usage: [UpdateInGroup(typeof(VillagerSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "MiningLoopVisualBootstrapSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Visuals\\MiningLoopVisualBootstrapSystem.cs",
+      "namespace": "PureDOTS.Systems.Visuals",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "TimeSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MiningLoopVisualBootstrapSystem.cs:6",
+          "description": "Reflection usage: [UpdateInGroup(typeof(TimeSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MiningLoopVisualBootstrapSystem.cs:7",
+          "description": "Reflection usage: [CreateAfter(typeof(CoreSingletonBootstrapSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "MiningLoopVisualBootstrapSystem.cs:17",
+          "description": "Reflection usage: var manifestEntity = entityManager.CreateEntity(typeof(MiningVisualManifest));"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "MiningLoopVisualSyncSystem",
+      "file_path": "PureDOTS\\Packages\\com.moni.puredots\\Runtime\\Systems\\Visuals\\MiningLoopVisualSyncSystem.cs",
+      "namespace": "PureDOTS.Systems.Visuals",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "RecordSimulationSystemGroup",
+      "category": "puredots_runtime",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "MiningLoopVisualSyncSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(RecordSimulationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "Space4XAffiliationComplianceSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XAffiliationComplianceSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4XAffiliationComplianceSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XAffiliationComplianceSystem.cs:13",
+          "description": "Reflection usage: [UpdateBefore(typeof(Space4XRegistryBridgeSystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "Space4XCameraInputSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XCameraInputSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "PresentationSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:7",
+          "description": "UnityEngine reference: using UnityEngine.InputSystem;"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraInputSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:43",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount == 1)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:97",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 300 == 0)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:106",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 300 == 0)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:116",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 60 == 0 && (math.lengthsq(controlState.PanInpu"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraInputSystem.cs:123",
+          "description": "Reflection usage: var entity = state.EntityManager.CreateEntity(typeof(Space4XCameraControlState))"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:349",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount == 1)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraInputSystem.cs:359",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 300 == 0)"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraInputSystem.cs:369",
+          "description": "Reflection usage: var entity = state.EntityManager.CreateEntity(typeof(Space4XCameraInputConfig));"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "Space4XCameraSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XCameraSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "PresentationSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4XCameraSystem.cs:15",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraSystem.cs:16",
+          "description": "Reflection usage: [UpdateAfter(typeof(Space4XCameraInputSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraSystem.cs:55",
+          "description": "Reflection usage: var persistentEntity = state.EntityManager.CreateEntity(typeof(Space4XCameraPers"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraSystem.cs:104",
+          "description": "UnityEngine reference: var deltaTime = timeState.FixedDeltaTime > 0f ? timeState.FixedDeltaTime : Unity"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraSystem.cs:109",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 120 == 0 && !_loggedMissingCamera)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XCameraSystem.cs:119",
+          "description": "UnityEngine reference: if (UnityEngine.Time.frameCount % 60 == 0 && (math.lengthsq(controlState.PanInpu"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraSystem.cs:307",
+          "description": "Reflection usage: stateEntity = state.EntityManager.CreateEntity(typeof(Space4XCameraState));"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XCameraSystem.cs:338",
+          "description": "Reflection usage: var entity = state.EntityManager.CreateEntity(typeof(Space4XCameraConfig));"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "CarrierPatrolSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XDemoSystems.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4XDemoSystems.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XDemoSystems.cs:18",
+          "description": "Reflection usage: [UpdateBefore(typeof(TransformSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XDemoSystems.cs:146",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XDemoSystems.cs:147",
+          "description": "Reflection usage: [UpdateAfter(typeof(CarrierPatrolSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XDemoSystems.cs:148",
+          "description": "Reflection usage: [UpdateBefore(typeof(TransformSystemGroup))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "Space4XMiningDebugRenderSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XMiningDebugRenderSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "PresentationSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4XMiningDebugRenderSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "managed_container",
+          "location": "Space4XMiningDebugRenderSystem.cs:131",
+          "description": "Managed container usage: private static readonly Dictionary<Space4XMiningPrimitive, Mesh> MeshCache = new"
+        },
+        {
+          "type": "managed_container",
+          "location": "Space4XMiningDebugRenderSystem.cs:132",
+          "description": "Managed container usage: private static readonly Dictionary<int, Material> MaterialCache = new();"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XMiningDebugRenderSystem.cs:259",
+          "description": "UnityEngine reference: if (MaterialCache.Count == 0 || UnityEngine.Time.frameCount <= 1)"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XMiningDebugRenderSystem.cs:329",
+          "description": "UnityEngine reference: Graphics.DrawMesh(mesh, matrix, material, 0, camera, 0, null, UnityEngine.Render"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "Space4XRegistryBridgeSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4xRegistryBridgeSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SpatialSystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SpatialSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(RegistrySpatialSyncSystem))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:71",
+          "description": "Reflection usage: _snapshotEntity = state.EntityManager.CreateEntity(typeof(Space4XRegistrySnapsho"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:538",
+          "description": "Reflection usage: var entity = state.EntityManager.CreateEntity(typeof(TRegistry), typeof(Registry"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:554",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4xRegistryBridgeSystem.cs:555",
+          "description": "Reflection usage: [UpdateAfter(typeof(DebugDisplaySystem))]"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "Space4XVesselVisualRequestSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Registry\\Space4XVisualRequestSystem.cs",
+      "namespace": "Space4X.Registry",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "Space4XVisualRequestSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XVisualRequestSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(MiningVesselSystem))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XVisualRequestSystem.cs:73",
+          "description": "UnityEngine reference: UnityEngine.Debug.Log($\"[Space4XVesselVisualRequestSystem] Added {requestCount} "
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XVisualRequestSystem.cs:84",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "Space4XVisualRequestSystem.cs:85",
+          "description": "Reflection usage: [UpdateAfter(typeof(CarrierPatrolSystem))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "Space4XVisualRequestSystem.cs:139",
+          "description": "UnityEngine reference: UnityEngine.Debug.Log($\"[Space4XCarrierVisualRequestSystem] Added {requestCount}"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "VesselAISystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Systems\\AI\\VesselAISystem.cs",
+      "namespace": "Space4X.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "Space4XTransportAISystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VesselAISystem.cs:21",
+          "description": "Reflection usage: [UpdateInGroup(typeof(Space4XTransportAISystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VesselAISystem.cs:22",
+          "description": "Reflection usage: [UpdateBefore(typeof(Space4X.Systems.AI.VesselTargetingSystem))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "VesselAISystem.cs:96",
+          "description": "UnityEngine reference: UnityEngine.Debug.Log($\"[VesselAISystem] Tick {timeState.Tick}: vessels={_vessel"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "VesselAISystem.cs:120",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[VesselAISystem] ResourceRegistry entity found but"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "VesselAISystem.cs:130",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[VesselAISystem] ResourceRegistry singleton NOT FO"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VesselDepositSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Systems\\AI\\VesselDepositSystem.cs",
+      "namespace": "Space4X.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VesselDepositSystem.cs:18",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PureDOTS.Systems.ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VesselDepositSystem.cs:19",
+          "description": "Reflection usage: [UpdateAfter(typeof(VesselGatheringSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VesselGatheringSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Systems\\AI\\VesselGatheringSystem.cs",
+      "namespace": "Space4X.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VesselGatheringSystem.cs:19",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PureDOTS.Systems.ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VesselGatheringSystem.cs:20",
+          "description": "Reflection usage: [UpdateAfter(typeof(VesselMovementSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VesselMovementSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Systems\\AI\\VesselMovementSystem.cs",
+      "namespace": "Space4X.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VesselMovementSystem.cs:17",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PureDOTS.Systems.ResourceSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VesselMovementSystem.cs:18",
+          "description": "Reflection usage: [UpdateAfter(typeof(Space4XTransportAISystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "VesselTargetingSystem",
+      "file_path": "Space4x\\Assets\\Scripts\\Space4x\\Systems\\AI\\VesselTargetingSystem.cs",
+      "namespace": "Space4X.Systems.AI",
+      "has_burst_compile": true,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "Space4XTransportAISystemGroup",
+      "category": "space4x_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "VesselTargetingSystem.cs:19",
+          "description": "Reflection usage: [UpdateInGroup(typeof(Space4XTransportAISystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "VesselTargetingSystem.cs:20",
+          "description": "Reflection usage: [UpdateAfter(typeof(VesselAISystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameMiracleInputSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Miracles\\GodgameMiracleInputSystem.cs",
+      "namespace": "Godgame.Miracles",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HandSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleInputSystem.cs:14",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HandSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleInputSystem.cs:15",
+          "description": "Reflection usage: [UpdateAfter(typeof(DivineHandSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameMiracleReleaseSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Miracles\\GodgameMiracleReleaseSystem.cs",
+      "namespace": "Godgame.Miracles",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "HandSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleReleaseSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(HandSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleReleaseSystem.cs:13",
+          "description": "Reflection usage: [UpdateAfter(typeof(DivineHandSystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameMiracleSlotBootstrapSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Miracles\\GodgameMiracleSlotBootstrapSystem.cs",
+      "namespace": "Godgame.Miracles",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "InitializationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleSlotBootstrapSystem.cs:9",
+          "description": "Reflection usage: [UpdateInGroup(typeof(InitializationSystemGroup))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameBandSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameBandSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameBandSyncSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameBandSyncSystem.cs:32",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameBandSyncSystem] STUB: Band sync not yet im"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GodgameLessonTelemetrySystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameLessonTelemetrySystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "PresentationSystemGroup",
+      "category": "presentation",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameLessonTelemetrySystem.cs:13",
+          "description": "Reflection usage: [UpdateInGroup(typeof(PresentationSystemGroup))]"
+        },
+        {
+          "type": "reflection",
+          "location": "GodgameLessonTelemetrySystem.cs:14",
+          "description": "Reflection usage: [UpdateAfter(typeof(DebugDisplaySystem))]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameLogisticsSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameLogisticsSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameLogisticsSyncSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameLogisticsSyncSystem.cs:31",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameLogisticsSyncSystem] STUB: Logistics sync "
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GodgameMiracleSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameMiracleSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameMiracleSyncSystem.cs:12",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameMiracleSyncSystem.cs:32",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameMiracleSyncSystem] STUB: Miracle sync not "
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GodgameRegistryBridgeSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameRegistryBridgeSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": null,
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameRegistryBridgeSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]"
+        }
+      ],
+      "is_hot_path": false
+    },
+    {
+      "name": "GodgameSpawnerSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameSpawnerSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameSpawnerSyncSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameSpawnerSyncSystem.cs:31",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameSpawnerSyncSystem] STUB: Spawner sync not "
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GodgameStorehouseSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameStorehouseSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameStorehouseSyncSystem.cs:11",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameStorehouseSyncSystem.cs:31",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameStorehouseSyncSystem] STUB: Storehouse syn"
+        }
+      ],
+      "is_hot_path": true
+    },
+    {
+      "name": "GodgameVillagerSyncSystem",
+      "file_path": "Godgame\\Assets\\Scripts\\Godgame\\Registry\\GodgameVillagerSyncSystem.cs",
+      "namespace": "Godgame.Registry",
+      "has_burst_compile": false,
+      "is_partial_struct": false,
+      "is_isystem": true,
+      "is_systembase": false,
+      "update_group": "SimulationSystemGroup",
+      "category": "godgame_bridge",
+      "blockers": [
+        {
+          "type": "reflection",
+          "location": "GodgameVillagerSyncSystem.cs:16",
+          "description": "Reflection usage: [UpdateInGroup(typeof(SimulationSystemGroup))]"
+        },
+        {
+          "type": "UnityEngine",
+          "location": "GodgameVillagerSyncSystem.cs:36",
+          "description": "UnityEngine reference: UnityEngine.Debug.LogWarning(\"[GodgameVillagerSyncSystem] STUB: Villager sync no"
+        }
+      ],
+      "is_hot_path": true
+    }
+  ]
+}

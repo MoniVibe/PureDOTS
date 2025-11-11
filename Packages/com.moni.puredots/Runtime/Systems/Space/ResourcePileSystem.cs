@@ -10,26 +10,50 @@ namespace PureDOTS.Systems.Space
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ResourcePileSystem : ISystem
     {
-        private EntityQuery _pileQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _pileQuery = state.GetEntityQuery(ComponentType.ReadWrite<ResourcePile>(), ComponentType.ReadOnly<ResourcePileMeta>());
-            state.RequireForUpdate(_pileQuery);
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var piles = _pileQuery.ToEntityArray(Allocator.Temp);
-            var pileData = _pileQuery.ToComponentDataArray<ResourcePile>(Allocator.Temp);
-            var pileMeta = _pileQuery.ToComponentDataArray<ResourcePileMeta>(Allocator.Temp);
-
-            for (int i = 0; i < piles.Length; i++)
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
             {
-                for (int j = i + 1; j < piles.Length; j++)
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+
+            // Collect piles into NativeList for comparison (still zero-GC, uses TempJob allocator)
+            var pileEntities = new NativeList<Entity>(Allocator.TempJob);
+            var pileData = new NativeList<ResourcePile>(Allocator.TempJob);
+            var pileMeta = new NativeList<ResourcePileMeta>(Allocator.TempJob);
+
+            foreach (var (pile, meta, entity) in SystemAPI.Query<RefRW<ResourcePile>, RefRO<ResourcePileMeta>>().WithEntityAccess())
+            {
+                pileEntities.Add(entity);
+                pileData.Add(pile.ValueRO);
+                pileMeta.Add(meta.ValueRO);
+            }
+
+            // Merge nearby piles of the same type
+            for (int i = 0; i < pileEntities.Length; i++)
+            {
+                if (pileData[i].Amount <= 0f)
                 {
+                    continue; // Already marked for destruction
+                }
+
+                for (int j = i + 1; j < pileEntities.Length; j++)
+                {
+                    if (pileData[j].Amount <= 0f)
+                    {
+                        continue; // Already marked for destruction
+                    }
+
                     if (!pileMeta[i].ResourceTypeId.Equals(pileMeta[j].ResourceTypeId))
                     {
                         continue;
@@ -42,27 +66,26 @@ namespace PureDOTS.Systems.Space
                     }
 
                     var total = pileData[i].Amount + pileData[j].Amount;
-                    pileData[i].Amount = math.min(pileMeta[i].MaxCapacity, total);
-                    pileData[j].Amount = 0f;
+                    var newAmount = math.min(pileMeta[i].MaxCapacity, total);
+                    pileData[i] = new ResourcePile { Amount = newAmount, Position = pileData[i].Position };
+                    pileData[j] = new ResourcePile { Amount = 0f, Position = pileData[j].Position };
                 }
             }
 
-            var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
-            for (int i = 0; i < piles.Length; i++)
+            // Apply changes via ECB
+            for (int i = 0; i < pileEntities.Length; i++)
             {
                 if (pileData[i].Amount <= 0f)
                 {
-                    commandBuffer.DestroyEntity(piles[i]);
+                    ecb.DestroyEntity(pileEntities[i]);
                 }
                 else
                 {
-                    commandBuffer.SetComponent(piles[i], pileData[i]);
+                    ecb.SetComponent(pileEntities[i], pileData[i]);
                 }
             }
 
-            commandBuffer.Playback(state.EntityManager);
-            commandBuffer.Dispose();
-            piles.Dispose();
+            pileEntities.Dispose();
             pileData.Dispose();
             pileMeta.Dispose();
         }

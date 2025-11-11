@@ -278,12 +278,18 @@ namespace PureDOTS.Systems
                     }
 
                     var storeIndex = -1;
+                    var currentStoredForType = 0f;
                     for (var s = 0; s < storeItems.Length; s++)
                     {
-                        if (storeItems[s].ResourceTypeId.Equals(resourceId))
+                        if (!storeItems[s].ResourceTypeId.Equals(resourceId))
+                        {
+                            continue;
+                        }
+
+                        currentStoredForType += storeItems[s].Amount;
+                        if (storeItems[s].TierId == carried.TierId)
                         {
                             storeIndex = s;
-                            break;
                         }
                     }
 
@@ -291,24 +297,33 @@ namespace PureDOTS.Systems
                     if (storeIndex >= 0)
                     {
                         var storeItem = storeItems[storeIndex];
-                        var capacityRemaining = math.max(0f, maxCapacity - storeItem.Amount);
+                        var capacityRemaining = math.max(0f, maxCapacity - currentStoredForType);
                         accepted = math.min(carried.Amount, capacityRemaining);
                         if (accepted > 0f)
                         {
-                            storeItem.Amount += accepted;
+                            var storedPayload = ResourcePayloadUtility.Create(carried.ResourceTypeIndex, storeItem.Amount, storeItem.TierId, storeItem.AverageQuality);
+                            var incomingPayload = carried.AsPayload();
+                            incomingPayload.Amount = accepted;
+                            ResourcePayloadUtility.Merge(ref storedPayload, in incomingPayload);
+                            storeItem.Amount = storedPayload.Amount;
+                            storeItem.TierId = storedPayload.TierId;
+                            storeItem.AverageQuality = storedPayload.AverageQuality;
                             storeItems[storeIndex] = storeItem;
                         }
                     }
                     else
                     {
-                        accepted = math.min(carried.Amount, maxCapacity);
+                        var capacityRemaining = math.max(0f, maxCapacity - currentStoredForType);
+                        accepted = math.min(carried.Amount, capacityRemaining);
                         if (accepted > 0f)
                         {
                             storeItems.Add(new StorehouseInventoryItem
                             {
                                 ResourceTypeId = resourceId,
                                 Amount = accepted,
-                                Reserved = 0f
+                                Reserved = 0f,
+                                TierId = carried.TierId,
+                                AverageQuality = carried.AverageQuality
                             });
                         }
                     }
@@ -384,6 +399,7 @@ namespace PureDOTS.Systems
 
                 return blob.Ids[resourceTypeIndex];
             }
+
         }
     }
 

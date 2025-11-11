@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Armies;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -7,17 +8,20 @@ using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
-    [BurstCompile]
+    // System struct cannot be Burst-compiled when OnCreate uses GetEntityQuery with ComponentType[] (creates managed arrays)
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ArmySupplyRequestSystem))]
     public partial struct ArmySupplyDispatchSystem : ISystem
     {
         private EntityQuery _depotQuery;
 
-        [BurstCompile]
+        // Use QueryBuilder to avoid managed array allocations (Burst-safe).
         public void OnCreate(ref SystemState state)
         {
-            _depotQuery = state.GetEntityQuery(ComponentType.ReadOnly<ArmySupplyDepot>(), ComponentType.ReadOnly<LocalTransform>(), ComponentType.ReadWrite<ArmySupplyRequest>());
+            _depotQuery = SystemAPI.QueryBuilder()
+                .WithAll<ArmySupplyDepot, LocalTransform>()
+                .WithAllRW<ArmySupplyRequest>()
+                .Build();
         }
 
         [BurstCompile]

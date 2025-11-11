@@ -3,8 +3,11 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
-using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Knowledge;
+using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Skills;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
@@ -155,7 +158,10 @@ namespace Space4X.Registry
         private ComponentLookup<Carrier> _carrierLookup;
         private ComponentLookup<Asteroid> _asteroidLookup;
         private BufferLookup<ResourceStorage> _resourceStorageLookup;
+        private ComponentLookup<SkillSet> _skillSetLookup;
+        private ComponentLookup<VillagerKnowledge> _knowledgeLookup;
         private EntityQuery _asteroidQuery;
+        private static readonly FixedString64Bytes DefaultResourceTag = new FixedString64Bytes("space4x.resource");
 
         public void OnCreate(ref SystemState state)
         {
@@ -164,6 +170,9 @@ namespace Space4X.Registry
             _carrierLookup = state.GetComponentLookup<Carrier>(true);
             _asteroidLookup = state.GetComponentLookup<Asteroid>(false);
             _resourceStorageLookup = state.GetBufferLookup<ResourceStorage>(false);
+            _skillSetLookup = state.GetComponentLookup<SkillSet>(true);
+            _knowledgeLookup = state.GetComponentLookup<VillagerKnowledge>(true);
+            state.RequireForUpdate<KnowledgeLessonEffectCatalog>();
 
             _asteroidQuery = SystemAPI.QueryBuilder()
                 .WithAll<Asteroid, LocalTransform>()
@@ -181,11 +190,22 @@ namespace Space4X.Registry
             _carrierLookup.Update(ref state);
             _asteroidLookup.Update(ref state);
             _resourceStorageLookup.Update(ref state);
+            _skillSetLookup.Update(ref state);
+            _knowledgeLookup.Update(ref state);
 
             // Use TimeState.FixedDeltaTime for consistency with PureDOTS patterns
             var deltaTime = SystemAPI.TryGetSingleton<TimeState>(out var timeState) 
                 ? timeState.FixedDeltaTime 
                 : SystemAPI.Time.DeltaTime;
+
+            var lessonCatalog = SystemAPI.GetSingleton<KnowledgeLessonEffectCatalog>();
+            var lessonBlob = lessonCatalog.Blob;
+            if (!lessonBlob.IsCreated)
+            {
+                return;
+            }
+
+            ref var lessonBlobValue = ref lessonBlob.Value;
 
             // Collect available asteroids
             var asteroidList = new NativeList<(Entity entity, float3 position, Asteroid asteroid)>(Allocator.Temp);
@@ -303,8 +323,15 @@ namespace Space4X.Registry
                             break;
                         }
 
-                        // Calculate mining rate
-                        var miningRate = vesselData.MiningEfficiency * asteroid.MiningRate * deltaTime;
+                        var lessonIds = BuildLessonList(entity, vesselData.CarrierEntity);
+                        var knowledgeFlags = GetKnowledgeFlags(entity) | GetKnowledgeFlags(vesselData.CarrierEntity);
+                        var resourceTypeId = ToResourceTypeId(asteroid.ResourceType);
+                        var modifiers = KnowledgeLessonEffectUtility.EvaluateHarvestModifiers(ref lessonBlobValue, lessonIds, resourceTypeId, asteroid.QualityTier);
+                        var skillLevel = CombineSkillLevels(entity, vesselData.CarrierEntity);
+
+                        var miningRate = vesselData.MiningEfficiency * asteroid.MiningRate * deltaTime * modifiers.YieldMultiplier;
+                        miningRate /= math.max(0.1f, ResourceQualityUtility.GetHarvestTimeMultiplier(skillLevel) * modifiers.HarvestTimeMultiplier);
+
                         var amountToMine = math.min(miningRate, asteroid.ResourceAmount);
                         amountToMine = math.min(amountToMine, vesselData.CargoCapacity - vesselData.CurrentCargo);
 
@@ -313,7 +340,34 @@ namespace Space4X.Registry
                         asteroidRef.ValueRW.ResourceAmount -= amountToMine;
 
                         // Update vessel cargo
-                        vessel.ValueRW.CurrentCargo += amountToMine;
+                        if (amountToMine > 0f)
+                        {
+                            var minedQuality = KnowledgeLessonEffectUtility.EvaluateHarvestQuality(
+                                asteroid.BaseQuality,
+                                asteroid.QualityVariance,
+                                asteroid.QualityTier,
+                                skillLevel,
+                                modifiers,
+                                knowledgeFlags);
+
+                            var cargoQuality = vessel.ValueRO.AverageCargoQuality;
+                            if (vessel.ValueRO.CurrentCargo <= 0f)
+                            {
+                                cargoQuality = minedQuality;
+                            }
+                            else
+                            {
+                                cargoQuality = ResourceQualityUtility.BlendQuality(
+                                    vessel.ValueRO.AverageCargoQuality,
+                                    vessel.ValueRO.CurrentCargo,
+                                    minedQuality,
+                                    amountToMine);
+                            }
+
+                            vessel.ValueRW.AverageCargoQuality = cargoQuality;
+                            vessel.ValueRW.CargoTier = (byte)ResourceQualityUtility.DetermineTier(cargoQuality);
+                            vessel.ValueRW.CurrentCargo += amountToMine;
+                        }
 
                         // Update mining progress
                         job.ValueRW = new MiningJob
@@ -396,6 +450,8 @@ namespace Space4X.Registry
                         {
                             var resourceBuffer = _resourceStorageLookup[vesselData.CarrierEntity];
                             var cargoToTransfer = vessel.ValueRO.CurrentCargo;
+                            var cargoTier = vessel.ValueRO.CargoTier;
+                            var cargoQuality = vessel.ValueRO.AverageCargoQuality;
 
                             // Find or create resource storage slot for this type
                             bool foundSlot = false;
@@ -404,7 +460,7 @@ namespace Space4X.Registry
                                 if (resourceBuffer[i].Type == resourceType)
                                 {
                                     var storage = resourceBuffer[i];
-                                    var remaining = storage.AddAmount(cargoToTransfer);
+                                    var remaining = storage.AddAmount(cargoToTransfer, cargoTier, cargoQuality);
                                     resourceBuffer[i] = storage;
 
                                     // Update vessel cargo
@@ -417,7 +473,7 @@ namespace Space4X.Registry
                             if (!foundSlot && resourceBuffer.Length < 4)
                             {
                                 var newStorage = ResourceStorage.Create(resourceType);
-                                var remaining = newStorage.AddAmount(cargoToTransfer);
+                                var remaining = newStorage.AddAmount(cargoToTransfer, cargoTier, cargoQuality);
                                 resourceBuffer.Add(newStorage);
 
                                 vessel.ValueRW.CurrentCargo = remaining;
@@ -426,6 +482,8 @@ namespace Space4X.Registry
                             if (vessel.ValueRO.CurrentCargo <= 0f)
                             {
                                 job.ValueRW = new MiningJob { State = MiningJobState.None };
+                                vessel.ValueRW.AverageCargoQuality = 0;
+                                vessel.ValueRW.CargoTier = (byte)ResourceQualityTier.Unknown;
                             }
                         }
                         break;
@@ -433,6 +491,93 @@ namespace Space4X.Registry
             }
 
             asteroidList.Dispose();
+        }
+
+        private float CombineSkillLevels(Entity vessel, Entity carrier)
+        {
+            return math.max(GetSkillLevel(vessel), GetSkillLevel(carrier));
+        }
+
+        private float GetSkillLevel(Entity entity)
+        {
+            if (entity == Entity.Null || !_skillSetLookup.HasComponent(entity))
+            {
+                return 0f;
+            }
+
+            var skillSet = _skillSetLookup[entity];
+            return skillSet.GetLevel(SkillId.Mining);
+        }
+
+        private uint GetKnowledgeFlags(Entity entity)
+        {
+            if (entity == Entity.Null || !_knowledgeLookup.HasComponent(entity))
+            {
+                return 0u;
+            }
+
+            return _knowledgeLookup[entity].Flags;
+        }
+
+        private FixedList32Bytes<VillagerLessonProgress> BuildLessonList(Entity vessel, Entity carrier)
+        {
+            var lessons = new FixedList32Bytes<VillagerLessonProgress>();
+            AppendLessons(ref lessons, vessel);
+            AppendLessons(ref lessons, carrier);
+            return lessons;
+        }
+
+        private void AppendLessons(ref FixedList32Bytes<VillagerLessonProgress> list, Entity entity)
+        {
+            if (entity == Entity.Null || !_knowledgeLookup.HasComponent(entity))
+            {
+                return;
+            }
+
+            var knowledge = _knowledgeLookup[entity];
+            for (int i = 0; i < knowledge.Lessons.Length; i++)
+            {
+                AddLesson(ref list, knowledge.Lessons[i]);
+            }
+        }
+
+        private static void AddLesson(ref FixedList32Bytes<VillagerLessonProgress> list, in VillagerLessonProgress lesson)
+        {
+            if (lesson.LessonId.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (list[i].LessonId.Equals(lesson.LessonId))
+                {
+                    if (lesson.Progress > list[i].Progress)
+                    {
+                        var entry = list[i];
+                        entry.Progress = lesson.Progress;
+                        list[i] = entry;
+                    }
+                    return;
+                }
+            }
+
+            if (list.Length < list.Capacity)
+            {
+                list.Add(lesson);
+            }
+        }
+
+        private static FixedString64Bytes ToResourceTypeId(ResourceType type)
+        {
+            FixedString64Bytes id = default;
+            var name = type.ToString();
+            if (!string.IsNullOrEmpty(name))
+            {
+                id = new FixedString64Bytes($"space4x.{name.ToLowerInvariant()}");
+            }
+
+            return id.Length == 0 ? DefaultResourceTag : id;
         }
     }
 }

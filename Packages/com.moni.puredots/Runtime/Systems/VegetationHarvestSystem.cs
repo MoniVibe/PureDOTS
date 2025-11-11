@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -206,6 +207,8 @@ namespace PureDOTS.Systems
                         {
                             var item = carry[c];
                             item.Amount += harvestedAmount;
+                            item.TierId = item.TierId == 0 ? (byte)ResourceQualityTier.Unknown : item.TierId;
+                            item.AverageQuality = item.AverageQuality == 0 ? (ushort)200 : item.AverageQuality;
                             carry[c] = item;
                             added = true;
                             break;
@@ -217,7 +220,9 @@ namespace PureDOTS.Systems
                         carry.Add(new VillagerJobCarryItem
                         {
                             ResourceTypeIndex = (ushort)resourceTypeIndex,
-                            Amount = harvestedAmount
+                            Amount = harvestedAmount,
+                            TierId = (byte)ResourceQualityTier.Unknown,
+                            AverageQuality = 200
                         });
                     }
                 }

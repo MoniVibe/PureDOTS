@@ -275,6 +275,14 @@ namespace PureDOTS.Systems
                     }
 
                     item.Amount += amount;
+                    if (item.TierId == 0)
+                    {
+                        item.TierId = (byte)ResourceQualityTier.Unknown;
+                    }
+                    if (item.AverageQuality == 0)
+                    {
+                        item.AverageQuality = 200;
+                    }
                     items[itemIndex] = item;
                     matched = true;
                     break;
@@ -286,7 +294,9 @@ namespace PureDOTS.Systems
                     {
                         ResourceTypeId = processorState.OutputResourceId,
                         Amount = amount,
-                        Reserved = 0f
+                        Reserved = 0f,
+                        TierId = (byte)ResourceQualityTier.Unknown,
+                        AverageQuality = 200
                     });
                 }
 

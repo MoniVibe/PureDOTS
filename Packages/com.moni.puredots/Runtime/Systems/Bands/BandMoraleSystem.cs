@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Bands;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

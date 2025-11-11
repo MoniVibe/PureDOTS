@@ -20,6 +20,7 @@ namespace PureDOTS.Systems
         {
             _factionLookup = state.GetComponentLookup<AggregateFaction>(true);
             _memberLookup = state.GetBufferLookup<AggregateFactionMember>(true);
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         [BurstCompile]
@@ -27,6 +28,13 @@ namespace PureDOTS.Systems
         {
             _factionLookup.Update(ref state);
             _memberLookup.Update(ref state);
+
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
+            {
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (belonging, entity) in SystemAPI.Query<RefRO<VillagerAggregateBelonging>>().WithEntityAccess())
             {
@@ -38,7 +46,7 @@ namespace PureDOTS.Systems
                 var factionComp = SystemAPI.GetComponent<VillagerAggregateFaction>(entity);
                 if (!_factionLookup.HasComponent(factionComp.Faction))
                 {
-                    SystemAPI.RemoveComponent<VillagerAggregateFaction>(entity);
+                    ecb.RemoveComponent<VillagerAggregateFaction>(entity);
                     continue;
                 }
 
@@ -62,7 +70,7 @@ namespace PureDOTS.Systems
 
                 if (!found)
                 {
-                    SystemAPI.RemoveComponent<VillagerAggregateFaction>(entity);
+                    ecb.RemoveComponent<VillagerAggregateFaction>(entity);
                 }
             }
         }

@@ -22,12 +22,20 @@ namespace PureDOTS.Systems
             _aggregateLookup = state.GetComponentLookup<AggregateEntity>(true);
             _villageQuery = state.GetEntityQuery(ComponentType.ReadOnly<VillageId>());
             state.RequireForUpdate<VillagerAggregateMembership>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _aggregateLookup.Update(ref state);
+
+            if (!SystemAPI.TryGetSingleton(out EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton))
+            {
+                return;
+            }
+
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             var allocator = state.WorldUpdateAllocator;
             var villageLookup = BuildVillageLookup(ref state, allocator);
@@ -38,7 +46,7 @@ namespace PureDOTS.Systems
             {
                 if (memberships.Length == 0)
                 {
-                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup);
+                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup, ecb);
                     continue;
                 }
 
@@ -57,14 +65,14 @@ namespace PureDOTS.Systems
 
                 if (bestIndex < 0)
                 {
-                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup);
+                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup, ecb);
                     continue;
                 }
 
                 var best = memberships[bestIndex];
                 if (!_aggregateLookup.HasComponent(best.Aggregate))
                 {
-                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup);
+                    AssignVillageFallback(ref state, entity, villagerId.ValueRO, ref villageLookup, ecb);
                     continue;
                 }
 
@@ -82,7 +90,7 @@ namespace PureDOTS.Systems
                 }
                 else
                 {
-                    SystemAPI.AddComponent(entity, belonging);
+                    ecb.AddComponent(entity, belonging);
                 }
             }
         }
@@ -104,13 +112,13 @@ namespace PureDOTS.Systems
             return map;
         }
 
-        private void AssignVillageFallback(ref SystemState state, Entity villager, VillagerId villagerId, ref NativeParallelHashMap<int, Entity> villageLookup)
+        private void AssignVillageFallback(ref SystemState state, Entity villager, VillagerId villagerId, ref NativeParallelHashMap<int, Entity> villageLookup, EntityCommandBuffer ecb)
         {
             if (!villageLookup.TryGetValue(villagerId.FactionId, out var villageEntity))
             {
                 if (SystemAPI.HasComponent<VillagerAggregateBelonging>(villager))
                 {
-                    SystemAPI.RemoveComponent<VillagerAggregateBelonging>(villager);
+                    ecb.RemoveComponent<VillagerAggregateBelonging>(villager);
                 }
                 return;
             }
@@ -129,7 +137,7 @@ namespace PureDOTS.Systems
             }
             else
             {
-                SystemAPI.AddComponent(villager, belonging);
+                ecb.AddComponent(villager, belonging);
             }
         }
     }

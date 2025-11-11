@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Village;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -18,10 +19,10 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _villageQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<VillageId>(),
-                ComponentType.ReadOnly<VillageStats>(),
-                ComponentType.ReadOnly<VillageResidentEntry>());
+            _villageQuery = SystemAPI.QueryBuilder()
+                .WithAll<VillageId, VillageStats>()
+                .WithAll<VillageResidentEntry>()
+                .Build();
             state.RequireForUpdate(_villageQuery);
         }
 
@@ -31,8 +32,8 @@ namespace PureDOTS.Systems
             var villages = _villageQuery.ToEntityArray(state.WorldUpdateAllocator);
             var villageIds = _villageQuery.ToComponentDataArray<VillageId>(state.WorldUpdateAllocator);
             var stats = _villageQuery.ToComponentDataArray<VillageStats>(state.WorldUpdateAllocator);
-            var residentBuffers = _villageQuery.ToBufferArray<VillageResidentEntry>(state.WorldUpdateAllocator);
-            var alignments = state.GetComponentDataFromEntity<VillageAlignmentState>(true);
+            var alignments = state.GetComponentLookup<VillageAlignmentState>(true);
+            var residentBufferLookup = state.GetBufferLookup<VillageResidentEntry>(false);
 
             for (int i = 0; i < villages.Length; i++)
             {
@@ -46,7 +47,12 @@ namespace PureDOTS.Systems
                     sympathy = sympathy * 2f - 1f; // convert 0-1 to -1..1
                 }
 
-                var residents = residentBuffers[i];
+                if (!residentBufferLookup.HasBuffer(villageEntity))
+                {
+                    continue;
+                }
+
+                var residents = residentBufferLookup[villageEntity];
                 for (int r = residents.Length - 1; r >= 0; r--)
                 {
                     var resident = residents[r];

@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using PureDOTS.Runtime.Resource;
 
 namespace Space4X.Registry
 {
@@ -24,6 +25,8 @@ namespace Space4X.Registry
         public ResourceType Type;
         public float Amount;
         public float Capacity;
+        public byte TierId;
+        public ushort AverageQuality;
 
         public static ResourceStorage Create(ResourceType type, float capacity = 10000f)
         {
@@ -31,7 +34,9 @@ namespace Space4X.Registry
             {
                 Type = type,
                 Amount = 0f,
-                Capacity = capacity
+                Capacity = capacity,
+                TierId = (byte)ResourceQualityTier.Unknown,
+                AverageQuality = 0
             };
         }
 
@@ -45,11 +50,19 @@ namespace Space4X.Registry
             return (Amount + amount) <= Capacity;
         }
 
-        public float AddAmount(float amount)
+        public float AddAmount(float amount, byte tierId, ushort quality)
         {
             var spaceAvailable = GetRemainingCapacity();
             var amountToAdd = math.min(amount, spaceAvailable);
-            Amount += amountToAdd;
+            if (amountToAdd > 0f)
+            {
+                AverageQuality = AverageQuality == 0
+                    ? quality
+                    : ResourceQualityUtility.BlendQuality(AverageQuality, Amount, quality, amountToAdd);
+                TierId = tierId;
+                Amount += amountToAdd;
+            }
+
             return amount - amountToAdd;
         }
     }
@@ -98,6 +111,9 @@ namespace Space4X.Registry
         public float ResourceAmount;
         public float MaxResourceAmount;
         public float MiningRate;
+        public ResourceQualityTier QualityTier;
+        public ushort BaseQuality;
+        public ushort QualityVariance;
     }
 
     /// <summary>
@@ -111,6 +127,8 @@ namespace Space4X.Registry
         public float Speed;
         public float CargoCapacity;
         public float CurrentCargo;
+        public byte CargoTier;
+        public ushort AverageCargoQuality;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Armies;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

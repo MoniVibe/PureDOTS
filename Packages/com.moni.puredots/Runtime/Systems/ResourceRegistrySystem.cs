@@ -191,7 +191,10 @@ namespace PureDOTS.Systems
                     CellId = cellId,
                     SpatialVersion = spatialVersion,
                     FamilyIndex = metadata.FamilyIndex,
-                    Tier = metadata.Tier
+                    Tier = metadata.Tier,
+                    QualityTier = sourceState.ValueRO.QualityTier,
+                    AverageQuality = sourceState.ValueRO.BaseQuality,
+                    KnowledgeMask = 0
                 });
 
                 totalResources++;

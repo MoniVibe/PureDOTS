@@ -10,7 +10,8 @@
         "Unity.InputSystem",
         "Unity.Scenes",
         "Unity.Entities.Content",
-        "PureDOTS.Input"
+        "PureDOTS.Input",
+        "PureDOTS.Config"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
 using Unity.Entities;
@@ -80,6 +81,12 @@ namespace PureDOTS.Authoring
         [Range(0.1f, 5f)] public float attackSpeed = 1f;
         [Range(0f, 100f)] public float defenseRating = 10f;
         [Range(0f, 10f)] public float attackRange = 2f;
+
+        [Header("Knowledge & Lessons")]
+        public bool knowsLegendaryHarvest;
+        public bool knowsRelicHarvest;
+        [Tooltip("Additional lesson identifiers (e.g., lesson.harvest.ironoak)")]
+        public string[] lessonIds;
     }
 
     public sealed class VillagerBaker : Baker<VillagerAuthoring>
@@ -197,6 +204,42 @@ namespace PureDOTS.Authoring
                 LastUpdateTick = 0
             });
 
+            AddComponent(entity, new SkillSet());
+
+            uint knowledgeFlags = 0;
+            if (authoring.knowsLegendaryHarvest)
+            {
+                knowledgeFlags |= VillagerKnowledgeFlags.HarvestLegendary;
+            }
+            if (authoring.knowsRelicHarvest)
+            {
+                knowledgeFlags |= VillagerKnowledgeFlags.HarvestRelic;
+            }
+
+            var knowledge = new VillagerKnowledge
+            {
+                Flags = knowledgeFlags
+            };
+
+            if (authoring.knowsLegendaryHarvest)
+            {
+                knowledge.TryAddLesson(ToLessonId("lesson.harvest.legendary"));
+            }
+            if (authoring.knowsRelicHarvest)
+            {
+                knowledge.TryAddLesson(ToLessonId("lesson.harvest.relic"));
+            }
+
+            if (authoring.lessonIds != null)
+            {
+                for (int i = 0; i < authoring.lessonIds.Length; i++)
+                {
+                    knowledge.TryAddLesson(ToLessonId(authoring.lessonIds[i]));
+                }
+            }
+
+            AddComponent(entity, knowledge);
+
             AddComponent<SpatialIndexedTag>(entity);
 
             AddComponent(entity, new VillagerDisciplineState
@@ -294,9 +337,12 @@ namespace PureDOTS.Authoring
             AddBuffer<VillagerMemoryEvent>(entity);
             AddBuffer<VillagerHistorySample>(entity);
             AddBuffer<VillagerJobHistorySample>(entity);
+            AddBuffer<VillagerLessonShare>(entity);
+            AddBuffer<VillagerAggregateLessonTracker>(entity);
 
             // Add VillagerFlags for SoA optimization (replaces legacy tags)
             AddComponent(entity, new VillagerFlags());
+            AddComponent(entity, new VillagerLessonShareState());
 
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier
@@ -304,6 +350,17 @@ namespace PureDOTS.Authoring
                 Tier = HistoryTier.TierType.Critical,
                 OverrideStrideSeconds = 0f
             });
+        }
+
+        private static FixedString64Bytes ToLessonId(string value)
+        {
+            FixedString64Bytes str = default;
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                str = new FixedString64Bytes(value.Trim());
+            }
+
+            return str;
         }
     }
 

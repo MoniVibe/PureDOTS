@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
 using Unity.Entities;
@@ -33,6 +34,11 @@ namespace PureDOTS.Authoring
         public bool respawns;
         [Min(0f)] public float respawnSeconds = 60f;
         public bool handUprootAllowed;
+
+        [Header("Quality")]
+        [Range(1, 600)] public int baseQuality = 100;
+        [Range(0, 200)] public int qualityVariance = 10;
+        public ResourceQualityTier qualityTier = ResourceQualityTier.Common;
 
 #if UNITY_EDITOR
         public int SchemaVersion => _schemaVersion;
@@ -88,7 +94,10 @@ namespace PureDOTS.Authoring
 
             AddComponent(entity, new ResourceSourceState
             {
-                UnitsRemaining = math.max(0f, authoring.initialUnits)
+                UnitsRemaining = math.max(0f, authoring.initialUnits),
+                QualityTier = authoring.qualityTier,
+                BaseQuality = (ushort)math.clamp(authoring.baseQuality, 1, 600),
+                QualityVariance = (ushort)math.clamp(authoring.qualityVariance, 0, 200)
             });
 
             AddComponent(entity, new LastRecordedTick { Tick = 0 });

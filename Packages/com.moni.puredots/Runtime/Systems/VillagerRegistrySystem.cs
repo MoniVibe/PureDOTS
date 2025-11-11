@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
@@ -24,6 +25,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<VillagerMood> _moodLookup;
         private ComponentLookup<VillagerAIState> _aiStateLookup;
         private ComponentLookup<VillagerCombatStats> _combatLookup;
+        private ComponentLookup<VillagerKnowledge> _knowledgeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -39,10 +41,12 @@ namespace PureDOTS.Systems
             _moodLookup = state.GetComponentLookup<VillagerMood>(true);
             _aiStateLookup = state.GetComponentLookup<VillagerAIState>(true);
             _combatLookup = state.GetComponentLookup<VillagerCombatStats>(true);
+            _knowledgeLookup = state.GetComponentLookup<VillagerKnowledge>(true);
 
             state.RequireForUpdate<VillagerRegistry>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<KnowledgeLessonEffectCatalog>();
             state.RequireForUpdate(_villagerQuery);
         }
 
@@ -63,10 +67,12 @@ namespace PureDOTS.Systems
             _moodLookup.Update(ref state);
             _aiStateLookup.Update(ref state);
             _combatLookup.Update(ref state);
+            _knowledgeLookup.Update(ref state);
 
             var registryEntity = SystemAPI.GetSingletonEntity<VillagerRegistry>();
             var registry = SystemAPI.GetComponentRW<VillagerRegistry>(registryEntity);
             var entries = state.EntityManager.GetBuffer<VillagerRegistryEntry>(registryEntity);
+            var lessonBuffer = state.EntityManager.GetBuffer<VillagerLessonRegistryEntry>(registryEntity);
             ref var registryMetadata = ref SystemAPI.GetComponentRW<RegistryMetadata>(registryEntity).ValueRW;
 
             var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);
@@ -77,11 +83,8 @@ namespace PureDOTS.Systems
                                  && spatialConfig.CellSize > 0f;
 
             var hasSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState spatialSyncState);
-            var requireSpatialSync = registryMetadata.SupportsSpatialQueries && hasSyncState && spatialSyncState.HasSpatialData;
-            var spatialVersionSource = hasSpatialGrid
-                ? spatialState.Version
-                : (hasSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
-
+            var lessonCatalog = SystemAPI.GetSingleton<KnowledgeLessonEffectCatalog>();
+            var lessonCapacity = math.max(1, _villagerQuery.CalculateEntityCount() * 4);
             var totalVillagers = 0;
             var availableCount = 0;
             var idleCount = 0;
@@ -99,12 +102,22 @@ namespace PureDOTS.Systems
             var fallbackCount = 0;
             var unmappedCount = 0;
 
-            var expectedCount = math.max(32, _villagerQuery.CalculateEntityCount());
-            using var builder = new DeterministicRegistryBuilder<VillagerRegistryEntry>(expectedCount, Allocator.Temp);
-            foreach (var (villagerId, job, availability, transform, flags, entity) in SystemAPI.Query<RefRO<VillagerId>, RefRO<VillagerJob>, RefRO<VillagerAvailability>, RefRO<LocalTransform>, RefRO<VillagerFlags>>()
-                         .WithNone<PlaybackGuardTag>()
-                         .WithEntityAccess())
+            var lessonBuilder = new DeterministicRegistryBuilder<VillagerLessonRegistryEntry>(lessonCapacity, Allocator.Temp);
+            var requireSpatialSync = false;
+            var spatialVersionSource = 0u;
+            try
             {
+                requireSpatialSync = registryMetadata.SupportsSpatialQueries && hasSyncState && spatialSyncState.HasSpatialData;
+                spatialVersionSource = hasSpatialGrid
+                    ? spatialState.Version
+                    : (hasSyncState && spatialSyncState.HasSpatialData ? spatialSyncState.SpatialVersion : 0u);
+
+                var expectedCount = math.max(32, _villagerQuery.CalculateEntityCount());
+                using var builder = new DeterministicRegistryBuilder<VillagerRegistryEntry>(expectedCount, Allocator.Temp);
+                foreach (var (villagerId, job, availability, transform, flags, entity) in SystemAPI.Query<RefRO<VillagerId>, RefRO<VillagerJob>, RefRO<VillagerAvailability>, RefRO<LocalTransform>, RefRO<VillagerFlags>>()
+                             .WithNone<PlaybackGuardTag>()
+                             .WithEntityAccess())
+                {
                 // Skip dead villagers
                 if (flags.ValueRO.IsDead)
                 {
@@ -259,6 +272,12 @@ namespace PureDOTS.Systems
                     entry.Discipline = (byte)discipline.Value;
                 }
 
+                if (_knowledgeLookup.HasComponent(entity))
+                {
+                    var knowledge = _knowledgeLookup[entity];
+                    AppendLessonEntries(entity, in knowledge, lessonCatalog.Blob, ref lessonBuilder);
+                }
+
                 builder.Add(entry);
 
                 totalVillagers++;
@@ -269,6 +288,13 @@ namespace PureDOTS.Systems
                 : RegistryContinuitySnapshot.WithoutSpatialData(requireSpatialSync);
 
             builder.ApplyTo(ref entries, ref registryMetadata, timeState.Tick, continuity);
+            lessonBuilder.ApplyTo(ref lessonBuffer);
+
+            }
+            finally
+            {
+                lessonBuilder.Dispose();
+            }
 
             var averageHealth = healthSampleCount > 0 ? healthAccumulator / healthSampleCount : 0f;
             var averageMorale = moraleSampleCount > 0 ? moraleAccumulator / moraleSampleCount : 0f;
@@ -290,6 +316,48 @@ namespace PureDOTS.Systems
                 SpatialFallbackCount = fallbackCount,
                 SpatialUnmappedCount = unmappedCount
             };
+        }
+
+        private static void AppendLessonEntries(
+            Entity entity,
+            in VillagerKnowledge knowledge,
+            BlobAssetReference<KnowledgeLessonEffectBlob> lessonCatalog,
+            ref DeterministicRegistryBuilder<VillagerLessonRegistryEntry> builder)
+        {
+            if (knowledge.Lessons.Length == 0)
+            {
+                return;
+            }
+
+            for (var i = 0; i < knowledge.Lessons.Length; i++)
+            {
+                var lesson = knowledge.Lessons[i];
+                if (lesson.LessonId.Length == 0)
+                {
+                    continue;
+                }
+
+                var entry = new VillagerLessonRegistryEntry
+                {
+                    VillagerEntity = entity,
+                    LessonId = lesson.LessonId,
+                    AxisId = default,
+                    OppositeLessonId = default,
+                    Progress = lesson.Progress,
+                    Difficulty = 0,
+                    MetadataFlags = 0
+                };
+
+                if (lessonCatalog.IsCreated && KnowledgeLessonEffectUtility.TryGetLessonMetadata(ref lessonCatalog.Value, lesson.LessonId, out var metadata))
+                {
+                    entry.AxisId = metadata.AxisId;
+                    entry.OppositeLessonId = metadata.OppositeLessonId;
+                    entry.Difficulty = metadata.Difficulty;
+                    entry.MetadataFlags = (byte)metadata.Flags;
+                }
+
+                builder.Add(entry);
+            }
         }
     }
 }

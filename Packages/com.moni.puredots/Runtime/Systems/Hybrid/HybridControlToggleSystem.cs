@@ -15,11 +15,13 @@ namespace PureDOTS.Systems.Hybrid
 
         public void OnCreate(ref SystemState state)
         {
+#if UNITY_EDITOR
             if (!_loggedRegistration)
             {
                 UnityEngine.Debug.Log("[HybridControlToggleSystem] System registered in InitializationSystemGroup. Press F9 to cycle control modes.");
                 _loggedRegistration = true;
             }
+#endif
         }
 
         public void OnDestroy(ref SystemState state)

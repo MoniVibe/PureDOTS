@@ -27,6 +27,11 @@ namespace PureDOTS.Systems
                 var systems = SystemRegistry.GetSystems(profile);
                 DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, systems);
 
+                // Ensure the standard EntityCommandBuffer systems exist so Burst systems
+                // can safely grab their singletons during OnCreate.
+                world.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
+                world.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+
                 if (world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>() is { } fixedStepGroup)
                 {
                     fixedStepGroup.Timestep = 1f / 60f;
