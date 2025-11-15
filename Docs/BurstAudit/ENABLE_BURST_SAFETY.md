@@ -39,3 +39,14 @@ After enabling, check:
 - Force On mode ensures safety checks run even for jobs that explicitly disable them
 - This setting persists across Unity sessions (stored in EditorPrefs)
 
+
+
+
+
+
+
+
+
+
+
+

@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -59,7 +60,10 @@ namespace PureDOTS.Runtime.Aggregates
     
     /// <summary>
     /// Guild alignment and outlooks (aggregate of members).
+    /// Legacy component kept for serialized data migration; runtime systems convert this
+    /// into VillagerAlignment + GuildOutlookSet.
     /// </summary>
+    [Obsolete("GuildAlignment has been replaced by VillagerAlignment + GuildOutlookSet and will be removed.", false)]
     public struct GuildAlignment : IComponentData
     {
         // Tri-axis alignment (like villagers)
@@ -74,6 +78,17 @@ namespace PureDOTS.Runtime.Aggregates
         
         // Computed from member average
         public bool IsFanatic;               // Any outlook extreme?
+    }
+
+    /// <summary>
+    /// Guild outlook set persisted after legacy alignment migration.
+    /// </summary>
+    public struct GuildOutlookSet : IComponentData
+    {
+        public byte Outlook1;
+        public byte Outlook2;
+        public byte Outlook3;
+        public bool IsFanatic;
     }
     
     /// <summary>

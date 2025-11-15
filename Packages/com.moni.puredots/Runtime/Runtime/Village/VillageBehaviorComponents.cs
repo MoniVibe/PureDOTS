@@ -1,11 +1,14 @@
+using System;
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Village
 {
     /// <summary>
-    /// Alignment/outlook state for a village aggregate (values typically range -1..+1).
+    /// Legacy alignment/outlook state for a village aggregate (values typically range -1..+1).
+    /// Kept for backwards compatibility; runtime systems migrate this data to VillagerAlignment.
     /// </summary>
+    [Obsolete("Use VillagerAlignment instead. This component is migrated at runtime and will be removed.", false)]
     public struct VillageAlignmentState : IComponentData
     {
         public float LawChaos;      // -1 chaos, +1 lawful

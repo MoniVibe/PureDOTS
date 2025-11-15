@@ -45,6 +45,7 @@ namespace PureDOTS.Systems
 
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             _handleLookup.Update(ref state);
+            uint recycledCount = 0;
 
             for (int i = 0; i < recycleBuffer.Length; i++)
             {
@@ -61,9 +62,18 @@ namespace PureDOTS.Systems
                 }
 
                 ecb.RemoveComponent<PresentationHandle>(request.Target);
+                recycledCount++;
             }
 
             recycleBuffer.Clear();
+            if (recycledCount > 0 && SystemAPI.TryGetSingletonRW<PresentationPoolStats>(out var stats))
+            {
+                var value = stats.ValueRO;
+                value.RecycledThisFrame += recycledCount;
+                value.TotalRecycled += recycledCount;
+                value.ActiveVisuals = value.ActiveVisuals >= recycledCount ? value.ActiveVisuals - recycledCount : 0;
+                stats.ValueRW = value;
+            }
             // ECB playback is handled by EndSimulationEntityCommandBufferSystem
         }
     }

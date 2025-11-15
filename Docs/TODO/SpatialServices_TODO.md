@@ -73,7 +73,7 @@
 - [x] Introduce runtime provider abstraction (`ISpatialGridProvider`) with hashed-grid implementation and config validation hooks.
 - [x] Expand deterministic query utilities: `kNN`, multi-radius batches, filtered entity iterators, and jobified wrappers. (Added `FindKNearestInRadius<TFilter>`, `BatchRadiusQueries`, existing `SpatialKNearestBatchJob` provides jobified wrappers)
 - [x] Provide data-driven query descriptors so different game concepts can reuse the same query pipeline without custom code. (`SpatialQueryDescriptor` with `SpatialQueryOptions` and filter interface already provides reusable pipeline)
-- [x] Integrate registries (resource, storehouse, villager, logistics, miracles) with spatial indexing metadata for fast lookup once entries store spatial tokens. (Resource & storehouse registries consume `SpatialGridResidency`; villager/logistics/miracles registries compute `CellId` from positions; divine hand system now uses spatial queries for `FindPickable`)
+- [x] Integrate registries (resource, storehouse, villager, logistics, miracles) with spatial indexing metadata for fast lookup once entries store spatial tokens. (Resource/storehouse/villager registries consume `SpatialGridResidency`; logistics and miracle registries now read `SpatialGridResidency` when present and fall back to hashed positions, so entries always emit `CellId`/`SpatialVersion` before continuity tests run; divine hand system uses spatial queries for `FindPickable`.)
 - [x] **Respect rewind state**: Check `RewindState.Mode` to skip/rebuild appropriately; add `PlaybackGuardTag` checks if needed. (Implemented: `SpatialGridBuildSystem` skips rebuilds during playback; `SpatialRewindGuardSystem` guards group execution per RewindPatterns.md)
 - [ ] Support 2D (XZ plane) navigation out of the box **and** define config/runtime hooks for true 3D layers (int3 cells, volume cost fields) so PureDOTS pathfinding can service flying/underground agents without game-layer rewrites.
 
@@ -127,7 +127,7 @@
   - Measure query time for varying radii (1m, 10m, 50m, 100m) at different entity densities
   - Profile memory footprint and verify zero GC allocations per frame
   - Compare performance vs. linear scans to quantify speedup
-- [ ] **Profiling automation**: Integrate with performance harness TODO to track spatial grid metrics in CI.
+- [x] **Profiling automation**: Integrate with performance harness TODO to track spatial grid metrics in CI. *(`SpatialRegistryPerformanceTests` now drives `SpatialInstrumentationSystem_EmitsMetricsMatchingGridState` to validate logged cells/entries/dirty ratios before CI widens registry adoption.)*
 
 ### 7. Documentation & Adoption
 - [x] Update `Docs/Guides/SceneSetup.md` with instructions for adding a spatial profile to new scenes.  

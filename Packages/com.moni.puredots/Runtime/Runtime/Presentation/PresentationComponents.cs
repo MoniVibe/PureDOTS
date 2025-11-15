@@ -66,6 +66,36 @@ namespace PureDOTS.Runtime.Components
         public uint VariantSeed;
     }
 
+    public struct PresentationHandleSyncConfig : IComponentData
+    {
+        public float PositionLerp;
+        public float RotationLerp;
+        public float ScaleLerp;
+        public float3 VisualOffset;
+
+        public static PresentationHandleSyncConfig Default => new PresentationHandleSyncConfig
+        {
+            PositionLerp = 1f,
+            RotationLerp = 1f,
+            ScaleLerp = 1f,
+            VisualOffset = float3.zero
+        };
+    }
+
+    public struct PresentationPoolStats : IComponentData
+    {
+        public uint ActiveVisuals;
+        public uint SpawnedThisFrame;
+        public uint RecycledThisFrame;
+        public ulong TotalSpawned;
+        public ulong TotalRecycled;
+    }
+
+    public struct PresentationReloadCommand : IComponentData
+    {
+        public uint RequestId;
+    }
+
     public static class PresentationKeyUtility
     {
         private const int MaxKeyLength = 48;
@@ -132,4 +162,3 @@ namespace PureDOTS.Runtime.Components
         }
     }
 }
-

@@ -81,10 +81,12 @@ namespace PureDOTS.Debugging
         private EntityQuery _debugDataQuery;
         private EntityQuery _telemetryQuery;
         private EntityQuery _streamingCoordinatorQuery;
+        private EntityQuery _presentationQueueQuery;
         private bool _hasCommandQuery;
         private bool _hasDebugDataQuery;
         private bool _hasTelemetryQuery;
         private bool _hasStreamingCoordinatorQuery;
+        private bool _hasPresentationQueueQuery;
         private readonly List<TelemetryMetricSnapshot> _telemetrySnapshots = new List<TelemetryMetricSnapshot>(16);
         private uint _telemetryVersion;
         private StringBuilder _telemetryBuilder;
@@ -133,6 +135,11 @@ namespace PureDOTS.Debugging
                     _streamingCoordinatorQuery.Dispose();
                     _hasStreamingCoordinatorQuery = false;
                 }
+                if (_hasPresentationQueueQuery)
+                {
+                    _presentationQueueQuery.Dispose();
+                    _hasPresentationQueueQuery = false;
+                }
                 _world = null;
                 enabled = false;
                 return;
@@ -161,6 +168,11 @@ namespace PureDOTS.Debugging
                     _streamingCoordinatorQuery.Dispose();
                     _hasStreamingCoordinatorQuery = false;
                 }
+                if (_hasPresentationQueueQuery)
+                {
+                    _presentationQueueQuery.Dispose();
+                    _hasPresentationQueueQuery = false;
+                }
             }
 
             _world = newWorld;
@@ -171,10 +183,12 @@ namespace PureDOTS.Debugging
             _debugDataQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>());
             _telemetryQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
             _streamingCoordinatorQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<StreamingCoordinator>());
+            _presentationQueueQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PresentationCommandQueue>());
             _hasCommandQuery = true;
             _hasDebugDataQuery = true;
             _hasTelemetryQuery = true;
             _hasStreamingCoordinatorQuery = true;
+            _hasPresentationQueueQuery = true;
             _telemetrySnapshots.Clear();
             _telemetryVersion = 0;
 
@@ -207,6 +221,11 @@ namespace PureDOTS.Debugging
             {
                 _streamingCoordinatorQuery.Dispose();
                 _hasStreamingCoordinatorQuery = false;
+            }
+            if (_hasPresentationQueueQuery)
+            {
+                _presentationQueueQuery.Dispose();
+                _hasPresentationQueueQuery = false;
             }
         }
 
@@ -275,6 +294,9 @@ namespace PureDOTS.Debugging
                     case DebugCommand.CommandType.ClearStreamingCooldowns:
                         IssueClearStreamingCooldowns(entityManager);
                         break;
+                    case DebugCommand.CommandType.ReloadPresentation:
+                        IssuePresentationReload(entityManager);
+                        break;
                 }
             }
 
@@ -298,6 +320,26 @@ namespace PureDOTS.Debugging
             var control = entityManager.GetComponentData<StreamingDebugControl>(coordinator);
             control.ClearCooldowns = true;
             entityManager.SetComponentData(coordinator, control);
+        }
+
+        private void IssuePresentationReload(EntityManager entityManager)
+        {
+            if (!_hasPresentationQueueQuery || _presentationQueueQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var queueEntity = _presentationQueueQuery.GetSingletonEntity();
+            if (!entityManager.HasComponent<PresentationReloadCommand>(queueEntity))
+            {
+                entityManager.AddComponentData(queueEntity, new PresentationReloadCommand { RequestId = 1 });
+            }
+            else
+            {
+                var cmd = entityManager.GetComponentData<PresentationReloadCommand>(queueEntity);
+                cmd.RequestId++;
+                entityManager.SetComponentData(queueEntity, cmd);
+            }
         }
 
         private void UpdateUI()

@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -14,13 +15,13 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct VillageJobPreferenceSystem : ISystem
     {
-        private ComponentLookup<VillageAlignmentState> _alignmentLookup;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
         private ComponentLookup<VillageOutlook> _outlookLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _alignmentLookup = state.GetComponentLookup<VillageAlignmentState>(true);
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
             _outlookLookup = state.GetComponentLookup<VillageOutlook>(true);
             state.RequireForUpdate<VillageId>();
         }
@@ -45,7 +46,7 @@ namespace PureDOTS.Systems
             {
                 var alignment = _alignmentLookup.HasComponent(entity)
                     ? _alignmentLookup[entity]
-                    : default(VillageAlignmentState);
+                    : default(VillagerAlignment);
                 var outlookFlags = _outlookLookup.HasComponent(entity)
                     ? _outlookLookup[entity].Flags
                     : VillageOutlookFlags.None;
@@ -78,11 +79,11 @@ namespace PureDOTS.Systems
             });
         }
 
-        private static float ComputeEssentialWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeEssentialWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
-            weight += (-alignment.Materialism) * 0.5f; // ascetic villages prioritize essentials
-            weight += math.saturate(alignment.Integrity) * 0.25f;
+            weight += (-alignment.MaterialismNormalized) * 0.5f; // ascetic villages prioritize essentials
+            weight += math.saturate(alignment.PurityNormalized) * 0.25f;
             if ((flags & VillageOutlookFlags.Ascetic) != 0)
             {
                 weight += 0.5f;
@@ -94,10 +95,10 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputeBuilderWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeBuilderWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
-            weight += math.saturate(alignment.Integrity) * 0.2f;
+            weight += math.saturate(alignment.PurityNormalized) * 0.2f;
             if ((flags & VillageOutlookFlags.Expansionist) != 0)
             {
                 weight += 0.4f;
@@ -105,14 +106,14 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputeGathererWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeGathererWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
-            weight += (-alignment.Materialism) * 0.2f;
+            weight += (-alignment.MaterialismNormalized) * 0.2f;
             return weight;
         }
 
-        private static float ComputeHunterWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeHunterWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
             if ((flags & VillageOutlookFlags.Warlike) != 0)
@@ -122,10 +123,10 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputeGuardWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeGuardWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
-            weight += math.saturate(-alignment.Integrity) * 0.2f; // corrupt guard up (enforcement)
+            weight += math.saturate(-alignment.PurityNormalized) * 0.2f; // corrupt guard up (enforcement)
             if ((flags & VillageOutlookFlags.Warlike) != 0)
             {
                 weight += 0.8f;
@@ -133,7 +134,7 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputePriestWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputePriestWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
             if ((flags & VillageOutlookFlags.Spiritual) != 0)
@@ -143,10 +144,10 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputeMerchantWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeMerchantWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
-            weight += alignment.Materialism * 0.7f;
+            weight += alignment.MaterialismNormalized * 0.7f;
             if ((flags & VillageOutlookFlags.Materialistic) != 0)
             {
                 weight += 0.8f;
@@ -158,7 +159,7 @@ namespace PureDOTS.Systems
             return weight;
         }
 
-        private static float ComputeCrafterWeight(in VillageAlignmentState alignment, VillageOutlookFlags flags)
+        private static float ComputeCrafterWeight(in VillagerAlignment alignment, VillageOutlookFlags flags)
         {
             var weight = 1f;
             if ((flags & VillageOutlookFlags.Warlike) != 0)

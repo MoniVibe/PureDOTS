@@ -118,6 +118,7 @@
   - `ChannelingMiracle` - Sustained miracle active (rain, heal)
 - [x] Reference shared `HandInputRouterSystem` and `HandInteractionState` from integration TODO once centralised router lands.
 - [ ] Integrate miracles with RMB router: add handlers for token pickup, sustain hold, release actions.
+- [x] Dispatch rain miracle releases from the hand into the RainMiracle command queue via `MiracleReleaseSystem` so thrown tokens immediately spawn clouds.
 - [ ] **Implement core miracle systems**:
   - `MiracleTokenSpawnSystem` - Creates tokens from gesture/hotkey commands
   - `MiracleChargeSystem` - Updates charge percent, determines power level (0=Basic, 1=Increased, 2=Extreme)

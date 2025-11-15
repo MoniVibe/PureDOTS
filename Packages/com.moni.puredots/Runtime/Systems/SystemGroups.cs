@@ -113,13 +113,10 @@ namespace PureDOTS.Systems
     public partial class ConstructionSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
-    /// High-priority system group for camera input and control.
-    /// Runs BEFORE SimulationSystemGroup to ensure instant, responsive input processing.
-    /// Camera and control input have higher priority than simulation itself for immediate feedback.
-    /// This group executes after InitializationSystemGroup but before SimulationSystemGroup.
+    /// High-priority system group for camera/input handling. Executes at the end of InitializationSystemGroup
+    /// so input is processed before the SimulationSystemGroup begins.
     /// </summary>
-    [UpdateAfter(typeof(InitializationSystemGroup))]
-    [UpdateBefore(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderLast = true)]
     public partial class CameraInputSystemGroup : ComponentSystemGroup { }
 
     /// <summary>

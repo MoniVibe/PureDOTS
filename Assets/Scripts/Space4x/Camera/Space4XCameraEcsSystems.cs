@@ -230,6 +230,7 @@ namespace Space4X.CameraSystems
                 };
             }
 
+            var camera = Camera.main;
             var rigState = new CameraRigState
             {
                 Position = new Vector3(state.Position.x, state.Position.y, state.Position.z),
@@ -237,7 +238,9 @@ namespace Space4X.CameraSystems
                 Pitch = state.Pitch,
                 Yaw = state.Yaw,
                 Distance = math.length(state.Position),
-                PerspectiveMode = state.PerspectiveMode
+                PerspectiveMode = state.PerspectiveMode,
+                FieldOfView = camera != null ? camera.fieldOfView : 60f,
+                RigType = CameraRigType.Space4X
             };
 
             CameraRigService.Publish(rigState);

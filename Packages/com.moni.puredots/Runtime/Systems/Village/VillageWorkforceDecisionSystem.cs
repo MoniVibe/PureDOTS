@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,11 +13,11 @@ namespace PureDOTS.Systems
     /// Produces intents only; downstream systems assign/transition jobs.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillagerNeedsSystem))]
     public partial struct VillageWorkforceDecisionSystem : ISystem
     {
-        private ComponentLookup<VillageAlignmentState> _alignmentLookup;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
         private ComponentLookup<VillageWorkforcePolicy> _policyLookup;
         private BufferLookup<VillageWorkforceDemandEntry> _demandLookup;
         private BufferLookup<VillageJobPreferenceEntry> _preferenceLookup;
@@ -24,7 +25,7 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _alignmentLookup = state.GetComponentLookup<VillageAlignmentState>(true);
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
             _policyLookup = state.GetComponentLookup<VillageWorkforcePolicy>(true);
             _demandLookup = state.GetBufferLookup<VillageWorkforceDemandEntry>(true);
             _preferenceLookup = state.GetBufferLookup<VillageJobPreferenceEntry>(true);
@@ -186,8 +187,10 @@ namespace PureDOTS.Systems
                 if (_alignmentLookup.HasComponent(entity))
                 {
                     var alignment = _alignmentLookup[entity];
-                    snapshot.LawMultiplier = math.saturate(profileBlob.LawfulnessComplianceCurve.Evaluate(alignment.LawChaos));
-                    snapshot.ChaosMultiplier = math.saturate(profileBlob.ChaosFreedomCurve.Evaluate(alignment.Materialism));
+                    var lawChaos = alignment.OrderNormalized;
+                    var materialism = alignment.MaterialismNormalized;
+                    snapshot.LawMultiplier = math.saturate(profileBlob.LawfulnessComplianceCurve.Evaluate(lawChaos));
+                    snapshot.ChaosMultiplier = math.saturate(profileBlob.ChaosFreedomCurve.Evaluate(materialism));
                 }
 
                 if (_policyLookup.HasComponent(entity))

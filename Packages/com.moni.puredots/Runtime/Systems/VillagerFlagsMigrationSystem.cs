@@ -3,6 +3,8 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
+#pragma warning disable 0618 // Migration system touches obsolete legacy tags by design
+
 namespace PureDOTS.Systems
 {
     /// <summary>
@@ -87,4 +89,5 @@ namespace PureDOTS.Systems
         }
     }
 }
+#pragma warning restore 0618
 

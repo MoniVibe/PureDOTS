@@ -1,4 +1,6 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villagers;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -27,6 +29,9 @@ namespace Godgame.Authoring
 
         [SerializeField]
         private float3 spawnPosition = float3.zero;
+
+        [SerializeField]
+        private string baseArchetype = "";
 
         private sealed class Baker : Unity.Entities.Baker<VillagerAuthoring>
         {
@@ -64,6 +69,33 @@ namespace Godgame.Authoring
                     {
                         transform.position = authoring.spawnPosition;
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(authoring.baseArchetype))
+                {
+                    AddComponent(entity, new VillagerArchetypeAssignment
+                    {
+                        ArchetypeName = new FixedString64Bytes(authoring.baseArchetype),
+                        CachedIndex = -1
+                    });
+                }
+
+                VillagerArchetypeDefaults.CreateFallback(out var fallbackData);
+
+                AddComponent(entity, new VillagerArchetypeResolved
+                {
+                    ArchetypeIndex = -1,
+                    Data = fallbackData
+                });
+
+                if (!HasBuffer<VillagerBelonging>(entity))
+                {
+                    AddBuffer<VillagerBelonging>(entity);
+                }
+
+                if (!HasBuffer<VillagerArchetypeModifier>(entity))
+                {
+                    AddBuffer<VillagerArchetypeModifier>(entity);
                 }
             }
         }

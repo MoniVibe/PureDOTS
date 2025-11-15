@@ -4,6 +4,7 @@
     "references": [
         "PureDOTS.Runtime",
         "PureDOTS.Input",
+        "PureDOTS.Config",
         "Unity.Burst",
         "Unity.Entities",
         "Unity.Mathematics",

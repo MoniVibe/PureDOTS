@@ -1,5 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Villagers
 {
@@ -89,6 +90,17 @@ namespace PureDOTS.Runtime.Villagers
         public bool IsChaotic => OrderAxis < -20;
         public bool IsPure => PurityAxis > 20;
         public bool IsCorrupt => PurityAxis < -20;
+
+        // Normalized helpers (-1..+1) for systems that previously consumed float axes.
+        public float MoralNormalized => math.clamp(MoralAxis * 0.01f, -1f, 1f);
+        public float OrderNormalized => math.clamp(OrderAxis * 0.01f, -1f, 1f);
+        public float PurityNormalized => math.clamp(PurityAxis * 0.01f, -1f, 1f);
+        public float MaterialismNormalized => -MoralNormalized;
+        public float IntegrityNormalized => PurityNormalized;
+
+        public static sbyte ToAxisValue(float normalized)
+        {
+            return (sbyte)math.clamp(math.round(normalized * 100f), -100f, 100f);
+        }
     }
 }
-

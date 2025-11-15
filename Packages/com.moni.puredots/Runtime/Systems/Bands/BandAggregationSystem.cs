@@ -6,7 +6,7 @@ using Unity.Entities;
 namespace PureDOTS.Systems
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillagerNeedsSystem))]
     public partial struct BandAggregationSystem : ISystem
     {

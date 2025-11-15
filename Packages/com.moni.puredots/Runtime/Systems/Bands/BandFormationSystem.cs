@@ -11,7 +11,7 @@ namespace PureDOTS.Systems
     /// Maintains derived formation data so both games can reason about band footprint and facing deterministically.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(BandAggregationSystem))]
     public partial struct BandFormationSystem : ISystem
     {

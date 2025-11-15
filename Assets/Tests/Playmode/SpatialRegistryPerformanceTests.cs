@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
@@ -8,6 +11,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace PureDOTS.Tests
 {
@@ -18,6 +22,9 @@ namespace PureDOTS.Tests
     {
         const int kLargeEntityCount = 4096;
         const int kStressEntityCount = 16384;
+        static readonly Regex s_SpatialLogRegex = new Regex(
+            @"\[PureDOTS\]\[Spatial\]\s+Cells=(?<cells>\d+)\s+Entries=(?<entries>\d+)\s+Version=(?<version>\d+)\s+Tick=(?<tick>\d+)\s+Avg/Cell=(?<avg>-?[0-9.]+)\s+Buffer=(?<buffer>\d+)\s+Strategy=(?<strategy>\w+)\s+Dirty\(\+\/(?<dirtyAdd>\d+),~\/(?<dirtyUpdate>\d+),-\/(?<dirtyRemove>\d+)\)=(?<dirtyTotal>\d+)\s+RebuildMs=(?<rebuildMs>-?[0-9.]+)",
+            RegexOptions.Compiled);
 
         [Test]
         public void SpatialGridBuildSystem_IndexesLargeEntitySetAndCachesHandles()
@@ -228,6 +235,64 @@ namespace PureDOTS.Tests
         }
 
         [Test]
+        public void SpatialInstrumentationSystem_EmitsMetricsMatchingGridState()
+        {
+            using var world = CreateWorldWithSpatialEntries(kLargeEntityCount, out var gridEntity, out var config);
+            var entityManager = world.EntityManager;
+
+            EnableConsoleInstrumentation(entityManager, gridEntity);
+
+            var timeEntity = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()).GetSingletonEntity();
+            var expectedTick = entityManager.GetComponentData<TimeState>(timeEntity).Tick;
+
+            var instrumentationLogs = new List<string>();
+            Application.LogCallback handler = (condition, stackTrace, type) =>
+            {
+                if (type == LogType.Log && condition.StartsWith("[PureDOTS][Spatial]"))
+                {
+                    instrumentationLogs.Add(condition);
+                }
+            };
+
+            try
+            {
+                Application.logMessageReceived += handler;
+                RunSystem<SpatialInstrumentationSystem>(world);
+            }
+            finally
+            {
+                Application.logMessageReceived -= handler;
+            }
+
+            Assert.AreEqual(1, instrumentationLogs.Count, "Spatial instrumentation should emit one log entry.");
+            var logLine = instrumentationLogs[0];
+            var match = s_SpatialLogRegex.Match(logLine);
+            Assert.IsTrue(match.Success, "Spatial instrumentation log format changed: " + logLine);
+
+            var gridState = entityManager.GetComponentData<SpatialGridState>(gridEntity);
+
+            Assert.AreEqual(config.CellCount, int.Parse(match.Groups["cells"].Value));
+            Assert.AreEqual(gridState.TotalEntries, int.Parse(match.Groups["entries"].Value));
+            Assert.AreEqual(gridState.Version, uint.Parse(match.Groups["version"].Value));
+            Assert.AreEqual(gridState.LastUpdateTick, uint.Parse(match.Groups["tick"].Value));
+            Assert.AreEqual(gridState.ActiveBufferIndex, int.Parse(match.Groups["buffer"].Value));
+            Assert.AreEqual(gridState.LastStrategy.ToString(), match.Groups["strategy"].Value);
+            Assert.AreEqual(gridState.DirtyAddCount, int.Parse(match.Groups["dirtyAdd"].Value));
+            Assert.AreEqual(gridState.DirtyUpdateCount, int.Parse(match.Groups["dirtyUpdate"].Value));
+            Assert.AreEqual(gridState.DirtyRemoveCount, int.Parse(match.Groups["dirtyRemove"].Value));
+
+            var dirtyTotal = gridState.DirtyAddCount + gridState.DirtyUpdateCount + gridState.DirtyRemoveCount;
+            Assert.AreEqual(dirtyTotal, int.Parse(match.Groups["dirtyTotal"].Value));
+
+            var rebuildMs = float.Parse(match.Groups["rebuildMs"].Value, CultureInfo.InvariantCulture);
+            Assert.Greater(rebuildMs, 0f, "Instrumentation must surface rebuild timings.");
+
+            var instrumentation = entityManager.GetComponentData<SpatialConsoleInstrumentation>(gridEntity);
+            Assert.AreEqual(gridState.Version, instrumentation.LastLoggedVersion, "Instrumentation should cache the logged spatial version.");
+            Assert.AreEqual(expectedTick, instrumentation.LastLoggedTick, "Instrumentation should record the tick used for logging.");
+        }
+
+        [Test]
         public void SpatialGridBuildSystem_RecordsRebuildMetrics()
         {
             using var world = CreateWorldWithSpatialEntries(kLargeEntityCount, out var gridEntity, out var config);
@@ -266,6 +331,26 @@ namespace PureDOTS.Tests
             ref var system = ref world.Unmanaged.GetUnsafeSystemRef<T>(handle);
             ref var state = ref world.Unmanaged.ResolveSystemStateRef(handle);
             system.OnUpdate(ref state);
+        }
+
+        static void EnableConsoleInstrumentation(EntityManager entityManager, Entity gridEntity, uint minTickDelta = 0u)
+        {
+            var instrumentation = new SpatialConsoleInstrumentation
+            {
+                MinTickDelta = minTickDelta,
+                LastLoggedTick = 0u,
+                LastLoggedVersion = 0u,
+                Flags = SpatialConsoleInstrumentation.FlagLogOnlyOnChange
+            };
+
+            if (entityManager.HasComponent<SpatialConsoleInstrumentation>(gridEntity))
+            {
+                entityManager.SetComponentData(gridEntity, instrumentation);
+            }
+            else
+            {
+                entityManager.AddComponentData(gridEntity, instrumentation);
+            }
         }
     }
 }

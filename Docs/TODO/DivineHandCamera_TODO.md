@@ -95,7 +95,7 @@
 - [x] Capture BW2 reference values (camera distance, sensitivity curves, cursor feedback) to guide tuning.
 - [ ] Verify rewind touchpoints: what data must be rebuilt (hand state, highlight target, camera pivot) during playback/catch-up.
 
-### 1. Input Routing & Configuration
+### 1. Input Routing & Configuration (**Top Priority**)
 - [ ] **Implement BW2 RMB Priority Router** (deterministic conflict resolution): **In Progress** — base router with cooldown/hysteresis landed; context probe now exposes storehouse/pile/draggable flags; priority table + handler forwarding still pending.
   1. **UI elements** - Always win (buttons, menus, modals) - blocks all game actions
   2. **Modal tools** - Active miracle/special mode has priority
@@ -110,6 +110,7 @@
 - [x] Create `HandCameraInputProfile` ScriptableObject capturing action references, invert toggles, sensitivity multipliers; bake into DOTS config.
 - [x] Validate layer/mask assignments during bootstrap; log/warn on mismatch.
 - [x] Provide DOTS bridge Mono (optional) that reads actions and writes to `DivineHandInput` component deterministically.
+- [x] Remove legacy `Godgame.Interaction` right-click/hand systems so `HandInputRouterSystem` is the single source of truth (non-DOTS/Burst code deleted from `Assets/Projects/Godgame/Scripts/Godgame/Interaction`).
 - [ ] Adopt central `HandInputRouterSystem` once integration TODO lands; ensure state transitions respect shared `HandInteractionState` and fixed-step timing.
 
 ### 2. Divine Hand Data & State Machine

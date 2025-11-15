@@ -24,6 +24,9 @@ namespace PureDOTS.Debugging
         [Tooltip("Key to clear streaming cooldowns")]
         public KeyCode clearStreamingCooldownsKey = KeyCode.F4;
 
+        [Tooltip("Key to reload all presentation visuals")]
+        public KeyCode reloadPresentationKey = KeyCode.F8;
+
         [Header("Settings")]
         [Tooltip("Enable keyboard shortcuts")]
         public bool enableKeyboardShortcuts = true;
@@ -139,6 +142,10 @@ namespace PureDOTS.Debugging
             else if (UnityEngine.Input.GetKeyDown(clearStreamingCooldownsKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ClearStreamingCooldowns });
+            }
+            else if (UnityEngine.Input.GetKeyDown(reloadPresentationKey))
+            {
+                commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ReloadPresentation });
             }
         }
     }

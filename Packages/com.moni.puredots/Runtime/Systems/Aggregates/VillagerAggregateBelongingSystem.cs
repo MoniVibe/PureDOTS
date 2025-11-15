@@ -9,7 +9,7 @@ namespace PureDOTS.Systems
     /// Determines each villager's primary aggregate belonging based on membership loyalty.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillagerNeedsSystem))]
     public partial struct VillagerAggregateBelongingSystem : ISystem
     {

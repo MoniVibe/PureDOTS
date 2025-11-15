@@ -20,6 +20,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<MiracleTarget> _targetLookup;
         private ComponentLookup<MiracleCaster> _casterLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<SpatialGridResidency> _residencyLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -32,6 +33,7 @@ namespace PureDOTS.Systems
             _targetLookup = state.GetComponentLookup<MiracleTarget>(true);
             _casterLookup = state.GetComponentLookup<MiracleCaster>(true);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
 
             state.RequireForUpdate<MiracleRegistry>();
             state.RequireForUpdate<TimeState>();
@@ -51,6 +53,7 @@ namespace PureDOTS.Systems
             _targetLookup.Update(ref state);
             _casterLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _residencyLookup.Update(ref state);
 
             var registryEntity = SystemAPI.GetSingletonEntity<MiracleRegistry>();
             var registry = SystemAPI.GetComponentRW<MiracleRegistry>(registryEntity);
@@ -104,7 +107,7 @@ namespace PureDOTS.Systems
                 if (hasSpatialGrid)
                 {
                     entrySpatialVersion = spatialState.Version;
-                    targetCellId = ClassifyPosition(targetPosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
+                    targetCellId = ResolveTargetCell(entity, targetPosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
                 }
 
                 var flags = MiracleRegistryFlags.None;
@@ -189,7 +192,22 @@ namespace PureDOTS.Systems
             };
         }
 
-        private static int ClassifyPosition(float3 position, in SpatialGridConfig config, uint gridVersion, ref int resolved, ref int fallback, ref int unmapped)
+        private int ResolveTargetCell(Entity entity, float3 fallbackPosition, in SpatialGridConfig config, uint gridVersion, ref int resolved, ref int fallback, ref int unmapped)
+        {
+            if (_residencyLookup.HasComponent(entity))
+            {
+                var residency = _residencyLookup[entity];
+                if (residency.Version == gridVersion && (uint)residency.CellId < (uint)config.CellCount)
+                {
+                    resolved++;
+                    return residency.CellId;
+                }
+            }
+
+            return ClassifyPosition(fallbackPosition, in config, ref fallback, ref unmapped);
+        }
+
+        private static int ClassifyPosition(float3 position, in SpatialGridConfig config, ref int fallback, ref int unmapped)
         {
             SpatialHash.Quantize(position, config, out var coords);
             var cellId = SpatialHash.Flatten(in coords, in config);

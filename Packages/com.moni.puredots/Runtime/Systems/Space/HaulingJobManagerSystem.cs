@@ -14,6 +14,7 @@ namespace PureDOTS.Systems.Space
     public partial struct HaulingJobManagerSystem : ISystem
     {
         private Entity _jobQueueEntity;
+        private ComponentLookup<LocalTransform> _storehouseTransformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -22,6 +23,7 @@ namespace PureDOTS.Systems.Space
             var archetypeEntity = state.EntityManager.CreateEntity();
             state.EntityManager.AddBuffer<HaulingJobQueueEntry>(archetypeEntity);
             _jobQueueEntity = archetypeEntity;
+            _storehouseTransformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -30,9 +32,7 @@ namespace PureDOTS.Systems.Space
             var queue = state.EntityManager.GetBuffer<HaulingJobQueueEntry>(_jobQueueEntity);
             queue.Clear();
 
-            // Use ComponentLookup instead of ToEntityArray/ToComponentDataArray for zero-GC access
-            var storehouseTransformLookup = state.GetComponentLookup<LocalTransform>(true);
-            storehouseTransformLookup.Update(ref state);
+            _storehouseTransformLookup.Update(ref state);
 
             // Collect storehouse entities into a NativeList for efficient iteration
             var storehouseList = new NativeList<Entity>(Allocator.TempJob);
@@ -43,7 +43,7 @@ namespace PureDOTS.Systems.Space
 
             foreach (var (pile, urgency, entity) in SystemAPI.Query<RefRO<ResourcePile>, RefRO<ResourceUrgency>>().WithEntityAccess())
             {
-                var destination = FindNearestStorehouse(pile.ValueRO.Position, storehouseList, storehouseTransformLookup);
+                var destination = FindNearestStorehouse(pile.ValueRO.Position, storehouseList, _storehouseTransformLookup);
                 queue.Add(new HaulingJobQueueEntry
                 {
                     Priority = HaulingJobPriority.Normal,

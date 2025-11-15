@@ -105,7 +105,12 @@ namespace PureDOTS.Input
 
             if (ResolvedInputActions == null)
             {
-                Debug.LogError($"{nameof(HandCameraInputRouter)} on {name} requires an InputActionAsset reference.", this);
+#if UNITY_EDITOR
+                if (!Application.isBatchMode)
+                {
+                    Debug.Log($"{nameof(HandCameraInputRouter)} on {name} has no InputActionAsset assigned; a runtime fallback will be generated.", this);
+                }
+#endif
             }
 
             if (InteractionMask == 0)
@@ -115,7 +120,12 @@ namespace PureDOTS.Input
 
             if (GroundMask == 0)
             {
-                Debug.LogWarning($"{nameof(HandCameraInputRouter)} on {name} has an empty groundMask; cursor fallbacks will use a flat Y=0 plane.", this);
+#if UNITY_EDITOR
+                if (!Application.isBatchMode)
+                {
+                    Debug.Log($"{nameof(HandCameraInputRouter)} on {name} has an empty groundMask; cursor fallbacks will use a flat Y=0 plane.", this);
+                }
+#endif
             }
 
             _hysteresisRemaining = Mathf.Max(0, ResolvedHysteresisFrames);
@@ -156,28 +166,74 @@ namespace PureDOTS.Input
 
         void AcquireActions()
         {
-            var resolvedAsset = ResolvedInputActions;
-            if (resolvedAsset == null) return;
-
             var resolvedMapName = ResolvedActionMapName;
+            var resolvedAsset = ResolvedInputActions;
+            bool assetAutoCreated = false;
+
+            if (resolvedAsset == null)
+            {
+                resolvedAsset = inputActions = ScriptableObject.CreateInstance<InputActionAsset>();
+                resolvedAsset.name = $"{name}_GeneratedHandCameraInput";
+                assetAutoCreated = true;
+#if UNITY_EDITOR
+                Debug.LogWarning($"{nameof(HandCameraInputRouter)} on {name} generated a fallback InputActionAsset. Assign a profile or asset reference to avoid this.", this);
+#endif
+            }
+
             _map = resolvedAsset.FindActionMap(resolvedMapName, throwIfNotFound: false);
             if (_map == null)
             {
-                Debug.LogError($"{nameof(HandCameraInputRouter)} could not find action map '{resolvedMapName}' in asset '{resolvedAsset.name}'.", this);
+                _map = new InputActionMap(resolvedMapName);
+                if (assetAutoCreated)
+                {
+                    resolvedAsset.AddActionMap(_map);
+                }
+#if UNITY_EDITOR
+                Debug.LogWarning($"{nameof(HandCameraInputRouter)} on {name} could not find action map '{resolvedMapName}'. A runtime fallback map was created.", this);
+#endif
+            }
+
+            if (_map == null)
+            {
+                Debug.LogError($"{nameof(HandCameraInputRouter)} on {name} failed to acquire an InputActionMap.", this);
                 return;
             }
 
-            _pointerAction = _map.FindAction("PointerPosition", throwIfNotFound: false);
-            _pointerDeltaAction = _map.FindAction("PointerDelta", throwIfNotFound: false);
-            _leftClickAction = _map.FindAction("LeftClick", throwIfNotFound: false);
-            _middleClickAction = _map.FindAction("MiddleClick", throwIfNotFound: false);
-            _rightClickAction = _map.FindAction("RightClick", throwIfNotFound: false);
-            _scrollAction = _map.FindAction("ScrollWheel", throwIfNotFound: false);
+            _pointerAction = RequireAction("PointerPosition", InputActionType.PassThrough, "<Mouse>/position");
+            _pointerDeltaAction = RequireAction("PointerDelta", InputActionType.PassThrough, "<Mouse>/delta");
+            _leftClickAction = RequireAction("LeftClick", InputActionType.Button, "<Mouse>/leftButton");
+            _middleClickAction = RequireAction("MiddleClick", InputActionType.Button, "<Mouse>/middleButton");
+            _rightClickAction = RequireAction("RightClick", InputActionType.Button, "<Mouse>/rightButton");
+            _scrollAction = RequireAction("ScrollWheel", InputActionType.PassThrough, "<Mouse>/scroll");
 
             if (_pointerAction == null || _rightClickAction == null)
             {
                 Debug.LogError($"{nameof(HandCameraInputRouter)} requires PointerPosition and RightClick actions in map '{resolvedMapName}'.", this);
             }
+        }
+
+        InputAction RequireAction(string actionName, InputActionType type, string defaultBinding)
+        {
+            if (_map == null)
+            {
+                return null;
+            }
+
+            var action = _map.FindAction(actionName, throwIfNotFound: false);
+            if (action == null)
+            {
+                action = _map.AddAction(actionName, type);
+                if (!string.IsNullOrEmpty(defaultBinding))
+                {
+                    action.AddBinding(defaultBinding);
+                }
+            }
+            else if (action.bindings.Count == 0 && !string.IsNullOrEmpty(defaultBinding))
+            {
+                action.AddBinding(defaultBinding);
+            }
+
+            return action;
         }
 
         void EnableActions()

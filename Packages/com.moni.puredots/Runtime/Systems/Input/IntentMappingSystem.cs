@@ -15,7 +15,7 @@ namespace PureDOTS.Systems.Input
     /// Single-writer: only this system writes GodIntent.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(CameraInputSystemGroup))]
     [UpdateAfter(typeof(CopyInputToEcsSystem))]
     public partial struct IntentMappingSystem : ISystem
     {
@@ -79,11 +79,18 @@ namespace PureDOTS.Systems.Input
                     {
                         if (edge.Kind == InputEdgeKind.Down)
                         {
-                            intent.StartSelect = 1; // Secondary can also start selection
+                            intent.StartSelect = 1; // Secondary can also start selection / throw prime
                         }
                         else if (edge.Kind == InputEdgeKind.Up)
                         {
-                            intent.CancelAction = 1;
+                            if (input.ThrowCharge > 0.1f)
+                            {
+                                intent.ConfirmPlace = 1;
+                            }
+                            else
+                            {
+                                intent.CancelAction = 1;
+                            }
                         }
                     }
                 }

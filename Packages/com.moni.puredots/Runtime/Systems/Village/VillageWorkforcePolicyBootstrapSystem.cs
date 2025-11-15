@@ -9,7 +9,7 @@ namespace PureDOTS.Systems
     /// Ensures every village has a workforce policy component so other systems can adjust emergency weights.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateBefore(typeof(VillageWorkforceDemandSystem))]
     public partial struct VillageWorkforcePolicyBootstrapSystem : ISystem
     {

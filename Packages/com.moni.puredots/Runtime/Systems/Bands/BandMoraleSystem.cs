@@ -7,7 +7,7 @@ using Unity.Mathematics;
 namespace PureDOTS.Systems
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(BandAggregationSystem))]
     public partial struct BandMoraleSystem : ISystem
     {

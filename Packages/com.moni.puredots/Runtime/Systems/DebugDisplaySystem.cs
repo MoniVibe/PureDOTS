@@ -839,6 +839,17 @@ namespace PureDOTS.Systems
             text.Append("/");
             text.Append(pooling.NativeQueuesBorrowed + pooling.NativeQueuesAvailable);
 
+            if (SystemAPI.TryGetSingleton<PresentationPoolStats>(out var presentationStats))
+            {
+                text.Append(" | FX ");
+                text.Append(presentationStats.ActiveVisuals);
+                text.Append(" (+");
+                text.Append(presentationStats.SpawnedThisFrame);
+                text.Append(",-");
+                text.Append(presentationStats.RecycledThisFrame);
+                text.Append(")");
+            }
+
             debugData.PoolingStateText = text;
         }
 

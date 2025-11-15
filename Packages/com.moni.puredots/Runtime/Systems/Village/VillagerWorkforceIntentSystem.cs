@@ -9,7 +9,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Applies workforce intents when villagers are idle or their job becomes irrelevant.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillageWorkforceDecisionSystem))]
     public partial struct VillagerWorkforceIntentSystem : ISystem
     {

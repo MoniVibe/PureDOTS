@@ -20,6 +20,7 @@ namespace PureDOTS.Systems
     {
         private EntityQuery _requestQuery;
         private ComponentLookup<LogisticsRequestProgress> _progressLookup;
+        private ComponentLookup<SpatialGridResidency> _residencyLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -30,6 +31,7 @@ namespace PureDOTS.Systems
                 .Build();
 
             _progressLookup = state.GetComponentLookup<LogisticsRequestProgress>(true);
+            _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
 
             state.RequireForUpdate<LogisticsRequestRegistry>();
             state.RequireForUpdate<TimeState>();
@@ -47,6 +49,7 @@ namespace PureDOTS.Systems
             }
 
             _progressLookup.Update(ref state);
+            _residencyLookup.Update(ref state);
 
             var registryEntity = SystemAPI.GetSingletonEntity<LogisticsRequestRegistry>();
             var registry = SystemAPI.GetComponentRW<LogisticsRequestRegistry>(registryEntity);
@@ -99,8 +102,8 @@ namespace PureDOTS.Systems
                 if (hasSpatialGrid)
                 {
                     entrySpatialVersion = spatialState.Version;
-                    sourceCellId = ClassifyPosition(sourcePosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
-                    destinationCellId = ClassifyPosition(destinationPosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
+                    sourceCellId = ResolveCellId(request.ValueRO.SourceEntity, sourcePosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
+                    destinationCellId = ResolveCellId(request.ValueRO.DestinationEntity, destinationPosition, in spatialConfig, spatialState.Version, ref resolvedCount, ref fallbackCount, ref unmappedCount);
                 }
 
                 var entryFlags = request.ValueRO.Flags;
@@ -173,7 +176,22 @@ namespace PureDOTS.Systems
             };
         }
 
-        private static int ClassifyPosition(float3 position, in SpatialGridConfig config, uint gridVersion, ref int resolved, ref int fallback, ref int unmapped)
+        private int ResolveCellId(Entity entity, float3 fallbackPosition, in SpatialGridConfig config, uint gridVersion, ref int resolved, ref int fallback, ref int unmapped)
+        {
+            if (entity != Entity.Null && _residencyLookup.HasComponent(entity))
+            {
+                var residency = _residencyLookup[entity];
+                if (residency.Version == gridVersion && (uint)residency.CellId < (uint)config.CellCount)
+                {
+                    resolved++;
+                    return residency.CellId;
+                }
+            }
+
+            return ClassifyPosition(fallbackPosition, in config, ref fallback, ref unmapped);
+        }
+
+        private static int ClassifyPosition(float3 position, in SpatialGridConfig config, ref int fallback, ref int unmapped)
         {
             SpatialHash.Quantize(position, config, out var coords);
             var cellId = SpatialHash.Flatten(in coords, in config);

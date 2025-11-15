@@ -1,0 +1,140 @@
+using Godgame.Presentation;
+using Godgame.Roads;
+using PureDOTS.Runtime.Components;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
+namespace Godgame.Systems
+{
+    /// <summary>
+    /// Spawns the initial road loop + stretch handles around each village center.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    public partial struct GodgameVillageRoadBootstrapSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<GodgameRoadConfig>();
+            state.RequireForUpdate<GodgameVillageCenter>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var config = SystemAPI.GetSingleton<GodgameRoadConfig>();
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (center, transform, entity) in SystemAPI
+                         .Query<RefRW<GodgameVillageCenter>, RefRO<LocalTransform>>()
+                         .WithNone<GodgameVillageRoadInitializedTag>()
+                         .WithEntityAccess())
+            {
+                var centerPos = transform.ValueRO.Position;
+                center.ValueRW.BaseHeight = centerPos.y;
+                float radius = math.max(1f, center.ValueRO.RoadRingRadius);
+                float3[] directions =
+                {
+                    new float3(1, 0, 0),
+                    new float3(-1, 0, 0),
+                    new float3(0, 0, 1),
+                    new float3(0, 0, -1)
+                };
+
+                foreach (var dir in directions)
+                {
+                    float3 start = centerPos + dir * radius;
+                    float3 end = start + dir * config.InitialStretchLength;
+                    SpawnRoadSegment(ref ecb, entity, start, end, config, false);
+                }
+
+                ecb.AddComponent<GodgameVillageRoadInitializedTag>(entity);
+            }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+        }
+
+        internal static void SpawnRoadSegment(ref EntityCommandBuffer ecb,
+            Entity villageCenter,
+            float3 start,
+            float3 end,
+            in GodgameRoadConfig config,
+            bool autoBuilt)
+        {
+            var road = ecb.CreateEntity();
+            var segment = new GodgameRoadSegment
+            {
+                VillageCenter = villageCenter,
+                Start = start,
+                End = end,
+                Width = config.DefaultRoadWidth,
+                Flags = autoBuilt ? GodgameRoadFlags.AutoBuilt : (byte)0
+            };
+
+            ecb.AddComponent(road, segment);
+            ecb.AddComponent(road, LocalTransformIdentityFromSegment(segment));
+
+            if (config.RoadDescriptor.IsValid)
+            {
+                var binding = GodgamePresentationBinding.Create(config.RoadDescriptor);
+                binding.ScaleMultiplier = ComputeScaleMultiplier(segment, config);
+                binding.Flags = GodgamePresentationFlagUtility.WithOverrides(false, true, false);
+                ecb.AddComponent(road, binding);
+            }
+
+            // Handles for both endpoints
+            SpawnHandle(ref ecb, road, villageCenter, segment.Start, 0, config);
+            SpawnHandle(ref ecb, road, villageCenter, segment.End, 1, config);
+        }
+
+        private static void SpawnHandle(ref EntityCommandBuffer ecb,
+            Entity road,
+            Entity villageCenter,
+            float3 position,
+            byte endpoint,
+            in GodgameRoadConfig config)
+        {
+            var handle = ecb.CreateEntity();
+            ecb.AddComponent(handle, new GodgameRoadHandle
+            {
+                Road = road,
+                Endpoint = endpoint
+            });
+            ecb.AddComponent(handle, LocalTransform.FromPositionRotationScale(position, quaternion.identity, 1f));
+            ecb.AddComponent(handle, new HandPickable
+            {
+                Mass = config.HandleMass,
+                MaxHoldDistance = 10f,
+                ThrowImpulseMultiplier = 0f,
+                FollowLerp = config.HandleFollowLerp
+            });
+
+            if (config.HandleDescriptor.IsValid)
+            {
+                ecb.AddComponent(handle, GodgamePresentationBinding.Create(config.HandleDescriptor));
+            }
+        }
+
+        internal static LocalTransform LocalTransformIdentityFromSegment(in GodgameRoadSegment segment)
+        {
+            float3 delta = segment.End - segment.Start;
+            float length = math.max(0.1f, math.length(delta));
+            float3 direction = math.normalizesafe(delta, new float3(0, 0, 1));
+            float3 midpoint = (segment.Start + segment.End) * 0.5f;
+            var rotation = quaternion.LookRotationSafe(direction, math.up());
+
+            return LocalTransform.FromPositionRotationScale(midpoint, rotation, length);
+        }
+
+        internal static float ComputeScaleMultiplier(in GodgameRoadSegment segment, in GodgameRoadConfig config)
+        {
+            float length = math.length(segment.End - segment.Start);
+            return length / math.max(0.1f, config.RoadMeshBaseLength);
+        }
+    }
+}

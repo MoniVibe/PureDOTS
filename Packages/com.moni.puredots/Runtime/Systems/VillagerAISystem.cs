@@ -1,8 +1,12 @@
+using PureDOTS.Config;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Villager;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
@@ -15,18 +19,23 @@ namespace PureDOTS.Systems
     public partial struct VillagerAISystem : ISystem
     {
         private EntityQuery _villagerQuery;
+        private ComponentLookup<VillagerBehavior> _behaviorLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket, VillagerFlags>()
+                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket, VillagerFlags, LocalTransform, VillagerArchetypeResolved>()
                 .WithNone<PlaybackGuardTag>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate(_villagerQuery);
+            // Don't require the query - it's optional (system will just do nothing if no villagers exist)
+
+            _behaviorLookup = state.GetComponentLookup<VillagerBehavior>(true);
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -44,25 +53,33 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            // Get villager behavior config or use defaults
+            // Get villager behavior config and archetypes (if any)
             var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
                 ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
                 : VillagerBehaviorConfig.CreateDefaults();
+
+            // Early exit if no villagers exist
+            if (_villagerQuery.IsEmpty)
+            {
+                return;
+            }
+
+            _behaviorLookup.Update(ref state);
+            _transformLookup.Update(ref state);
+
+            VillagerArchetypeDefaults.CreateFallback(out var fallbackArchetype);
 
             var job = new EvaluateVillagerAIJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
                 CurrentTick = timeState.Tick,
-                HungerThreshold = config.HungerThreshold,
-                EnergyThreshold = config.EnergyThreshold,
-                FleeHealthThreshold = config.FleeHealthThreshold,
-                EatingHungerThresholdMultiplier = config.EatingHungerThresholdMultiplier,
-                EatingDuration = config.EatingDuration,
-                FleeDuration = config.FleeDuration,
-                RestEnergyThreshold = config.RestEnergyThreshold
+                BehaviorConfig = config,
+                BehaviorLookup = _behaviorLookup,
+                TransformLookup = _transformLookup,
+                FallbackArchetype = fallbackArchetype
             };
 
-            state.Dependency = job.ScheduleParallel(state.Dependency);
+            state.Dependency = job.ScheduleParallel(_villagerQuery, state.Dependency);
         }
 
         [BurstCompile]
@@ -70,15 +87,12 @@ namespace PureDOTS.Systems
         {
             public float DeltaTime;
             public uint CurrentTick;
-            public float HungerThreshold;
-            public float EnergyThreshold;
-            public float FleeHealthThreshold;
-            public float EatingHungerThresholdMultiplier;
-            public float EatingDuration;
-            public float FleeDuration;
-            public float RestEnergyThreshold;
+            public VillagerBehaviorConfig BehaviorConfig;
+            [ReadOnly] public ComponentLookup<VillagerBehavior> BehaviorLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            public VillagerArchetypeData FallbackArchetype;
 
-            public void Execute(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags)
+            public void Execute(Entity entity, ref VillagerAIState aiState, ref VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags, in LocalTransform transform, in VillagerArchetypeResolved resolved)
             {
                 // Skip dead villagers
                 if (flags.IsDead)
@@ -88,33 +102,43 @@ namespace PureDOTS.Systems
                 
                 aiState.StateTimer += DeltaTime;
 
-                // Convert ushort to float for comparisons
-                var hunger = needs.HungerFloat;
-                var energy = needs.EnergyFloat;
+                var behavior = BehaviorLookup.HasComponent(entity)
+                    ? BehaviorLookup[entity]
+                    : default;
 
-                var desiredGoal = aiState.CurrentGoal;
+                var archetype = resolved.Data.ArchetypeName.Length > 0
+                    ? resolved.Data
+                    : FallbackArchetype;
 
-                if (needs.Health < FleeHealthThreshold)
+                VillagerUtilityScheduler.SelectBestAction(
+                    ref needs,
+                    archetype,
+                    behavior,
+                    out var needAction,
+                    out var needUtility);
+
+                var desiredGoal = MapNeedToGoal(needAction);
+                var selectedUtility = needUtility;
+
+                if (HasActiveJob(job, ticket))
+                {
+                    var preference = VillagerUtilityScheduler.GetJobPreference(job.Type, archetype);
+                    var distance = EstimateJobDistance(transform.Position, ticket.ResourceEntity);
+                    var jobUtility = VillagerUtilityScheduler.CalculateJobUtility(preference, distance, needs.EnergyFloat);
+                    if (jobUtility > selectedUtility)
+                    {
+                        desiredGoal = VillagerAIState.Goal.Work;
+                        selectedUtility = jobUtility;
+                    }
+                }
+
+                if (needs.Health < BehaviorConfig.FleeHealthThreshold)
                 {
                     desiredGoal = VillagerAIState.Goal.Flee;
                 }
-                else if (hunger >= HungerThreshold)
+                else if (desiredGoal == VillagerAIState.Goal.None)
                 {
-                    desiredGoal = VillagerAIState.Goal.SurviveHunger;
-                }
-                else if (energy <= EnergyThreshold)
-                {
-                    desiredGoal = VillagerAIState.Goal.Rest;
-                }
-                else if (job.Type != VillagerJob.JobType.None &&
-                         (VillagerJob.JobPhase)ticket.Phase != VillagerJob.JobPhase.Idle &&
-                         ticket.ResourceEntity != Entity.Null)
-                {
-                    desiredGoal = VillagerAIState.Goal.Work;
-                }
-                else
-                {
-                    desiredGoal = VillagerAIState.Goal.None;
+                    desiredGoal = MapNeedToGoal(needAction);
                 }
 
                 if (desiredGoal != aiState.CurrentGoal)
@@ -135,19 +159,20 @@ namespace PureDOTS.Systems
                         }
                         break;
                     case VillagerAIState.State.Eating:
-                        if (hunger < HungerThreshold * EatingHungerThresholdMultiplier || aiState.StateTimer >= EatingDuration)
+                        if (needs.HungerFloat < BehaviorConfig.HungerThreshold * BehaviorConfig.EatingHungerThresholdMultiplier ||
+                            aiState.StateTimer >= BehaviorConfig.EatingDuration)
                         {
                             SetIdle(ref aiState);
                         }
                         break;
                     case VillagerAIState.State.Sleeping:
-                        if (energy > RestEnergyThreshold)
+                        if (needs.EnergyFloat > BehaviorConfig.RestEnergyThreshold)
                         {
                             SetIdle(ref aiState);
                         }
                         break;
                     case VillagerAIState.State.Fleeing:
-                        if (aiState.StateTimer >= FleeDuration)
+                        if (aiState.StateTimer >= BehaviorConfig.FleeDuration)
                         {
                             SetIdle(ref aiState);
                         }
@@ -162,6 +187,40 @@ namespace PureDOTS.Systems
                 {
                     aiState.TargetEntity = ticket.ResourceEntity;
                 }
+            }
+
+            private static VillagerAIState.Goal MapNeedToGoal(VillagerActionType action)
+            {
+                return action switch
+                {
+                    VillagerActionType.SatisfyHunger => VillagerAIState.Goal.SurviveHunger,
+                    VillagerActionType.Rest => VillagerAIState.Goal.Rest,
+                    VillagerActionType.ImproveMorale => VillagerAIState.Goal.Rest,
+                    _ => VillagerAIState.Goal.None
+                };
+            }
+
+            private static bool HasActiveJob(in VillagerJob job, in VillagerJobTicket ticket)
+            {
+                return job.Type != VillagerJob.JobType.None
+                       && ticket.ResourceEntity != Entity.Null
+                       && (VillagerJob.JobPhase)ticket.Phase != VillagerJob.JobPhase.Idle;
+            }
+
+            private float EstimateJobDistance(float3 origin, Entity target)
+            {
+                if (target == Entity.Null)
+                {
+                    return 100f;
+                }
+
+                if (TransformLookup.HasComponent(target))
+                {
+                    var destination = TransformLookup[target].Position;
+                    return math.distance(origin, destination);
+                }
+
+                return 100f;
             }
 
             private static VillagerAIState.State GoalToState(VillagerAIState.Goal goal)
@@ -186,5 +245,6 @@ namespace PureDOTS.Systems
                 aiState.StateTimer = 0f;
             }
         }
+
     }
 }

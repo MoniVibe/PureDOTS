@@ -10,7 +10,7 @@ namespace PureDOTS.Systems
     /// Category-specific systems can run before this to maintain membership buffers.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct AggregateAggregationSystem : ISystem
     {
         private ComponentLookup<AggregateMemberStats> _memberStatsLookup;

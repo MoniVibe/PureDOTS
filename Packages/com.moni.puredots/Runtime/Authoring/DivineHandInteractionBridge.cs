@@ -140,11 +140,8 @@ namespace PureDOTS.Authoring
 
         void DisposeQuery()
         {
-            if (_queryValid)
-            {
-                _handQuery.Dispose();
-                _queryValid = false;
-            }
+            _queryValid = false;
+            _handQuery = default;
         }
 
         void HandleStorehouseRmb(RmbContext context, RmbPhase phase) => HandleCommand(DivineHandCommandType.DumpToStorehouse, context, phase, storehouseHandler != null ? storehouseHandler.Priority : HandRoutePriority.DumpToStorehouse);
@@ -233,6 +230,14 @@ namespace PureDOTS.Authoring
             }
 
             var context = inputRouter != null ? inputRouter.CurrentContext : default;
+            var handState = entityManager.GetComponentData<DivineHandState>(handEntity);
+
+            if (inputRouter != null)
+            {
+                var hasCargo = handState.HeldEntity != Entity.Null && entityManager.Exists(handState.HeldEntity);
+                inputRouter.ReportHandCargo(hasCargo);
+            }
+
             var highlight = entityManager.GetComponentData<DivineHandHighlight>(handEntity);
 
             if (context.PointerOverUI)

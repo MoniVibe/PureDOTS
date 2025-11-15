@@ -36,7 +36,7 @@ namespace PureDOTS.Systems.Combat
                     maneuver = CombatManeuver.Strafe;
                 }
 
-                // TODO: integrate maneuver into loop state/commands
+                _ = maneuver; // TODO: integrate maneuver into combat loop commands
             }
         }
 

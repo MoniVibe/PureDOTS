@@ -57,6 +57,7 @@ namespace PureDOTS.Systems
 
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             _handleLookup.Update(ref state);
+            uint spawnedCount = 0;
 
             for (int i = 0; i < spawnBuffer.Length; i++)
             {
@@ -116,9 +117,19 @@ namespace PureDOTS.Systems
                         VariantSeed = request.VariantSeed
                     });
                 }
+
+                spawnedCount++;
             }
 
             spawnBuffer.Clear();
+            if (spawnedCount > 0 && SystemAPI.TryGetSingletonRW<PresentationPoolStats>(out var stats))
+            {
+                var value = stats.ValueRO;
+                value.SpawnedThisFrame += spawnedCount;
+                value.ActiveVisuals += spawnedCount;
+                value.TotalSpawned += spawnedCount;
+                stats.ValueRW = value;
+            }
             // ECB playback is handled by EndSimulationEntityCommandBufferSystem
         }
     }

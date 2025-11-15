@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Hybrid;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -118,6 +119,11 @@ namespace Godgame.Camera
                 return;
             }
 
+            if (IsBw2RigPresent())
+            {
+                return;
+            }
+
             var go = new GameObject("Godgame Camera Input Bridge")
             {
                 hideFlags = HideFlags.HideAndDontSave
@@ -144,6 +150,12 @@ namespace Godgame.Camera
 
         private void OnEnable()
         {
+            if (IsBw2RigPresent())
+            {
+                enabled = false;
+                return;
+            }
+
             InputSystem.onBeforeUpdate += HandleBeforeUpdate;
             InputSystem.onAfterUpdate += HandleAfterUpdate;
             s_lastSampleTime = Time.realtimeSinceStartup;
@@ -161,6 +173,12 @@ namespace Godgame.Camera
 
         private void HandleBeforeUpdate()
         {
+            if (IsBw2RigPresent())
+            {
+                _capturePending = false;
+                return;
+            }
+
             if (InputState.currentUpdateType != InputUpdateType.Dynamic)
             {
                 return;
@@ -171,6 +189,12 @@ namespace Godgame.Camera
 
         private void HandleAfterUpdate()
         {
+            if (IsBw2RigPresent())
+            {
+                _capturePending = false;
+                return;
+            }
+
             if (!_capturePending || InputState.currentUpdateType != InputUpdateType.Dynamic)
             {
                 return;
@@ -318,6 +342,20 @@ namespace Godgame.Camera
             _snapshot = snapshot;
         }
 
+        private static bool IsBw2RigPresent()
+        {
+            if (BW2StyleCameraController.HasActiveRig)
+            {
+                return true;
+            }
+
+#if UNITY_EDITOR
+            return UnityEngine.Object.FindFirstObjectByType<BW2StyleCameraController>(FindObjectsInactive.Include) != null;
+#else
+            return UnityEngine.Object.FindFirstObjectByType<BW2StyleCameraController>() != null;
+#endif
+        }
+
         private void EnsureInputActions()
         {
             if (_actionsInitialized && _inputActions != null)
@@ -374,5 +412,3 @@ namespace Godgame.Camera
         }
     }
 }
-
-

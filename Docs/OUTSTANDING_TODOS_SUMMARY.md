@@ -50,6 +50,7 @@ Found **4 TODO comments** in source code:
 - [ ] Resource gathering/storehouse systems: switch lookups to the new registries instead of ad-hoc queries
 - [ ] Villager job assignment: consume registry instead of scanning every frame; share reservation data via registry entries
 - [ ] Rain miracles/divine hand: use registries to quickly find nearest valid targets once spatial grid is ready
+- [x] LogisticsRequest and Miracle registries now cache `CellId`/`SpatialVersion` via `SpatialGridResidency`, unblocking downstream continuity/rewind suites (divine hand targeting still pending)
 - [ ] Remove or obsolete any legacy service singletons/MonoBehaviours that duplicate registry responsibilities
 - [ ] Stand up generic consumption samples/tests so downstream games can plug domain-specific logic into PureDOTS registries without modifying template code
 - [ ] Add inspector gizmos or debug HUD panels so designers can view registry contents at runtime (counts, capacities)
@@ -82,7 +83,7 @@ Found **4 TODO comments** in source code:
 - [ ] Verify `SpatialGrid` rebuild honours `TerrainVersion` increments broadcast by terraforming hooks
 - [ ] Rewind determinism tests (record 100 ticks → rewind to tick 50 → verify grid state matches)
 - [ ] Performance benchmarks (100k → 1M synthetic entities measuring rebuild time per tick)
-- [ ] Profiling automation: Integrate with performance harness TODO to track spatial grid metrics in CI
+- [x] Profiling automation: Integrate with performance harness TODO to track spatial grid metrics in CI *(Playmode `SpatialInstrumentationSystem_EmitsMetricsMatchingGridState` test now validates logged rebuild health before registry expansion.)*
 
 #### 6. Climate Systems (`ClimateSystems_TODO.md`)
 - [ ] Inventory current climate-related data: `ClimateGrid`, moisture grid, vegetation thresholds, rain miracles

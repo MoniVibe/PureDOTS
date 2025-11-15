@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
 using PureDOTS.Systems;
 using PureDOTS.Tests;
@@ -13,6 +14,7 @@ namespace PureDOTS.Tests.Playmode
     {
         private World _world;
         private EntityManager _entityManager;
+        private uint _gridVersion;
 
         [SetUp]
         public void SetUp()
@@ -26,6 +28,8 @@ namespace PureDOTS.Tests.Playmode
             var timeState = _entityManager.GetComponentData<TimeState>(timeEntity);
             timeState.Tick = 120;
             _entityManager.SetComponentData(timeEntity, timeState);
+
+            ConfigureSpatialGrid();
         }
 
         [TearDown]
@@ -40,14 +44,19 @@ namespace PureDOTS.Tests.Playmode
         [Test]
         public void LogisticsRequestRegistrySystem_PopulatesEntriesAndAggregates()
         {
+            var sourceAnchor = CreateSpatialAnchor(cellId: 5);
+            var destinationAnchor = CreateSpatialAnchor(cellId: 19);
+
             var reqA = CreateRequest(
-                source: new float3(0f, 0f, 0f),
-                destination: new float3(10f, 0f, 0f),
+                source: new float3(512f, 0f, 512f),
+                destination: new float3(-512f, 0f, -512f),
                 requested: 100f,
                 fulfilled: 25f,
                 assigned: 40f,
                 priority: LogisticsRequestPriority.High,
-                flags: LogisticsRequestFlags.Urgent);
+                flags: LogisticsRequestFlags.Urgent,
+                sourceEntity: sourceAnchor,
+                destinationEntity: destinationAnchor);
 
             CreateRequest(
                 source: new float3(5f, 0f, 5f),
@@ -83,9 +92,17 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(LogisticsRequestFlags.Urgent, entries[0].Flags);
             Assert.AreEqual(75f, entries[0].RemainingUnits, 0.001f);
             Assert.AreEqual(40f, entries[0].AssignedUnits, 0.001f);
+            Assert.AreEqual(5, entries[0].SourceCellId, "Source should consume SpatialGridResidency metadata.");
+            Assert.AreEqual(19, entries[0].DestinationCellId, "Destination should consume SpatialGridResidency metadata.");
+            Assert.AreEqual(_gridVersion, entries[0].SpatialVersion);
 
             Assert.AreEqual(LogisticsRequestPriority.Normal, entries[1].Priority);
             Assert.AreEqual(50f, entries[1].RemainingUnits, 0.001f);
+
+            Assert.AreEqual(2, registry.SpatialResolvedCount, "Both residency-backed endpoints should count as resolved.");
+            Assert.GreaterOrEqual(registry.SpatialFallbackCount, 2, "Fallback counts reflect hashed endpoints.");
+            Assert.AreEqual(registry.SpatialResolvedCount, metadata.Continuity.SpatialResolvedCount);
+            Assert.AreEqual(registry.SpatialFallbackCount, metadata.Continuity.SpatialFallbackCount);
         }
 
         private Entity CreateRequest(
@@ -95,7 +112,9 @@ namespace PureDOTS.Tests.Playmode
             float fulfilled,
             float assigned,
             LogisticsRequestPriority priority,
-            LogisticsRequestFlags flags)
+            LogisticsRequestFlags flags,
+            Entity sourceEntity = default,
+            Entity destinationEntity = default)
         {
             var entity = _entityManager.CreateEntity(
                 typeof(LogisticsRequest),
@@ -103,8 +122,8 @@ namespace PureDOTS.Tests.Playmode
 
             _entityManager.SetComponentData(entity, new LogisticsRequest
             {
-                SourceEntity = Entity.Null,
-                DestinationEntity = Entity.Null,
+                SourceEntity = sourceEntity,
+                DestinationEntity = destinationEntity,
                 SourcePosition = source,
                 DestinationPosition = destination,
                 ResourceTypeIndex = 1,
@@ -123,6 +142,41 @@ namespace PureDOTS.Tests.Playmode
                 LastAssignmentTick = 110u
             });
 
+            return entity;
+        }
+
+        private void ConfigureSpatialGrid()
+        {
+            var gridEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()).GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.WorldMin = new float3(-16f, 0f, -16f);
+            config.WorldMax = new float3(16f, 0f, 16f);
+            config.CellSize = 2f;
+            config.CellCounts = CalculateCellCounts(config.WorldMin, config.WorldMax, config.CellSize);
+            _entityManager.SetComponentData(gridEntity, config);
+
+            var state = _entityManager.GetComponentData<SpatialGridState>(gridEntity);
+            state.Version = math.max(1u, state.Version + 1u);
+            _gridVersion = state.Version;
+            _entityManager.SetComponentData(gridEntity, state);
+        }
+
+        private static int3 CalculateCellCounts(float3 min, float3 max, float cellSize)
+        {
+            var extent = math.abs(max - min);
+            var counts = (int3)math.ceil(extent / math.max(0.001f, cellSize));
+            return math.max(counts, new int3(1, 1, 1));
+        }
+
+        private Entity CreateSpatialAnchor(int cellId)
+        {
+            var entity = _entityManager.CreateEntity(typeof(SpatialGridResidency));
+            _entityManager.SetComponentData(entity, new SpatialGridResidency
+            {
+                CellId = cellId,
+                LastPosition = float3.zero,
+                Version = _gridVersion
+            });
             return entity;
         }
     }

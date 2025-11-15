@@ -82,11 +82,8 @@ namespace PureDOTS.Runtime.Hand
 
         void DisposeQuery()
         {
-            if (_queryValid)
-            {
-                _handQuery.Dispose();
-                _queryValid = false;
-            }
+            _queryValid = false;
+            _handQuery = default;
         }
 
         void DispatchEvents()

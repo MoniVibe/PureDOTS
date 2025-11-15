@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
@@ -8,6 +9,8 @@ using PureDOTS.Input;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Hybrid;
+using UnityEngineCamera = UnityEngine.Camera;
 
 namespace PureDOTS.Runtime.Camera
 {
@@ -16,6 +19,9 @@ namespace PureDOTS.Runtime.Camera
     /// scroll wheel adjusts zoom radius. Terrain clamps are the only height restriction applied.
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(UnityEngineCamera))]
+    [RequireComponent(typeof(CameraRigApplier))]
+    [RequireComponent(typeof(BW2CameraInputBridge))]
     public sealed class BW2StyleCameraController : MonoBehaviour
     {
         [Header("References")]
@@ -71,9 +77,23 @@ namespace PureDOTS.Runtime.Camera
         Vector3 lockedPivot;
         float lockedDistance;
         bool grabbing;
-        Plane grabPlane;
-        Vector3 grabLastWorld;
+        Plane panPlane;
+        Vector3 panWorldStart;
+        Vector3 panPivotStart;
+        Vector3 lockedPivotStart;
+        bool lockedPivotGrabActive;
         float grabHeightOffset;
+
+        static int s_activeRigCount;
+
+        BW2CameraInputBridge.Snapshot _inputSnapshot;
+        bool _hasSnapshot;
+        RmbContext _routerContext;
+        bool _hasRouterContext;
+        Vector3 _currentCameraPosition;
+        Quaternion _currentCameraRotation = Quaternion.identity;
+
+        public static bool HasActiveRig => s_activeRigCount > 0;
 
         Vector3 Pivot
         {
@@ -96,6 +116,9 @@ namespace PureDOTS.Runtime.Camera
                     if (targetCamera == null) targetCamera = UnityEngine.Camera.main;
                 }
             }
+
+            _currentCameraPosition = targetCamera != null ? targetCamera.transform.position : Vector3.zero;
+            _currentCameraRotation = targetCamera != null ? targetCamera.transform.rotation : Quaternion.identity;
 
             EnsureInputRouter();
 
@@ -133,11 +156,18 @@ namespace PureDOTS.Runtime.Camera
 
         void OnEnable()
         {
+            s_activeRigCount++;
             EnsureInputRouter();
+            HybridControlCoordinator.Mode = HybridControlCoordinator.InputMode.GodgameOnly;
         }
 
         void OnDisable()
         {
+            s_activeRigCount = Mathf.Max(0, s_activeRigCount - 1);
+            if (s_activeRigCount == 0 && HybridControlCoordinator.Mode == HybridControlCoordinator.InputMode.GodgameOnly)
+            {
+                HybridControlCoordinator.Mode = HybridControlCoordinator.InputMode.Dual;
+            }
             DisposeHandQuery();
         }
 
@@ -164,9 +194,10 @@ namespace PureDOTS.Runtime.Camera
                 cachedEventSystem = EventSystem.current;
 
             EnsureInputRouter();
+            UpdateInputSources();
 
             Vector2 pointer = GetPointerPosition();
-            bool pointerOverUI = cachedEventSystem != null && cachedEventSystem.IsPointerOverGameObject();
+            bool pointerOverUI = _hasRouterContext ? _routerContext.PointerOverUI : (cachedEventSystem != null && cachedEventSystem.IsPointerOverGameObject());
 
             HandlePan(pointer, pointerOverUI);
 
@@ -190,6 +221,50 @@ namespace PureDOTS.Runtime.Camera
             ApplyCameraPose();
         }
 
+        void UpdateInputSources()
+        {
+            _hasSnapshot = BW2CameraInputBridge.TryGetSnapshot(out _inputSnapshot);
+            if (inputRouter != null)
+            {
+                _routerContext = inputRouter.CurrentContext;
+                _hasRouterContext = true;
+            }
+            else
+            {
+                _hasRouterContext = false;
+            }
+        }
+
+        bool TryGetPointerWorld(out Vector3 world)
+        {
+            if (_hasRouterContext && (_routerContext.HasWorldHit || _routerContext.HitGround))
+            {
+                world = _routerContext.WorldPoint;
+                return true;
+            }
+
+            if (targetCamera != null)
+            {
+                var pointer = GetPointerPosition();
+                var ray = targetCamera.ScreenPointToRay(pointer);
+                if (groundMask.value != 0 && Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+                {
+                    world = hit.point;
+                    return true;
+                }
+
+                var plane = new Plane(Vector3.up, Pivot);
+                if (plane.Raycast(ray, out float enter))
+                {
+                    world = ray.GetPoint(Mathf.Min(enter, groundProbeDistance));
+                    return true;
+                }
+            }
+
+            world = Vector3.zero;
+            return false;
+        }
+
         void HandlePan(Vector2 pointer, bool pointerOverUI)
         {
             bool panPressed = GetPanPressedThisFrame();
@@ -203,6 +278,7 @@ namespace PureDOTS.Runtime.Camera
             if (!panHeld)
             {
                 grabbing = false;
+                lockedPivotGrabActive = false;
                 return;
             }
 
@@ -214,46 +290,54 @@ namespace PureDOTS.Runtime.Camera
 
         void BeginGrab(Vector2 pointer)
         {
-            if (!TryProjectToGround(pointer, out var world, out var normal))
+            if (!TryGetPointerWorld(out panWorldStart))
             {
                 grabbing = false;
                 return;
             }
 
-            var ray = targetCamera.ScreenPointToRay(pointer);
-            var planeNormal = normal.sqrMagnitude > 0.1f ? normal : Vector3.up;
-            grabPlane = new Plane(planeNormal, world);
-            grabLastWorld = world;
+            panPlane = new Plane(Vector3.up, Pivot);
+            panPivotStart = Pivot;
+            if (orbitPivotLocked)
+            {
+                lockedPivotStart = lockedPivot;
+                lockedPivotGrabActive = true;
+            }
+            else
+            {
+                lockedPivotGrabActive = false;
+            }
 
-            if (!TrySampleTerrainHeight(new Vector3(targetCamera.transform.position.x, targetCamera.transform.position.y + clearanceProbeHeight, targetCamera.transform.position.z), out float groundY))
+            if (!TrySampleTerrainHeight(new Vector3(_currentCameraPosition.x, _currentCameraPosition.y + clearanceProbeHeight, _currentCameraPosition.z), out float groundY))
             {
                 groundY = Pivot.y;
             }
-            grabHeightOffset = targetCamera.transform.position.y - groundY;
+            grabHeightOffset = _currentCameraPosition.y - groundY;
             grabbing = true;
         }
 
         void UpdateGrab(Vector2 pointer)
         {
-            var ray = targetCamera.ScreenPointToRay(pointer);
-            if (!grabPlane.Raycast(ray, out float distanceToPlane))
+            if (!TryGetPointerWorld(out var currentWorld))
             {
                 return;
             }
-
-            Vector3 mouseWorld = ray.GetPoint(Mathf.Min(distanceToPlane, groundProbeDistance));
-            Vector3 delta = mouseWorld - grabLastWorld;
-            grabLastWorld = mouseWorld;
+            Vector3 delta = currentWorld - panWorldStart;
 
             if (delta.sqrMagnitude < panDeadzoneMeters * panDeadzoneMeters)
             {
                 return;
             }
 
-            Pivot -= delta * panScale;
-            if (orbitPivotLocked)
+            Vector3 newPivot = panPivotStart - delta * panScale;
+            newPivot.y = panPivotStart.y;
+            Pivot = newPivot;
+
+            if (orbitPivotLocked && lockedPivotGrabActive)
             {
-                lockedPivot -= delta * panScale;
+                Vector3 locked = lockedPivotStart - delta * panScale;
+                locked.y = lockedPivotStart.y;
+                lockedPivot = locked;
             }
         }
 
@@ -322,23 +406,22 @@ namespace PureDOTS.Runtime.Camera
             float zoomSign = invertZoom ? -scroll : scroll;
             float newDistance = Mathf.Clamp(distance - zoomSign * zoomSpeed, minDistance, maxDistance);
 
+            Vector3 zoomFocus = handAvailable ? handCursor : Pivot;
+            if (_hasRouterContext && (_routerContext.HasWorldHit || _routerContext.HitGround))
+            {
+                zoomFocus = _routerContext.WorldPoint;
+            }
+            zoomFocus.y = Pivot.y;
+
             if (orbitHeld && orbitPivotLocked)
             {
                 lockedDistance = newDistance;
+                lockedPivot = Vector3.Lerp(lockedPivot, zoomFocus, 0.25f);
             }
-            else if (handAvailable)
+            else
             {
-                Vector3 pivot = orbitPivotLocked ? lockedPivot : Pivot;
-                pivot.x = handCursor.x;
-                pivot.z = handCursor.z;
-                if (orbitPivotLocked)
-                {
-                    lockedPivot = pivot;
-                }
-                else
-                {
-                    Pivot = pivot;
-                }
+                Vector3 pivot = Vector3.Lerp(Pivot, zoomFocus, 0.25f);
+                Pivot = pivot;
             }
 
             distance = newDistance;
@@ -349,11 +432,12 @@ namespace PureDOTS.Runtime.Camera
             if (targetCamera == null) return;
 
             Vector3 pivot = Pivot;
-            Vector3 camPos = targetCamera.transform.position;
+            Vector3 camPos = _currentCameraPosition;
             Vector3 rel = camPos - pivot;
             if (rel.sqrMagnitude < 0.0001f)
             {
-                rel = -targetCamera.transform.forward * Mathf.Max(minDistance, 0.1f);
+                var forward = _currentCameraRotation * Vector3.forward;
+                rel = -forward * Mathf.Max(minDistance, 0.1f);
             }
 
             distance = Mathf.Clamp(rel.magnitude, minDistance, maxDistance);
@@ -370,7 +454,7 @@ namespace PureDOTS.Runtime.Camera
         {
             if (targetCamera != null)
             {
-                Vector3 camPos = targetCamera.transform.position;
+                Vector3 camPos = _currentCameraPosition;
                 if (TrySampleTerrainHeight(new Vector3(camPos.x, camPos.y + clearanceProbeHeight, camPos.z), out float groundY))
                     return new Vector3(camPos.x, groundY, camPos.z);
             }
@@ -426,7 +510,22 @@ namespace PureDOTS.Runtime.Camera
                 }
             }
 
-            targetCamera.transform.SetPositionAndRotation(desired, rotation);
+            _currentCameraPosition = desired;
+            _currentCameraRotation = rotation;
+
+            var rigState = new CameraRigState
+            {
+                Position = desired,
+                Rotation = rotation,
+                Pitch = math.radians(pitch),
+                Yaw = math.radians(yaw),
+                Distance = distance,
+                PerspectiveMode = true,
+                FieldOfView = targetCamera != null ? targetCamera.fieldOfView : 60f,
+                RigType = CameraRigType.BW2
+            };
+
+            CameraRigService.Publish(rigState);
         }
 
         Vector3 EnsureTerrainClearance(Vector3 desired)
@@ -533,6 +632,15 @@ namespace PureDOTS.Runtime.Camera
 
         Vector2 GetPointerPosition()
         {
+            if (_hasRouterContext)
+            {
+                return _routerContext.PointerScreenPosition;
+            }
+
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.PointerPosition;
+            }
 #if ENABLE_INPUT_SYSTEM
             if (inputRouter != null)
             {
@@ -550,6 +658,10 @@ namespace PureDOTS.Runtime.Camera
 
         bool GetPanPressedThisFrame()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.LeftPressed && !_inputSnapshot.RightHeld;
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null && inputRouter.LeftClickAction != null
@@ -562,6 +674,10 @@ namespace PureDOTS.Runtime.Camera
 
         bool GetPanHeld()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.LeftHeld && !_inputSnapshot.RightHeld;
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null && inputRouter.LeftClickAction != null
@@ -574,6 +690,10 @@ namespace PureDOTS.Runtime.Camera
 
         bool GetOrbitHeld()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.RightHeld || (_inputSnapshot.LeftHeld && _inputSnapshot.RightHeld);
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null && inputRouter.MiddleClickAction != null
@@ -586,6 +706,10 @@ namespace PureDOTS.Runtime.Camera
 
         bool GetOrbitPressedThisFrame()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.RightPressed || (_inputSnapshot.LeftPressed && _inputSnapshot.RightHeld);
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null && inputRouter.MiddleClickAction != null
@@ -598,6 +722,10 @@ namespace PureDOTS.Runtime.Camera
 
         bool GetOrbitReleasedThisFrame()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.RightReleased;
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null && inputRouter.MiddleClickAction != null
@@ -610,6 +738,10 @@ namespace PureDOTS.Runtime.Camera
 
         Vector2 GetLookDelta()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.PointerDelta;
+            }
             return
 #if ENABLE_INPUT_SYSTEM
                 inputRouter != null
@@ -623,6 +755,10 @@ namespace PureDOTS.Runtime.Camera
 
         float GetScrollDelta()
         {
+            if (_hasSnapshot)
+            {
+                return _inputSnapshot.Scroll;
+            }
 #if ENABLE_INPUT_SYSTEM
             if (inputRouter != null)
             {
@@ -712,11 +848,24 @@ namespace PureDOTS.Runtime.Camera
 
         void DisposeHandQuery()
         {
-            if (handQueryValid)
+            if (!handQueryValid)
             {
-                handQuery.Dispose();
-                handQueryValid = false;
+                return;
             }
+
+            if (handWorld != null && handWorld.IsCreated)
+            {
+                try
+                {
+                    handQuery.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[{nameof(BW2StyleCameraController)}] Failed to dispose hand query: {ex.Message}", this);
+                }
+            }
+
+            handQueryValid = false;
             handWorld = null;
         }
 

@@ -29,10 +29,10 @@
 - [ ] Hook crew aggregate creation to workforce/military assignment logic (crews spawn when non-officer workers join departments; destroy/recycle when departments empty) and ensure `AggregateEntity` category metadata stays in sync across fleets/colonies/guilds/businesses.
 
 ## Milestone C – Presentation Sync & Pooling
-- [ ] Create a shared `PresentationHandleSyncSystem` that copies authoritative transforms into companion visuals each frame (configurable interpolation, optional offset curves).
-- [ ] Add pooling metrics + configuration (`PresentationPoolStats`, `presentation.pool.*` counters) and expose them through Debug HUD + console.
-- [ ] Provide a lightweight Mono/Entities Graphics bridge sample that demonstrates swapping materials, playing Animator states, and binding VFX graphs via `PresentationHandle`.
-- [ ] Add a `PresentationReloadCommand` (console or menu item) that flushes visuals and respawns them from handles for debugging.
+- [x] Create a shared `PresentationHandleSyncSystem` that copies authoritative transforms into companion visuals each frame (configurable interpolation, optional offset curves).
+- [x] Add pooling metrics + configuration (`PresentationPoolStats`, `presentation.pool.*` counters) and expose them through Debug HUD + console.
+- [x] Provide a lightweight Mono/Entities Graphics bridge sample that demonstrates swapping materials, playing Animator states, and binding VFX graphs via `PresentationHandle`.
+- [x] Add a `PresentationReloadCommand` (console or menu item) that flushes visuals and respawns them from handles for debugging.
 
 ## Milestone D – Testing & Observability
 - [ ] Expand `PresentationBridgeRewindTests` to cover spawn → recycle → respawn under Record/Playback/CatchUp modes and detect leaked handles.

@@ -94,6 +94,11 @@ namespace Godgame.Camera
 
         private void Update()
         {
+            if (BW2StyleCameraController.HasActiveRig)
+            {
+                return;
+            }
+
             if (!GodgameCameraInputBridge.TryGetSnapshot(out var snapshot))
             {
                 return;
@@ -219,8 +224,12 @@ namespace Godgame.Camera
                 Pitch = math.radians(_pitchDegrees),
                 Yaw = math.radians(_yawDegrees),
                 Distance = _distanceFromPivot,
-                PerspectiveMode = _mode == CameraMode.RTSFreeFly
+                PerspectiveMode = _mode == CameraMode.RTSFreeFly,
+                FieldOfView = _unityCamera != null ? _unityCamera.fieldOfView : 60f,
+                RigType = CameraRigType.Godgame
             };
+
+            CameraRigService.Publish(CurrentCameraState);
         }
 
         private void InitializeStateFromTransform()
@@ -260,6 +269,11 @@ namespace Godgame.Camera
 
         private void PushStateToDots()
         {
+            if (BW2StyleCameraController.HasActiveRig)
+            {
+                return;
+            }
+
             if (!TryEnsureEntityManager())
             {
                 return;

@@ -12,7 +12,8 @@ namespace PureDOTS.Runtime.Components
             ToggleHUD = 0,
             ShowHUD = 1,
             HideHUD = 2,
-            ClearStreamingCooldowns = 3
+            ClearStreamingCooldowns = 3,
+            ReloadPresentation = 4
         }
 
         public CommandType Type;

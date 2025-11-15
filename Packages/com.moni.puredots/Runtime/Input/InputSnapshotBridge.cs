@@ -246,19 +246,25 @@ namespace PureDOTS.Input
                 _currentSnapshot.HasRaycastHit = false;
             }
 
-            // Update modifier keys
+            // Update modifier keys via Input System (legacy Input is disabled)
             _currentSnapshot.ModifierKeys = 0;
-            if (UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift))
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
             {
-                _currentSnapshot.ModifierKeys |= 1;
-            }
-            if (UnityEngine.Input.GetKey(KeyCode.LeftControl) || UnityEngine.Input.GetKey(KeyCode.RightControl))
-            {
-                _currentSnapshot.ModifierKeys |= 2;
-            }
-            if (UnityEngine.Input.GetKey(KeyCode.LeftAlt) || UnityEngine.Input.GetKey(KeyCode.RightAlt))
-            {
-                _currentSnapshot.ModifierKeys |= 4;
+                if ((keyboard.leftShiftKey?.isPressed ?? false) || (keyboard.rightShiftKey?.isPressed ?? false))
+                {
+                    _currentSnapshot.ModifierKeys |= 1;
+                }
+
+                if ((keyboard.leftCtrlKey?.isPressed ?? false) || (keyboard.rightCtrlKey?.isPressed ?? false))
+                {
+                    _currentSnapshot.ModifierKeys |= 2;
+                }
+
+                if ((keyboard.leftAltKey?.isPressed ?? false) || (keyboard.rightAltKey?.isPressed ?? false))
+                {
+                    _currentSnapshot.ModifierKeys |= 4;
+                }
             }
 
             // Update continuous state

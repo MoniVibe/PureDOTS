@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using PureDOTS.Tests;
 using Unity.Entities;
@@ -13,6 +14,7 @@ namespace PureDOTS.Tests.Playmode
     {
         private World _world;
         private EntityManager _entityManager;
+        private uint _gridVersion;
 
         [SetUp]
         public void SetUp()
@@ -25,6 +27,8 @@ namespace PureDOTS.Tests.Playmode
             var timeState = _entityManager.GetComponentData<TimeState>(timeEntity);
             timeState.Tick = 240;
             _entityManager.SetComponentData(timeEntity, timeState);
+
+            ConfigureSpatialGrid();
         }
 
         [TearDown]
@@ -43,12 +47,14 @@ namespace PureDOTS.Tests.Playmode
                 type: MiracleType.Rain,
                 castingMode: MiracleCastingMode.Sustained,
                 lifecycle: MiracleLifecycleState.Active,
-                target: new float3(5f, 0f, 0f),
+                target: new float3(2048f, 0f, 2048f),
                 radius: 12f,
                 intensity: 0.8f,
                 cooldown: 4f,
                 energyCost: 15f,
-                chargePercent: 75f);
+                chargePercent: 75f,
+                addResidency: true,
+                residencyCellId: 8);
 
             CreateMiracle(
                 type: MiracleType.Fireball,
@@ -87,6 +93,11 @@ namespace PureDOTS.Tests.Playmode
 
             Assert.AreEqual(MiracleLifecycleState.CoolingDown, entries[1].Lifecycle);
             Assert.AreEqual(MiracleRegistryFlags.CoolingDown, entries[1].Flags);
+
+            Assert.AreEqual(8, entries[0].TargetCellId, "Miracles with SpatialGridResidency should publish their resolved cell.");
+            Assert.AreEqual(_gridVersion, entries[0].SpatialVersion);
+            Assert.AreEqual(1, registry.SpatialResolvedCount);
+            Assert.AreEqual(registry.SpatialResolvedCount, metadata.Continuity.SpatialResolvedCount);
         }
 
         private Entity CreateMiracle(
@@ -98,7 +109,9 @@ namespace PureDOTS.Tests.Playmode
             float intensity,
             float cooldown,
             float energyCost,
-            float chargePercent)
+            float chargePercent,
+            bool addResidency = false,
+            int residencyCellId = 0)
         {
             var entity = _entityManager.CreateEntity(
                 typeof(MiracleDefinition),
@@ -141,7 +154,33 @@ namespace PureDOTS.Tests.Playmode
 
             _entityManager.SetComponentData(entity, LocalTransform.FromPosition(target));
 
+            if (addResidency)
+            {
+                _entityManager.AddComponentData(entity, new SpatialGridResidency
+                {
+                    CellId = residencyCellId,
+                    LastPosition = target,
+                    Version = _gridVersion
+                });
+            }
+
             return entity;
+        }
+
+        private void ConfigureSpatialGrid()
+        {
+            var gridEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()).GetSingletonEntity();
+            var config = _entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            config.WorldMin = new float3(-32f, 0f, -32f);
+            config.WorldMax = new float3(32f, 0f, 32f);
+            config.CellSize = 2f;
+            config.CellCounts = (int3)math.max(new int3(1, 1, 1), math.ceil(math.abs(config.WorldMax - config.WorldMin) / config.CellSize));
+            _entityManager.SetComponentData(gridEntity, config);
+
+            var state = _entityManager.GetComponentData<SpatialGridState>(gridEntity);
+            state.Version = math.max(1u, state.Version + 1u);
+            _gridVersion = state.Version;
+            _entityManager.SetComponentData(gridEntity, state);
         }
     }
 }

@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 using System;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Skills;
@@ -412,4 +411,3 @@ namespace PureDOTS.Authoring
         }
     }
 }
-#endif

@@ -1,3 +1,4 @@
+using PureDOTS.Config;
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
@@ -89,12 +90,12 @@ namespace PureDOTS.Runtime.Villagers
         }
         
         /// <summary>
-        /// Selects the highest utility need or job for a villager, weighted by personality.
+        /// Selects the highest utility need action for a villager, weighted by personality.
         /// </summary>
         [BurstCompile]
         public static void SelectBestAction(
             ref VillagerNeeds needs,
-            in PureDOTS.Config.VillagerArchetypeData archetype,
+            in VillagerArchetypeData archetype,
             in VillagerBehavior behavior,
             out VillagerActionType actionType,
             out float utilityScore)
@@ -129,12 +130,37 @@ namespace PureDOTS.Runtime.Villagers
                 bestUtility = moraleUtility * moraleWeight;
                 bestAction = VillagerActionType.ImproveMorale;
             }
-            
-            // TODO: Evaluate job utilities when job system is wired
-            // For now, needs take priority
-            
             actionType = bestAction;
             utilityScore = bestUtility;
+        }
+
+        /// <summary>
+        /// Looks up the archetype preference weight for a given job type so scheduling logic
+        /// can compare work utility against needs utility.
+        /// </summary>
+        [BurstCompile]
+        public static byte GetJobPreference(
+            VillagerJob.JobType jobType,
+            in VillagerArchetypeData archetype)
+        {
+            switch (jobType)
+            {
+                case VillagerJob.JobType.Farmer:
+                case VillagerJob.JobType.Gatherer:
+                    return archetype.GatherJobWeight;
+                case VillagerJob.JobType.Builder:
+                    return archetype.BuildJobWeight;
+                case VillagerJob.JobType.Crafter:
+                    return archetype.CraftJobWeight;
+                case VillagerJob.JobType.Hunter:
+                case VillagerJob.JobType.Guard:
+                    return archetype.CombatJobWeight;
+                case VillagerJob.JobType.Priest:
+                case VillagerJob.JobType.Merchant:
+                    return archetype.TradeJobWeight;
+                default:
+                    return archetype.GatherJobWeight;
+            }
         }
     }
     

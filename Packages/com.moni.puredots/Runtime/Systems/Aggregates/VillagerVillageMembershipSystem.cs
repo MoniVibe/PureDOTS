@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -32,7 +33,7 @@ namespace PureDOTS.Systems
             var villages = _villageQuery.ToEntityArray(state.WorldUpdateAllocator);
             var villageIds = _villageQuery.ToComponentDataArray<VillageId>(state.WorldUpdateAllocator);
             var stats = _villageQuery.ToComponentDataArray<VillageStats>(state.WorldUpdateAllocator);
-            var alignments = state.GetComponentLookup<VillageAlignmentState>(true);
+            var alignments = state.GetComponentLookup<VillagerAlignment>(true);
             var residentBufferLookup = state.GetBufferLookup<VillageResidentEntry>(false);
 
             for (int i = 0; i < villages.Length; i++)
@@ -43,8 +44,7 @@ namespace PureDOTS.Systems
                 float sympathy = 0f;
                 if (alignments.HasComponent(villageEntity))
                 {
-                    sympathy = math.saturate(alignments[villageEntity].Integrity);
-                    sympathy = sympathy * 2f - 1f; // convert 0-1 to -1..1
+                    sympathy = alignments[villageEntity].IntegrityNormalized;
                 }
 
                 if (!residentBufferLookup.HasBuffer(villageEntity))

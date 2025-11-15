@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -43,10 +44,15 @@ namespace PureDOTS.Systems
                 });
             }
 
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillagerAlignment>().WithEntityAccess())
+            {
+                ecb.AddComponent(entity, new VillagerAlignment());
+            }
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
-            var alignments = state.GetComponentLookup<VillageAlignmentState>(true);
+            var alignments = state.GetComponentLookup<VillagerAlignment>(true);
             var outlooks = state.GetComponentLookup<VillageOutlook>();
 
             foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithEntityAccess())
@@ -60,19 +66,19 @@ namespace PureDOTS.Systems
                 if (alignments.HasComponent(entity))
                 {
                     var alignment = alignments[entity];
-                    if (alignment.Materialism > 0.25f)
+                    if (alignment.MaterialismNormalized > 0.25f)
                     {
                         flags |= VillageOutlookFlags.Materialistic;
                     }
-                    if (alignment.Materialism < -0.25f)
+                    if (alignment.MaterialismNormalized < -0.25f)
                     {
                         flags |= VillageOutlookFlags.Ascetic;
                     }
-                    if (alignment.Integrity < -0.25f && math.abs(alignment.LawChaos) > 0.2f)
+                    if (alignment.PurityNormalized < -0.25f && math.abs(alignment.OrderNormalized) > 0.2f)
                     {
                         flags |= VillageOutlookFlags.Warlike;
                     }
-                    if (alignment.LawChaos > 0.3f)
+                    if (alignment.OrderNormalized > 0.3f)
                     {
                         flags |= VillageOutlookFlags.Expansionist;
                     }

@@ -39,15 +39,15 @@ PureDOTS foundation is now **agnostic** - both individual and aggregate entities
 **Goal:** Create systems that compute aggregate alignment/behavior from member entities.
 
 **Tasks:**
-- [ ] Create `AggregateAlignmentComputationSystem`
+- [x] Create `AggregateAlignmentComputationSystem`
   - Reads member `VillagerAlignment` components
   - Computes weighted average
   - Updates aggregate `VillagerAlignment` component
-- [ ] Create `AggregateBehaviorComputationSystem`
+- [x] Create `AggregateBehaviorComputationSystem`
   - Reads member `VillagerBehavior` components
   - Computes weighted average
   - Updates aggregate `VillagerBehavior` component
-- [ ] Create `AggregateInitiativeComputationSystem`
+- [x] Create `AggregateInitiativeComputationSystem`
   - Reads aggregate `VillagerBehavior` + member averages
   - Computes aggregate initiative
   - Updates aggregate `VillagerInitiativeState` component
@@ -62,12 +62,11 @@ PureDOTS foundation is now **agnostic** - both individual and aggregate entities
 
 **Goal:** Migrate legacy aggregate-specific components to unified agnostic components.
 
-**Tasks:**
-- [ ] Migrate `VillageAlignmentState` → `VillagerAlignment`
+- [x] Migrate `VillageAlignmentState` → `VillagerAlignment`
   - Update village systems to use `VillagerAlignment`
   - Add conversion helper functions
   - Deprecate `VillageAlignmentState`
-- [ ] Migrate `GuildAlignment` → `VillagerAlignment`
+- [x] Migrate `GuildAlignment` → `VillagerAlignment`
   - Update guild systems to use `VillagerAlignment`
   - Remove `GuildAlignment` component
 

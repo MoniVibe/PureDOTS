@@ -1,6 +1,6 @@
-#if UNITY_EDITOR
 using PureDOTS.Runtime.Components;
 using PureDOTS.Input;
+using PureDOTS.Runtime.Hand;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -154,6 +154,12 @@ namespace PureDOTS.Authoring
                 Normal = new float3(0f, 1f, 0f)
             });
 
+            AddComponent(entity, new GodIntent
+            {
+                LastUpdateTick = 0,
+                PlayerId = 0
+            });
+
             AddBuffer<DivineHandEvent>(entity);
             AddBuffer<HandInputRouteRequest>(entity);
             AddComponent(entity, HandInputRouteResult.None);
@@ -171,4 +177,3 @@ namespace PureDOTS.Authoring
         }
     }
 }
-#endif

@@ -145,6 +145,8 @@ namespace PureDOTS.Systems
 
             EnsureFlowFieldConfig(entityManager);
             EnsureTerrainVersion(entityManager);
+            EnsureResourceTypeIndex(entityManager);
+            EnsureResourceRecipeSet(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
@@ -602,6 +604,45 @@ namespace PureDOTS.Systems
 
             var entity = entityManager.CreateEntity(typeof(SkillXpCurveConfig));
             entityManager.SetComponentData(entity, SkillXpCurveConfig.CreateDefaults());
+        }
+
+        private static void EnsureResourceTypeIndex(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceTypeIndex>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<ResourceTypeIndexBlob>();
+            builder.Allocate(ref root.Ids, 0);
+            builder.Allocate(ref root.DisplayNames, 0);
+            builder.Allocate(ref root.Colors, 0);
+            var blob = builder.CreateBlobAssetReference<ResourceTypeIndexBlob>(Allocator.Persistent);
+            builder.Dispose();
+
+            var entity = entityManager.CreateEntity(typeof(ResourceTypeIndex));
+            entityManager.SetComponentData(entity, new ResourceTypeIndex { Catalog = blob });
+        }
+
+        private static void EnsureResourceRecipeSet(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ResourceRecipeSet>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<ResourceRecipeSetBlob>();
+            builder.Allocate(ref root.Families, 0);
+            builder.Allocate(ref root.Recipes, 0);
+            var blob = builder.CreateBlobAssetReference<ResourceRecipeSetBlob>(Allocator.Persistent);
+            builder.Dispose();
+
+            var entity = entityManager.CreateEntity(typeof(ResourceRecipeSet));
+            entityManager.SetComponentData(entity, new ResourceRecipeSet { Value = blob });
         }
     }
 }

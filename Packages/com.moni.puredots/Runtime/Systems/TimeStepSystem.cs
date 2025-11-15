@@ -12,7 +12,6 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
     public partial struct TimeStepSystem : ISystem
     {
         [BurstCompile]

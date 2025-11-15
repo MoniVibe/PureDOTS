@@ -266,7 +266,9 @@ namespace Space4X.CameraControls
                 Pitch = state.Pitch,
                 Yaw = state.Yaw,
                 Distance = math.length(state.Position),
-                PerspectiveMode = state.PerspectiveMode
+                PerspectiveMode = state.PerspectiveMode,
+                FieldOfView = _unityCamera != null ? _unityCamera.fieldOfView : 60f,
+                RigType = CameraRigType.Space4X
             };
 
             ApplyCameraPose(state);

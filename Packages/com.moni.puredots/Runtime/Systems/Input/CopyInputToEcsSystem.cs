@@ -49,38 +49,13 @@ namespace PureDOTS.Systems.Input
             uint currentTick = timeState.Tick;
 
             // Find hand and camera entities
-            Entity handEntity = Entity.Null;
-            Entity cameraEntity = Entity.Null;
-            Entity timeControlEntity = Entity.Null;
+            Entity handEntity = SystemAPI.TryGetSingletonEntity<DivineHandTag>(out var hand) ? hand : Entity.Null;
+            Entity cameraEntity = SystemAPI.TryGetSingletonEntity<CameraTag>(out var camera) ? camera : Entity.Null;
+            Entity timeControlEntity = SystemAPI.TryGetSingletonEntity<TimeControlSingletonTag>(out var timeControl) ? timeControl : Entity.Null;
 
-            using (var handQuery = SystemAPI.QueryBuilder()
-                .WithAll<DivineHandTag>()
-                .Build())
+            if (timeControlEntity != Entity.Null && !state.EntityManager.HasComponent<TimeControlInputState>(timeControlEntity))
             {
-                if (!handQuery.IsEmptyIgnoreFilter)
-                {
-                    handEntity = handQuery.GetSingletonEntity();
-                }
-            }
-
-            using (var cameraQuery = SystemAPI.QueryBuilder()
-                .WithAll<CameraTag>()
-                .Build())
-            {
-                if (!cameraQuery.IsEmptyIgnoreFilter)
-                {
-                    cameraEntity = cameraQuery.GetSingletonEntity();
-                }
-            }
-
-            using (var timeQuery = SystemAPI.QueryBuilder()
-                .WithAll<TimeControlInputState, TimeControlSingletonTag>()
-                .Build())
-            {
-                if (!timeQuery.IsEmptyIgnoreFilter)
-                {
-                    timeControlEntity = timeQuery.GetSingletonEntity();
-                }
+                timeControlEntity = Entity.Null;
             }
 
             // Flush snapshot to ECS

@@ -10,7 +10,7 @@ namespace PureDOTS.Systems.Input
     /// Converts player-facing time control input into deterministic commands consumed by <see cref="RewindCoordinatorSystem"/>.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(CameraInputSystemGroup))]
     [UpdateAfter(typeof(CopyInputToEcsSystem))]
     public partial struct TimeControlInputSystem : ISystem
     {

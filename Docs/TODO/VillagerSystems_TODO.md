@@ -9,6 +9,13 @@
 - Provide designers with configurable levers (ScriptableObjects + blobs) to tune villager archetypes, jobs, and schedules.
 - Stay aligned with `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` and glue work in `Docs/TODO/SystemIntegration_TODO.md`.
 
+### Belonging & Archetype Modifiers
+
+- Every villager now carries a `VillagerBelonging` buffer (max 5 entries) that tracks loyalty per aggregate: Family, Dynasty, Village, Guild, Band, Army, Company (extend via `VillagerAggregateKind` as needed). Loyalty is stored in the range **[-200, 200]**; `200` = die-hard patriot (full strength), `0` = indifferent, `-200` = archnemesis (inverted/no benefit).
+- Aggregates broadcast their culture/doctrine via `VillagerAggregateModifierProfile` buffers (each entry = modifier + loyalty threshold for full effect). Examples: army discipline, guild craft bonus, village hygiene, family traditions.
+- `VillagerBelongingModifierSystem` ranks the top 5 belongings, scales each aggregate’s modifier by loyalty/threshold, and writes resulting `VillagerArchetypeModifier`s onto the villager. `VillagerArchetypeResolutionSystem` then folds base archetype + modifiers into `VillagerArchetypeResolved`, which `VillagerAISystem` consumes.
+- **TODO:** Ensure aggregate entities actually populate `VillagerAggregateModifierProfile` (doctrine assets) and populate villager `VillagerBelonging` entries at spawn time so the pipeline has real data.
+
 ## Plain-Language Primer
 - Villagers are autonomous agents. They need food, rest, morale, jobs, and respond to player miracles/creature commands.
 - In DOTS we model them as components & buffers (data), and systems (logic) running in groups.

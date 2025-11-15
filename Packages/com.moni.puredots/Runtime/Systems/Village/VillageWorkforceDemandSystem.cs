@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -11,11 +12,11 @@ namespace PureDOTS.Systems
     /// Generates workforce demand entries per village based on population, outlook, policy, and simple heuristics.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
     public partial struct VillageWorkforceDemandSystem : ISystem
     {
-        private ComponentLookup<VillageAlignmentState> _alignmentLookup;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
         private ComponentLookup<VillageOutlook> _outlookLookup;
         private ComponentLookup<VillageWorkforcePolicy> _policyLookup;
         private ComponentLookup<VillageResidencyState> _residencyLookup;
@@ -23,7 +24,7 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _alignmentLookup = state.GetComponentLookup<VillageAlignmentState>(true);
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
             _outlookLookup = state.GetComponentLookup<VillageOutlook>(true);
             _policyLookup = state.GetComponentLookup<VillageWorkforcePolicy>(true);
             _residencyLookup = state.GetComponentLookup<VillageResidencyState>(true);
@@ -123,7 +124,7 @@ namespace PureDOTS.Systems
             });
         }
 
-        private static float ComputeEssentialDemand(int pop, int current, VillageAlignmentState alignment, VillageOutlookFlags outlook)
+        private static float ComputeEssentialDemand(int pop, int current, VillagerAlignment alignment, VillageOutlookFlags outlook)
         {
             float ratio = 0.25f;
             if ((outlook & VillageOutlookFlags.Ascetic) != 0)
@@ -134,12 +135,12 @@ namespace PureDOTS.Systems
             {
                 ratio -= 0.05f;
             }
-            ratio += math.saturate(alignment.Integrity) * 0.05f;
+            ratio += math.saturate(alignment.PurityNormalized) * 0.05f;
             var desired = math.max(1f, pop * ratio);
             return math.max(0f, desired - current) / pop;
         }
 
-        private static float ComputeBuilderDemand(int pop, int current, VillageAlignmentState alignment, VillageOutlookFlags outlook, int pendingResidents)
+        private static float ComputeBuilderDemand(int pop, int current, VillagerAlignment alignment, VillageOutlookFlags outlook, int pendingResidents)
         {
             var desired = pop * 0.08f + pendingResidents * 0.5f;
             if ((outlook & VillageOutlookFlags.Expansionist) != 0)
@@ -149,9 +150,9 @@ namespace PureDOTS.Systems
             return math.max(0f, desired - current) / pop;
         }
 
-        private static float ComputeGathererDemand(int pop, int current, VillageAlignmentState alignment)
+        private static float ComputeGathererDemand(int pop, int current, VillagerAlignment alignment)
         {
-            var desired = pop * 0.1f + math.max(0f, -alignment.Materialism) * pop * 0.05f;
+            var desired = pop * 0.1f + math.max(0f, -alignment.MaterialismNormalized) * pop * 0.05f;
             return math.max(0f, desired - current) / pop;
         }
 
@@ -165,7 +166,7 @@ namespace PureDOTS.Systems
             return math.max(0f, desired - current) / pop;
         }
 
-        private static float ComputeGuardDemand(int pop, int current, VillageAlignmentState alignment, VillageOutlookFlags outlook, VillageWorkforcePolicy policy)
+        private static float ComputeGuardDemand(int pop, int current, VillagerAlignment alignment, VillageOutlookFlags outlook, VillageWorkforcePolicy policy)
         {
             var desired = pop * 0.08f;
             if ((outlook & VillageOutlookFlags.Warlike) != 0)
@@ -173,7 +174,7 @@ namespace PureDOTS.Systems
                 desired += pop * 0.05f;
             }
             desired += policy.DefenseUrgency * pop * 0.1f;
-            desired += math.saturate(-alignment.Integrity) * pop * 0.05f;
+            desired += math.saturate(-alignment.PurityNormalized) * pop * 0.05f;
             return math.max(0f, desired - current) / pop;
         }
 
@@ -187,9 +188,9 @@ namespace PureDOTS.Systems
             return math.max(0f, desired - current) / pop;
         }
 
-        private static float ComputeMerchantDemand(int pop, int current, VillageAlignmentState alignment, VillageOutlookFlags outlook)
+        private static float ComputeMerchantDemand(int pop, int current, VillagerAlignment alignment, VillageOutlookFlags outlook)
         {
-            var desired = pop * 0.05f + alignment.Materialism * pop * 0.05f;
+            var desired = pop * 0.05f + alignment.MaterialismNormalized * pop * 0.05f;
             if ((outlook & VillageOutlookFlags.Materialistic) != 0)
             {
                 desired += pop * 0.05f;

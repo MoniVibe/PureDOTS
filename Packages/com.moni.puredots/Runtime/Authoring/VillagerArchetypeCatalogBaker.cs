@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using PureDOTS.Config;
+using PureDOTS.Runtime.Villagers;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -87,14 +88,6 @@ namespace PureDOTS.Authoring
             AddBlobAsset(ref catalogBlobAsset, out _);
             AddComponent(entity, new VillagerArchetypeCatalogComponent { Catalog = catalogBlobAsset });
         }
-    }
-    
-    /// <summary>
-    /// Component referencing the villager archetype catalog blob asset.
-    /// </summary>
-    public struct VillagerArchetypeCatalogComponent : IComponentData
-    {
-        public BlobAssetReference<VillagerArchetypeCatalogBlob> Catalog;
     }
 }
 #endif
