@@ -1,10 +1,11 @@
 #if DEVTOOLS_ENABLED
 using PureDOTS.Runtime.Devtools;
 using PureDOTS.Runtime.Spatial;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.AI;
 
 namespace PureDOTS.Systems.Devtools
 {
@@ -12,7 +13,6 @@ namespace PureDOTS.Systems.Devtools
     /// Validates spawn candidates and writes validation results.
     /// Checks slope, overlap, bounds, forbidden volumes, navmesh.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(BuildSpawnCandidatesSystem))]
     public partial struct ValidateSpawnCandidatesSystem : ISystem
@@ -22,36 +22,47 @@ namespace PureDOTS.Systems.Devtools
             state.RequireForUpdate<SpawnRequest>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var hasGrid = TryGetSpatialContext(ref state, out var gridContext);
+
             foreach (var (request, candidates, validationResults) in SystemAPI.Query<RefRO<SpawnRequest>, DynamicBuffer<SpawnCandidate>, DynamicBuffer<SpawnValidationResult>>().WithEntityAccess())
             {
                 var req = request.ValueRO;
                 validationResults.ResizeUninitialized(candidates.Length);
 
+                var checkOverlap = hasGrid && (req.Flags & SpawnFlags.AllowOverlap) == 0;
+                var overlapRadius = checkOverlap ? ComputeOverlapRadius(req, gridContext.Config) : 0f;
+                var overlapScratch = checkOverlap ? new NativeList<Entity>(Allocator.Temp) : default;
+
                 for (int i = 0; i < candidates.Length; i++)
                 {
                     var candidate = candidates[i];
-                    var validation = ValidateCandidate(candidate, req, ref state);
+                    var validation = ValidateCandidate(ref candidate, req, checkOverlap, overlapRadius, gridContext, ref overlapScratch);
                     validationResults[i] = validation;
 
                     // Update candidate validity flag
                     if (validation.FailureReason == ValidationFailureReason.None)
                     {
-                        candidates[i] = new SpawnCandidate
-                        {
-                            Position = candidate.Position,
-                            Rotation = candidate.Rotation,
-                            PrototypeId = candidate.PrototypeId,
-                            IsValid = 1
-                        };
+                        candidate.IsValid = 1;
+                        candidates[i] = candidate;
                     }
+                }
+
+                if (overlapScratch.IsCreated)
+                {
+                    overlapScratch.Dispose();
                 }
             }
         }
 
-        private SpawnValidationResult ValidateCandidate(SpawnCandidate candidate, in SpawnRequest request, ref SystemState state)
+        private SpawnValidationResult ValidateCandidate(
+            ref SpawnCandidate candidate,
+            in SpawnRequest request,
+            bool checkOverlap,
+            float overlapRadius,
+            in SpatialGridContext gridContext,
+            ref NativeList<Entity> overlapScratch)
         {
             // Simplified validation (can be extended with actual physics/terrain checks)
             var result = new SpawnValidationResult
@@ -69,70 +80,93 @@ namespace PureDOTS.Systems.Devtools
             }
 
             // If AllowOverlap flag is not set, check for overlaps using spatial grid
-            if ((request.Flags & SpawnFlags.AllowOverlap) == 0)
+            if (checkOverlap)
             {
-                if (SystemAPI.HasSingleton<SpatialGridConfig>() && SystemAPI.HasSingleton<SpatialGridState>())
+                if (HasOverlap(candidate.Position, overlapRadius, in gridContext, ref overlapScratch))
                 {
-                    var config = SystemAPI.GetSingleton<SpatialGridConfig>();
-                    var gridState = SystemAPI.GetSingleton<SpatialGridState>();
-                    
-                    // Get spatial grid buffers
-                    var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
-                    var ranges = SystemAPI.GetBuffer<SpatialGridCellRange>(gridEntity);
-                    var entries = SystemAPI.GetBuffer<SpatialGridEntry>(gridEntity);
-                    
-                    // Check for nearby entities within a small radius (default 0.5m overlap tolerance)
-                    var overlapRadius = 0.5f;
-                    var nearbyEntities = new NativeList<Entity>(Allocator.Temp);
-                    var candidatePos = candidate.Position;
-                    SpatialQueryHelper.GetEntitiesWithinRadius(
-                        ref candidatePos,
-                        overlapRadius,
-                        config,
-                        ranges,
-                        entries,
-                        ref nearbyEntities);
-                    
-                    // If any entities found, mark as overlap
-                    if (nearbyEntities.Length > 0)
-                    {
-                        result.FailureReason = ValidationFailureReason.OverlapsExisting;
-                        result.FailureMessage = new FixedString128Bytes("Overlaps existing entity");
-                        nearbyEntities.Dispose();
-                        return result;
-                    }
-                    
-                    nearbyEntities.Dispose();
-                }
-            }
-
-            // If NavmeshOnly flag is set, check navmesh
-            // Note: Full navmesh integration requires Unity.AI.Navigation package
-            // This is a placeholder that can be extended with actual NavMesh queries
-            if ((request.Flags & SpawnFlags.NavmeshOnly) != 0)
-            {
-                // For now, assume valid if within bounds and on ground plane
-                // In the future, this can query Unity NavMesh.SamplePosition or DOTS NavMesh
-                // Example future implementation:
-                // if (!Unity.AI.Navigation.NavMesh.SamplePosition(candidate.Position, out var hit, 1.0f, -1))
-                // {
-                //     result.FailureReason = ValidationFailureReason.NotOnNavmesh;
-                //     result.FailureMessage = new FixedString128Bytes("Position not on navmesh");
-                //     return result;
-                // }
-                
-                // Temporary: Only validate y position is reasonable (ground level)
-                if (candidate.Position.y < 0f || candidate.Position.y > 10f)
-                {
-                    result.FailureReason = ValidationFailureReason.NotOnNavmesh;
-                    result.FailureMessage = new FixedString128Bytes("Position not on walkable surface");
+                    result.FailureReason = ValidationFailureReason.OverlapsExisting;
+                    result.FailureMessage = new FixedString128Bytes("Overlaps existing entity");
                     return result;
                 }
             }
 
+            // If NavmeshOnly flag is set, check navmesh
+            if ((request.Flags & SpawnFlags.NavmeshOnly) != 0)
+            {
+                var searchDistance = math.max(0.5f, math.max(overlapRadius, request.RadiusOrSpread > 0f ? request.RadiusOrSpread : 1f));
+                if (!TryProjectOntoNavmesh(candidate.Position, searchDistance, out var projected))
+                {
+                    result.FailureReason = ValidationFailureReason.NotOnNavmesh;
+                    result.FailureMessage = new FixedString128Bytes("Position not on navmesh");
+                    return result;
+                }
+
+                candidate.Position = projected;
+            }
+
             return result;
+        }
+
+        private bool TryGetSpatialContext(ref SystemState state, out SpatialGridContext context)
+        {
+            if (SystemAPI.HasSingleton<SpatialGridConfig>() && SystemAPI.HasSingleton<SpatialGridState>())
+            {
+                var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+                context = new SpatialGridContext
+                {
+                    Config = SystemAPI.GetSingleton<SpatialGridConfig>(),
+                    Ranges = SystemAPI.GetBuffer<SpatialGridCellRange>(gridEntity),
+                    Entries = SystemAPI.GetBuffer<SpatialGridEntry>(gridEntity)
+                };
+                return true;
+            }
+
+            context = default;
+            return false;
+        }
+
+        private static float ComputeOverlapRadius(in SpawnRequest request, in SpatialGridConfig config)
+        {
+            var baseRadius = request.RadiusOrSpread > 0f ? math.max(0.25f, request.RadiusOrSpread * 0.5f) : 0.5f;
+            var cellRadius = math.clamp(config.CellSize * 0.5f, 0.25f, 4f);
+            return math.max(baseRadius, cellRadius);
+        }
+
+        private static bool HasOverlap(in float3 position, float radius, in SpatialGridContext context, ref NativeList<Entity> results)
+        {
+            results.Clear();
+            var candidatePos = position;
+            SpatialQueryHelper.GetEntitiesWithinRadius(
+                ref candidatePos,
+                radius,
+                context.Config,
+                context.Ranges,
+                context.Entries,
+                ref results);
+
+            return results.Length > 0;
+        }
+
+        private static bool TryProjectOntoNavmesh(in float3 position, float maxDistance, out float3 projected)
+        {
+#if UNITY_EDITOR || !UNITY_DOTSRUNTIME
+            if (NavMesh.SamplePosition(new Vector3(position.x, position.y, position.z), out var hit, maxDistance, NavMesh.AllAreas))
+            {
+                var hitPos = hit.position;
+                projected = new float3(hitPos.x, hitPos.y, hitPos.z);
+                return true;
+            }
+#endif
+            projected = position;
+            return false;
+        }
+
+        private struct SpatialGridContext
+        {
+            public SpatialGridConfig Config;
+            public DynamicBuffer<SpatialGridCellRange> Ranges;
+            public DynamicBuffer<SpatialGridEntry> Entries;
         }
     }
 }
 #endif
-

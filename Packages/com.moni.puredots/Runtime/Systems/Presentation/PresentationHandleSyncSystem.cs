@@ -28,7 +28,7 @@ namespace PureDOTS.Systems
             _visualTransformLookup.Update(ref state);
 
             var config = PresentationHandleSyncConfig.Default;
-            SystemAPI.TryGetSingleton(out config);
+            SystemAPI.TryGetSingleton<PresentationHandleSyncConfig>(out config);
 
             foreach (var (sourceTransform, handle) in SystemAPI
                          .Query<RefRO<LocalTransform>, RefRO<PresentationHandle>>())

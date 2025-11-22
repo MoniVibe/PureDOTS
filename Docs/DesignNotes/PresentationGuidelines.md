@@ -1,5 +1,7 @@
 # Presentation Layer Guidelines
 
+> Tracking for open items lives in `Docs/TODO/PresentationBridge_TODO.md`; use this file for principles/patterns and keep both in sync.
+
 ## Principles
 - Keep simulation (hot archetypes) separate from presentation (cold archetypes/companion entities).
 - Presentation reads data; never mutates simulation components directly.

@@ -80,6 +80,9 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [ ] Note hard dependencies in the legacy project that need counterpart implementations (e.g., job board, needs systems) before those assets can be reused.
    - [ ] Establish a deprecation list for hybrid scripts that will be replaced rather than ported.
 
+8. Space4X Framework Backlog
+   - [ ] Track Space4X-specific DOTS work (alignment/compliance, modules/degradation, mining nodes, waypoints/infrastructure, economy/spoilage, tech diffusion, interception, crew progression). See `Docs/TODO/Space4X_Frameworks_TODO.md` for detailed items and phasing pulled from `Space4x/Docs/TODO/4xdotsrequest.md`.
+
 8. Spatial Services & Observability
    - [x] Implement configurable spatial grid/quadtree service (config asset + blob + lookup jobs) for proximity queries. (Spatial grid implemented with query helpers - see `SpatialQueryHelper`)
      - Planning doc: `Docs/TODO/SpatialServices_TODO.md`.

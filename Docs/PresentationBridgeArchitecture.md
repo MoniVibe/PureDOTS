@@ -1,5 +1,7 @@
 # Presentation Bridge Architecture
 
+> Active work/tracking lives in `Docs/TODO/PresentationBridge_TODO.md`. Keep this architecture doc in sync when the bridge evolves.
+
 ## Objectives
 - Keep gameplay (hot archetypes) deterministic while allowing rich visuals (cold archetypes) to evolve independently.
 - Provide a reusable bridge that both Godgame and Space4X can extend without duplicating glue.

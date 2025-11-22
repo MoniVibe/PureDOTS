@@ -26,18 +26,37 @@ namespace PureDOTS.Authoring
 
         private void OnValidate()
         {
-            foreach (var entry in entries)
+            var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < entries.Count; i++)
             {
+                var entry = entries[i];
                 if (entry == null)
                 {
                     continue;
                 }
 
+                entry.doctrineId = SanitizeId(entry.doctrineId);
                 entry.fanaticismCap = Mathf.Clamp(entry.fanaticismCap, 0f, 2f);
                 entry.orderAffinity = Mathf.Clamp(entry.orderAffinity, -1f, 1f);
                 entry.compassionAffinity = Mathf.Clamp(entry.compassionAffinity, -1f, 1f);
                 entry.innovationAffinity = Mathf.Clamp(entry.innovationAffinity, -1f, 1f);
+
+                if (string.IsNullOrEmpty(entry.doctrineId))
+                {
+                    Debug.LogWarning($"Doctrine entry at index {i} has an empty id and will be ignored during baking.", this);
+                    continue;
+                }
+
+                if (!seenIds.Add(entry.doctrineId))
+                {
+                    Debug.LogWarning($"Duplicate doctrine id \"{entry.doctrineId}\" detected; later duplicates will be skipped when building the catalog.", this);
+                }
             }
+        }
+
+        private static string SanitizeId(string raw)
+        {
+            return string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim().ToLowerInvariant();
         }
     }
 #endif
@@ -64,6 +83,7 @@ namespace PureDOTS.Authoring
 
             var definitions = authoring.catalog.entries;
             var buildList = new List<DoctrineDefinition>(definitions.Count);
+            var seenIds = new HashSet<DoctrineId>();
 
             for (var i = 0; i < definitions.Count; i++)
             {
@@ -77,6 +97,12 @@ namespace PureDOTS.Authoring
                 if (doctrineId.Value.Length == 0)
                 {
                     Debug.LogWarning($"Doctrine entry {i} has an empty id.", authoring);
+                    continue;
+                }
+
+                if (!seenIds.Add(doctrineId))
+                {
+                    Debug.LogWarning($"Doctrine id \"{definition.doctrineId}\" already exists; skipping duplicate at index {i}.", authoring);
                     continue;
                 }
 
@@ -96,6 +122,8 @@ namespace PureDOTS.Authoring
                 AddComponent(entity, new DoctrineCatalog { Catalog = BlobAssetReference<DoctrineCatalogBlob>.Null });
                 return;
             }
+
+            buildList.Sort((a, b) => string.Compare(a.Id.Value.ToString(), b.Id.Value.ToString(), StringComparison.Ordinal));
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<DoctrineCatalogBlob>();

@@ -6,12 +6,7 @@ This document summarizes all outstanding TODO items found in PureDOTS code and d
 
 ## Code TODOs (Actual TODO Comments)
 
-Found **4 TODO comments** in source code:
-
-1. **`InstantiateSpawnSystem.cs:105`** - Apply override by name matching
-2. **`ValidateSpawnCandidatesSystem.cs:73`** - Implement actual overlap check using spatial grid
-3. **`ValidateSpawnCandidatesSystem.cs:79`** - Implement navmesh check
-4. **`InputRecordingSystem.cs:50`** - Add config flag to enable/disable recording
+No outstanding code TODO comments in source code. Previously flagged items (spawn stat overrides, spawn overlap/navmesh validation, input recording toggle) have been implemented.
 
 ## Documentation TODOs by Category
 
@@ -20,6 +15,9 @@ Found **4 TODO comments** in source code:
 #### 1. Compilation Health Issues (`PureDOTS_TODO.md` section 10)
 - NetCode 1.8 physics regression with `PhysicsWorldHistory.Clone` overloads (needs shim/patch) - netplay is final priority, left only for the end of the project
 - Missing generic comparer surface in `StreamingLoaderSystem` (may already be resolved - needs verification)
+
+#### 1b. Space4X Framework Requests (`Docs/TODO/Space4X_Frameworks_TODO.md`)
+- New Space4X backlog pulled from `Space4x/Docs/TODO/4xdotsrequest.md`: alignment/compliance, modules + degradation/repairs, mining deposits/harvest nodes, waypoints/infrastructure, supply–demand economy, spoilage FIFO, tech diffusion, interception, crew progression/breeding (deferred), telemetry/tests. Needs scheduling into active sprint tracking.
 
 #### 2. Presentation Bridge Testing (`PresentationBridge_TODO.md`)
 - Validation tests missing (rewind-safe presentation tests)

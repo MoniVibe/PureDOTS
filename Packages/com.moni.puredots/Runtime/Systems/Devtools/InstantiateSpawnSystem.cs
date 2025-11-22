@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Devtools;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -18,6 +19,12 @@ namespace PureDOTS.Systems.Devtools
     [UpdateAfter(typeof(ValidateSpawnCandidatesSystem))]
     public partial struct InstantiateSpawnSystem : ISystem
     {
+        private static readonly FixedString64Bytes StatNameHealth = "health";
+        private static readonly FixedString64Bytes StatNameSpeed = "speed";
+        private static readonly FixedString64Bytes StatNameMass = "mass";
+        private static readonly FixedString64Bytes StatNameDamage = "damage";
+        private static readonly FixedString64Bytes StatNameRange = "range";
+
         private EndFixedStepSimulationEntityCommandBufferSystem.Singleton _ecbSingleton;
 
         public void OnCreate(ref SystemState state)
@@ -98,38 +105,81 @@ namespace PureDOTS.Systems.Devtools
             if (PrototypeLookup.TryGetStatsDefault(registry, prototypeId, out var defaultStats))
             {
                 var stats = defaultStats;
-                // Apply overrides by name matching (Burst-compatible FixedString comparison)
                 for (int i = 0; i < overrides.Length; i++)
                 {
-                    var ovr = overrides[i];
-                    var name = ovr.Name;
-                    
-                    // Match stat name (case-sensitive comparison - matches common stat names)
-                    if (name == new FixedString64Bytes("Health") || name == new FixedString64Bytes("health"))
-                    {
-                        stats.Health = ovr.Value;
-                    }
-                    else if (name == new FixedString64Bytes("Speed") || name == new FixedString64Bytes("speed"))
-                    {
-                        stats.Speed = ovr.Value;
-                    }
-                    else if (name == new FixedString64Bytes("Mass") || name == new FixedString64Bytes("mass"))
-                    {
-                        stats.Mass = ovr.Value;
-                    }
-                    else if (name == new FixedString64Bytes("Damage") || name == new FixedString64Bytes("damage"))
-                    {
-                        stats.Damage = ovr.Value;
-                    }
-                    else if (name == new FixedString64Bytes("Range") || name == new FixedString64Bytes("range"))
-                    {
-                        stats.Range = ovr.Value;
-                    }
+                    TryApplyStatOverride(ref stats, overrides[i]);
                 }
+
                 ecb.AddComponent(instance, stats);
             }
+        }
+
+        private static bool TryApplyStatOverride(ref PrototypeStatsDefault stats, in StatOverride statOverride)
+        {
+            if (EqualsStatName(statOverride.Name, StatNameHealth))
+            {
+                stats.Health = statOverride.Value;
+                return true;
+            }
+
+            if (EqualsStatName(statOverride.Name, StatNameSpeed))
+            {
+                stats.Speed = statOverride.Value;
+                return true;
+            }
+
+            if (EqualsStatName(statOverride.Name, StatNameMass))
+            {
+                stats.Mass = statOverride.Value;
+                return true;
+            }
+
+            if (EqualsStatName(statOverride.Name, StatNameDamage))
+            {
+                stats.Damage = statOverride.Value;
+                return true;
+            }
+
+            if (EqualsStatName(statOverride.Name, StatNameRange))
+            {
+                stats.Range = statOverride.Value;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool EqualsStatName(in FixedString64Bytes candidate, in FixedString64Bytes targetLower)
+        {
+            unsafe
+            {
+                if (candidate.Length != targetLower.Length)
+                {
+                    return false;
+                }
+
+                var candidatePtr = candidate.GetUnsafePtr();
+                var targetPtr = targetLower.GetUnsafePtr();
+
+                for (int i = 0; i < targetLower.Length; i++)
+                {
+                    var normalized = ToLowerAscii(candidatePtr[i]);
+                    if (normalized != targetPtr[i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        private static byte ToLowerAscii(byte value)
+        {
+            const byte upperA = (byte)'A';
+            const byte upperZ = (byte)'Z';
+            return value >= upperA && value <= upperZ ? (byte)(value + 32) : value;
         }
     }
 }
 #endif
-

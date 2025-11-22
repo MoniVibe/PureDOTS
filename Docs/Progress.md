@@ -1,5 +1,10 @@
 # PureDOTS Progress Log
 
+## 2025-02-06 (Space4X Framework Tracking)
+- Added `Docs/TODO/Space4X_Frameworks_TODO.md` as the canonical Space4X DOTS backlog with per-section metadata (Status/Owner/LastUpdated) and a rotating “Next Up” block to steer sprint picks.
+- Cross-linked the backlog from `PureDOTS_TODO.md` and `Docs/OUTSTANDING_TODOS_SUMMARY.md`; keep the backlog in place and mark items Done rather than deleting to preserve history.
+- Guidance: update the Space4X file on each planning change, and record shipped slices/PR links here under this heading for traceability.
+
 ## 2025-12-XX (Phase 3 Presentation Follow-up)
 - Expanded presentation binding schema (palette/size/speed, lifetime/attach) and added GrayboxMinimal/GrayboxFancy sample sets with runtime toggle (`presentation.binding.sample`, see Samples~/PresentationBindings).
 - Presentation bridge now reports pool stats and camera rig telemetry to HUD/telemetry; companion sync system (offset + follow lerp) keeps pooled visuals aligned without allocations and remains rewind-safe.

@@ -2,6 +2,8 @@
 
 Updated: 2025-11-02
 
+> Active work is tracked in `Docs/TODO/RegistryRewrite_TODO.md` (registry implementation) and `Docs/TODO/SpatialServices_TODO.md` (spatial sync). Use this note for contract/context and refresh it when TODO items complete.
+
 ## Purpose
 Phase 2 of the roadmap calls for "registry–spatial continuity contracts": interface guarantees and tests that prove every registry stays in sync with the spatial grid and deterministic ordering regardless of producer order. This note defines those guarantees, outlines the implementation work, and lists the validation we need before the roadmap slice can be marked complete.
 

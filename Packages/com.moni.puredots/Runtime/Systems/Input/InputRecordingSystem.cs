@@ -24,6 +24,7 @@ namespace PureDOTS.Systems.Input
             _cachedHorizonTicks = 0;
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<HistorySettings>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -34,15 +35,8 @@ namespace PureDOTS.Systems.Input
                 return;
             }
 
-            // Check config flag to enable/disable recording
-            bool shouldRecord = true;
-            if (SystemAPI.HasSingleton<HistorySettings>())
-            {
-                var historySettings = SystemAPI.GetSingleton<HistorySettings>();
-                shouldRecord = historySettings.EnableInputRecording;
-            }
-
-            if (!shouldRecord)
+            var historySettings = SystemAPI.GetSingleton<HistorySettings>();
+            if (!historySettings.EnableInputRecording)
             {
                 return;
             }
@@ -56,7 +50,7 @@ namespace PureDOTS.Systems.Input
             var handEdgeBuffer = state.EntityManager.GetBuffer<HandInputEdge>(historyEntity);
             var cameraEdgeBuffer = state.EntityManager.GetBuffer<CameraInputEdge>(historyEntity);
 
-            uint horizon = historyState.HorizonTicks != 0 ? historyState.HorizonTicks : ComputeHorizonTicks(timeState);
+            uint horizon = historyState.HorizonTicks != 0 ? historyState.HorizonTicks : ComputeHorizonTicks(timeState, historySettings);
             historyState.HorizonTicks = horizon;
 
             uint minTick = currentTick > horizon ? currentTick - horizon : 0;
@@ -130,7 +124,7 @@ namespace PureDOTS.Systems.Input
             return _historyEntity;
         }
 
-        private uint ComputeHorizonTicks(in TimeState timeState)
+        private uint ComputeHorizonTicks(in TimeState timeState, in HistorySettings historySettings)
         {
             if (_cachedHorizonTicks != 0)
             {
@@ -139,11 +133,7 @@ namespace PureDOTS.Systems.Input
 
             float ticksPerSecond = 1f / math.max(0.0001f, timeState.FixedDeltaTime);
             uint desired = (uint)math.max(1f, math.round(ticksPerSecond * 3f));
-
-            if (SystemAPI.TryGetSingleton<HistorySettings>(out var settings))
-            {
-                desired = math.max(desired, (uint)math.round(settings.DefaultTicksPerSecond * 3f));
-            }
+            desired = math.max(desired, (uint)math.round(historySettings.DefaultTicksPerSecond * 3f));
 
             _cachedHorizonTicks = desired + 4u;
             return _cachedHorizonTicks;

@@ -280,9 +280,223 @@ float CalculateAlignmentVariance(DynamicBuffer<AggregateMemberEntry> members, Vi
 ```
 
 **Cohesion Effects**:
-- **High Cohesion (>0.8)**: Aggregate acts decisively, consensus = Unanimous/Majority
-- **Medium Cohesion (0.4-0.8)**: Aggregate acts normally, consensus = Majority/Plurality
-- **Low Cohesion (<0.4)**: Aggregate paralyzed, consensus = Anarchy, risk of splintering
+- **High Cohesion (>0.8)**: Aggregate acts decisively, consensus = Unanimous/Majority, +20% task execution speed
+- **Medium Cohesion (0.4-0.8)**: Aggregate acts normally, consensus = Majority/Plurality, normal task speed
+- **Low Cohesion (<0.4)**: Aggregate paralyzed, consensus = Anarchy, -40% task speed, risk of splintering
+
+### Moral Conflict & Hesitation
+
+**Officers and members hesitate when ordered to perform actions against their morals.**
+
+```csharp
+public struct MoralConflictState : IComponentData
+{
+    public Entity ConflictingOrder;              // Order causing moral conflict
+    public float ConflictSeverity;               // 0.0-1.0 (how opposed to morals)
+    public ushort HesitationTicks;               // Delay before executing order
+    public MoraleImpact MoraleEffect;            // How this affects member morale
+}
+
+public enum MoraleImpact : byte
+{
+    None,           // No moral conflict
+    Minor,          // -5 morale, slight hesitation (10 tick delay)
+    Moderate,       // -15 morale, noticeable delay (50 tick delay)
+    Major,          // -30 morale, significant reluctance (150 tick delay)
+    Severe          // -50 morale, may refuse order entirely (300+ tick delay or refusal)
+}
+```
+
+**Conflict Detection**:
+```csharp
+float CalculateMoralConflict(VillagerAlignment memberAlignment, VillagerBehavior memberBehavior, ActionType orderedAction, Entity target)
+{
+    float conflictScore = 0f;
+
+    switch (orderedAction)
+    {
+        case ActionType.AttackDefenseless:
+            // Good + Forgiving = extreme conflict
+            // Evil + Vengeful = no conflict
+            float goodnessScore = (memberAlignment.MoralAxis + 1f) / 2f; // 0.0 (Evil) to 1.0 (Good)
+            float forgivenessScore = 1f - memberBehavior.VengefulVsForgiving; // Inverted
+            conflictScore = (goodnessScore + forgivenessScore) / 2f;
+            break;
+
+        case ActionType.ExecutePrisoners:
+            // Lawful + Good = extreme conflict (murder is unlawful)
+            // Chaotic + Evil = no conflict (might makes right)
+            float lawfulnessScore = (memberAlignment.OrderAxis + 1f) / 2f;
+            goodnessScore = (memberAlignment.MoralAxis + 1f) / 2f;
+            conflictScore = (lawfulnessScore + goodnessScore) / 2f;
+            break;
+
+        case ActionType.DestroyLifeboats:
+            // Extreme evil action, only very evil + vengeful members comply willingly
+            goodnessScore = (memberAlignment.MoralAxis + 1f) / 2f;
+            conflictScore = math.max(goodnessScore, 0.8f); // Even neutral members hesitate
+            break;
+
+        case ActionType.AidXenos:
+            // Xenophobic members (low PurityAxis) conflict
+            // Xenophilic members (high PurityAxis) eager
+            float xenophiliaScore = (memberAlignment.PurityAxis + 1f) / 2f;
+            if (xenophiliaScore < 0.3f) // Xenophobic
+                conflictScore = 1f - xenophiliaScore; // High conflict
+            else
+                conflictScore = 0f; // No conflict
+            break;
+
+        case ActionType.ProvideQuarterToEnemy:
+            // Vengeful members conflict (want revenge)
+            // Forgiving members comply willingly
+            conflictScore = memberBehavior.VengefulVsForgiving;
+            break;
+
+        case ActionType.TortureForIntel:
+            // Lawful + Good = extreme conflict
+            lawfulnessScore = (memberAlignment.OrderAxis + 1f) / 2f;
+            goodnessScore = (memberAlignment.MoralAxis + 1f) / 2f;
+            conflictScore = (lawfulnessScore * 0.6f + goodnessScore * 0.4f);
+            break;
+    }
+
+    return math.clamp(conflictScore, 0f, 1f);
+}
+```
+
+**Hesitation System**:
+```csharp
+[BurstCompile]
+public partial struct MoralConflictHesitationSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (taskState, agent, alignment, behavior, memberEntry) in
+                 SystemAPI.Query<RefRW<AITaskState>, RefRO<AIAgent>, RefRO<VillagerAlignment>, RefRO<VillagerBehavior>, RefRO<AggregateMemberEntry>>())
+        {
+            // Check if current task conflicts with morals
+            float conflictSeverity = CalculateMoralConflict(alignment.ValueRO, behavior.ValueRO, taskState.ValueRO.CurrentAction, taskState.ValueRO.TargetEntity);
+
+            if (conflictSeverity < 0.2f)
+            {
+                // No significant conflict, execute normally
+                continue;
+            }
+
+            // Calculate hesitation
+            MoraleImpact impact = DetermineMoraleImpact(conflictSeverity);
+            ushort hesitationDelay = impact switch
+            {
+                MoraleImpact.Minor => 10,
+                MoraleImpact.Moderate => 50,
+                MoraleImpact.Major => 150,
+                MoraleImpact.Severe => 300,
+                _ => 0
+            };
+
+            // Add moral conflict component
+            state.EntityManager.AddComponentData(agent.ValueRO.Entity, new MoralConflictState
+            {
+                ConflictingOrder = taskState.ValueRO.TargetEntity,
+                ConflictSeverity = conflictSeverity,
+                HesitationTicks = hesitationDelay,
+                MoraleEffect = impact
+            });
+
+            // Delay task execution
+            if (taskState.ValueRO.Phase == TaskPhase.Executing)
+            {
+                // Insert hesitation phase
+                taskState.ValueRW.Phase = TaskPhase.Preparing; // Pause execution
+                taskState.ValueRW.TicksInPhase = 0;
+            }
+
+            // Apply morale penalty
+            if (SystemAPI.HasComponent<VillagerNeeds>(agent.ValueRO.Entity))
+            {
+                var needs = SystemAPI.GetComponentRW<VillagerNeeds>(agent.ValueRO.Entity);
+                float moralePenalty = impact switch
+                {
+                    MoraleImpact.Minor => -5f,
+                    MoraleImpact.Moderate => -15f,
+                    MoraleImpact.Major => -30f,
+                    MoraleImpact.Severe => -50f,
+                    _ => 0f
+                };
+                needs.ValueRW.Morale += moralePenalty;
+            }
+
+            // Severe conflict may cause refusal
+            if (conflictSeverity > 0.9f && memberEntry.ValueRO.LoyaltyLevel < 50)
+            {
+                // Member refuses order
+                taskState.ValueRW.Phase = TaskPhase.Failed;
+                taskState.ValueRW.CurrentAction = ActionType.Idle;
+
+                // Reduce loyalty further
+                var memberRW = SystemAPI.GetComponentRW<AggregateMemberEntry>(agent.ValueRO.Entity);
+                memberRW.ValueRW.LoyaltyLevel = (byte)math.max(0, memberRW.ValueRO.LoyaltyLevel - 20);
+            }
+        }
+    }
+}
+```
+
+**Hesitation Tick System**:
+```csharp
+[BurstCompile]
+public partial struct MoralConflictTickSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (conflictState, taskState) in
+                 SystemAPI.Query<RefRW<MoralConflictState>, RefRW<AITaskState>>())
+        {
+            if (conflictState.ValueRO.HesitationTicks > 0)
+            {
+                conflictState.ValueRW.HesitationTicks--;
+
+                // Keep task in Preparing phase during hesitation
+                if (taskState.ValueRO.Phase == TaskPhase.Preparing)
+                    taskState.ValueRW.TicksInPhase = 0; // Reset to prevent auto-advance
+            }
+            else
+            {
+                // Hesitation complete, allow task to proceed
+                taskState.ValueRW.Phase = TaskPhase.Executing;
+                state.EntityManager.RemoveComponent<MoralConflictState>(taskState.ValueRO.TargetEntity);
+            }
+        }
+    }
+}
+```
+
+**Example Scenarios**:
+
+1. **Evil Captain Orders Attack on Defenseless Ship**:
+   - Captain (MoralAxis = -0.8 Evil) orders fleet to destroy refugee ship
+   - Gunnery Officer (MoralAxis = +0.6 Good, VengefulVsForgiving = 0.2 Forgiving)
+   - Conflict Score = (0.8 + 0.8) / 2 = 0.8 (Major conflict)
+   - Result: Officer hesitates 150 ticks, loses 30 morale, loyalty drops -10
+   - If loyalty <50: Officer may refuse, task fails
+
+2. **Xenophobic Medic Ordered to Treat Alien Prisoners**:
+   - Captain orders medical care for captured xenos
+   - Medic (PurityAxis = -0.9 Xenophobic)
+   - Conflict Score = 0.95 (Severe conflict)
+   - Result: Medic delays 300 ticks, loses 50 morale, may refuse if low loyalty
+
+3. **Cynical Officer Ordered to Execute POWs**:
+   - Captain (MoralAxis = -0.5) orders execution of surrendered enemies
+   - Officer (OrderAxis = +0.7 Lawful, MoralAxis = +0.3 Neutral Good)
+   - Conflict Score = (0.85 + 0.65) / 2 = 0.75 (Major conflict)
+   - Result: Officer hesitates significantly, morale tanks, cohesion drops
+
+**Cohesion Impact**:
+- Members with active moral conflicts reduce aggregate cohesion by 0.05 per conflicted member
+- High moral conflict in leadership (Officers/Leaders) reduces cohesion by 0.15 per leader
+- If >30% of aggregate has moral conflicts → Cohesion drops below 0.4 → Anarchy/Splintering risk
 
 ---
 

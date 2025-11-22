@@ -205,6 +205,26 @@ namespace PureDOTS.Runtime.Components
     {
     }
 
+    /// <summary>
+    /// Command that forces all presentation visuals to be rebuilt from their handles.
+    /// </summary>
+    public struct PresentationReloadCommand : IComponentData
+    {
+        public int RequestId;
+    }
+
+    /// <summary>
+    /// Aggregated stats for presentation pooling; updated each frame.
+    /// </summary>
+    public struct PresentationPoolStats : IComponentData
+    {
+        public uint ActiveVisuals;
+        public uint SpawnedThisFrame;
+        public uint RecycledThisFrame;
+        public uint TotalSpawned;
+        public uint TotalRecycled;
+    }
+
     public struct PresentationSpawnRequest : IBufferElementData
     {
         public Entity Target;
@@ -227,6 +247,26 @@ namespace PureDOTS.Runtime.Components
         public Entity Visual;
         public Unity.Entities.Hash128 DescriptorHash;
         public uint VariantSeed;
+    }
+
+    /// <summary>
+    /// Configuration for syncing presentation companions to their targets.
+    /// Defaults snap visuals directly to the target transform.
+    /// </summary>
+    public struct PresentationHandleSyncConfig : IComponentData
+    {
+        public float PositionLerp;
+        public float RotationLerp;
+        public float ScaleLerp;
+        public float3 VisualOffset;
+
+        public static PresentationHandleSyncConfig Default => new PresentationHandleSyncConfig
+        {
+            PositionLerp = 1f,
+            RotationLerp = 1f,
+            ScaleLerp = 1f,
+            VisualOffset = float3.zero
+        };
     }
 
     public static class PresentationBindingUtility

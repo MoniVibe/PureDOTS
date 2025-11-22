@@ -1,5 +1,7 @@
 # Spatial Services Plan – Registry-Aligned Spatial Grid
 
+> Active implementation tasks are tracked in `Docs/TODO/SpatialServices_TODO.md` and `Docs/TODO/RegistryRewrite_TODO.md`. Treat this note as context/background and update it when those TODOs land.
+
 ## Current State Snapshot
 
 - **Components in place**: `SpatialGridConfig`, `SpatialGridState`, `SpatialGridCellRange`, `SpatialGridEntry`, staging buffers, and `SpatialIndexedTag` already exist (`Assets/Scripts/PureDOTS/Runtime/Spatial/SpatialComponents.cs`).

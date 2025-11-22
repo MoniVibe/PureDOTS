@@ -2,7 +2,6 @@ using PureDOTS.Runtime.Alignment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -13,12 +12,30 @@ namespace PureDOTS.Systems.Ships
     [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
     public partial struct CrewAggregationSystem : ISystem
     {
+        private EntityQuery _missingComplianceQuery;
+        private EntityQuery _missingSamplesQuery;
+        private EntityQuery _missingAlertsQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<CrewAggregate>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _missingComplianceQuery = SystemAPI.QueryBuilder()
+                .WithAll<CrewAggregate>()
+                .WithNone<CrewCompliance>()
+                .Build();
+
+            _missingSamplesQuery = SystemAPI.QueryBuilder()
+                .WithAll<CrewAggregate>()
+                .WithNone<CrewAlignmentSample>()
+                .Build();
+
+            _missingAlertsQuery = SystemAPI.QueryBuilder()
+                .WithAll<CrewAggregate>()
+                .WithNone<ComplianceAlert>()
+                .Build();
         }
 
         [BurstCompile]
@@ -30,41 +47,41 @@ namespace PureDOTS.Systems.Ships
                 return;
             }
 
+            if (!_missingComplianceQuery.IsEmptyIgnoreFilter)
+            {
+                state.EntityManager.AddComponent(_missingComplianceQuery, ComponentType.ReadWrite<CrewCompliance>());
+            }
+
+            if (!_missingSamplesQuery.IsEmptyIgnoreFilter)
+            {
+                state.EntityManager.AddComponent(_missingSamplesQuery, ComponentType.ReadWrite<CrewAlignmentSample>());
+            }
+
+            if (!_missingAlertsQuery.IsEmptyIgnoreFilter)
+            {
+                state.EntityManager.AddComponent(_missingAlertsQuery, ComponentType.ReadWrite<ComplianceAlert>());
+            }
+
             var thresholds = SystemAPI.TryGetSingleton<ComplianceThresholds>(out var singletonThresholds)
                 ? singletonThresholds
                 : ComplianceThresholds.CreateDefault();
 
-            foreach (var (crew, entity) in SystemAPI.Query<RefRW<CrewAggregate>>().WithEntityAccess())
+            foreach (var (_, complianceRef, samples, alerts, entity) in SystemAPI
+                         .Query<RefRO<CrewAggregate>, RefRW<CrewCompliance>, DynamicBuffer<CrewAlignmentSample>, DynamicBuffer<ComplianceAlert>>()
+                         .WithEntityAccess())
             {
-                if (!state.EntityManager.HasComponent<CrewCompliance>(entity))
-                {
-                    state.EntityManager.AddComponent<CrewCompliance>(entity);
-                }
-
-                if (!state.EntityManager.HasBuffer<CrewAlignmentSample>(entity))
-                {
-                    state.EntityManager.AddBuffer<CrewAlignmentSample>(entity);
-                }
-
-                if (!state.EntityManager.HasBuffer<ComplianceAlert>(entity))
-                {
-                    state.EntityManager.AddBuffer<ComplianceAlert>(entity);
-                }
-
-                var samples = state.EntityManager.GetBuffer<CrewAlignmentSample>(entity);
-                var alerts = state.EntityManager.GetBuffer<ComplianceAlert>(entity);
-                var compliance = SystemAPI.GetComponent<CrewCompliance>(entity);
+                ref var compliance = ref complianceRef.ValueRW;
                 alerts.Clear();
 
                 float loyaltySum = 0f;
                 float suspicionSum = 0f;
                 float fanaticismSum = 0f;
                 var count = 0;
-                var missingData = (byte)0;
+                var missingData = (byte)(samples.Length == 0 ? 1 : 0);
                 DoctrineId doctrine = compliance.Doctrine;
                 AffiliationId affiliation = compliance.Affiliation;
 
-                if (state.EntityManager.HasComponent<DoctrineRef>(entity))
+                if (SystemAPI.HasComponent<DoctrineRef>(entity))
                 {
                     doctrine = state.EntityManager.GetComponentData<DoctrineRef>(entity).Id;
                 }
@@ -118,7 +135,6 @@ namespace PureDOTS.Systems.Ships
                 compliance.Status = status;
                 compliance.MissingData = missingData;
                 compliance.LastUpdateTick = timeState.Tick;
-                SystemAPI.SetComponent(entity, compliance);
 
                 if (status != ComplianceStatus.Nominal)
                 {

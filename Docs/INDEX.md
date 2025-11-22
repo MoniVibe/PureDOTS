@@ -2,6 +2,11 @@
 
 Updated: 2025-10-25
 
+## Entry Points
+- `Docs/OUTSTANDING_TODOS_SUMMARY.md` – consolidated outstanding work; start here.
+- `PureDOTS_TODO.md` – main project tracker.
+- `Docs/INDEX.md` (this file) – navigation; see archived notes in `Docs/ScenePrep/Archived/` for retired hybrid guidance.
+
 ## Truth Sources
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`
 - `Docs/TruthSources/PlatformPerformance_TruthSource.md`
@@ -20,11 +25,14 @@ Updated: 2025-10-25
 - `Docs/TODO/Utilities_TODO.md`
 - `Docs/TODO/RegistryRewrite_TODO.md`
 - `Docs/TODO/SpawnerFramework_TODO.md`
+- Presentation: `Docs/TODO/PresentationBridge_TODO.md` (see architecture/guidelines below)
 
 ## Design Notes
 - `Docs/DesignNotes/SystemIntegration.md`
 - `Docs/DesignNotes/SystemExecutionOrder.md`
 - `Docs/DesignNotes/RewindPatterns.md`
+- `Docs/PresentationBridgeArchitecture.md` (architecture overview; align with PresentationBridge_TODO)
+- `Docs/DesignNotes/PresentationGuidelines.md` (patterns/checklists)
 - `Docs/DesignNotes/ResourceRegistryPlan.md`
 - `Docs/DesignNotes/VegetationAssets.md`
 - `Docs/DesignNotes/VillagerJobs_DOTS.md`
