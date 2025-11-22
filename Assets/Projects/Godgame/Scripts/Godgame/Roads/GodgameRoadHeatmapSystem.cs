@@ -68,7 +68,7 @@ namespace Godgame.Systems
 
                 var position = transform.ValueRO.Position;
                 var cell = Quantize(position, config.HeatCellSize);
-                var key = math.hash(cell);
+                var key = (int)math.hash(cell);
                 var dir2 = new float2(movement.ValueRO.Velocity.x, movement.ValueRO.Velocity.z);
 
                 accumulators.TryGetValue(key, out var acc);
@@ -83,14 +83,14 @@ namespace Godgame.Systems
             {
                 var acc = keyValues.Values[i];
                 bool found = false;
-                for (int i = 0; i < buffer.Length; i++)
+                for (int j = 0; j < buffer.Length; j++)
                 {
-                    if (math.all(buffer[i].Cell == acc.Cell))
+                    if (math.all(buffer[j].Cell == acc.Cell))
                     {
-                        var entry = buffer[i];
+                        var entry = buffer[j];
                         entry.Heat += acc.Heat;
                         entry.DirectionSum += acc.Direction;
-                        buffer[i] = entry;
+                        buffer[j] = entry;
                         found = true;
                         break;
                     }
@@ -111,7 +111,7 @@ namespace Godgame.Systems
             accumulators.Dispose();
         }
 
-        private static Entity EnsureHeatEntity(ref SystemState state)
+        private Entity EnsureHeatEntity(ref SystemState state)
         {
             if (SystemAPI.TryGetSingletonEntity<GodgameRoadHeatMap>(out var entity))
             {

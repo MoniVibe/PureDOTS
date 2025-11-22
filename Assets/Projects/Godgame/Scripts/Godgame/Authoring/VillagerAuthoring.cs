@@ -88,15 +88,8 @@ namespace Godgame.Authoring
                     Data = fallbackData
                 });
 
-                if (!HasBuffer<VillagerBelonging>(entity))
-                {
-                    AddBuffer<VillagerBelonging>(entity);
-                }
-
-                if (!HasBuffer<VillagerArchetypeModifier>(entity))
-                {
-                    AddBuffer<VillagerArchetypeModifier>(entity);
-                }
+                AddBuffer<VillagerBelonging>(entity);
+                AddBuffer<VillagerArchetypeModifier>(entity);
             }
         }
     }

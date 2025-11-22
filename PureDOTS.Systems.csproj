@@ -77,15 +77,22 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\EnvironmentEffectUpdateSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Streaming\StreamingSectionContentSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\HaulingJobPrioritySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Aggregates\LegacyAggregateAlignmentMigrationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Navigation\FlowFieldFollowSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\ClimateStateUpdateSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RegistryInstrumentationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Village\VillageWorkforcePolicyBootstrapSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Tech\TechDiffusionSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\StorehouseSystems.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationHandleSyncSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialInstrumentationSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerArchetypeResolutionSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleRefitSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Aggregates\AggregatePersonalitySystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\ResourceRegistrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Input\CopyInputToEcsSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\PlaceholderVisualSystems.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerBelongingModifierSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerFlagsMigrationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RuntimeConfigSystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationBootstrapSystem.cs" />
@@ -95,6 +102,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialGridBuildSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VegetationCommandBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Aggregates\AggregateFactionMaintenanceSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Hand\DivineHandTelemetrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Streaming\StreamingStatisticsSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Performance\VillagerStressTestSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RewindCoordinatorSystem.cs" />
@@ -105,6 +113,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Input\InputPlaybackSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Navigation\FlowFieldRequestSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\ConstructionProgressSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\TradeRoutingSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\BootstrapDiagnosticsSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Aggregates\VillagerAggregateBelongingSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Streaming\StreamingSectionBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\SunlightGridUpdateSystem.cs" />
@@ -168,9 +178,14 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Phases\ManualPhaseConfig.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerNeedsSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Combat\CombatManeuverSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\TradeTransportAssignmentSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationPoolStatsResetSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\InventoryFlowTrackingSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Combat\CombatPersonalitySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\MiracleReleaseSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VegetationGrowthSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Combat\TargetingPredictionSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\CarrierModuleConsoleTelemetrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\HaulingLoopSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\EnvironmentSampling.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\StorehouseRegistrySystem.cs" />
@@ -193,11 +208,14 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Village\VillageJobPreferenceSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Input\TimeControlInputSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RewindTelemetrySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\CarrierModuleSystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\OrderEventStreamSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\BatchInventoryBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerHistorySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\BootstrapWorldProfile.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Bands\BandRegistrySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleDegradationSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleTelemetrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\DisableBurstForEditor.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RainMiracleSystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\DropOnlyHarvestDepositSystem.cs" />
@@ -205,7 +223,9 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\EnvironmentEffectUtility.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VegetationHarvestSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Navigation\SpatialSensorUpdateSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationReloadSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\BatchInventoryRequestBridgeSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationPoolTelemetrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Village\VillageOutlookBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\BiomeDerivationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\AI\AISystems.cs" />
@@ -218,7 +238,9 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\ResourceSystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RegistryHealthSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RegistryDirectorySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\CarrierModuleScenarioBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationSpawnSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\CarrierModuleBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Combat\DangerZoneAwarenessSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Phases\ManualPhaseSystemGroup.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Phases\ManualPhaseControl.cs" />
@@ -235,6 +257,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Streaming\StreamingScannerSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerAISystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Phases\ManualPhaseSystems.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Tech\TechDiffusionBootstrapSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleRepairSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\PureDotsWorldBootstrap.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialGridInitialBuildSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\EnvironmentEffectBootstrapSystem.cs" />
@@ -246,12 +270,14 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Villagers\VillagerAutonomousActionSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Navigation\LocalSteeringSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\PhysicsHistorySystems.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\CarrierModuleTelemetrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\LogisticsRequestRegistrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\TimeSettingsConfigSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialGridDirtyTrackingSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Armies\ArmyIntentSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialGridSnapshotSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Aggregates\AggregateMembershipRestrictionSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\TradeOpportunitySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Devtools\InstantiateSpawnSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Debug\RuntimeConfigConsoleBehaviour.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Environment\TerrainChangeProcessorSystem.cs" />
@@ -267,6 +293,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\DivineHandSystems.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Spatial\SpatialProviderRegistrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VegetationHealthSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleStatAggregationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\GameplayFixedStepSyncSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerTargetingSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Visuals\MiningLoopVisualSyncSystem.cs" />
@@ -1351,6 +1378,10 @@
     <ProjectReference Include="PureDOTS.Input.csproj">
       <Project>{49F2CF5E-B47A-0CD9-B058-467A5D138242}</Project>
       <Name>PureDOTS.Input</Name>
+    </ProjectReference>
+    <ProjectReference Include="PureDOTS.Config.csproj">
+      <Project>{42DF73EE-8D9F-FECF-BC7C-CB6FA75B0C64}</Project>
+      <Name>PureDOTS.Config</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -68,6 +68,9 @@ namespace PureDOTS.Runtime.Components
         public float BatchInventoryMaxPrice;
         public float BatchInventoryAvgPrice;
         public FixedString128Bytes BatchInventoryStateText;
+        public int TradeOpportunityCount;
+        public uint TradeOpportunityVersion;
+        public FixedString128Bytes TradeOpportunityStateText;
         public int ComplianceNominal;
         public int ComplianceWarning;
         public int ComplianceBreach;
@@ -100,6 +103,10 @@ namespace PureDOTS.Runtime.Components
         public int BandSpatialResolved;
         public int BandSpatialFallback;
         public int BandSpatialUnmapped;
+        public int LogisticsRequestCount;
+        public int LogisticsPending;
+        public int LogisticsInProgress;
+        public int LogisticsCritical;
         public int FactionRegistryCount;
         public int FactionEntryCount;
         public int TotalFactionTerritoryCells;

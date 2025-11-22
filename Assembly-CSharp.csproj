@@ -81,6 +81,7 @@
     <Compile Include="Assets\Tests\AggregateDataSkeletonTests.cs" />
     <Compile Include="Assets\Tests\CombatBaselineTests.cs" />
     <Compile Include="Assets\PureDOTS\Config\VillagerJobPresetCatalog.cs" />
+    <Compile Include="Assets\Tests\AggregatePersonalitySystemsTests.cs" />
     <Compile Include="Assets\Projects\Space4X\TutorialInfo\Scripts\Readme.cs" />
   </ItemGroup>
   <ItemGroup>

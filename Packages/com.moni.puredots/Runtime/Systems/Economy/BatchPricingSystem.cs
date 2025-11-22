@@ -7,7 +7,7 @@ using Unity.Mathematics;
 namespace PureDOTS.Systems.Economy
 {
     /// <summary>
-    /// Computes a simple dynamic price multiplier based on inventory fill level.
+    /// Computes a dynamic price multiplier based on inventory fill level and recent inflow/outflow trends.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -26,7 +26,7 @@ namespace PureDOTS.Systems.Economy
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (SystemAPI.GetSingleton<RewindState>().Mode != RewindMode.Record)
+            if (timeState.IsPaused || SystemAPI.GetSingleton<RewindState>().Mode != RewindMode.Record)
             {
                 return;
             }
@@ -34,30 +34,40 @@ namespace PureDOTS.Systems.Economy
             var cfg = SystemAPI.TryGetSingleton<BatchPricingConfig>(out var config)
                 ? config
                 : BatchPricingConfig.CreateDefault();
+            var smoothing = math.clamp(cfg.TrendSmoothing * math.max(1f, timeState.CurrentSpeedMultiplier), 0f, 1f);
 
             foreach (var (inventory, pricing) in SystemAPI.Query<RefRO<BatchInventory>, RefRW<BatchPricingState>>())
             {
-                var fill = inventory.ValueRO.MaxCapacity > 0f
-                    ? math.saturate(inventory.ValueRO.TotalUnits / inventory.ValueRO.MaxCapacity)
+                var inv = inventory.ValueRO;
+                var fill = inv.MaxCapacity > 0f ? math.saturate(inv.TotalUnits / inv.MaxCapacity) : 0f;
+                var normalizedDelta = inv.MaxCapacity > 0f
+                    ? math.clamp((inv.TotalUnits - pricing.ValueRO.LastUnits) / math.max(1f, inv.MaxCapacity), -cfg.MaxDeltaFraction, cfg.MaxDeltaFraction)
                     : 0f;
 
+                var smoothedDelta = math.lerp(pricing.ValueRO.SmoothedDelta, normalizedDelta, smoothing);
+                var smoothedFill = math.lerp(pricing.ValueRO.SmoothedFill, fill, smoothing);
+
                 float multiplier;
-                if (fill <= cfg.LowFillThreshold)
+                if (smoothedFill <= cfg.LowFillThreshold)
                 {
                     multiplier = cfg.MaxMultiplier;
                 }
-                else if (fill >= cfg.HighFillThreshold)
+                else if (smoothedFill >= cfg.HighFillThreshold)
                 {
                     multiplier = cfg.MinMultiplier;
                 }
                 else
                 {
-                    var t = math.saturate((fill - cfg.LowFillThreshold) / math.max(0.0001f, cfg.HighFillThreshold - cfg.LowFillThreshold));
+                    var t = math.saturate((smoothedFill - cfg.LowFillThreshold) / math.max(0.0001f, cfg.HighFillThreshold - cfg.LowFillThreshold));
                     multiplier = math.lerp(cfg.MaxMultiplier, cfg.MinMultiplier, t);
                 }
 
-                pricing.ValueRW.LastPriceMultiplier = multiplier;
+                var demandPressure = math.max(0.1f, 1f + (-smoothedDelta * cfg.Elasticity));
+                pricing.ValueRW.LastPriceMultiplier = math.clamp(multiplier * demandPressure, cfg.MinMultiplier, cfg.MaxMultiplier);
                 pricing.ValueRW.LastUpdateTick = timeState.Tick;
+                pricing.ValueRW.SmoothedDelta = smoothedDelta;
+                pricing.ValueRW.LastUnits = inv.TotalUnits;
+                pricing.ValueRW.SmoothedFill = smoothedFill;
             }
         }
     }

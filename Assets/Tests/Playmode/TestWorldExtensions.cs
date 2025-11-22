@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace PureDOTS.Tests
 {
-    internal static class TestWorldExtensions
+    public static class TestWorldExtensions
     {
         public static SystemHandle EnsureSystem<T>(this World world) where T : unmanaged, ISystem
         {

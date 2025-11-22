@@ -84,7 +84,7 @@ namespace Godgame.Systems
             ecb.Dispose();
         }
 
-        private static Entity FindNearestVillage(ref SystemState state, float3 position, float maxDistance)
+        private Entity FindNearestVillage(ref SystemState state, float3 position, float maxDistance)
         {
             Entity best = Entity.Null;
             float bestDistSq = maxDistance * maxDistance;
@@ -103,7 +103,7 @@ namespace Godgame.Systems
             return best;
         }
 
-        private static bool RoadExistsNear(ref SystemState state, float3 position, float tolerance)
+        private bool RoadExistsNear(ref SystemState state, float3 position, float tolerance)
         {
             float tolSq = tolerance * tolerance;
             foreach (var (segment, transform) in SystemAPI.Query<RefRO<GodgameRoadSegment>, RefRO<LocalTransform>>())

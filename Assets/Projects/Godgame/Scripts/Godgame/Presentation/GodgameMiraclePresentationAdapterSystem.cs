@@ -1,5 +1,4 @@
 using PureDOTS.Runtime.Components;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,7 +9,6 @@ namespace Godgame.Presentation
     /// <summary>
     /// Ensures miracle entities spawn the correct presentation prefab based on type + lifecycle.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(PureDOTS.Systems.MiracleRegistrySystem))]
     public partial struct GodgameMiraclePresentationAdapterSystem : ISystem
@@ -18,7 +16,6 @@ namespace Godgame.Presentation
         private ComponentLookup<GodgamePresentationBinding> _bindingLookup;
         private EntityQuery _miracleQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _bindingLookup = state.GetComponentLookup<GodgamePresentationBinding>();
@@ -30,7 +27,6 @@ namespace Godgame.Presentation
             state.RequireForUpdate<PresentationCommandQueue>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bindingLookup.Update(ref state);

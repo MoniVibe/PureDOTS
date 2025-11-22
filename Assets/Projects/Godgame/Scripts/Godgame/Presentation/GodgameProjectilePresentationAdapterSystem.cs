@@ -1,5 +1,5 @@
 using PureDOTS.Runtime.Components;
-using Unity.Burst;
+using PureDOTS.Systems;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,15 +10,13 @@ namespace Godgame.Presentation
     /// <summary>
     /// Applies presentation bindings to miracle projectiles/tokens so VFX + meshes can be swapped freely.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(PureDOTS.Systems.HandMiracleSystem))]
+    [UpdateAfter(typeof(MiracleReleaseSystem))]
     public partial struct GodgameProjectilePresentationAdapterSystem : ISystem
     {
         private ComponentLookup<GodgamePresentationBinding> _bindingLookup;
         private EntityQuery _projectileQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _bindingLookup = state.GetComponentLookup<GodgamePresentationBinding>();
@@ -30,7 +28,6 @@ namespace Godgame.Presentation
             state.RequireForUpdate<PresentationCommandQueue>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bindingLookup.Update(ref state);

@@ -37,6 +37,7 @@ namespace PureDOTS.Systems.Economy
 
             _requestsLookup.Update(ref state);
             _spoilageLookup.Update(ref state);
+            var timeScale = math.max(0f, timeState.CurrentSpeedMultiplier);
 
             foreach (var (inventoryRW, _, entity) in SystemAPI.Query<RefRW<BatchInventory>, DynamicBuffer<InventoryBatch>>().WithEntityAccess())
             {
@@ -59,7 +60,7 @@ namespace PureDOTS.Systems.Economy
                             continue;
                         }
 
-                        var decay = spoilageSettings.SpoilagePerTick + batch.SpoilagePerTick;
+                        var decay = (spoilageSettings.SpoilagePerTick + batch.SpoilagePerTick) * timeScale;
                         if (decay <= 0f)
                         {
                             continue;

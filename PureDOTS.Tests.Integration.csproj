@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Tests\Integration\SpatialQueryTests.cs" />
+    <Compile Include="Assets\Tests\Integration\PresentationPoolAndReloadTests.cs" />
     <Compile Include="Assets\Tests\Integration\MetaRegistryTests.cs" />
     <Compile Include="Assets\Tests\Integration\DeterministicRewindTestFixture.cs" />
     <Compile Include="Assets\Tests\Integration\RegistryMutationTests.cs" />

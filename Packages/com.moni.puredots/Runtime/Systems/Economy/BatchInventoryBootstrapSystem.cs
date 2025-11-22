@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Economy;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Economy
 {
@@ -24,14 +25,35 @@ namespace PureDOTS.Systems.Economy
                 ecb.AddComponent(entity, new BatchPricingState
                 {
                     LastPriceMultiplier = 1f,
-                    LastUpdateTick = 0
+                    LastUpdateTick = 0,
+                    SmoothedDelta = 0f,
+                    LastUnits = inventory.ValueRO.TotalUnits,
+                    SmoothedFill = inventory.ValueRO.MaxCapacity > 0f
+                        ? math.saturate(inventory.ValueRO.TotalUnits / inventory.ValueRO.MaxCapacity)
+                        : 0f
                 });
+                if (!state.EntityManager.HasComponent<PureDOTS.Runtime.Economy.InventoryFlowState>(entity))
+                {
+                    ecb.AddComponent(entity, new PureDOTS.Runtime.Economy.InventoryFlowState
+                    {
+                        LastUnits = inventory.ValueRO.TotalUnits,
+                        SmoothedInflow = 0f,
+                        SmoothedOutflow = 0f,
+                        LastUpdateTick = 0
+                    });
+                }
             }
 
             if (!SystemAPI.HasSingleton<BatchPricingConfig>())
             {
                 var cfgEntity = ecb.CreateEntity();
                 ecb.AddComponent(cfgEntity, BatchPricingConfig.CreateDefault());
+            }
+
+            if (!SystemAPI.HasSingleton<PureDOTS.Runtime.Economy.InventoryFlowSettings>())
+            {
+                var flowEntity = ecb.CreateEntity();
+                ecb.AddComponent(flowEntity, PureDOTS.Runtime.Economy.InventoryFlowSettings.CreateDefault());
             }
 
             ecb.Playback(state.EntityManager);

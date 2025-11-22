@@ -79,7 +79,7 @@ namespace Godgame.Interaction.HandSystems
                         if (added > 0)
                         {
                             if (!hand.HasHeldType &&
-                                ResourceTypeCatalogUtility.TryResolveResourceType(result.ResourceTypeIndex, catalog, out var newType))
+                                TryResolveResourceType(result.ResourceTypeIndex, catalog, out var newType))
                             {
                                 hand.HasHeldType = true;
                                 hand.HeldType = newType;
@@ -121,6 +121,36 @@ namespace Godgame.Interaction.HandSystems
                     Amount = hand.HeldAmount,
                     Capacity = hand.HeldCapacity
                 });
+            }
+        }
+
+        private static bool TryResolveResourceType(ushort resourceTypeIndex, BlobAssetReference<ResourceTypeIndexBlob> catalog, out ResourceType type)
+        {
+            type = ResourceType.None;
+            if (!catalog.IsCreated || resourceTypeIndex >= catalog.Value.Ids.Length)
+            {
+                return false;
+            }
+
+            var id = catalog.Value.Ids[resourceTypeIndex].ToString().ToLowerInvariant();
+            switch (id)
+            {
+                case "wood":
+                    type = ResourceType.Wood;
+                    return true;
+                case "ore":
+                case "stone":
+                    type = ResourceType.Ore;
+                    return true;
+                case "food":
+                    type = ResourceType.Food;
+                    return true;
+                case "worship":
+                case "faith":
+                    type = ResourceType.Worship;
+                    return true;
+                default:
+                    return false;
             }
         }
     }

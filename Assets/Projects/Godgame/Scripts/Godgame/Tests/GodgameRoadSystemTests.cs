@@ -3,7 +3,6 @@ using Godgame.Systems;
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
-using PureDOTS.Tests;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -45,7 +44,7 @@ namespace Godgame.Tests
             });
             _entityManager.SetComponentData(center, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
 
-            _world.UpdateSystem<GodgameVillageRoadBootstrapSystem>();
+            UpdateSystem<GodgameVillageRoadBootstrapSystem>();
 
             var roadQuery = _entityManager.CreateEntityQuery(typeof(GodgameRoadSegment));
             Assert.AreEqual(4, roadQuery.CalculateEntityCount());
@@ -65,7 +64,7 @@ namespace Godgame.Tests
                 BaseHeight = 0f
             });
             _entityManager.SetComponentData(center, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
-            _world.UpdateSystem<GodgameVillageRoadBootstrapSystem>();
+            UpdateSystem<GodgameVillageRoadBootstrapSystem>();
 
             var handleQuery = _entityManager.CreateEntityQuery(typeof(GodgameRoadHandle), typeof(LocalTransform));
             var handles = handleQuery.ToEntityArray(Allocator.Temp);
@@ -81,7 +80,7 @@ namespace Godgame.Tests
             _entityManager.SetComponentData(handle, handleTransform);
             _entityManager.AddComponentData(handle, new HandHeldTag { Holder = Entity.Null });
 
-            _world.UpdateSystem<GodgameRoadStretchSystem>();
+            UpdateSystem<GodgameRoadStretchSystem>();
 
             segment = _entityManager.GetComponentData<GodgameRoadSegment>(road);
             float newLength = math.length(segment.End - segment.Start);
@@ -113,12 +112,18 @@ namespace Godgame.Tests
             });
             _entityManager.SetComponentData(center, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
 
-            _world.UpdateSystem<GodgameRoadHeatmapSystem>();
-            _world.UpdateSystem<GodgameRoadHeatmapSystem>(); // accumulate twice
-            _world.UpdateSystem<GodgameRoadAutoBuildSystem>();
+            UpdateSystem<GodgameRoadHeatmapSystem>();
+            UpdateSystem<GodgameRoadHeatmapSystem>(); // accumulate twice
+            UpdateSystem<GodgameRoadAutoBuildSystem>();
 
             var roadQuery = _entityManager.CreateEntityQuery(typeof(GodgameRoadSegment));
             Assert.GreaterOrEqual(roadQuery.CalculateEntityCount(), 1);
+        }
+
+        private void UpdateSystem<T>() where T : unmanaged, ISystem
+        {
+            var handle = _world.GetOrCreateSystem<T>();
+            handle.Update(_world.Unmanaged);
         }
 
         private void CreateRoadConfig(float threshold = 6f)

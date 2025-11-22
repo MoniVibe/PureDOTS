@@ -88,13 +88,16 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\DivineHandInteractionBridge.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\KnowledgeLessonCatalogReferenceAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Hybrid\HybridControlToggleAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\CarrierModuleLoadoutAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\VillagerArchetypeCatalogBaker.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Ships\ShipAggregateAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Devtools\AggregatePresetAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Meta\FactionAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Ships\CarrierModuleLoadoutAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\StrikeCraftAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\KnowledgeLessonEffectAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\CarrierDockingAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Ships\ModuleCatalogAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\PureDotsConfigAssets.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\ResourceValueCatalogAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\RainMiracleAuthoring.cs" />
@@ -105,6 +108,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\MiningLoopVisualAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Combat\FiringArcAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\AuthoringComponentCopyUtility.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\InfluenceSourceAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\StreamingSectionContentAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Meta\AreaEffectProfileAsset.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\SimulationAuthoring.cs" />
@@ -124,6 +128,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\EnvironmentEffectCatalog.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\DivineHandAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\SpawnerAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\CarrierModuleCatalogAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Meta\AreaEffectAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\AggregateBehaviorProfileAsset.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Devtools\PrototypeRegistryAuthoring.cs" />
@@ -1156,8 +1161,16 @@
       <HintPath>C:\Program Files\Unity\Hub\Editor\6000.2.5f1\Editor\Data\NetStandard\compat\2.1.0\shims\netfx\System.Xml.Serialization.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Collections">
+      <HintPath>Library\ScriptAssemblies\Unity.Collections.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.Entities">
       <HintPath>Library\ScriptAssemblies\Unity.Entities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Entities.Graphics">
+      <HintPath>Library\ScriptAssemblies\Unity.Entities.Graphics.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Entities.Hybrid">
@@ -1168,24 +1181,12 @@
       <HintPath>Library\ScriptAssemblies\Unity.Mathematics.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Mathematics.Extensions">
-      <HintPath>Library\ScriptAssemblies\Unity.Mathematics.Extensions.dll</HintPath>
+    <Reference Include="Unity.Scenes">
+      <HintPath>Library\ScriptAssemblies\Unity.Scenes.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Transforms">
       <HintPath>Library\ScriptAssemblies\Unity.Transforms.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Collections">
-      <HintPath>Library\ScriptAssemblies\Unity.Collections.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Entities.Graphics">
-      <HintPath>Library\ScriptAssemblies\Unity.Entities.Graphics.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Scenes">
-      <HintPath>Library\ScriptAssemblies\Unity.Scenes.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEditor.UI">
@@ -1198,17 +1199,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="PureDOTS.Runtime.csproj">
-      <Project>{80A41BBA-99D6-ABF2-6707-1701072A2DF8}</Project>
-      <Name>PureDOTS.Runtime</Name>
+    <ProjectReference Include="PureDOTS.Config.csproj">
+      <Project>{42DF73EE-8D9F-FECF-BC7C-CB6FA75B0C64}</Project>
+      <Name>PureDOTS.Config</Name>
     </ProjectReference>
     <ProjectReference Include="PureDOTS.Input.csproj">
       <Project>{49F2CF5E-B47A-0CD9-B058-467A5D138242}</Project>
       <Name>PureDOTS.Input</Name>
     </ProjectReference>
-    <ProjectReference Include="PureDOTS.Config.csproj">
-      <Project>{42DF73EE-8D9F-FECF-BC7C-CB6FA75B0C64}</Project>
-      <Name>PureDOTS.Config</Name>
+    <ProjectReference Include="PureDOTS.Runtime.csproj">
+      <Project>{80A41BBA-99D6-ABF2-6707-1701072A2DF8}</Project>
+      <Name>PureDOTS.Runtime</Name>
     </ProjectReference>
     <ProjectReference Include="PureDOTS.Systems.csproj">
       <Project>{379B40A0-3AFF-1121-58CD-6605ACAD7448}</Project>

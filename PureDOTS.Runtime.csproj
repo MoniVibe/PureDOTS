@@ -79,6 +79,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TimeLoggingComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Transport\LogisticsRequestComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationScreenshotUtility.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ModuleTelemetryComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Hand\HandInteractionComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\ShipComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\OrderComponents.cs" />
@@ -145,6 +146,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Spatial\SpatialComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Config\BootstrapProfile.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Devtools\CursorHitCache.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Hand\HandInfluenceComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\SceneSpawnComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Devtools\SpawnTelemetry.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Spatial\SpatialProviders.cs" />
@@ -156,11 +158,16 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\SpaceEquipmentComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Environment\TerrainComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Devtools\AggregateComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ModuleComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Village\VillageBehaviorComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Villagers\VillagerBehavior.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Camera\CameraRigApplier.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\ModuleMaintenanceUtility.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\VillagerComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TechDiffusionComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\DebugComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioRunnerExecutor.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ModuleTelemetryLogState.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Resource\ResourceRecipeComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\MetaRegistryStubs.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioRunResultJson.cs" />
@@ -173,9 +180,11 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationBridge.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Telemetry\PerformanceBudgetSettings.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\VillagerJobComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\CarrierModuleComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\AI\AIComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\HaulingLoopComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Rendering\MaterialOverrideComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Camera\BW2CameraInputBridge.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Aggregates\VillagerAggregateComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\BatchInventoryComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TimeComponents.cs" />
@@ -195,6 +204,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\BatchPricingComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Pooling\PoolingDiagnostics.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\DivineHandComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\ModuleCatalog.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Combat\TargetingComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\AlignmentComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Registry\RegistryHealthComponents.cs" />
@@ -202,6 +212,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\ResourceComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationBindingConfigVars.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Spatial\SpatialGridSnapshot.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TradeOpportunityComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\ResourceTypeIndexBlob.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Combat\DangerZoneComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationBindingSamples.cs" />
@@ -214,6 +225,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\BuildingComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Debug\MiningVisualConfigVars.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Bands\BandRegistryComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Villagers\VillagerArchetypeComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\VegetationComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Combat\CombatManeuvers.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\HaulingTargets.cs" />

@@ -37,20 +37,7 @@ namespace Godgame.Systems
                 var centerPos = transform.ValueRO.Position;
                 center.ValueRW.BaseHeight = centerPos.y;
                 float radius = math.max(1f, center.ValueRO.RoadRingRadius);
-                float3[] directions =
-                {
-                    new float3(1, 0, 0),
-                    new float3(-1, 0, 0),
-                    new float3(0, 0, 1),
-                    new float3(0, 0, -1)
-                };
-
-                foreach (var dir in directions)
-                {
-                    float3 start = centerPos + dir * radius;
-                    float3 end = start + dir * config.InitialStretchLength;
-                    SpawnRoadSegment(ref ecb, entity, start, end, config, false);
-                }
+                SpawnDirections(ref ecb, entity, centerPos, radius, config);
 
                 ecb.AddComponent<GodgameVillageRoadInitializedTag>(entity);
             }
@@ -135,6 +122,30 @@ namespace Godgame.Systems
         {
             float length = math.length(segment.End - segment.Start);
             return length / math.max(0.1f, config.RoadMeshBaseLength);
+        }
+
+        private static void SpawnDirections(ref EntityCommandBuffer ecb,
+            Entity villageCenter,
+            float3 centerPos,
+            float radius,
+            in GodgameRoadConfig config)
+        {
+            SpawnRoadAlong(ref ecb, villageCenter, centerPos, radius, new float3(1f, 0f, 0f), config);
+            SpawnRoadAlong(ref ecb, villageCenter, centerPos, radius, new float3(-1f, 0f, 0f), config);
+            SpawnRoadAlong(ref ecb, villageCenter, centerPos, radius, new float3(0f, 0f, 1f), config);
+            SpawnRoadAlong(ref ecb, villageCenter, centerPos, radius, new float3(0f, 0f, -1f), config);
+        }
+
+        private static void SpawnRoadAlong(ref EntityCommandBuffer ecb,
+            Entity villageCenter,
+            float3 centerPos,
+            float radius,
+            float3 direction,
+            in GodgameRoadConfig config)
+        {
+            float3 start = centerPos + direction * radius;
+            float3 end = start + direction * config.InitialStretchLength;
+            SpawnRoadSegment(ref ecb, villageCenter, start, end, config, false);
         }
     }
 }

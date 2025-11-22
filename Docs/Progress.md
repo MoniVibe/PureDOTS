@@ -1,5 +1,10 @@
 # PureDOTS Progress Log
 
+## 2025-11-22
+- Implemented Space4X module maintenance baseline: carrier module slot/health/repair components, aggregation/degradation/repair/refit systems, and telemetry counters for degraded/failed/queued modules.
+- Added carrier module bootstrap to seed repair/refit buffers and defaults, plus telemetry publishing for maintenance health.
+- Introduced module maintenance unit tests covering degradation math, repair priority ordering, and skill-scaled repair rates; expanded skill ids to cover ship engineering/repair/refit/gunnery/hauling/hazard ops.
+
 ## 2025-02-06 (Space4X Framework Tracking)
 - Added `Docs/TODO/Space4X_Frameworks_TODO.md` as the canonical Space4X DOTS backlog with per-section metadata (Status/Owner/LastUpdated) and a rotating “Next Up” block to steer sprint picks.
 - Cross-linked the backlog from `PureDOTS_TODO.md` and `Docs/OUTSTANDING_TODOS_SUMMARY.md`; keep the backlog in place and mark items Done rather than deleting to preserve history.

@@ -1142,6 +1142,10 @@
       <Project>{80A41BBA-99D6-ABF2-6707-1701072A2DF8}</Project>
       <Name>PureDOTS.Runtime</Name>
     </ProjectReference>
+    <ProjectReference Include="PureDOTS.Config.csproj">
+      <Project>{42DF73EE-8D9F-FECF-BC7C-CB6FA75B0C64}</Project>
+      <Name>PureDOTS.Config</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

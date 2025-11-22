@@ -8,6 +8,7 @@ using PureDOTS.Runtime.Pooling;
 using PureDOTS.Runtime.Orders;
 using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Transport;
 using PureDOTS.Runtime.Presentation;
 using PureDOTS.Runtime.Signals;
 using PureDOTS.Runtime.Spatial;
@@ -243,9 +244,11 @@ namespace PureDOTS.Systems
             UpdateRegistryDiagnostics(ref state, ref debugData.ValueRW);
             UpdateMobilityDiagnostics(ref state, ref debugData.ValueRW);
             UpdateBatchInventoryDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateTradeOpportunityDiagnostics(ref state, ref debugData.ValueRW);
             UpdateOrderAndSignalDiagnostics(ref state, ref debugData.ValueRW);
             UpdateSpawnerDiagnostics(ref state, ref debugData.ValueRW);
             UpdateComplianceDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateLogisticsDiagnostics(ref state, ref debugData.ValueRW);
             UpdatePoolingDiagnostics(ref debugData.ValueRW);
             UpdateSpatialDiagnostics(ref state, ref debugData.ValueRW);
             UpdateSunlightDiagnostics(ref state, ref debugData.ValueRW);
@@ -1033,6 +1036,9 @@ namespace PureDOTS.Systems
             debugData.BatchInventoryMaxPrice = 0f;
             debugData.BatchInventoryAvgPrice = 0f;
             debugData.BatchInventoryStateText = default;
+            debugData.TradeOpportunityCount = 0;
+            debugData.TradeOpportunityVersion = 0;
+            debugData.TradeOpportunityStateText = default;
 
             foreach (var (inventory, batches, priceState) in SystemAPI.Query<RefRO<BatchInventory>, DynamicBuffer<InventoryBatch>, RefRO<BatchPricingState>>())
             {
@@ -1069,6 +1075,70 @@ namespace PureDOTS.Systems
                 }
                 debugData.BatchInventoryStateText = text;
             }
+        }
+
+        private EntityQuery _tradeOpportunityQuery;
+        private EntityQuery _logisticsRegistryQuery;
+
+        private void EnsureQueries(ref SystemState state)
+        {
+            if (_tradeOpportunityQuery == default)
+            {
+                _tradeOpportunityQuery = state.GetEntityQuery(ComponentType.ReadOnly<TradeOpportunityState>());
+            }
+
+            if (_logisticsRegistryQuery == default)
+            {
+                _logisticsRegistryQuery = state.GetEntityQuery(ComponentType.ReadOnly<LogisticsRequestRegistry>());
+            }
+        }
+
+        private void UpdateTradeOpportunityDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            EnsureQueries(ref state);
+
+            debugData.TradeOpportunityCount = 0;
+            debugData.TradeOpportunityVersion = 0;
+            debugData.TradeOpportunityStateText = default;
+
+            if (_tradeOpportunityQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var tradeState = _tradeOpportunityQuery.GetSingleton<TradeOpportunityState>();
+
+            debugData.TradeOpportunityCount = tradeState.OpportunityCount;
+            debugData.TradeOpportunityVersion = tradeState.Version;
+
+            var text = new FixedString128Bytes();
+            text.Append("Trade opps=");
+            text.Append(tradeState.OpportunityCount);
+            text.Append(" v");
+            text.Append(tradeState.Version);
+            debugData.TradeOpportunityStateText = text;
+        }
+
+        private void UpdateLogisticsDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            EnsureQueries(ref state);
+
+            debugData.LogisticsRequestCount = 0;
+            debugData.LogisticsPending = 0;
+            debugData.LogisticsInProgress = 0;
+            debugData.LogisticsCritical = 0;
+
+            if (_logisticsRegistryQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var registry = _logisticsRegistryQuery.GetSingleton<LogisticsRequestRegistry>();
+
+            debugData.LogisticsRequestCount = registry.TotalRequests;
+            debugData.LogisticsPending = registry.PendingRequests;
+            debugData.LogisticsInProgress = registry.InProgressRequests;
+            debugData.LogisticsCritical = registry.CriticalRequests;
         }
 
         private void UpdateComplianceDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
@@ -2049,6 +2119,18 @@ namespace PureDOTS.Systems
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryMaxPrice, Unit = TelemetryMetricUnit.None });
             key = "batchinventory.price.avg";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryAvgPrice, Unit = TelemetryMetricUnit.None });
+            key = "trade.opportunities.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.TradeOpportunityCount, Unit = TelemetryMetricUnit.Count });
+            key = "trade.opportunities.version";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.TradeOpportunityVersion, Unit = TelemetryMetricUnit.Count });
+            key = "trade.logistics.total";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.LogisticsRequestCount, Unit = TelemetryMetricUnit.Count });
+            key = "trade.logistics.pending";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.LogisticsPending, Unit = TelemetryMetricUnit.Count });
+            key = "trade.logistics.inprogress";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.LogisticsInProgress, Unit = TelemetryMetricUnit.Count });
+            key = "trade.logistics.critical";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.LogisticsCritical, Unit = TelemetryMetricUnit.Count });
 
             key = "orders.count";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderCount, Unit = TelemetryMetricUnit.Count });

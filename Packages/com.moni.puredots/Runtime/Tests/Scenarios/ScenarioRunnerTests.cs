@@ -87,7 +87,8 @@ namespace PureDOTS.Tests.Scenarios
             var files = new[]
             {
                 Path.Combine(root, "godgame_smoke.json"),
-                Path.Combine(root, "space4x_smoke.json")
+                Path.Combine(root, "space4x_smoke.json"),
+                Path.Combine(root, "space4x_modules_smoke.json")
             };
 
             foreach (var file in files)

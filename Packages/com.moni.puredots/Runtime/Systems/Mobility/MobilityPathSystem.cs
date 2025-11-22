@@ -15,6 +15,23 @@ namespace PureDOTS.Systems.Mobility
     [UpdateAfter(typeof(MobilityNetworkSystem))]
     public partial struct MobilityPathSystem : ISystem
     {
+        private struct PathRequestEntry : System.IComparable<PathRequestEntry>
+        {
+            public Entity Entity;
+            public uint RequestedTick;
+
+            public int CompareTo(PathRequestEntry other)
+            {
+                var tickCompare = RequestedTick.CompareTo(other.RequestedTick);
+                if (tickCompare != 0)
+                {
+                    return tickCompare;
+                }
+
+                return Entity.Index.CompareTo(other.Entity.Index);
+            }
+        }
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -34,79 +51,138 @@ namespace PureDOTS.Systems.Mobility
             var networkEntity = SystemAPI.GetSingletonEntity<MobilityNetwork>();
             var waypoints = state.EntityManager.GetBuffer<MobilityWaypointEntry>(networkEntity);
             var highways = state.EntityManager.GetBuffer<MobilityHighwayEntry>(networkEntity);
+            var gateways = state.EntityManager.GetBuffer<MobilityGatewayEntry>(networkEntity);
 
             var waypointExists = new NativeHashSet<int>(waypoints.Length, state.WorldUpdateAllocator);
-            var distanceById = new NativeParallelHashMap<int, float>(waypoints.Length, state.WorldUpdateAllocator);
-            var previousById = new NativeParallelHashMap<int, int>(waypoints.Length, state.WorldUpdateAllocator);
-
             for (int i = 0; i < waypoints.Length; i++)
             {
-                var id = waypoints[i].WaypointId;
-                waypointExists.Add(id);
-                distanceById.TryAdd(id, float.PositiveInfinity);
+                var waypoint = waypoints[i];
+                if ((waypoint.Flags & (byte)WaypointFlags.Disabled) != 0)
+                {
+                    continue;
+                }
+                waypointExists.Add(waypoint.WaypointId);
             }
 
+            var distanceById = new NativeParallelHashMap<int, float>(waypoints.Length, state.WorldUpdateAllocator);
+            var previousById = new NativeParallelHashMap<int, int>(waypoints.Length, state.WorldUpdateAllocator);
             DynamicBuffer<MobilityInterceptionEvent> interceptionBuffer = default;
             if (state.EntityManager.HasBuffer<MobilityInterceptionEvent>(networkEntity))
             {
                 interceptionBuffer = state.EntityManager.GetBuffer<MobilityInterceptionEvent>(networkEntity);
+                interceptionBuffer.Clear();
             }
 
-            foreach (var (request, result, path) in SystemAPI.Query<RefRO<MobilityPathRequest>, RefRW<MobilityPathResult>, DynamicBuffer<MobilityPathWaypoint>>())
+            for (int i = 0; i < waypoints.Length; i++)
             {
-                var req = request.ValueRO;
+                var id = waypoints[i].WaypointId;
+                distanceById.TryAdd(id, float.PositiveInfinity);
+                previousById.TryAdd(id, -1);
+            }
+
+            var adjacency = new NativeParallelMultiHashMap<int, PathEdge>(math.max(1, (highways.Length + gateways.Length) * 2), state.WorldUpdateAllocator);
+            BuildAdjacency(highways, gateways, waypointExists, adjacency);
+
+            var requestQueue = new NativeList<PathRequestEntry>(state.WorldUpdateAllocator);
+            foreach (var (pathRequest, _, entity) in SystemAPI.Query<RefRO<MobilityPathRequest>, RefRO<MobilityPathResult>>().WithEntityAccess())
+            {
+                requestQueue.Add(new PathRequestEntry
+                {
+                    Entity = entity,
+                    RequestedTick = pathRequest.ValueRO.RequestedTick != 0 ? pathRequest.ValueRO.RequestedTick : timeState.Tick
+                });
+            }
+
+            if (requestQueue.Length > 1)
+            {
+                NativeSortExtension.Sort(requestQueue.AsArray());
+            }
+
+            var requestLookup = state.GetComponentLookup<MobilityPathRequest>(isReadOnly: true);
+            var resultLookup = state.GetComponentLookup<MobilityPathResult>(isReadOnly: false);
+            var pathLookup = state.GetBufferLookup<MobilityPathWaypoint>(isReadOnly: false);
+            requestLookup.Update(ref state);
+            resultLookup.Update(ref state);
+            pathLookup.Update(ref state);
+
+            using var openList = new NativeList<int>(waypoints.Length, state.WorldUpdateAllocator);
+            using var scratchPath = new NativeList<int>(waypoints.Length, state.WorldUpdateAllocator);
+
+            for (int i = 0; i < requestQueue.Length; i++)
+            {
+                var entry = requestQueue[i];
+                if (!requestLookup.HasComponent(entry.Entity) || !resultLookup.HasComponent(entry.Entity) || !pathLookup.HasBuffer(entry.Entity))
+                {
+                    continue;
+                }
+
+                var req = requestLookup[entry.Entity];
+                var result = resultLookup[entry.Entity];
+                var path = pathLookup[entry.Entity];
 
                 if (!waypointExists.Contains(req.FromWaypointId) || !waypointExists.Contains(req.ToWaypointId))
                 {
-                    result.ValueRW = new MobilityPathResult
-                    {
-                        Status = MobilityPathStatus.Failed,
-                        EstimatedCost = 0f,
-                        HopCount = 0,
-                        LastUpdateTick = timeState.Tick
-                    };
+                    result.Status = MobilityPathStatus.Failed;
+                    result.EstimatedCost = 0f;
+                    result.HopCount = 0;
+                    result.LastUpdateTick = timeState.Tick;
+                    resultLookup[entry.Entity] = result;
                     path.Clear();
                     continue;
                 }
 
-            var cost = SolvePath(req.FromWaypointId, req.ToWaypointId, waypoints, highways, waypointExists, distanceById, previousById, path, state.WorldUpdateAllocator);
-            if (req.MaxCost > 0f && cost > req.MaxCost || cost < 0f)
-            {
-                result.ValueRW = new MobilityPathResult
+                var cost = SolvePath(
+                    req.FromWaypointId,
+                    req.ToWaypointId,
+                    waypoints,
+                    adjacency,
+                    waypointExists,
+                    distanceById,
+                    previousById,
+                    path,
+                    openList,
+                    scratchPath);
+
+                if ((req.MaxCost > 0f && cost > req.MaxCost) || cost < 0f)
                 {
-                        Status = MobilityPathStatus.Failed,
-                        EstimatedCost = cost,
-                        HopCount = 0,
-                        LastUpdateTick = timeState.Tick
-                    };
+                    result.Status = MobilityPathStatus.Failed;
+                    result.EstimatedCost = cost;
+                    result.HopCount = 0;
+                    result.LastUpdateTick = timeState.Tick;
+                    resultLookup[entry.Entity] = result;
                     path.Clear();
                     continue;
                 }
 
-                path.Clear();
-                path.Add(new MobilityPathWaypoint { WaypointId = req.FromWaypointId });
-                if (req.FromWaypointId != req.ToWaypointId)
-                {
-                    path.Add(new MobilityPathWaypoint { WaypointId = req.ToWaypointId });
-                }
+                result.Status = MobilityPathStatus.Assigned;
+                result.EstimatedCost = cost;
+                result.HopCount = path.Length;
+                result.LastUpdateTick = timeState.Tick;
+                resultLookup[entry.Entity] = result;
 
-                result.ValueRW = new MobilityPathResult
+                if (interceptionBuffer.IsCreated)
                 {
-                    Status = MobilityPathStatus.Assigned,
-                    EstimatedCost = cost,
-                    HopCount = path.Length,
-                    LastUpdateTick = timeState.Tick
-                };
-
-                if (interceptionBuffer.IsCreated && (req.Flags & MobilityPathRequestFlags.BroadcastRendezvous) != 0)
-                {
-                    interceptionBuffer.Add(new MobilityInterceptionEvent
+                    if ((req.Flags & MobilityPathRequestFlags.BroadcastRendezvous) != 0)
                     {
-                        FromWaypointId = req.FromWaypointId,
-                        ToWaypointId = req.ToWaypointId,
-                        Tick = timeState.Tick,
-                        Type = 0
-                    });
+                        interceptionBuffer.Add(new MobilityInterceptionEvent
+                        {
+                            FromWaypointId = req.FromWaypointId,
+                            ToWaypointId = req.ToWaypointId,
+                            Tick = timeState.Tick,
+                            Type = 0
+                        });
+                    }
+
+                    if ((req.Flags & MobilityPathRequestFlags.AllowInterception) != 0)
+                    {
+                        interceptionBuffer.Add(new MobilityInterceptionEvent
+                        {
+                            FromWaypointId = req.FromWaypointId,
+                            ToWaypointId = req.ToWaypointId,
+                            Tick = timeState.Tick,
+                            Type = 1
+                        });
+                    }
                 }
             }
         }
@@ -115,33 +191,22 @@ namespace PureDOTS.Systems.Mobility
             int fromId,
             int toId,
             DynamicBuffer<MobilityWaypointEntry> waypoints,
-            DynamicBuffer<MobilityHighwayEntry> highways,
+            NativeParallelMultiHashMap<int, PathEdge> adjacency,
             NativeHashSet<int> waypointExists,
             NativeParallelHashMap<int, float> distanceById,
             NativeParallelHashMap<int, int> previousById,
             DynamicBuffer<MobilityPathWaypoint> outputPath,
-            Allocator allocator)
+            NativeList<int> openList,
+            NativeList<int> scratchPath)
         {
-            var adjacency = new NativeParallelMultiHashMap<int, HighwayEdge>(math.max(1, highways.Length * 2), allocator);
-            for (int i = 0; i < highways.Length; i++)
-            {
-                var h = highways[i];
-                if ((h.Flags & (byte)HighwayFlags.Blocked) != 0)
-                {
-                    continue;
-                }
-
-                adjacency.Add(h.FromWaypointId, new HighwayEdge { To = h.ToWaypointId, Cost = h.Cost > 0f ? h.Cost : math.max(0.01f, h.TravelTime) });
-                adjacency.Add(h.ToWaypointId, new HighwayEdge { To = h.FromWaypointId, Cost = h.Cost > 0f ? h.Cost : math.max(0.01f, h.TravelTime) });
-            }
-
-            var openList = new NativeList<int>(allocator);
+            openList.Clear();
+            scratchPath.Clear();
 
             for (int i = 0; i < waypoints.Length; i++)
             {
                 var waypointId = waypoints[i].WaypointId;
                 distanceById[waypointId] = float.PositiveInfinity;
-                previousById.Remove(waypointId);
+                previousById[waypointId] = -1;
             }
 
             distanceById[fromId] = 0f;
@@ -195,25 +260,23 @@ namespace PureDOTS.Systems.Mobility
                             openList.Add(edge.To);
                         }
                     }
-                } while (adjacency.TryGetNextValue(out edge, ref it));
+                }
+                while (adjacency.TryGetNextValue(out edge, ref it));
             }
 
             if (!distanceById.TryGetValue(toId, out var finalCost) || float.IsPositiveInfinity(finalCost))
             {
                 outputPath.Clear();
-                adjacency.Dispose();
-                openList.Dispose();
                 return -1f;
             }
 
             // Reconstruct path.
-            var path = new NativeList<int>(allocator);
             var walker = toId;
-            path.Add(walker);
+            scratchPath.Add(walker);
             while (previousById.TryGetValue(walker, out var prev))
             {
                 walker = prev;
-                path.Add(walker);
+                scratchPath.Add(walker);
                 if (walker == fromId)
                 {
                     break;
@@ -221,18 +284,63 @@ namespace PureDOTS.Systems.Mobility
             }
 
             outputPath.Clear();
-            for (int i = path.Length - 1; i >= 0; i--)
+            for (int i = scratchPath.Length - 1; i >= 0; i--)
             {
-                outputPath.Add(new MobilityPathWaypoint { WaypointId = path[i] });
+                outputPath.Add(new MobilityPathWaypoint { WaypointId = scratchPath[i] });
             }
 
-            adjacency.Dispose();
-            openList.Dispose();
-            path.Dispose();
             return finalCost;
         }
 
-        private struct HighwayEdge
+        private static void BuildAdjacency(
+            DynamicBuffer<MobilityHighwayEntry> highways,
+            DynamicBuffer<MobilityGatewayEntry> gateways,
+            NativeHashSet<int> waypointExists,
+            NativeParallelMultiHashMap<int, PathEdge> adjacency)
+        {
+            for (int i = 0; i < highways.Length; i++)
+            {
+                var h = highways[i];
+                if ((h.Flags & (byte)HighwayFlags.Blocked) != 0)
+                {
+                    continue;
+                }
+
+                if (!waypointExists.Contains(h.FromWaypointId) || !waypointExists.Contains(h.ToWaypointId))
+                {
+                    continue;
+                }
+
+                var cost = h.Cost > 0f ? h.Cost : math.max(0.01f, h.TravelTime);
+                if ((h.Flags & (byte)HighwayFlags.UnderMaintenance) != 0)
+                {
+                    cost *= 1.25f;
+                }
+
+                adjacency.Add(h.FromWaypointId, new PathEdge { To = h.ToWaypointId, Cost = cost });
+                adjacency.Add(h.ToWaypointId, new PathEdge { To = h.FromWaypointId, Cost = cost });
+            }
+
+            for (int i = 0; i < gateways.Length; i++)
+            {
+                var gateway = gateways[i];
+                if ((gateway.Flags & (byte)(GatewayFlags.Offline | GatewayFlags.Restricted)) != 0)
+                {
+                    continue;
+                }
+
+                if (!waypointExists.Contains(gateway.FromWaypointId) || !waypointExists.Contains(gateway.ToWaypointId))
+                {
+                    continue;
+                }
+
+                const float gatewayCost = 0.01f;
+                adjacency.Add(gateway.FromWaypointId, new PathEdge { To = gateway.ToWaypointId, Cost = gatewayCost });
+                adjacency.Add(gateway.ToWaypointId, new PathEdge { To = gateway.FromWaypointId, Cost = gatewayCost });
+            }
+        }
+
+        private struct PathEdge
         {
             public int To;
             public float Cost;

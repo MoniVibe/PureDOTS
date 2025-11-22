@@ -2,6 +2,7 @@ using Godgame.Roads;
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using UnityEngine;
+using Hash128 = Unity.Entities.Hash128;
 
 namespace Godgame.Authoring
 {

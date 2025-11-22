@@ -72,48 +72,60 @@
     <Analyzer Include="C:\Users\shonh\OneDrive\Documents\claudeprojects\Unity\PureDOTS\Library\PackageCache\com.unity.entities@f6e02210e263\Unity.Entities\SourceGenerators\Unity.Entities.Analyzer.CodeFixes.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\DivineHandStateSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Tests\GodgameRoadSystemTests.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\ClimateSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Registry\GodgameRegistryComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\HandComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Camera\CameraControlSystem.cs" />
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\RightClickSystems.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameRoadConfigAuthoring.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgamePresentationBindingAuthoring.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\DisableBurstForGameplay.cs" />
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\ResourceTypeCatalogUtility.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Camera\CameraComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\HandAggregatePileResultSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameVillagerPresentationProfile.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameBandPresentationAdapterSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Tests\BandSpawnInputSystemTests.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\ConstructionSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\VillagerAISystem.cs" />
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\HandComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Registry\GodgameRegistryBridgeSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgamePresentationIds.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgamePresentationBinding.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameProjectilePresentationAdapterSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\Resources\AggregatePileSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Registry\GodgameSpatialIndexingSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgamePresentationAssignmentSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\CombatSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameRoadAutoBuildSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Input\BandSpawnInputSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Tests\GodgameRegistryBridgeSystemTests.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\BandSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\PresentationHandleBridgeSample.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Camera\GodgameCameraController.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\WindSystem.cs" />
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Hand\HandAggregatePileInteractionSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Registry\GodgameResourceComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\MoistureGridSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\VillagerMovementDebugSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameRoadComponents.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Debug\GodgameTelemetryHUD.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameVillageCenterAuthoring.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\Input\InputReaderSystem.cs" />
-    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Interaction\HandPickupSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\VillageSpawnerConfig.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\VegetationGrowthSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\UtilitySystems.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameRainCloudPresentationAdapterSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Camera\GodgameCameraInputBridge.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Tests\AggregatePileSystemTests.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgamePresentationBindingBootstrapSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Registry\GodgameRegistrySyncSystems.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameVillageRoadBootstrapSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Miracles\RainMiracleSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameMiraclePresentationDescriptors.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameRoadHeatmapSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameMiraclePresentationAdapterSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\Resources\AggregatePileComponents.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Roads\GodgameRoadStretchSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Camera\CameraSyncSystem.cs" />
+    <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameVillagerPresentationProfileAuthoring.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Presentation\GodgameVillagerPresentationAdapterSystem.cs" />
     <Compile Include="Assets\Projects\Godgame\Scripts\Godgame\Systems\VillageSpawnerSystem.cs" />
   </ItemGroup>
@@ -1186,6 +1198,10 @@
     <ProjectReference Include="PureDOTS.Systems.csproj">
       <Project>{379B40A0-3AFF-1121-58CD-6605ACAD7448}</Project>
       <Name>PureDOTS.Systems</Name>
+    </ProjectReference>
+    <ProjectReference Include="PureDOTS.Config.csproj">
+      <Project>{42DF73EE-8D9F-FECF-BC7C-CB6FA75B0C64}</Project>
+      <Name>PureDOTS.Config</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

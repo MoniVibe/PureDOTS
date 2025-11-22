@@ -74,6 +74,8 @@
   <ItemGroup>
     <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Scenarios\ScenarioRunnerTests.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Combat\CombatLoopTests.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Ships\ModuleMaintenanceTests.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Space\CarrierModuleSystemsTests.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Registry\RegistryContinuityValidationTests.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Tests\Time\TimeSpinePlayModeTests.cs" />
   </ItemGroup>

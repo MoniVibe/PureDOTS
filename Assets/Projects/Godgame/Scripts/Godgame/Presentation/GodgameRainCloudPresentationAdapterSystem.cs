@@ -1,5 +1,5 @@
 using PureDOTS.Runtime.Components;
-using Unity.Burst;
+using PureDOTS.Systems.Environment;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,15 +10,13 @@ namespace Godgame.Presentation
     /// <summary>
     /// Applies presentation bindings to rain cloud entities so placeholder VFX can be swapped with authored assets.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(PureDOTS.Systems.MoistureRainSystem))]
+    [UpdateAfter(typeof(MoistureRainSystem))]
     public partial struct GodgameRainCloudPresentationAdapterSystem : ISystem
     {
         private ComponentLookup<GodgamePresentationBinding> _bindingLookup;
         private EntityQuery _rainCloudQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _bindingLookup = state.GetComponentLookup<GodgamePresentationBinding>();
@@ -30,7 +28,6 @@ namespace Godgame.Presentation
             state.RequireForUpdate<PresentationCommandQueue>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bindingLookup.Update(ref state);

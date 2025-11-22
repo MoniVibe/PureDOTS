@@ -18,11 +18,13 @@ Sources: `Space4x/Docs/TODO/4xdotsrequest.md` and `TRI_PROJECT_BRIEFING.md`. Foc
 - Agent C: Mobility/infrastructure (waypoints/highways/gateways, maintenance, interception/rendezvous queue), economy/logistics (supply-demand pricing, trade ops, FIFO+spoilage), and tech/time/growth (tech diffusion, time-scale compliance across systems, breeding/cloning remains deferred).
 
 ## Agent Notes
-- Agent C (in-flight): mobility registry scaffold (waypoints/highways/gateways) and batch inventory with spoilage/FIFO consumption landed in PureDOTS. Pending: pathfinding/queues, dynamic pricing, and tech diffusion integration.
-  - Added mobility path request queue stub + interception events and HUD/telemetry for mobility graph health.
-  - Batch inventory now mirrors villager withdraw requests, runs spoilage/consumption FIFO, and exposes dynamic pricing multipliers via telemetry.
-  - Sample scenarios added under `Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/` (`space4x_mobility_path.json`, `space4x_batch_inventory.json`) to drive ScenarioRunner + HUD verification.
+- Agent C: mobility registry scaffold (waypoints/highways/gateways) and batch inventory with spoilage/FIFO consumption landed in PureDOTS. Pathfinding queue, dynamic pricing, and tech diffusion slices delivered.
+  - Mobility path resolver now queues requests deterministically, honours disabled/blocked nodes, traverses gateways, and publishes rendezvous/interception events each tick.
+  - Batch pricing now reacts to supply/demand trends with smoothed inflow/outflow tracking and time-scale aware spoilage; defaults seeded via bootstrap. Trade opportunity surfacing added (best supply/demand pairs by price spread) for ScenarioRunner/HUD consumers, with routing into logistics requests and a lightweight fulfillment stub to keep registry metrics moving.
+  - Added tech diffusion components + systems (source/target bootstrap, distance-weighted spread, time-scale aware rates) for Space4X tech progression hooks.
+  - Sample scenarios live under `Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/` (`space4x_mobility_path.json`, `space4x_batch_inventory.json`, `space4x_trade_opportunities.json`) to drive ScenarioRunner + HUD verification.
 - Agent A (in-flight): alignment/compliance scaffolding landed (affiliation/doctrine components, crew aggregation + compliance alerts, HUD/telemetry counters) with sample `space4x_alignment_demo.json`. Pending: richer doctrine validation, AI ticket wiring, and mutiny/desertion demo hook.
+- Agent B (in-flight): module maintenance baseline added (module slot/health components, aggregation, degradation, repair queue, refit gating, telemetry counters, and unit tests). Pending: module baking/catalog wiring, combat stat aggregation, and scenario/demo coverage.
 
 ## Status Update – Presentation Track (Agent Beta)
 - Expanded presentation binding schema with palette/size/speed plus lifetime/attach rules; bridge now carries style blocks instead of raw strings.

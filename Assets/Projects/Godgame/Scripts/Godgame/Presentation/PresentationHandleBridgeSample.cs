@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.VFX;
@@ -10,9 +11,12 @@ namespace Godgame.Presentation
     /// without writing bespoke DOTS systems per prefab.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(CompanionLink))]
     public sealed class PresentationHandleBridgeSample : MonoBehaviour
     {
+        [Header("Entity Link")]
+        [Tooltip("Entity to read PresentationHandle data from. Leave null to disable.")]
+        public Entity linkedEntity;
+
         [Header("Renderer Overrides")]
         [Tooltip("Renderer that can swap shared materials based on VariantSeed.")]
         public Renderer targetRenderer;
@@ -34,7 +38,6 @@ namespace Godgame.Presentation
         [Tooltip("VisualEffect property name that stores the seed.")]
         public string visualEffectSeedProperty = "Seed";
 
-        private Entity _linkedEntity;
         private EntityManager _entityManager;
 
         private void Awake()
@@ -47,29 +50,29 @@ namespace Godgame.Presentation
             }
 
             _entityManager = world.EntityManager;
-            var companionLink = GetComponent<CompanionLink>();
-            _linkedEntity = companionLink.LinkedEntity;
 
-            // Ensure VisualEffect is unique per instance when editing in-place.
-            if (visualEffect != null)
+            if (linkedEntity == Entity.Null)
             {
-                visualEffect.ResetSeed();
+                // No link available; disable until a runtime script assigns one.
+                enabled = false;
+                return;
             }
+
         }
 
         private void LateUpdate()
         {
-            if (_entityManager == null || !_entityManager.Exists(_linkedEntity))
+            if (_entityManager == null || !_entityManager.Exists(linkedEntity))
             {
                 return;
             }
 
-            if (!_entityManager.HasComponent<PresentationHandle>(_linkedEntity))
+            if (!_entityManager.HasComponent<PresentationHandle>(linkedEntity))
             {
                 return;
             }
 
-            var handle = _entityManager.GetComponentData<PresentationHandle>(_linkedEntity);
+            var handle = _entityManager.GetComponentData<PresentationHandle>(linkedEntity);
             ApplyMaterialOverride(handle);
             ApplyAnimatorOverride(handle);
             ApplyVfxOverride(handle);

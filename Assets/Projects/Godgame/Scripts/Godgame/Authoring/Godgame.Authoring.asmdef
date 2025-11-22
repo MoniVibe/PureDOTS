@@ -4,6 +4,7 @@
   "references": [
     "GUID:22425877c6208af4d856e5e5f04bfef1",
     "PureDOTS.Runtime",
+    "PureDOTS.Config",
     "Unity.Entities",
     "Unity.Entities.Hybrid",
     "Unity.Mathematics",

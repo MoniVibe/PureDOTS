@@ -10,7 +10,7 @@ Agent routing (single source of truth): when told to "proceed work", start here.
 - Agent C (Documentation): mirror changes by updating this file and Progress.md; ensure any new systems/authoring/tests are documented here with Status/Owner/LastUpdated before closing the slice.
 
 ## Next Up (refresh each planning cycle)
-- Phase 1 slice: Modules + degradation/repairs baseline (slot data, refit system, health/repair queue) — Owner: TBD
+- Phase 1 slice: Modules + degradation/repairs baseline (slot data, refit system, health/repair queue) — Owner: Agent A (Implementation) — In Progress 2025-11-22
 - Phase 1 slice: Compliance path (crew aggregation, Affiliation buffers, compliance ordering + breach routing) — Owner: TBD
 - Phase 1 slice: Mining deposits/harvest node queue and waypoint/highway scaffolding — Owner: TBD
 
@@ -24,13 +24,14 @@ Agent routing (single source of truth): when told to "proceed work", start here.
 - Hook suspicion decay routing: feed `SuspicionScore` deltas into telemetry/UI surfaces.
 
 ## Modules, Health, Repairs
-- Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
+- Status: In Progress | Owner: Agent A (Implementation) | LastUpdated: 2025-11-22
 - Module slot framework: `CarrierModuleSlot` buffer + `ModuleStatModifier` components; module entities parented to carriers.
 - Systems: `CarrierModuleRefitSystem` (time-based swap, archetype transition, refit gating), `ModuleStatAggregationSystem` (child stat aggregation), `ModuleBakingSystem` (authoring -> blob).
 - Gating: check `RefitFacility` proximity; tech/crew scaling for refit time; field vs station swap rules.
 - Component degradation: per-module `ComponentHealth` buffer with degradation sources, failure states, repair priority.
 - Systems: `ComponentDegradationSystem`, `FieldRepairSystem` (capped repairs outside stations), `StationRepairSystem`, `ComponentFailureSystem`.
 - Repair queue/priorities; critical system auto-prioritization; manual override path.
+- Progress (2025-11-22, Agent A): Added module slot/health/repair components with aggregation, degradation, repair queue, refit gating, power-budget gating, and console/singleton telemetry plus catalog/loadout authoring to spawn module entities. Unit tests cover aggregation/refit/repair flows. ScenarioRunner smoke (`Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/space4x_modules_smoke.json`) exercises over-budget refit without prefabs. Follow-ups: consume catalog in scenarios, HUD telemetry, catalog-ID refits, crew skill modifiers, combat stat aggregation, and station-vs-field facility checks/presentation coverage.
 
 ## Mining Deposits & Harvest Nodes
 - Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
@@ -46,18 +47,21 @@ Agent routing (single source of truth): when told to "proceed work", start here.
 - Breeding/Cloning (deferred): `CrewGrowthSettings/State/Telemetry`, `Space4XCrewGrowthSystem`, authoring; defaults disabled, currently logs telemetry only.
 
 ## Navigation, Waypoints, Interception
-- Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
+- Status: In Progress | Owner: Agent C | LastUpdated: 2025-02-07
+- Progress: deterministic mobility path queue with gateway traversal, blocked/disabled guards, and rendezvous/interception event stream; follow-up needed for maintenance/degradation and ownership reconfiguration.
 - Waypoints/infrastructure: `Waypoint`, `HyperHighway`, `Gateway` components; systems for registration, pathfinding, maintenance/degradation, ownership reconfiguration; maintenance resource tracking in blob data.
 - Fleet interception/rendezvous: broadcast position/velocity, intercept pathfinding, tech-gated interception vs static rendezvous, spatial queries for nearest fleets; command log + telemetry `space4x.intercept.*`; ensure sample authoring seeds `InterceptCapability`.
 
 ## Economy & Spoilage
-- Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
+- Status: In Progress | Owner: Agent C | LastUpdated: 2025-02-07
+- Progress: batch pricing tracks smoothed inflow/outflow with elasticity + time-scale aware spoilage; trade opportunity surfacing added (best supply/demand pairs by price spread) with a sample scenario (`space4x_trade_opportunities.json`); trade routing now issues logistics requests from surfaced opportunities and a lightweight fulfillment stub advances them for registry telemetry. Full transport assignment/pacing + station inventory pipeline remain.
 - Supply/demand pricing: `StationInventory` buffer with inflow/outflow, base/current price; `SupplyDemandModifier` elasticity.
 - Systems: `InventoryFlowTrackingSystem`, `DynamicPricingSystem`, `TradeOpportunitySystem`.
 - Spoilage: FIFO inventory batches with `CreationTick` and `SpoilageRate`; `ResourceSpoilageSystem` + `FIFOConsumptionSystem`; consumables degrade (e.g., 2%/tick), durables excluded.
 
 ## Tech Diffusion & Time Control
-- Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
+- Status: In Progress | Owner: Agent C | LastUpdated: 2025-02-07
+- Progress: tech diffusion components/system added (source bootstrap, distance-weighted spread, time-scale aware rates); upgrade application + registry/time-control audits remain open.
 - Tech diffusion: `TechLevel`, `TechDiffusionState` components; `TechDiffusionSystem`, `TechUpgradeApplicationSystem`; hybrid distance/time formula with tech level multiplier; spatial queries from core worlds.
 - Time control: ensure Space4X systems honor `TimeState.TimeScale` (pause/1x/2x/5x/10x); mark time-independent systems appropriately for UI/presentation.
 

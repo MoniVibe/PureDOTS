@@ -25,7 +25,13 @@ namespace PureDOTS.Runtime.Skills
         HarvestBotany = 1,
         AnimalHandling = 2,
         Mining = 3,
-        Processing = 4
+        Processing = 4,
+        ShipEngineering = 5,
+        ShipRepair = 6,
+        ShipRefit = 7,
+        Gunnery = 8,
+        Hauling = 9,
+        HazardOps = 10
     }
 
     public struct SkillEntry

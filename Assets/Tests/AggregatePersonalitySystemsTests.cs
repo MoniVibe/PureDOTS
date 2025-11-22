@@ -69,8 +69,8 @@ namespace PureDOTS.Tests
             buffer.Add(new AggregateMember { Member = memberA, Weight = 1f });
             buffer.Add(new AggregateMember { Member = memberB, Weight = 2f });
 
-            _world.UpdateSystem<AggregatePersonalityBootstrapSystem>();
-            _world.UpdateSystem<AggregateAlignmentComputationSystem>();
+            UpdateSystem<AggregatePersonalityBootstrapSystem>();
+            UpdateSystem<AggregateAlignmentComputationSystem>();
 
             var alignment = _entityManager.GetComponentData<VillagerAlignment>(aggregate);
             Assert.AreEqual(-20, alignment.MoralAxis);
@@ -107,8 +107,8 @@ namespace PureDOTS.Tests
             buffer.Add(new AggregateMember { Member = memberA, Weight = 1f });
             buffer.Add(new AggregateMember { Member = memberB, Weight = 3f });
 
-            _world.UpdateSystem<AggregatePersonalityBootstrapSystem>();
-            _world.UpdateSystem<AggregateBehaviorComputationSystem>();
+            UpdateSystem<AggregatePersonalityBootstrapSystem>();
+            UpdateSystem<AggregateBehaviorComputationSystem>();
 
             var behavior = _entityManager.GetComponentData<VillagerBehavior>(aggregate);
             Assert.AreEqual(15, behavior.BoldScore);
@@ -122,7 +122,7 @@ namespace PureDOTS.Tests
         public void AggregateInitiativeSystem_ComputesInitiative()
         {
             var aggregate = CreateAggregateEntity();
-            _world.UpdateSystem<AggregatePersonalityBootstrapSystem>();
+            UpdateSystem<AggregatePersonalityBootstrapSystem>();
 
             _entityManager.SetComponentData(aggregate, new AggregateEntity
             {
@@ -146,7 +146,7 @@ namespace PureDOTS.Tests
                 PurityAxis = 30
             });
 
-            _world.UpdateSystem<AggregateInitiativeComputationSystem>();
+            UpdateSystem<AggregateInitiativeComputationSystem>();
 
             var initiative = _entityManager.GetComponentData<VillagerInitiativeState>(aggregate);
             Assert.That(initiative.CurrentInitiative, Is.GreaterThan(0.5f));
@@ -164,7 +164,7 @@ namespace PureDOTS.Tests
                 Integrity = 0.2f
             });
 
-            _world.UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
+            UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
 
             Assert.IsFalse(_entityManager.HasComponent<VillageAlignmentState>(village));
             Assert.IsTrue(_entityManager.HasComponent<VillagerAlignment>(village));
@@ -190,7 +190,7 @@ namespace PureDOTS.Tests
                 IsFanatic = true
             });
 
-            _world.UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
+            UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
 
             Assert.IsFalse(_entityManager.HasComponent<GuildAlignment>(guild));
             Assert.IsTrue(_entityManager.HasComponent<VillagerAlignment>(guild));
@@ -206,6 +206,12 @@ namespace PureDOTS.Tests
             Assert.AreEqual(2, outlooks.Outlook2);
             Assert.AreEqual(3, outlooks.Outlook3);
             Assert.IsTrue(outlooks.IsFanatic);
+        }
+
+        private void UpdateSystem<T>() where T : unmanaged, ISystem
+        {
+            var handle = _world.GetOrCreateSystem<T>();
+            handle.Update(_world.Unmanaged);
         }
     }
 }
