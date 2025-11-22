@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Aggregates;
 using Unity.Entities;
-using Unity.Entities.Tests;
 
 namespace PureDOTS.Tests
 {
@@ -9,7 +8,7 @@ namespace PureDOTS.Tests
     /// Tests for PureDOTS aggregate (band/guild) data skeletons.
     /// Verifies that aggregate components compile and can be instantiated.
     /// </summary>
-    public class AggregateDataSkeletonTests : ECSTestsFixture
+    public class AggregateDataSkeletonTests
     {
         [Test]
         public void Band_CanBeCreated()

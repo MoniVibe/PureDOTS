@@ -47,6 +47,7 @@ namespace PureDOTS.Runtime.Registry
         public uint LastUpdateTick;
         public uint SpatialVersion;
         public uint SpatialVersionDelta;
+        public RegistryTelemetryKey TelemetryKey;
         public FixedString64Bytes Label;
     }
 

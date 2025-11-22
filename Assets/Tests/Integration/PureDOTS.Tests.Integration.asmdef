@@ -3,6 +3,7 @@
     "rootNamespace": "PureDOTS.Tests.Integration",
     "references": [
         "PureDOTS.Tests",
+        "PureDOTS.Tests.Playmode",
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
         "PureDOTS.Authoring",
@@ -11,7 +12,6 @@
         "Space4X.Gameplay",
         "Space4X.Placeholder",
         "Unity.Entities",
-        "Unity.Entities.Tests",
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.Transforms",

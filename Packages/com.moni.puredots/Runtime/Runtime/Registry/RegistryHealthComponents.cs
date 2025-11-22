@@ -160,7 +160,8 @@ namespace PureDOTS.Runtime.Registry
         SpatialMismatchCritical = 1 << 3,
         UpdateFrequencyWarning = 1 << 4,
         DirectoryMismatchWarning = 1 << 5,
-        SpatialContinuityMissing = 1 << 6
+        SpatialContinuityMissing = 1 << 6,
+        DefinitionMismatch = 1 << 7
     }
 
     /// <summary>

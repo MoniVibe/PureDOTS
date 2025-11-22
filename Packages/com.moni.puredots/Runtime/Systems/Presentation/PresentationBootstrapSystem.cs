@@ -6,58 +6,55 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     public partial struct PresentationBootstrapSystem : ISystem
     {
-        private EntityQuery _queueQuery;
-        private EntityQuery _syncConfigQuery;
-        private EntityQuery _poolStatsQuery;
-
         public void OnCreate(ref SystemState state)
         {
-            _queueQuery = state.GetEntityQuery(ComponentType.ReadOnly<PresentationCommandQueue>());
-            _syncConfigQuery = state.GetEntityQuery(ComponentType.ReadOnly<PresentationHandleSyncConfig>());
-            _poolStatsQuery = state.GetEntityQuery(ComponentType.ReadOnly<PresentationPoolStats>());
+            var entityManager = state.EntityManager;
 
-            EnsureCommandQueue(ref state);
-            EnsureSyncConfig(ref state);
-            EnsurePoolStats(ref state);
+            if (!SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out var queueEntity))
+            {
+                queueEntity = entityManager.CreateEntity();
+                entityManager.AddComponentData(queueEntity, new PresentationCommandQueue());
+            }
+
+            if (!entityManager.HasComponent<PresentationRequestHub>(queueEntity))
+            {
+                entityManager.AddComponentData(queueEntity, new PresentationRequestHub());
+            }
+
+            if (!entityManager.HasComponent<PresentationRequestFailures>(queueEntity))
+            {
+                entityManager.AddComponentData(queueEntity, new PresentationRequestFailures());
+            }
+
+            if (!entityManager.HasBuffer<PresentationSpawnRequest>(queueEntity))
+            {
+                entityManager.AddBuffer<PresentationSpawnRequest>(queueEntity);
+            }
+
+            if (!entityManager.HasBuffer<PresentationRecycleRequest>(queueEntity))
+            {
+                entityManager.AddBuffer<PresentationRecycleRequest>(queueEntity);
+            }
+
+            if (!entityManager.HasBuffer<PlayEffectRequest>(queueEntity))
+            {
+                entityManager.AddBuffer<PlayEffectRequest>(queueEntity);
+            }
+
+            if (!entityManager.HasBuffer<SpawnCompanionRequest>(queueEntity))
+            {
+                entityManager.AddBuffer<SpawnCompanionRequest>(queueEntity);
+            }
+
+            if (!entityManager.HasBuffer<DespawnCompanionRequest>(queueEntity))
+            {
+                entityManager.AddBuffer<DespawnCompanionRequest>(queueEntity);
+            }
         }
 
         public void OnUpdate(ref SystemState state)
         {
         }
-
-        private void EnsureCommandQueue(ref SystemState state)
-        {
-            if (!_queueQuery.IsEmptyIgnoreFilter)
-            {
-                return;
-            }
-
-            var entity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponentData(entity, new PresentationCommandQueue());
-            state.EntityManager.AddBuffer<PresentationSpawnRequest>(entity);
-            state.EntityManager.AddBuffer<PresentationRecycleRequest>(entity);
-        }
-
-        private void EnsureSyncConfig(ref SystemState state)
-        {
-            if (!_syncConfigQuery.IsEmptyIgnoreFilter)
-            {
-                return;
-            }
-
-            var entity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponentData(entity, PresentationHandleSyncConfig.Default);
-        }
-
-        private void EnsurePoolStats(ref SystemState state)
-        {
-            if (!_poolStatsQuery.IsEmptyIgnoreFilter)
-            {
-                return;
-            }
-
-            var entity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponentData(entity, new PresentationPoolStats());
-        }
     }
 }
+

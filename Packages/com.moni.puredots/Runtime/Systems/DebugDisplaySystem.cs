@@ -1,8 +1,15 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Economy;
+using PureDOTS.Runtime.Alignment;
+using PureDOTS.Runtime.Mobility;
 using PureDOTS.Runtime.Pooling;
+using PureDOTS.Runtime.Orders;
+using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Presentation;
+using PureDOTS.Runtime.Signals;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Streaming;
 using PureDOTS.Runtime.Telemetry;
@@ -10,6 +17,7 @@ using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Devtools;
 #endif
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -80,12 +88,44 @@ namespace PureDOTS.Systems
             _registryContinuityLookup.Update(ref state);
             _registryContinuityAlertLookup.Update(ref state);
 
+            debugData.ValueRW.TargetTick = 0;
+            debugData.ValueRW.IsPlaying = false;
+            debugData.ValueRW.CommandLogCount = 0;
+            debugData.ValueRW.SnapshotLogCount = 0;
+            debugData.ValueRW.TickLogText = default;
+
             // Update time state
-            if (SystemAPI.HasSingleton<TimeState>())
+            if (SystemAPI.HasSingleton<TickTimeState>())
+            {
+                var timeState = SystemAPI.GetSingleton<TickTimeState>();
+                debugData.ValueRW.CurrentTick = timeState.Tick;
+                debugData.ValueRW.TargetTick = timeState.TargetTick;
+                debugData.ValueRW.IsPaused = timeState.IsPaused;
+                debugData.ValueRW.IsPlaying = timeState.IsPlaying;
+
+                var text = new FixedString128Bytes();
+                text.Append("Tick: ");
+                text.Append(timeState.Tick);
+                text.Append(" / Target: ");
+                text.Append(timeState.TargetTick);
+                text.Append(" | Speed: ");
+                var speedRounded = math.round(timeState.CurrentSpeedMultiplier * 100f) / 100f;
+                text.Append(speedRounded);
+                text.Append(" | ");
+                text.Append(timeState.IsPlaying ? "Playing" : "Stopped");
+                if (timeState.IsPaused)
+                {
+                    text.Append(" (Paused)");
+                }
+                debugData.ValueRW.TimeStateText = text;
+            }
+            else if (SystemAPI.HasSingleton<TimeState>())
             {
                 var timeState = SystemAPI.GetSingleton<TimeState>();
                 debugData.ValueRW.CurrentTick = timeState.Tick;
+                debugData.ValueRW.TargetTick = timeState.Tick;
                 debugData.ValueRW.IsPaused = timeState.IsPaused;
+                debugData.ValueRW.IsPlaying = !timeState.IsPaused;
 
                 var text = new FixedString128Bytes();
                 text.Append("Tick: ");
@@ -122,7 +162,73 @@ namespace PureDOTS.Systems
                 }
                 text.Append(" | Playback Tick: ");
                 text.Append(rewindState.PlaybackTick);
+                text.Append(" → Target: ");
+                text.Append(rewindState.TargetTick);
                 debugData.ValueRW.RewindStateText = text;
+            }
+
+            debugData.ValueRW.CameraRigActive = 0;
+            debugData.ValueRW.CameraRigPosition = float3.zero;
+            debugData.ValueRW.CameraRigDistance = 0f;
+            debugData.ValueRW.CameraRigPitch = 0f;
+            debugData.ValueRW.CameraRigYaw = 0f;
+            debugData.ValueRW.CameraRigShake = 0f;
+            debugData.ValueRW.CameraRigStateText = default;
+
+            if (SystemAPI.TryGetSingleton(out CameraRigTelemetry cameraRig))
+            {
+                debugData.ValueRW.CameraRigActive = 1;
+                debugData.ValueRW.CameraRigPosition = cameraRig.Position;
+                debugData.ValueRW.CameraRigDistance = cameraRig.Distance;
+                debugData.ValueRW.CameraRigPitch = cameraRig.Pitch;
+                debugData.ValueRW.CameraRigYaw = cameraRig.Yaw;
+                debugData.ValueRW.CameraRigShake = cameraRig.Shake;
+
+                var cameraText = new FixedString128Bytes();
+                cameraText.Append("Cam dist=");
+                cameraText.Append(math.round(cameraRig.Distance * 100f) / 100f);
+                cameraText.Append(" yaw=");
+                cameraText.Append(math.round(cameraRig.Yaw * 100f) / 100f);
+                cameraText.Append(" pitch=");
+                cameraText.Append(math.round(cameraRig.Pitch * 100f) / 100f);
+                debugData.ValueRW.CameraRigStateText = cameraText;
+            }
+
+            if (SystemAPI.HasSingleton<InputCommandLogState>() && SystemAPI.HasSingleton<TickSnapshotLogState>())
+            {
+                var commandState = SystemAPI.GetSingleton<InputCommandLogState>();
+                var snapshotState = SystemAPI.GetSingleton<TickSnapshotLogState>();
+                debugData.ValueRW.CommandLogCount = commandState.Count;
+                debugData.ValueRW.SnapshotLogCount = snapshotState.Count;
+
+                var text = new FixedString128Bytes();
+                text.Append("Cmd ");
+                text.Append(commandState.Count);
+                text.Append("/");
+                text.Append(commandState.Capacity);
+                text.Append(" | Snap ");
+                text.Append(snapshotState.Count);
+                text.Append("/");
+                text.Append(snapshotState.Capacity);
+                text.Append(" | Last Tick ");
+                text.Append(math.max(commandState.LastTick, snapshotState.LastTick));
+
+                var commandBytes = commandState.Capacity * UnsafeUtility.SizeOf<InputCommandLogEntry>();
+                var snapshotBytes = snapshotState.Capacity * UnsafeUtility.SizeOf<TickSnapshotLogEntry>();
+                var totalBytes = commandBytes + snapshotBytes;
+                if (SystemAPI.TryGetSingleton(out TimeLogSettings logSettings) && logSettings.MemoryBudgetBytes > 0)
+                {
+                    text.Append(" | Mem ");
+                    text.Append(BytesToKilobytes(totalBytes));
+                    text.Append("KB/");
+                    text.Append(BytesToKilobytes(logSettings.MemoryBudgetBytes));
+                    text.Append("KB");
+                    if (totalBytes > logSettings.MemoryBudgetBytes)
+                    {
+                        text.Append("!");
+                    }
+                }
+                debugData.ValueRW.TickLogText = text;
             }
 
             debugData.ValueRW.VillagerCount = _villagerQuery.CalculateEntityCount();
@@ -135,6 +241,11 @@ namespace PureDOTS.Systems
             debugData.ValueRW.TotalResourcesStored = totalStored;
 
             UpdateRegistryDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateMobilityDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateBatchInventoryDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateOrderAndSignalDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateSpawnerDiagnostics(ref state, ref debugData.ValueRW);
+            UpdateComplianceDiagnostics(ref state, ref debugData.ValueRW);
             UpdatePoolingDiagnostics(ref debugData.ValueRW);
             UpdateSpatialDiagnostics(ref state, ref debugData.ValueRW);
             UpdateSunlightDiagnostics(ref state, ref debugData.ValueRW);
@@ -169,6 +280,8 @@ namespace PureDOTS.Systems
             debugData.RegistryContinuityFailureCount = 0;
             debugData.RegistryContinuityAlerts = default;
             debugData.RegistryHasAlerts = false;
+            debugData.RegistryDefinitionCount = 0;
+            debugData.RegistryContinuityLastCheckTick = 0;
             debugData.ResourceSpatialResolved = 0;
             debugData.ResourceSpatialFallback = 0;
             debugData.ResourceSpatialUnmapped = 0;
@@ -206,6 +319,17 @@ namespace PureDOTS.Systems
             debugData.RegistryDirectoryVersion = directory.Version;
             debugData.RegistryDirectoryLastUpdateTick = directory.LastUpdateTick;
             debugData.RegistryDirectoryAggregateHash = directory.AggregateHash;
+
+            foreach (var catalog in SystemAPI.Query<RefRO<RegistryDefinitionCatalog>>())
+            {
+                if (!catalog.ValueRO.Catalog.IsCreated)
+                {
+                    continue;
+                }
+
+                var catalogBlob = catalog.ValueRO.Catalog;
+                debugData.RegistryDefinitionCount += catalogBlob.Value.Definitions.Length;
+            }
 
             if (!_registryDirectoryLookup.HasBuffer(registryEntity))
             {
@@ -612,6 +736,7 @@ namespace PureDOTS.Systems
             var continuityWarningCount = 0;
             var continuityFailureCount = 0;
             uint continuityVersion = 0;
+            uint continuityLastTick = 0;
 
             if (SystemAPI.TryGetSingletonEntity<RegistrySpatialSyncState>(out var syncEntity))
             {
@@ -621,6 +746,7 @@ namespace PureDOTS.Systems
                     continuityWarningCount = continuity.WarningCount;
                     continuityFailureCount = continuity.FailureCount;
                     continuityVersion = continuity.Version;
+                    continuityLastTick = continuity.LastCheckTick;
                 }
 
                 if (_registryContinuityAlertLookup.HasBuffer(syncEntity))
@@ -655,6 +781,7 @@ namespace PureDOTS.Systems
             debugData.RegistryContinuityWarningCount = continuityWarningCount;
             debugData.RegistryContinuityFailureCount = continuityFailureCount;
             debugData.RegistryContinuityAlerts = continuityAlerts;
+            debugData.RegistryContinuityLastCheckTick = continuityLastTick;
             debugData.RegistryHasAlerts = displayWarning > 0 || displayCritical > 0 || displayFailure > 0 || continuityWarningCount > 0 || continuityFailureCount > 0;
             debugData.RegistryStateText = text;
         }
@@ -764,6 +891,10 @@ namespace PureDOTS.Systems
                 {
                     text.Append(" missing");
                 }
+                if ((alert.Flags & RegistryHealthFlags.DefinitionMismatch) != 0)
+                {
+                    text.Append(" def");
+                }
             }
 
             return text;
@@ -808,10 +939,336 @@ namespace PureDOTS.Systems
             return label;
         }
 
+        private void UpdateMobilityDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            debugData.MobilityWaypointCount = 0;
+            debugData.MobilityHighwayCount = 0;
+            debugData.MobilityGatewayCount = 0;
+            debugData.MobilityDisabledWaypoints = 0;
+            debugData.MobilityBlockedHighways = 0;
+            debugData.MobilityOfflineGateways = 0;
+            debugData.MobilityStateText = default;
+
+            if (!SystemAPI.TryGetSingletonEntity<MobilityNetwork>(out var networkEntity))
+            {
+                return;
+            }
+
+            var network = SystemAPI.GetComponentRO<MobilityNetwork>(networkEntity).ValueRO;
+            var waypoints = state.EntityManager.HasBuffer<MobilityWaypointEntry>(networkEntity)
+                ? state.EntityManager.GetBuffer<MobilityWaypointEntry>(networkEntity)
+                : default;
+            var highways = state.EntityManager.HasBuffer<MobilityHighwayEntry>(networkEntity)
+                ? state.EntityManager.GetBuffer<MobilityHighwayEntry>(networkEntity)
+                : default;
+            var gateways = state.EntityManager.HasBuffer<MobilityGatewayEntry>(networkEntity)
+                ? state.EntityManager.GetBuffer<MobilityGatewayEntry>(networkEntity)
+                : default;
+
+            debugData.MobilityWaypointCount = network.WaypointCount;
+            debugData.MobilityHighwayCount = network.HighwayCount;
+            debugData.MobilityGatewayCount = network.GatewayCount;
+
+            if (waypoints.IsCreated)
+            {
+                for (int i = 0; i < waypoints.Length; i++)
+                {
+                    if ((waypoints[i].Flags & (byte)WaypointFlags.Disabled) != 0)
+                    {
+                        debugData.MobilityDisabledWaypoints++;
+                    }
+                }
+            }
+
+            if (highways.IsCreated)
+            {
+                for (int i = 0; i < highways.Length; i++)
+                {
+                    if ((highways[i].Flags & (byte)HighwayFlags.Blocked) != 0)
+                    {
+                        debugData.MobilityBlockedHighways++;
+                    }
+                }
+            }
+
+            if (gateways.IsCreated)
+            {
+                for (int i = 0; i < gateways.Length; i++)
+                {
+                    if ((gateways[i].Flags & (byte)GatewayFlags.Offline) != 0)
+                    {
+                        debugData.MobilityOfflineGateways++;
+                    }
+                }
+            }
+
+            var text = new FixedString128Bytes();
+            text.Append("Mobility wp=");
+            text.Append(network.WaypointCount);
+            text.Append(" hw=");
+            text.Append(network.HighwayCount);
+            if (network.GatewayCount > 0)
+            {
+                text.Append(" gw=");
+                text.Append(network.GatewayCount);
+            }
+            if (debugData.MobilityDisabledWaypoints > 0 || debugData.MobilityBlockedHighways > 0 || debugData.MobilityOfflineGateways > 0)
+            {
+                text.Append(" blocked=");
+                text.Append(debugData.MobilityBlockedHighways);
+                text.Append(" off=");
+                text.Append(debugData.MobilityOfflineGateways);
+                text.Append(" dis=");
+                text.Append(debugData.MobilityDisabledWaypoints);
+            }
+            debugData.MobilityStateText = text;
+        }
+
+        private void UpdateBatchInventoryDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            debugData.BatchInventoryBatchCount = 0;
+            debugData.BatchInventoryEntityCount = 0;
+            debugData.BatchInventoryTotalUnits = 0f;
+            debugData.BatchInventorySpoiledUnits = 0f;
+            debugData.BatchInventoryMaxPrice = 0f;
+            debugData.BatchInventoryAvgPrice = 0f;
+            debugData.BatchInventoryStateText = default;
+
+            foreach (var (inventory, batches, priceState) in SystemAPI.Query<RefRO<BatchInventory>, DynamicBuffer<InventoryBatch>, RefRO<BatchPricingState>>())
+            {
+                debugData.BatchInventoryEntityCount++;
+                debugData.BatchInventoryBatchCount += batches.Length;
+                debugData.BatchInventoryTotalUnits += inventory.ValueRO.TotalUnits;
+                debugData.BatchInventorySpoiledUnits += inventory.ValueRO.SpoiledUnits;
+                debugData.BatchInventoryMaxPrice = math.max(debugData.BatchInventoryMaxPrice, priceState.ValueRO.LastPriceMultiplier);
+                debugData.BatchInventoryAvgPrice += priceState.ValueRO.LastPriceMultiplier;
+            }
+
+            if (debugData.BatchInventoryBatchCount > 0)
+            {
+                if (debugData.BatchInventoryEntityCount > 0)
+                {
+                    debugData.BatchInventoryAvgPrice /= debugData.BatchInventoryEntityCount;
+                }
+                var text = new FixedString128Bytes();
+                text.Append("BatchInv ");
+                text.Append(debugData.BatchInventoryBatchCount);
+                text.Append(" tot=");
+                text.Append(math.round(debugData.BatchInventoryTotalUnits * 100f) / 100f);
+                if (debugData.BatchInventorySpoiledUnits > 0f)
+                {
+                    text.Append(" spoil=");
+                    text.Append(math.round(debugData.BatchInventorySpoiledUnits * 100f) / 100f);
+                }
+                if (debugData.BatchInventoryMaxPrice > 0f)
+                {
+                    text.Append(" price=");
+                    text.Append(math.round(debugData.BatchInventoryAvgPrice * 100f) / 100f);
+                    text.Append("/");
+                    text.Append(math.round(debugData.BatchInventoryMaxPrice * 100f) / 100f);
+                }
+                debugData.BatchInventoryStateText = text;
+            }
+        }
+
+        private void UpdateComplianceDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            debugData.ComplianceNominal = 0;
+            debugData.ComplianceWarning = 0;
+            debugData.ComplianceBreach = 0;
+            debugData.ComplianceStateText = default;
+
+            foreach (var compliance in SystemAPI.Query<RefRO<CrewCompliance>>())
+            {
+                switch (compliance.ValueRO.Status)
+                {
+                    case ComplianceStatus.Nominal:
+                        debugData.ComplianceNominal++;
+                        break;
+                    case ComplianceStatus.Warning:
+                        debugData.ComplianceWarning++;
+                        break;
+                    case ComplianceStatus.Breach:
+                        debugData.ComplianceBreach++;
+                        break;
+                }
+            }
+
+            if (debugData.ComplianceNominal + debugData.ComplianceWarning + debugData.ComplianceBreach > 0)
+            {
+                var text = new FixedString128Bytes();
+                text.Append("Compliance ok=");
+                text.Append(debugData.ComplianceNominal);
+                text.Append(" warn=");
+                text.Append(debugData.ComplianceWarning);
+                text.Append(" breach=");
+                text.Append(debugData.ComplianceBreach);
+                debugData.ComplianceStateText = text;
+            }
+        }
+
+        private void UpdateOrderAndSignalDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            debugData.OrderCount = 0;
+            debugData.OrderPendingCount = 0;
+            debugData.OrderInProgressCount = 0;
+            debugData.OrderCompletedCount = 0;
+            debugData.OrderFailedCount = 0;
+            debugData.OrderEventsBuffered = 0;
+            debugData.OrderEventVersion = 0;
+            debugData.OrderStateText = default;
+            debugData.SignalCount = 0;
+            debugData.SignalDroppedCount = 0;
+            debugData.SignalVersion = 0;
+            debugData.SignalStateText = default;
+
+            foreach (var order in SystemAPI.Query<RefRO<Order>>())
+            {
+                debugData.OrderCount++;
+                switch (order.ValueRO.Status)
+                {
+                    case OrderStatus.Pending:
+                        debugData.OrderPendingCount++;
+                        break;
+                    case OrderStatus.InProgress:
+                        debugData.OrderInProgressCount++;
+                        break;
+                    case OrderStatus.Completed:
+                        debugData.OrderCompletedCount++;
+                        break;
+                    case OrderStatus.Failed:
+                        debugData.OrderFailedCount++;
+                        break;
+                }
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<OrderEventStream>(out var streamEntity))
+            {
+                var stream = SystemAPI.GetComponentRO<OrderEventStream>(streamEntity).ValueRO;
+                debugData.OrderEventsBuffered = stream.EventCount;
+                debugData.OrderEventVersion = stream.Version;
+                if (state.EntityManager.HasBuffer<OrderEvent>(streamEntity))
+                {
+                    var events = state.EntityManager.GetBuffer<OrderEvent>(streamEntity);
+                    if (events.Length > 0)
+                    {
+                        var last = events[events.Length - 1];
+                        var text = new FixedString128Bytes();
+                        text.Append("Orders ");
+                        text.Append(debugData.OrderCount);
+                        text.Append(" v");
+                        text.Append(stream.Version);
+                        text.Append(" last ");
+                        text.Append(last.OrderType);
+                        text.Append(" ");
+                        AppendOrderEventLabel(ref text, last.EventType);
+                        debugData.OrderStateText = text;
+                    }
+                }
+            }
+
+            if (SystemAPI.TryGetSingletonEntity<SignalBus>(out var busEntity))
+            {
+                var bus = SystemAPI.GetComponentRO<SignalBus>(busEntity).ValueRO;
+                debugData.SignalCount = bus.PendingCount;
+                debugData.SignalDroppedCount = bus.DroppedCount;
+                debugData.SignalVersion = bus.Version;
+
+                if (state.EntityManager.HasBuffer<SignalEvent>(busEntity))
+                {
+                    var signals = state.EntityManager.GetBuffer<SignalEvent>(busEntity);
+                    var text = new FixedString128Bytes();
+                    text.Append("Signals ");
+                    text.Append(signals.Length);
+                    text.Append(" v");
+                    text.Append(bus.Version);
+                    if (signals.Length > 0)
+                    {
+                        var last = signals[signals.Length - 1];
+                        text.Append(" ");
+                        text.Append(last.Channel);
+                        if (last.Payload.Length > 0)
+                        {
+                            text.Append("=");
+                            text.Append(last.Payload);
+                        }
+                    }
+                    debugData.SignalStateText = text;
+                }
+            }
+        }
+
+        private static void AppendOrderEventLabel(ref FixedString128Bytes text, OrderEventType eventType)
+        {
+            switch (eventType)
+            {
+                case OrderEventType.Started:
+                    text.Append("start");
+                    break;
+                case OrderEventType.Completed:
+                    text.Append("done");
+                    break;
+                case OrderEventType.Failed:
+                    text.Append("fail");
+                    break;
+                default:
+                    text.Append("evt");
+                    break;
+            }
+        }
+
+        private void UpdateSpawnerDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
+        {
+            debugData.SpawnerTotal = 0;
+            debugData.SpawnerReady = 0;
+            debugData.SpawnerCooling = 0;
+            debugData.SpawnerDisabled = 0;
+            debugData.SpawnerAttempted = 0;
+            debugData.SpawnerSpawned = 0;
+            debugData.SpawnerFailed = 0;
+            debugData.SpawnerTelemetryTick = 0;
+            debugData.SpawnerCatalogVersion = 0;
+            debugData.SpawnerStateText = default;
+
+            if (!SystemAPI.TryGetSingleton(out SpawnerTelemetry telemetry))
+            {
+                return;
+            }
+
+            debugData.SpawnerTotal = telemetry.TotalSpawners;
+            debugData.SpawnerReady = telemetry.ReadySpawners;
+            debugData.SpawnerCooling = telemetry.CoolingSpawners;
+            debugData.SpawnerDisabled = telemetry.DisabledSpawners;
+            debugData.SpawnerAttempted = telemetry.SpawnAttempts;
+            debugData.SpawnerSpawned = telemetry.Spawned;
+            debugData.SpawnerFailed = telemetry.SpawnFailures;
+            debugData.SpawnerTelemetryTick = telemetry.LastUpdateTick;
+            debugData.SpawnerCatalogVersion = telemetry.CatalogVersion;
+
+            var text = new FixedString128Bytes();
+            text.Append("Spawners ");
+            text.Append(telemetry.TotalSpawners);
+            text.Append(" ready=");
+            text.Append(telemetry.ReadySpawners);
+            text.Append(" attempts=");
+            text.Append(telemetry.SpawnAttempts);
+            text.Append(" ok=");
+            text.Append(telemetry.Spawned);
+            text.Append("/");
+            text.Append(telemetry.SpawnFailures);
+            debugData.SpawnerStateText = text;
+        }
+
         private void UpdatePoolingDiagnostics(ref DebugDisplayData debugData)
         {
             debugData.PoolingActive = NxPoolingRuntime.IsInitialised;
             debugData.PoolingSnapshot = NxPoolingRuntime.GatherDiagnostics();
+            debugData.PresentationActiveEffects = 0;
+            debugData.PresentationActiveCompanions = 0;
+            debugData.PresentationPoolCount = 0;
+            debugData.PresentationReusedCount = 0;
+            debugData.PresentationFailedCount = 0;
+            debugData.PresentationPoolStateText = default;
 
             var text = new FixedString128Bytes();
 
@@ -839,15 +1296,39 @@ namespace PureDOTS.Systems
             text.Append("/");
             text.Append(pooling.NativeQueuesBorrowed + pooling.NativeQueuesAvailable);
 
-            if (SystemAPI.TryGetSingleton<PresentationPoolStats>(out var presentationStats))
+            var bridge = PresentationBridgeLocator.TryResolve();
+            if (bridge != null)
             {
-                text.Append(" | FX ");
-                text.Append(presentationStats.ActiveVisuals);
-                text.Append(" (+");
-                text.Append(presentationStats.SpawnedThisFrame);
-                text.Append(",-");
-                text.Append(presentationStats.RecycledThisFrame);
-                text.Append(")");
+                var stats = bridge.Stats;
+                debugData.PresentationActiveEffects = stats.ActiveEffects;
+                debugData.PresentationActiveCompanions = stats.ActiveCompanions;
+                debugData.PresentationPoolCount = stats.PooledInstances;
+                debugData.PresentationReusedCount = stats.ReusedFromPool;
+                debugData.PresentationFailedCount = stats.FailedPlayback + stats.FailedReleases;
+
+                var presentationText = new FixedString128Bytes();
+                presentationText.Append("fx=");
+                presentationText.Append(stats.ActiveEffects);
+                presentationText.Append(" comp=");
+                presentationText.Append(stats.ActiveCompanions);
+                presentationText.Append(" pool=");
+                presentationText.Append(stats.PooledInstances);
+
+                if (stats.ReusedFromPool > 0)
+                {
+                    presentationText.Append(" reuse=");
+                    presentationText.Append(stats.ReusedFromPool);
+                }
+
+                if (stats.FailedPlayback + stats.FailedReleases > 0)
+                {
+                    presentationText.Append(" fail=");
+                    presentationText.Append(stats.FailedPlayback + stats.FailedReleases);
+                }
+
+                debugData.PresentationPoolStateText = presentationText;
+                text.Append(" | Bridge ");
+                text.Append(presentationText);
             }
 
             debugData.PoolingStateText = text;
@@ -1465,6 +1946,11 @@ namespace PureDOTS.Systems
             return bytes <= 0 ? 0f : bytes / (1024f * 1024f);
         }
 
+        private static int BytesToKilobytes(long bytes)
+        {
+            return bytes <= 0 ? 0 : (int)(bytes / 1024);
+        }
+
         private void WriteTelemetrySnapshot(ref SystemState state, in DebugDisplayData debugData)
         {
             if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
@@ -1495,6 +1981,9 @@ namespace PureDOTS.Systems
             key = "registry.entries";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegisteredEntryCount, Unit = TelemetryMetricUnit.Count });
 
+            key = "registry.definitions";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegistryDefinitionCount, Unit = TelemetryMetricUnit.Count });
+
             key = "registry.health.worst";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegistryWorstHealthLevel, Unit = TelemetryMetricUnit.Count });
 
@@ -1513,6 +2002,12 @@ namespace PureDOTS.Systems
             key = "registry.continuity.failure";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegistryContinuityFailureCount, Unit = TelemetryMetricUnit.Count });
 
+            key = "registry.continuity.version";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegistryContinuityVersion, Unit = TelemetryMetricUnit.Count });
+
+            key = "registry.continuity.lasttick";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.RegistryContinuityLastCheckTick, Unit = TelemetryMetricUnit.Count });
+
             key = "registry.resource.spatial.resolved";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ResourceSpatialResolved, Unit = TelemetryMetricUnit.Count });
 
@@ -1530,6 +2025,68 @@ namespace PureDOTS.Systems
 
             key = "registry.storehouse.spatial.unmapped";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.StorehouseSpatialUnmapped, Unit = TelemetryMetricUnit.Count });
+
+            key = "mobility.waypoints";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityWaypointCount, Unit = TelemetryMetricUnit.Count });
+            key = "mobility.highways";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityHighwayCount, Unit = TelemetryMetricUnit.Count });
+            key = "mobility.gateways";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityGatewayCount, Unit = TelemetryMetricUnit.Count });
+            key = "mobility.blocked";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityBlockedHighways, Unit = TelemetryMetricUnit.Count });
+            key = "mobility.offline";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityOfflineGateways, Unit = TelemetryMetricUnit.Count });
+            key = "mobility.disabled";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.MobilityDisabledWaypoints, Unit = TelemetryMetricUnit.Count });
+
+            key = "batchinventory.batches";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryBatchCount, Unit = TelemetryMetricUnit.Count });
+            key = "batchinventory.units";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryTotalUnits, Unit = TelemetryMetricUnit.Count });
+            key = "batchinventory.spoiled";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventorySpoiledUnits, Unit = TelemetryMetricUnit.Count });
+            key = "batchinventory.price.max";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryMaxPrice, Unit = TelemetryMetricUnit.None });
+            key = "batchinventory.price.avg";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BatchInventoryAvgPrice, Unit = TelemetryMetricUnit.None });
+
+            key = "orders.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderCount, Unit = TelemetryMetricUnit.Count });
+            key = "orders.pending";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderPendingCount, Unit = TelemetryMetricUnit.Count });
+            key = "orders.inprogress";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderInProgressCount, Unit = TelemetryMetricUnit.Count });
+            key = "orders.completed";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderCompletedCount, Unit = TelemetryMetricUnit.Count });
+            key = "orders.failed";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderFailedCount, Unit = TelemetryMetricUnit.Count });
+            key = "orders.events";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.OrderEventsBuffered, Unit = TelemetryMetricUnit.Count });
+
+            key = "signals.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SignalCount, Unit = TelemetryMetricUnit.Count });
+            key = "signals.dropped";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SignalDroppedCount, Unit = TelemetryMetricUnit.Count });
+
+            key = "spawners.total";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerTotal, Unit = TelemetryMetricUnit.Count });
+            key = "spawners.ready";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerReady, Unit = TelemetryMetricUnit.Count });
+            key = "spawners.cooling";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerCooling, Unit = TelemetryMetricUnit.Count });
+            key = "spawners.attempts";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerAttempted, Unit = TelemetryMetricUnit.Count });
+            key = "spawners.spawned";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerSpawned, Unit = TelemetryMetricUnit.Count });
+            key = "spawners.failed";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpawnerFailed, Unit = TelemetryMetricUnit.Count });
+
+            key = "compliance.nominal";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ComplianceNominal, Unit = TelemetryMetricUnit.Count });
+            key = "compliance.warning";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ComplianceWarning, Unit = TelemetryMetricUnit.Count });
+            key = "compliance.breach";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.ComplianceBreach, Unit = TelemetryMetricUnit.Count });
 
             key = "registry.band.count";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.BandRegistryCount, Unit = TelemetryMetricUnit.Count });
@@ -1584,6 +2141,34 @@ namespace PureDOTS.Systems
 
             key = "resources.total";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.TotalResourcesStored, Unit = TelemetryMetricUnit.Count });
+
+            key = "camera.distance";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigDistance, Unit = TelemetryMetricUnit.Count });
+            key = "camera.yaw";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigYaw, Unit = TelemetryMetricUnit.Count });
+            key = "camera.pitch";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigPitch, Unit = TelemetryMetricUnit.Count });
+            key = "camera.shake";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigShake, Unit = TelemetryMetricUnit.Ratio });
+
+            key = "presentation.active.effects";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.PresentationActiveEffects, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.active.companions";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.PresentationActiveCompanions, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.pool.count";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.PresentationPoolCount, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.pool.reused";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.PresentationReusedCount, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.pool.failed";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.PresentationFailedCount, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.camera.active";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigActive, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.camera.distance";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigDistance, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.camera.yaw";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigYaw, Unit = TelemetryMetricUnit.Count });
+            key = "presentation.camera.pitch";
+            buffer.Add(new TelemetryMetric { Key = key, Value = debugData.CameraRigPitch, Unit = TelemetryMetricUnit.Count });
 
             key = "spatial.cells";
             buffer.Add(new TelemetryMetric { Key = key, Value = debugData.SpatialCellCount, Unit = TelemetryMetricUnit.Count });

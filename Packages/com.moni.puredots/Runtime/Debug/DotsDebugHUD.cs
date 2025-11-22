@@ -25,6 +25,7 @@ namespace PureDOTS.Debugging
         public Vector2 padding = new Vector2(10f, 10f);
 
         private World _world;
+        private EntityQuery _tickTimeQuery;
         private EntityQuery _timeQuery;
         private EntityQuery _rewindQuery;
         private EntityQuery _villagerQuery;
@@ -46,6 +47,7 @@ namespace PureDOTS.Debugging
             }
 
             var entityManager = _world.EntityManager;
+            _tickTimeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TickTimeState>());
             _timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>());
             _rewindQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>());
             _villagerQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<VillagerId>());
@@ -79,7 +81,17 @@ namespace PureDOTS.Debugging
             var rect = new Rect(padding.x, padding.y, 300f, Screen.height);
             GUILayout.BeginArea(rect, GUI.skin.box);
 
-            if (showTime && !_timeQuery.IsEmptyIgnoreFilter)
+            if (showTime && !_tickTimeQuery.IsEmptyIgnoreFilter)
+            {
+                var time = _tickTimeQuery.GetSingleton<TickTimeState>();
+                GUILayout.Label("Time State", HudStyles.BoldLabel);
+                GUILayout.Label($"Tick: {time.Tick} / Target: {time.TargetTick}");
+                GUILayout.Label($"Fixed DT: {time.FixedDeltaTime:F4}");
+                GUILayout.Label($"Speed: {time.CurrentSpeedMultiplier:F2}");
+                GUILayout.Label(time.IsPlaying ? (time.IsPaused ? "Paused" : "Playing") : "Stopped");
+                GUILayout.Space(6f);
+            }
+            else if (showTime && !_timeQuery.IsEmptyIgnoreFilter)
             {
                 var time = _timeQuery.GetSingleton<TimeState>();
                 GUILayout.Label("Time State", HudStyles.BoldLabel);

@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -81,6 +82,20 @@ namespace PureDOTS.Systems
 
             var warningCount = 0;
             var failureCount = 0;
+            var hasDefinitionCatalog = SystemAPI.TryGetSingleton(out RegistryDefinitionCatalog definitionCatalog) &&
+                                       definitionCatalog.IsCreated &&
+                                       definitionCatalog.Catalog.Value.Definitions.Length > 0;
+            NativeParallelHashMap<Unity.Entities.Hash128, RegistryDefinition> definitionMap = default;
+            if (hasDefinitionCatalog)
+            {
+                ref var definitions = ref definitionCatalog.Catalog.Value.Definitions;
+                definitionMap = new NativeParallelHashMap<Unity.Entities.Hash128, RegistryDefinition>(definitions.Length, state.WorldUpdateAllocator);
+                for (var defIndex = 0; defIndex < definitions.Length; defIndex++)
+                {
+                    var def = definitions[defIndex];
+                    definitionMap.TryAdd(def.Id.Value, def);
+                }
+            }
 
             for (var i = 0; i < entries.Length; i++)
             {
@@ -92,47 +107,63 @@ namespace PureDOTS.Systems
                 }
 
                 var metadata = _metadataLookup[registryEntity];
+                var status = RegistryContinuityStatus.Nominal;
+                var flags = RegistryHealthFlags.None;
+                var delta = 0u;
+
+                if (hasDefinitionCatalog && definitionMap.IsCreated && definitionMap.TryGetValue(metadata.Id.Value, out var definition))
+                {
+                    var expectedContinuity = definition.Continuity.WithDefaultsIfUnset();
+                    var actualContinuity = metadata.ContinuityMeta.WithDefaultsIfUnset();
+                    if (expectedContinuity.SchemaVersion != actualContinuity.SchemaVersion ||
+                        expectedContinuity.Residency != actualContinuity.Residency ||
+                        expectedContinuity.Category != actualContinuity.Category)
+                    {
+                        status = RegistryContinuityStatus.Failure;
+                        flags |= RegistryHealthFlags.DefinitionMismatch;
+                    }
+                }
+
                 var continuity = metadata.Continuity;
                 var requireSpatialSync = metadata.SupportsSpatialQueries && continuity.RequiresSpatialSync;
                 var hasContinuity = continuity.HasSpatialData;
 
-                if (!requireSpatialSync)
+                if (!requireSpatialSync && status == RegistryContinuityStatus.Nominal)
                 {
                     continue;
                 }
 
                 var registrySpatialVersion = continuity.SpatialVersion;
-                var status = RegistryContinuityStatus.Nominal;
-                var flags = RegistryHealthFlags.None;
-                var delta = 0u;
-
-                if (!hasContinuity)
+                if (requireSpatialSync)
                 {
-                    status = RegistryContinuityStatus.Failure;
-                    flags |= RegistryHealthFlags.SpatialContinuityMissing;
-                }
-                else if (!hasSpatialData)
-                {
-                    status = RegistryContinuityStatus.Warning;
-                    flags |= RegistryHealthFlags.SpatialMismatchWarning;
-                }
-                else
-                {
-                    delta = publishedSpatialVersion >= registrySpatialVersion
-                        ? publishedSpatialVersion - registrySpatialVersion
-                        : registrySpatialVersion - publishedSpatialVersion;
-
-                    if (thresholds.SpatialVersionMismatchCritical > 0u &&
-                        delta >= thresholds.SpatialVersionMismatchCritical)
+                    if (!hasContinuity)
                     {
                         status = RegistryContinuityStatus.Failure;
-                        flags |= RegistryHealthFlags.SpatialMismatchCritical;
+                        flags |= RegistryHealthFlags.SpatialContinuityMissing;
                     }
-                    else if (thresholds.SpatialVersionMismatchWarning > 0u &&
-                             delta >= thresholds.SpatialVersionMismatchWarning)
+                    else if (!hasSpatialData)
                     {
-                        status = RegistryContinuityStatus.Warning;
+                        status = (RegistryContinuityStatus)math.max((int)status, (int)RegistryContinuityStatus.Warning);
                         flags |= RegistryHealthFlags.SpatialMismatchWarning;
+                    }
+                    else
+                    {
+                        delta = publishedSpatialVersion >= registrySpatialVersion
+                            ? publishedSpatialVersion - registrySpatialVersion
+                            : registrySpatialVersion - publishedSpatialVersion;
+
+                        if (thresholds.SpatialVersionMismatchCritical > 0u &&
+                            delta >= thresholds.SpatialVersionMismatchCritical)
+                        {
+                            status = RegistryContinuityStatus.Failure;
+                            flags |= RegistryHealthFlags.SpatialMismatchCritical;
+                        }
+                        else if (thresholds.SpatialVersionMismatchWarning > 0u &&
+                                 delta >= thresholds.SpatialVersionMismatchWarning)
+                        {
+                            status = (RegistryContinuityStatus)math.max((int)status, (int)RegistryContinuityStatus.Warning);
+                            flags |= RegistryHealthFlags.SpatialMismatchWarning;
+                        }
                     }
                 }
 

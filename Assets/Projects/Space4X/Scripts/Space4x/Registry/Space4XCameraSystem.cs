@@ -15,8 +15,6 @@ namespace Space4X.Registry
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial struct Space4XCameraSystem : ISystem
     {
-        private Camera cachedCamera;
-
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Space4XCameraState>();
@@ -187,16 +185,13 @@ namespace Space4X.Registry
         [BurstDiscard]
         private Camera GetCamera()
         {
-            if (cachedCamera == null)
+            var cam = Camera.main;
+            if (cam == null)
             {
-                cachedCamera = Camera.main;
-                if (cachedCamera == null)
-                {
-                    cachedCamera = Object.FindFirstObjectByType<Camera>();
-                }
+                cam = Object.FindFirstObjectByType<Camera>();
             }
 
-            return cachedCamera;
+            return cam;
         }
 
         [BurstDiscard]

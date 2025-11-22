@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
@@ -13,18 +14,20 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(HistorySystemGroup))]
     public partial struct StorehouseInventoryTimeAdapterSystem : ISystem
     {
-        private NativeList<byte> _serializedState;
+        private TimeStreamHistory _history;
         private TimeAwareController _controller;
         private uint _lastRecordedTick;
+        private uint _horizonTicks;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _serializedState = new NativeList<byte>(Allocator.Persistent);
+            _history = new TimeStreamHistory(1024, 256, Allocator.Persistent);
             _controller = new TimeAwareController(
                 TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp | TimeAwareExecutionPhase.Playback,
                 TimeAwareExecutionOptions.SkipWhenPaused);
             _lastRecordedTick = uint.MaxValue;
+            _horizonTicks = 0;
 
             state.RequireForUpdate<StorehouseInventory>();
             state.RequireForUpdate<TimeState>();
@@ -34,10 +37,7 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-            if (_serializedState.IsCreated)
-            {
-                _serializedState.Dispose();
-            }
+            _history.Dispose();
         }
 
         [BurstCompile]
@@ -45,6 +45,7 @@ namespace PureDOTS.Systems
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var horizon = GetHorizonTicks(timeState);
 
             if (!_controller.TryBegin(timeState, rewindState, out var context))
             {
@@ -59,11 +60,23 @@ namespace PureDOTS.Systems
                 }
 
                 _lastRecordedTick = context.Time.Tick;
-                Save(ref state);
+                uint minTick = context.Time.Tick > horizon ? context.Time.Tick - horizon : 0;
+                _history.PruneOlderThan(minTick);
+
+                var recordIndex = _history.BeginRecord(context.Time.Tick, out var writer);
+                Save(ref state, ref writer);
+                _history.EndRecord(recordIndex);
             }
             else if (context.IsCatchUpPhase || context.IsPlaybackPhase)
             {
-                Load(ref state);
+                uint targetTick = context.IsPlaybackPhase ? context.Rewind.PlaybackTick : context.Time.Tick;
+                if (!_history.TryGet(targetTick, out var bytes))
+                {
+                    return;
+                }
+
+                var reader = new TimeStreamReader(bytes);
+                Load(ref state, ref reader);
             }
 
             if (context.ModeChangedThisFrame && context.PreviousMode == RewindMode.Playback && context.IsRecordPhase)
@@ -72,7 +85,7 @@ namespace PureDOTS.Systems
             }
         }
 
-        private void Save(ref SystemState state)
+        private void Save(ref SystemState state, ref TimeStreamWriter writer)
         {
             var records = new NativeList<StorehouseInventoryRecord>(Allocator.Temp);
             foreach (var (inventory, entity) in SystemAPI.Query<RefRO<StorehouseInventory>>().WithEntityAccess())
@@ -84,7 +97,6 @@ namespace PureDOTS.Systems
                 });
             }
 
-            var writer = new TimeStreamWriter(ref _serializedState);
             writer.Write(records.Length);
             for (int i = 0; i < records.Length; i++)
             {
@@ -94,16 +106,8 @@ namespace PureDOTS.Systems
             records.Dispose();
         }
 
-        private void Load(ref SystemState state)
+        private void Load(ref SystemState state, ref TimeStreamReader reader)
         {
-            if (_serializedState.Length == 0)
-            {
-                return;
-            }
-
-            using var bytes = new NativeArray<byte>(_serializedState.AsArray(), Allocator.Temp);
-            var reader = new TimeStreamReader(bytes);
-
             var count = reader.Read<int>();
             for (int i = 0; i < count; i++)
             {
@@ -122,6 +126,27 @@ namespace PureDOTS.Systems
         {
             public Entity Storehouse;
             public StorehouseInventory Inventory;
+        }
+
+        private uint GetHorizonTicks(in TimeState timeState)
+        {
+            if (_horizonTicks != 0)
+            {
+                return _horizonTicks;
+            }
+
+            float ticksPerSecond = 1f / math.max(0.0001f, timeState.FixedDeltaTime);
+            uint desired = (uint)math.max(1f, math.round(ticksPerSecond * 3f));
+
+            if (SystemAPI.TryGetSingleton<HistorySettings>(out var settings))
+            {
+                desired = math.max(desired, (uint)math.round(settings.DefaultTicksPerSecond * 3f));
+            }
+
+            _horizonTicks = desired + 4u;
+            var maxRecords = (int)math.max(8u, _horizonTicks + 8u);
+            _history.SetMaxRecords(maxRecords);
+            return _horizonTicks;
         }
     }
 }

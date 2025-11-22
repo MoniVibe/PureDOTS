@@ -10,8 +10,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Physics;
 
-#pragma warning disable 0618 // IAspect is deprecated but retained until refactor lands
-
+#pragma warning disable 618
 namespace PureDOTS.Systems
 {
     public readonly partial struct DivineHandAspect : IAspect
@@ -32,10 +31,6 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(HandSystemGroup))]
     public partial struct DivineHandSystem : ISystem
     {
-        private const byte FlagHasCargo = 1 << 0;
-        private const byte FlagSecondaryHeld = 1 << 1;
-        private const byte FlagThrowModeSlingshot = 1 << 2;
-
         private EntityQuery _handQuery;
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<HandPickable> _pickableLookup;
@@ -155,26 +150,13 @@ namespace PureDOTS.Systems
                     ? math.clamp(input.ThrowCharge, 0f, maxChargeWindow)
                     : input.ThrowCharge;
 
-                bool slingshotMode = input.ThrowModeIsSlingshot != 0;
-                stateData.Flags = slingshotMode
-                    ? (byte)(stateData.Flags | FlagThrowModeSlingshot)
-                    : (byte)(stateData.Flags & ~FlagThrowModeSlingshot);
-
-                bool prevSecondaryHeld = (stateData.Flags & FlagSecondaryHeld) != 0;
-                bool secondaryHeld = input.SecondaryHeld != 0;
-                stateData.Flags = secondaryHeld
-                    ? (byte)(stateData.Flags | FlagSecondaryHeld)
-                    : (byte)(stateData.Flags & ~FlagSecondaryHeld);
-                bool secondaryReleased = !secondaryHeld && prevSecondaryHeld;
-
                 bool hasHeldEntity = stateData.HeldEntity != Entity.Null && entityManager.Exists(stateData.HeldEntity);
-                byte playerId = intent.PlayerId;
 
                 // Consume intent for state transitions
                 // Intent.StartSelect triggers grab
                 if (intent.StartSelect != 0 && !hasHeldEntity && stateData.CooldownTimer <= 0f)
                 {
-                    var candidate = FindPickable(ref state, stateData.CursorPosition, config, playerId);
+                    var candidate = FindPickable(ref state, stateData.CursorPosition, config);
                     if (candidate != Entity.Null)
                     {
                         bool accept = true;
@@ -285,63 +267,31 @@ namespace PureDOTS.Systems
                 }
                 else
                 {
-                    if (!MaintainHeldTransform(ref state, ref stateData, in config, playerId))
+                    MaintainHeldTransform(ref stateData, in config);
+
+                    // Release is triggered by CancelAction or ConfirmPlace intent
+                    bool releaseRequested = intent.CancelAction != 0 || intent.ConfirmPlace != 0;
+                    bool queuedInstead = releaseRequested && input.QueueModifierHeld != 0 &&
+                                         TryQueueHeldEntity(ref ecb, entityManager, entity, ref stateData, in config, in input, queuedBuffer);
+                    if (!queuedInstead && releaseRequested && _miracleTokenLookup.HasComponent(stateData.HeldEntity))
                     {
-                        ForceDropHeldEntity(ref ecb, ref stateData);
+                        HandleMiracleTokenRelease(ref ecb, ref stateData, in config, in input, miracleEvents);
                         hasHeldEntity = false;
+                        releaseRequested = false;
                     }
-                    else
+                    if (queuedInstead)
                     {
-                        bool queuedInstead = false;
-                        if (secondaryReleased && input.QueueModifierHeld != 0)
-                        {
-                            queuedInstead = TryQueueHeldEntity(ref ecb, entityManager, entity, ref stateData, in config, in input, queuedBuffer);
-                            if (queuedInstead)
-                            {
-                                hasHeldEntity = false;
-                            }
-                        }
+                        hasHeldEntity = false;
+                        releaseRequested = false;
+                    }
 
-                        bool releaseRequested = false;
-                        bool releaseViaThrow = false;
-
-                        if (!queuedInstead)
-                        {
-                            if (secondaryReleased && input.QueueModifierHeld == 0)
-                            {
-                                releaseRequested = true;
-                                releaseViaThrow = true;
-                            }
-                            else if (intent.CancelAction != 0 || intent.ConfirmPlace != 0)
-                            {
-                                releaseRequested = true;
-                                releaseViaThrow = intent.ConfirmPlace != 0;
-                            }
-                        }
-
-                        if (!queuedInstead && releaseRequested && _miracleTokenLookup.HasComponent(stateData.HeldEntity))
-                        {
-                            HandleMiracleTokenRelease(ref ecb, ref stateData, in config, in input, miracleEvents);
-                            hasHeldEntity = false;
-                            releaseRequested = false;
-                            releaseViaThrow = false;
-                        }
-
-                        if (releaseRequested)
-                        {
-                            var releaseResult = ReleaseHeldEntity(ref state, ref ecb, ref stateData, in config, in input, in intent, playerId, releaseViaThrow);
-                            if (releaseResult != ReleaseResult.None)
-                            {
-                                bool appliedThrow = releaseResult == ReleaseResult.Thrown;
-                                hasHeldEntity = false;
-                                stateData.HeldAmount = 0;
-                                stateData.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
-                                if (appliedThrow)
-                                {
-                                    stateData.CooldownTimer = math.max(stateData.CooldownTimer, config.CooldownAfterThrowSeconds);
-                                }
-                            }
-                        }
+                    if (releaseRequested)
+                    {
+                        bool appliedThrow = ReleaseHeldEntity(ref ecb, ref stateData, in config, in input, in intent);
+                        hasHeldEntity = false;
+                        stateData.HeldAmount = 0;
+                        stateData.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
+                        stateData.CooldownTimer = math.max(stateData.CooldownTimer, appliedThrow ? config.CooldownAfterThrowSeconds : 0f);
                     }
                 }
 
@@ -358,12 +308,10 @@ namespace PureDOTS.Systems
 
                 bool hasCargo = hasHeldEntity || stateData.HeldAmount > 0;
 
-                stateData.Flags = hasCargo
-                    ? (byte)(stateData.Flags | FlagHasCargo)
-                    : (byte)(stateData.Flags & ~FlagHasCargo);
+                stateData.Flags = hasCargo ? (byte)(stateData.Flags | 0x1) : (byte)(stateData.Flags & 0xFE);
 
                 // Slingshot aim is active when holding cargo, charging, and not releasing
-                bool slingshotAimActive = slingshotMode && hasCargo && config.MinChargeSeconds > 0f &&
+                bool slingshotAimActive = hasCargo && config.MinChargeSeconds > 0f &&
                                            stateData.ChargeTimer >= config.MinChargeSeconds &&
                                            intent.ConfirmPlace == 0 && intent.CancelAction == 0;
 
@@ -461,44 +409,37 @@ namespace PureDOTS.Systems
             ecb.Playback(entityManager);
         }
 
-        private bool MaintainHeldTransform(ref SystemState systemState, ref DivineHandState handState, in DivineHandConfig config, byte playerId)
+        private void MaintainHeldTransform(ref DivineHandState state, in DivineHandConfig config)
         {
-            if (handState.HeldEntity == Entity.Null || !_transformLookup.HasComponent(handState.HeldEntity))
+            if (state.HeldEntity == Entity.Null || !_transformLookup.HasComponent(state.HeldEntity))
             {
-                return true;
+                return;
             }
 
-            var heldTransform = _transformLookup[handState.HeldEntity];
-            float targetHeight = math.max(config.HoldHeightOffset, handState.CursorPosition.y);
-            var targetPosition = handState.CursorPosition;
+            var heldTransform = _transformLookup[state.HeldEntity];
+            float targetHeight = math.max(config.HoldHeightOffset, state.CursorPosition.y);
+            var targetPosition = state.CursorPosition;
             targetPosition.y = targetHeight;
 
-            if (!IsWithinInfluence(ref systemState, targetPosition, playerId, 0f))
-            {
-                return false;
-            }
-
             float followLerp = config.HoldLerp;
-            if (_pickableLookup.HasComponent(handState.HeldEntity))
+            if (_pickableLookup.HasComponent(state.HeldEntity))
             {
-                followLerp = math.clamp(_pickableLookup[handState.HeldEntity].FollowLerp, 0.01f, 1f);
+                followLerp = math.clamp(_pickableLookup[state.HeldEntity].FollowLerp, 0.01f, 1f);
             }
 
             heldTransform.Position = math.lerp(heldTransform.Position, targetPosition, followLerp);
             heldTransform.Rotation = quaternion.identity;
-            _transformLookup[handState.HeldEntity] = heldTransform;
+            _transformLookup[state.HeldEntity] = heldTransform;
 
-            if (_rainCloudStateLookup.HasComponent(handState.HeldEntity))
+            if (_rainCloudStateLookup.HasComponent(state.HeldEntity))
             {
-                var rainState = _rainCloudStateLookup[handState.HeldEntity];
+                var rainState = _rainCloudStateLookup[state.HeldEntity];
                 rainState.Velocity = float3.zero;
-                _rainCloudStateLookup[handState.HeldEntity] = rainState;
+                _rainCloudStateLookup[state.HeldEntity] = rainState;
             }
-
-            return true;
         }
 
-        private Entity FindPickable(ref SystemState state, float3 cursorPosition, DivineHandConfig config, byte playerId)
+        private Entity FindPickable(ref SystemState state, float3 cursorPosition, DivineHandConfig config)
         {
             Entity bestEntity = Entity.Null;
             float bestDistanceSq = config.PickupRadius * config.PickupRadius;
@@ -551,11 +492,6 @@ namespace PureDOTS.Systems
                         }
                     }
 
-                    if (!IsWithinInfluence(ref state, position, playerId, 0f))
-                    {
-                        continue;
-                    }
-
                     bestDistanceSq = distanceSq;
                     bestEntity = entity;
                 }
@@ -584,11 +520,6 @@ namespace PureDOTS.Systems
                     continue;
                 }
 
-                if (!IsWithinInfluence(ref state, position, playerId, 0f))
-                {
-                    continue;
-                }
-
                 if (config.MaxGrabDistance > 0f)
                 {
                     float vertical = math.abs(position.y - cursorPosition.y);
@@ -605,53 +536,15 @@ namespace PureDOTS.Systems
             return bestEntity;
         }
 
-        private ReleaseResult ReleaseHeldEntity(ref SystemState systemState,
-            ref EntityCommandBuffer ecb,
-            ref DivineHandState handState,
+        private bool ReleaseHeldEntity(ref EntityCommandBuffer ecb,
+            ref DivineHandState state,
             in DivineHandConfig config,
             in DivineHandInput input,
-            in GodIntent intent,
-            byte playerId,
-            bool forceThrow)
-        {
-            if (handState.HeldEntity == Entity.Null)
-            {
-                return ReleaseResult.None;
-            }
-
-            bool throwRequested = forceThrow || intent.ConfirmPlace != 0;
-            if (throwRequested && !IsWithinInfluence(ref systemState, handState.CursorPosition, playerId, 0f))
-            {
-                return ReleaseResult.None;
-            }
-
-            if (_heldLookup.HasComponent(handState.HeldEntity))
-            {
-                ecb.RemoveComponent<HandHeldTag>(handState.HeldEntity);
-            }
-
-            bool slingshotMode = (handState.Flags & FlagThrowModeSlingshot) != 0;
-            ComputeThrowParameters(ref handState, in config, in input, slingshotMode, out var direction, out var impulse);
-
-            bool appliedThrow = throwRequested;
-            if (appliedThrow)
-            {
-                ApplyThrowToEntity(ref ecb, handState.HeldEntity, direction, impulse);
-            }
-
-            handState.HeldEntity = Entity.Null;
-            handState.HeldLocalOffset = float3.zero;
-            handState.ChargeTimer = 0f;
-            handState.Flags = (byte)(handState.Flags & ~FlagHasCargo);
-
-            return appliedThrow ? ReleaseResult.Thrown : ReleaseResult.Dropped;
-        }
-
-        private void ForceDropHeldEntity(ref EntityCommandBuffer ecb, ref DivineHandState state)
+            in GodIntent intent)
         {
             if (state.HeldEntity == Entity.Null)
             {
-                return;
+                return false;
             }
 
             if (_heldLookup.HasComponent(state.HeldEntity))
@@ -659,12 +552,20 @@ namespace PureDOTS.Systems
                 ecb.RemoveComponent<HandHeldTag>(state.HeldEntity);
             }
 
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
+
+            bool appliedThrow = intent.ConfirmPlace != 0;
+            if (appliedThrow)
+            {
+                ApplyThrowToEntity(ref ecb, state.HeldEntity, direction, impulse);
+            }
+
             state.HeldEntity = Entity.Null;
             state.HeldLocalOffset = float3.zero;
-            state.HeldAmount = 0;
-            state.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
             state.ChargeTimer = 0f;
-            state.Flags = (byte)(state.Flags & ~FlagHasCargo);
+            state.Flags &= 0xFE;
+
+            return appliedThrow;
         }
 
         private bool TryQueueHeldEntity(ref EntityCommandBuffer ecb,
@@ -680,8 +581,7 @@ namespace PureDOTS.Systems
                 return false;
             }
 
-            bool slingshotMode = (state.Flags & FlagThrowModeSlingshot) != 0;
-            ComputeThrowParameters(ref state, in config, in input, slingshotMode, out var direction, out var impulse);
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
 
             queuedBuffer.Add(new HandQueuedThrowElement
             {
@@ -702,7 +602,7 @@ namespace PureDOTS.Systems
             state.HeldAmount = 0;
             state.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
             state.ChargeTimer = 0f;
-            state.Flags = (byte)(state.Flags & ~FlagHasCargo);
+            state.Flags &= 0xFE;
 
             return true;
         }
@@ -817,10 +717,10 @@ namespace PureDOTS.Systems
         private void ComputeThrowParameters(ref DivineHandState state,
             in DivineHandConfig config,
             in DivineHandInput input,
-            bool slingshotMode,
             out float3 direction,
             out float impulse)
         {
+            direction = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f));
             float baseImpulse = math.max(1f, config.ThrowImpulse);
             float chargeDuration = math.max(0f, state.ChargeTimer);
             float minCharge = math.max(0f, config.MinChargeSeconds);
@@ -841,25 +741,8 @@ namespace PureDOTS.Systems
                 normalizedCharge = math.saturate(chargeDuration);
             }
 
-            if (slingshotMode)
-            {
-                var baseDirection = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f));
-                var planar = math.normalizesafe(new float3(baseDirection.x, 0f, baseDirection.z), new float3(0f, 0f, 1f));
-                float arcAngle = math.lerp(0.1f, 0.85f, normalizedCharge);
-                float cos = math.cos(arcAngle);
-                float sin = math.sin(arcAngle);
-                var vertical = new float3(0f, 1f, 0f);
-                direction = math.normalizesafe(planar * cos + vertical * sin, baseDirection);
-                float chargeMultiplier = math.max(1f, 1f + normalizedCharge * config.ThrowChargeMultiplier);
-                impulse = baseImpulse * chargeMultiplier;
-            }
-            else
-            {
-                direction = math.normalizesafe(input.AimDirection, new float3(0f, -1f, 0f));
-                float pointerSpeed = math.saturate(math.length(input.PointerDelta) * 0.01f);
-                float boost = math.max(pointerSpeed, normalizedCharge);
-                impulse = baseImpulse * math.max(1f, 1f + boost * config.ThrowChargeMultiplier);
-            }
+            float chargeMultiplier = math.max(1f, 1f + normalizedCharge * config.ThrowChargeMultiplier);
+            impulse = baseImpulse * chargeMultiplier;
         }
 
         private void ApplyThrowToEntity(ref EntityCommandBuffer ecb, Entity entity, float3 direction, float impulse)
@@ -911,8 +794,7 @@ namespace PureDOTS.Systems
             var token = _miracleTokenLookup[state.HeldEntity];
             ecb.DestroyEntity(state.HeldEntity);
 
-            bool slingshotMode = (state.Flags & FlagThrowModeSlingshot) != 0;
-            ComputeThrowParameters(ref state, in config, in input, slingshotMode, out var direction, out var impulse);
+            ComputeThrowParameters(ref state, in config, in input, out var direction, out var impulse);
 
             miracleEvents.Add(new MiracleReleaseEvent
             {
@@ -928,46 +810,7 @@ namespace PureDOTS.Systems
             state.HeldAmount = 0;
             state.HeldResourceTypeIndex = DivineHandConstants.NoResourceType;
             state.ChargeTimer = 0f;
-            state.Flags = (byte)(state.Flags & ~FlagHasCargo);
-        }
-
-        private bool IsWithinInfluence(ref SystemState systemState, float3 position, byte playerId, float padding)
-        {
-            bool hasSources = false;
-            float paddingSq = padding <= 0f ? 0f : padding * padding;
-
-            foreach (var (source, transform) in SystemAPI
-                         .Query<RefRO<InfluenceSource>, RefRO<LocalTransform>>())
-            {
-                if (source.ValueRO.PlayerId != playerId)
-                {
-                    continue;
-                }
-
-                hasSources = true;
-                float radius = math.max(0f, source.ValueRO.Radius);
-                if (radius <= 0f)
-                {
-                    continue;
-                }
-
-                float radiusSq = radius * radius + paddingSq;
-                float distanceSq = math.lengthsq(position - transform.ValueRO.Position);
-                if (distanceSq <= radiusSq)
-                {
-                    return true;
-                }
-            }
-
-            // When no sources exist yet, avoid blocking gameplay.
-            return !hasSources;
-        }
-
-        private enum ReleaseResult : byte
-        {
-            None,
-            Dropped,
-            Thrown
+            state.Flags &= 0xFE;
         }
 
         private int DepositToStorehouse(ref SystemState state, float3 targetPosition, ushort resourceTypeIndex, int units, BlobAssetReference<ResourceTypeIndexBlob> catalog, uint currentTick)
@@ -1100,4 +943,4 @@ namespace PureDOTS.Systems
         }
     }
 }
-#pragma warning restore 0618
+#pragma warning restore 618

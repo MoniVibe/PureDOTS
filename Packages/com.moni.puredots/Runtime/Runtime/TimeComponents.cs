@@ -3,6 +3,20 @@ using Unity.Entities;
 namespace PureDOTS.Runtime.Components
 {
     /// <summary>
+    /// Canonical timekeeping singleton for deterministic tick progression.
+    /// Mirrors <see cref="TimeState"/> for backward compatibility and extends it with target tick + play state.
+    /// </summary>
+    public struct TickTimeState : IComponentData
+    {
+        public float FixedDeltaTime;
+        public float CurrentSpeedMultiplier;
+        public uint Tick;
+        public uint TargetTick;
+        public bool IsPaused;
+        public bool IsPlaying;
+    }
+
+    /// <summary>
     /// Global time state used by simulation and presentation systems.
     /// Mirrors the deterministic tick progression used in the legacy DOTS stack.
     /// </summary>
@@ -38,6 +52,16 @@ namespace PureDOTS.Runtime.Components
         public const float FixedDeltaTime = 1f / 60f;
         public const float DefaultSpeedMultiplier = 1f;
         public const bool PauseOnStart = false;
+
+        public static TickTimeState CreateTickTimeDefault() => new TickTimeState
+        {
+            FixedDeltaTime = FixedDeltaTime,
+            CurrentSpeedMultiplier = DefaultSpeedMultiplier,
+            Tick = 0,
+            TargetTick = 0,
+            IsPaused = PauseOnStart,
+            IsPlaying = !PauseOnStart
+        };
 
         public static TimeSettingsConfig CreateDefault() => new TimeSettingsConfig
         {

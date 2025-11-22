@@ -3,13 +3,10 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
-#pragma warning disable 0618 // Migration system touches obsolete legacy tags by design
-
 namespace PureDOTS.Systems
 {
     /// <summary>
-    /// Migration system that syncs legacy tag components with VillagerFlags for backward compatibility.
-    /// Ensures VillagerFlags exists on all villagers and mirrors legacy tag state.
+    /// Ensures VillagerFlags exists on all villagers; legacy tag syncing can be enabled with VILLAGER_LEGACY_TAG_MIGRATION.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]
@@ -26,14 +23,15 @@ namespace PureDOTS.Systems
         {
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
-            // Sync legacy tags to VillagerFlags for entities that don't have VillagerFlags yet
+#if VILLAGER_LEGACY_TAG_MIGRATION
+#pragma warning disable CS0618
+            // Legacy path kept for backward compatibility; enable the define to mirror legacy tags onto the packed flags.
             foreach (var (id, entity) in SystemAPI.Query<RefRO<VillagerId>>()
                          .WithNone<VillagerFlags>()
                          .WithEntityAccess())
             {
                 var flags = new VillagerFlags();
 
-                // Sync from legacy tags if they exist
                 if (state.EntityManager.HasComponent<VillagerDeadTag>(entity))
                 {
                     flags.IsDead = true;
@@ -58,12 +56,10 @@ namespace PureDOTS.Systems
                 ecb.AddComponent(entity, flags);
             }
 
-            // Sync state from VillagerFlags back to legacy tags (for systems still using them)
             foreach (var (flags, entity) in SystemAPI.Query<RefRO<VillagerFlags>>().WithEntityAccess())
             {
                 var flagsValue = flags.ValueRO;
 
-                // Update legacy tags to match flags (for backward compatibility)
                 if (flagsValue.IsDead)
                 {
                     if (!state.EntityManager.HasComponent<VillagerDeadTag>(entity))
@@ -71,23 +67,24 @@ namespace PureDOTS.Systems
                         ecb.AddComponent<VillagerDeadTag>(entity);
                     }
                 }
-                else
+                else if (state.EntityManager.HasComponent<VillagerDeadTag>(entity))
                 {
-                    if (state.EntityManager.HasComponent<VillagerDeadTag>(entity))
-                    {
-                        ecb.RemoveComponent<VillagerDeadTag>(entity);
-                    }
+                    ecb.RemoveComponent<VillagerDeadTag>(entity);
                 }
-
-                // Similar for other tags if needed
-                // Note: Selected/Highlighted tags are typically managed by presentation systems
-                // so we don't auto-sync those here
             }
+#pragma warning restore CS0618
+#else
+            // Default path: ensure the packed flags component exists so downstream systems rely solely on VillagerFlags.
+            foreach (var (id, entity) in SystemAPI.Query<RefRO<VillagerId>>()
+                         .WithNone<VillagerFlags>()
+                         .WithEntityAccess())
+            {
+                ecb.AddComponent(entity, new VillagerFlags());
+            }
+#endif
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
     }
 }
-#pragma warning restore 0618
-

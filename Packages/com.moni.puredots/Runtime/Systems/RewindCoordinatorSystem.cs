@@ -11,8 +11,9 @@ namespace PureDOTS.Systems
     /// Replaces UnifiedRewindSystem coordination logic.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
-    [UpdateBefore(typeof(TimeTickSystem))]
+    [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
+    [UpdateAfter(typeof(TimeSettingsConfigSystem))]
+    [UpdateAfter(typeof(TimeLogConfigSystem))]
     public partial struct RewindCoordinatorSystem : ISystem
     {
         private float _playbackAccumulator;
@@ -21,8 +22,11 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<HistorySettings>();
+            state.RequireForUpdate<InputCommandLogEntry>();
+            state.RequireForUpdate<InputCommandLogState>();
 
             _playbackAccumulator = 0f;
         }
@@ -30,68 +34,90 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingletonRW<RewindState>();
-            var timeState = SystemAPI.GetSingletonRW<TimeState>();
+            var rewindHandle = SystemAPI.GetSingletonRW<RewindState>();
+            var tickTimeHandle = SystemAPI.GetSingletonRW<TickTimeState>();
+            var timeHandle = SystemAPI.GetSingletonRW<TimeState>();
+
+            ref var rewindState = ref rewindHandle.ValueRW;
+            ref var tickTimeState = ref tickTimeHandle.ValueRW;
+            ref var timeState = ref timeHandle.ValueRW;
+
             // Process time control commands
-            ProcessCommands(ref state, ref rewindState.ValueRW, ref timeState.ValueRW);
+            ProcessCommands(ref state, ref rewindState, ref tickTimeState);
 
             // Handle rewind state machine
-            switch (rewindState.ValueRO.Mode)
+            switch (rewindState.Mode)
             {
                 case RewindMode.Record:
-                    HandleRecordMode(ref state, ref timeState.ValueRW);
+                    HandleRecordMode(ref state, ref tickTimeState);
                     break;
 
                 case RewindMode.Playback:
-                    HandlePlaybackMode(ref state, ref rewindState.ValueRW,
-                        ref timeState.ValueRW);
+                    HandlePlaybackMode(ref state, ref rewindState, ref tickTimeState);
                     break;
 
                 case RewindMode.CatchUp:
-                    HandleCatchUpMode(ref state, ref rewindState.ValueRW,
-                        ref timeState.ValueRW);
+                    HandleCatchUpMode(ref state, ref rewindState, ref tickTimeState);
                     break;
             }
+
+            SyncLegacyTime(ref tickTimeState, ref timeState);
         }
 
         [BurstCompile]
         private void ProcessCommands(ref SystemState state,
-            ref RewindState rewindState, ref TimeState timeState)
+            ref RewindState rewindState, ref TickTimeState tickTimeState)
         {
             var commandEntity = SystemAPI.GetSingletonEntity<RewindState>();
             if (!state.EntityManager.HasBuffer<TimeControlCommand>(commandEntity))
                 return;
 
             var commands = state.EntityManager.GetBuffer<TimeControlCommand>(commandEntity);
+            var logState = SystemAPI.GetSingletonRW<InputCommandLogState>();
+            var logBuffer = SystemAPI.GetSingletonBuffer<InputCommandLogEntry>();
 
             for (int i = 0; i < commands.Length; i++)
             {
                 var cmd = commands[i];
+                var logEntry = new InputCommandLogEntry
+                {
+                    Tick = tickTimeState.Tick,
+                    Type = (byte)cmd.Type,
+                    FloatParam = cmd.FloatParam,
+                    UintParam = cmd.UintParam
+                };
+                TimeLogUtility.AppendCommand(ref logBuffer, ref logState.ValueRW, logEntry);
+
                 switch (cmd.Type)
                 {
                     case TimeControlCommand.CommandType.Pause:
-                        timeState.IsPaused = true;
+                        tickTimeState.IsPaused = true;
+                        tickTimeState.IsPlaying = false;
                         break;
 
                     case TimeControlCommand.CommandType.Resume:
-                        timeState.IsPaused = false;
+                        tickTimeState.IsPaused = false;
+                        tickTimeState.IsPlaying = true;
                         break;
 
                     case TimeControlCommand.CommandType.SetSpeed:
-                        timeState.CurrentSpeedMultiplier = math.clamp(cmd.FloatParam, 0.1f, 5f);
+                        tickTimeState.CurrentSpeedMultiplier = math.clamp(cmd.FloatParam, 0.1f, 5f);
                         break;
 
                     case TimeControlCommand.CommandType.StartRewind:
                         if (rewindState.Mode == RewindMode.Record)
                         {
-                            StartRewind(ref rewindState, timeState.Tick, cmd.UintParam);
+                            var maxDepth = ResolveRewindHorizonTicks(tickTimeState);
+                            uint minTick = tickTimeState.Tick > maxDepth ? tickTimeState.Tick - maxDepth : 0u;
+                            uint clampedTarget = math.max(cmd.UintParam, minTick);
+                            StartRewind(ref rewindState, ref tickTimeState, clampedTarget);
                         }
                         break;
 
                     case TimeControlCommand.CommandType.StopRewind:
                         if (rewindState.Mode == RewindMode.Playback)
                         {
-                            StopRewind(ref rewindState, ref timeState);
+                            StopRewind(ref rewindState, ref tickTimeState);
                         }
                         break;
 
@@ -101,6 +127,14 @@ namespace PureDOTS.Systems
                             rewindState.TargetTick = cmd.UintParam;
                         }
                         break;
+
+                    case TimeControlCommand.CommandType.StepTicks:
+                        // Allow single/multi tick advance while paused.
+                        uint stepCount = math.max(1u, cmd.UintParam == 0 ? 1u : cmd.UintParam);
+                        tickTimeState.TargetTick = math.max(tickTimeState.TargetTick, tickTimeState.Tick + stepCount);
+                        tickTimeState.IsPlaying = false;
+                        tickTimeState.IsPaused = true;
+                        break;
                 }
             }
 
@@ -108,32 +142,40 @@ namespace PureDOTS.Systems
         }
 
         [BurstCompile]
-        private void HandleRecordMode(ref SystemState state, ref TimeState timeState)
+        private void HandleRecordMode(ref SystemState state, ref TickTimeState tickTimeState)
         {
             // In record mode, we let TimeTickSystem advance normally
             // Add PlaybackGuardTag removal if any entities have it
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            foreach (var (tag, entity) in SystemAPI.Query<RefRO<PlaybackGuardTag>>()
-                .WithEntityAccess())
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<PlaybackGuardTag>>()
+                         .WithEntityAccess())
             {
                 ecb.RemoveComponent<PlaybackGuardTag>(entity);
             }
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+
+            if (tickTimeState.TargetTick < tickTimeState.Tick)
+            {
+                tickTimeState.TargetTick = tickTimeState.Tick;
+            }
         }
 
         [BurstCompile]
         private void HandlePlaybackMode(ref SystemState state,
-            ref RewindState rewindState, ref TimeState timeState)
+            ref RewindState rewindState, ref TickTimeState tickTimeState)
         {
             // Pause normal simulation during playback
-            timeState.IsPaused = true;
+            tickTimeState.IsPaused = true;
+            tickTimeState.IsPlaying = false;
+            tickTimeState.TargetTick = rewindState.TargetTick;
+            tickTimeState.Tick = rewindState.PlaybackTick;
 
             // Add PlaybackGuardTag to all rewindable entities
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            foreach (var (tag, entity) in SystemAPI.Query<RefRO<RewindableTag>>()
-                .WithNone<PlaybackGuardTag>()
-                .WithEntityAccess())
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<RewindableTag>>()
+                         .WithNone<PlaybackGuardTag>()
+                         .WithEntityAccess())
             {
                 ecb.AddComponent<PlaybackGuardTag>(entity);
             }
@@ -163,38 +205,47 @@ namespace PureDOTS.Systems
                 {
                     // Reached target, transition to catch-up mode
                     rewindState.Mode = RewindMode.CatchUp;
-                    timeState.Tick = rewindState.TargetTick;
+                    tickTimeState.Tick = rewindState.TargetTick;
+                    tickTimeState.TargetTick = rewindState.TargetTick;
                     _playbackAccumulator = 0f;
                     break;
                 }
+
+                tickTimeState.Tick = rewindState.PlaybackTick;
             }
         }
 
         [BurstCompile]
         private void HandleCatchUpMode(ref SystemState state,
-            ref RewindState rewindState, ref TimeState timeState)
+            ref RewindState rewindState, ref TickTimeState tickTimeState)
         {
+            tickTimeState.IsPlaying = false;
+            tickTimeState.IsPaused = false;
+            tickTimeState.TargetTick = rewindState.StartTick;
+
             // In catch-up mode, rapidly advance to current time
             uint currentTick = rewindState.StartTick;
 
             // Advance up to 6 ticks per frame to catch up
-            int catchUpSteps = math.min(6, (int)(currentTick - timeState.Tick));
+            int catchUpSteps = math.min(6, (int)(currentTick - tickTimeState.Tick));
 
             for (int i = 0; i < catchUpSteps; i++)
             {
-                timeState.Tick++;
+                tickTimeState.Tick++;
             }
 
             // Check if caught up
-            if (timeState.Tick >= currentTick)
+            if (tickTimeState.Tick >= currentTick)
             {
                 rewindState.Mode = RewindMode.Record;
-                timeState.IsPaused = false;
+                tickTimeState.IsPaused = false;
+                tickTimeState.IsPlaying = true;
+                tickTimeState.TargetTick = tickTimeState.Tick;
 
                 // Remove PlaybackGuardTag
                 var ecb = new EntityCommandBuffer(Allocator.Temp);
-                foreach (var (tag, entity) in SystemAPI.Query<RefRO<PlaybackGuardTag>>()
-                    .WithEntityAccess())
+                foreach (var (_, entity) in SystemAPI.Query<RefRO<PlaybackGuardTag>>()
+                             .WithEntityAccess())
                 {
                     ecb.RemoveComponent<PlaybackGuardTag>(entity);
                 }
@@ -203,28 +254,58 @@ namespace PureDOTS.Systems
             }
         }
 
-        private void StartRewind(ref RewindState rewindState, uint currentTick, uint targetTick)
+        private static void SyncLegacyTime(ref TickTimeState tickTimeState, ref TimeState legacy)
+        {
+            legacy.Tick = tickTimeState.Tick;
+            legacy.FixedDeltaTime = tickTimeState.FixedDeltaTime;
+            legacy.CurrentSpeedMultiplier = tickTimeState.CurrentSpeedMultiplier;
+            legacy.IsPaused = tickTimeState.IsPaused;
+        }
+
+        private void StartRewind(ref RewindState rewindState, ref TickTimeState tickTimeState, uint targetTick)
         {
             rewindState.Mode = RewindMode.Playback;
-            rewindState.StartTick = currentTick;
+            rewindState.StartTick = tickTimeState.Tick;
             rewindState.TargetTick = targetTick;
-            rewindState.PlaybackTick = currentTick;
+            rewindState.PlaybackTick = tickTimeState.Tick;
+            tickTimeState.IsPaused = true;
+            tickTimeState.IsPlaying = false;
+            tickTimeState.TargetTick = targetTick;
+            tickTimeState.Tick = rewindState.PlaybackTick;
             _playbackAccumulator = 0f;
         }
 
-        private void StopRewind(ref RewindState rewindState, ref TimeState timeState)
+        private void StopRewind(ref RewindState rewindState, ref TickTimeState tickTimeState)
         {
             // Transition to catch-up or directly to record
             if (rewindState.PlaybackTick < rewindState.StartTick)
             {
                 rewindState.Mode = RewindMode.CatchUp;
-                timeState.Tick = rewindState.PlaybackTick;
+                tickTimeState.Tick = rewindState.PlaybackTick;
             }
             else
             {
                 rewindState.Mode = RewindMode.Record;
-                timeState.IsPaused = false;
+                tickTimeState.IsPaused = false;
+                tickTimeState.IsPlaying = true;
+                tickTimeState.TargetTick = tickTimeState.Tick;
             }
+        }
+
+        private uint ResolveRewindHorizonTicks(in TickTimeState tickTimeState)
+        {
+            float tickRate = tickTimeState.FixedDeltaTime > 0f ? 1f / tickTimeState.FixedDeltaTime : 60f;
+            uint depth = (uint)math.max(1f, math.round(tickRate * 3f));
+
+            if (SystemAPI.TryGetSingleton<HistorySettings>(out var history))
+            {
+                float configuredRate = history.DefaultTicksPerSecond > 0f
+                    ? history.DefaultTicksPerSecond
+                    : tickRate;
+                depth = math.max(depth, (uint)math.round(configuredRate * 3f));
+            }
+
+            return depth + 2u;
         }
     }
 }

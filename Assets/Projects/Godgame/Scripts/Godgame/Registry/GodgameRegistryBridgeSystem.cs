@@ -1104,7 +1104,7 @@ namespace Godgame.Registry
             buffer.Add(new TelemetryMetric { Key = MetricMiraclesSustained, Value = snapshot.SustainedMiracles, Unit = TelemetryMetricUnit.Count });
             buffer.Add(new TelemetryMetric { Key = MetricMiraclesCooling, Value = snapshot.CoolingMiracles, Unit = TelemetryMetricUnit.Count });
             buffer.Add(new TelemetryMetric { Key = MetricMiracleEnergy, Value = snapshot.TotalMiracleEnergyCost, Unit = TelemetryMetricUnit.Count });
-            buffer.Add(new TelemetryMetric { Key = MetricMiracleCooldown, Value = snapshot.TotalMiracleCooldownSeconds, Unit = TelemetryMetricUnit.Time });
+            buffer.Add(new TelemetryMetric { Key = MetricMiracleCooldown, Value = snapshot.TotalMiracleCooldownSeconds * 1000f, Unit = TelemetryMetricUnit.DurationMilliseconds });
             buffer.Add(new TelemetryMetric { Key = MetricTick, Value = snapshot.LastRegistryTick, Unit = TelemetryMetricUnit.Count });
         }
     }

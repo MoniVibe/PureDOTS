@@ -63,7 +63,8 @@ namespace PureDOTS.Tests
                 PauseOnStart = true
             });
 
-            TimeSettingsConfigSystem.ApplyOverrides(_entityManager);
+            var system = _world.CreateSystem<TimeSettingsConfigSystem>();
+            system.Update(_world.Unmanaged);
 
             var updated = _entityManager.GetComponentData<TimeState>(timeEntity);
             Assert.AreEqual(0.1f, updated.FixedDeltaTime);

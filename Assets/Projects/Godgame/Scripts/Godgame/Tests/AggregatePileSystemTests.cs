@@ -43,7 +43,7 @@ namespace Godgame.Tests.Resources
             _entityManager.AddBuffer<AggregatePileTakeCommand>(_commandEntity);
             _entityManager.AddBuffer<AggregatePileCommandResult>(_commandEntity);
 
-            _world.GetOrCreateSystemManaged<AggregatePileCommandBootstrapSystem>();
+            _world.GetOrCreateSystem<AggregatePileCommandBootstrapSystem>();
             _pileSystemHandle = _world.CreateSystem<AggregatePileSystem>();
         }
 
@@ -187,7 +187,7 @@ namespace Godgame.Tests.Resources
 
         private void UpdateSystem(SystemHandle handle)
         {
-            _world.Unmanaged.ResolveSystemStateRef(handle).Update();
+            handle.Update(_world.Unmanaged);
         }
     }
 }

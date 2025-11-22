@@ -12,6 +12,7 @@ namespace PureDOTS.Runtime.Telemetry
         Ratio = 1,
         DurationMilliseconds = 2,
         Bytes = 3,
+        None = 254,
         Custom = 255
     }
 

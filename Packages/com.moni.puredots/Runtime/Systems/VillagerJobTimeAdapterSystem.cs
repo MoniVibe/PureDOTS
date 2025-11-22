@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
@@ -10,14 +11,16 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(RecordSimulationSystemGroup))]
     public partial struct VillagerJobTimeAdapterSystem : ISystem, ITimeAware
     {
-        private NativeList<byte> _serializedState;
+        private TimeStreamHistory _history;
         private uint _lastSavedTick;
+        private uint _horizonTicks;
         private TimeAwareController _timeAware;
 
         public void OnCreate(ref SystemState state)
         {
-            _serializedState = new NativeList<byte>(Allocator.Persistent);
+            _history = new TimeStreamHistory(4096, 512, Allocator.Persistent);
             _lastSavedTick = uint.MaxValue;
+            _horizonTicks = 0;
             _timeAware = new TimeAwareController(
                 TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp | TimeAwareExecutionPhase.Playback,
                 TimeAwareExecutionOptions.SkipWhenPaused);
@@ -32,16 +35,14 @@ namespace PureDOTS.Systems
 
         public void OnDestroy(ref SystemState state)
         {
-            if (_serializedState.IsCreated)
-            {
-                _serializedState.Dispose();
-            }
+            _history.Dispose();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var horizon = GetHorizonTicks(timeState);
 
             if (!_timeAware.TryBegin(timeState, rewindState, out var context))
             {
@@ -52,20 +53,24 @@ namespace PureDOTS.Systems
             {
                 if (context.Time.Tick != _lastSavedTick)
                 {
-                    var writer = new TimeStreamWriter(ref _serializedState);
+                    uint minTick = context.Time.Tick > horizon ? context.Time.Tick - horizon : 0;
+                    _history.PruneOlderThan(minTick);
+
+                    var recordIndex = _history.BeginRecord(context.Time.Tick, out var writer);
                     Save(ref state, ref writer);
+                    _history.EndRecord(recordIndex);
                     _lastSavedTick = context.Time.Tick;
                 }
             }
             else if (context.IsPlaybackPhase || context.IsCatchUpPhase)
             {
-                if (_serializedState.Length == 0)
+                uint targetTick = context.IsPlaybackPhase ? context.Rewind.PlaybackTick : context.Time.Tick;
+                if (!_history.TryGet(targetTick, out var slice))
                 {
                     return;
                 }
 
-                using var tempArray = new NativeArray<byte>(_serializedState.AsArray(), Allocator.Temp);
-                var reader = new TimeStreamReader(tempArray);
+                var reader = new TimeStreamReader(slice);
                 Load(ref state, ref reader);
             }
 
@@ -174,6 +179,27 @@ namespace PureDOTS.Systems
         {
             // Ensure latest record reflects resumed state
             _lastSavedTick = uint.MaxValue;
+        }
+
+        private uint GetHorizonTicks(in TimeState timeState)
+        {
+            if (_horizonTicks != 0)
+            {
+                return _horizonTicks;
+            }
+
+            float ticksPerSecond = 1f / math.max(0.0001f, timeState.FixedDeltaTime);
+            uint desired = (uint)math.max(1f, math.round(ticksPerSecond * 3f));
+
+            if (SystemAPI.TryGetSingleton<HistorySettings>(out var settings))
+            {
+                desired = math.max(desired, (uint)math.round(settings.DefaultTicksPerSecond * 3f));
+            }
+
+            _horizonTicks = desired + 4u;
+            var maxRecords = (int)math.max(1u, _horizonTicks + 8u);
+            _history.SetMaxRecords(maxRecords);
+            return _horizonTicks;
         }
 
         private struct VillagerJobCarrySnapshot

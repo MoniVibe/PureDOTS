@@ -129,6 +129,7 @@ Found **4 TODO comments** in source code:
 - [ ] Catalogue future features: alignment shifts, armies, creature training, prayer/tribute contributions
 - [ ] Review rewinding behaviour: confirm current systems respect `RewindState` and record necessary history
 - [ ] Build `VillagerArchetypeCatalog` ScriptableObject + blob with base stats
+- [ ] Hook `VillagerAISystem` to archetype catalog data and replace stub job behaviors (`Gather/Build/Craft/CombatJobBehavior`) with real scoring/execution; current smoke tests only validate scaffolding compiles.
 - [ ] Define `JobDefinitionCatalog` with job durations, resource costs, rewards, skill requirements
 - [ ] Define `VillagerNeedCurve` assets (AnimationCurve -> blob) for hunger/energy/mood thresholds
 - [ ] Extend authoring/baker to convert new assets into runtime data

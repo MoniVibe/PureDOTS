@@ -14,21 +14,8 @@ namespace PureDOTS.Editor
         [MenuItem("PureDOTS/Enable Burst Safety Checks")]
         public static void EnableSafetyChecks()
         {
-            if (!BurstCompiler.IsEnabled)
-            {
-                Debug.LogWarning("[Burst Safety] Burst compilation is not enabled. Enabling it first...");
-                BurstCompiler.IsEnabled = true;
-            }
-
-            // Enable safety checks and force them on
-            BurstEditorOptions.EnableBurstSafetyChecks = true;
-            BurstEditorOptions.ForceEnableBurstSafetyChecks = true;
-            
-            Debug.Log("[Burst Safety] Enabled Burst safety checks (Force On mode).");
-            Debug.Log("[Burst Safety] This will catch container index out of bounds and job dependency violations.");
-            
-            // Trigger recompilation to apply changes
-            BurstCompiler.CompileAll();
+            // Current Burst API exposes safety toggles via editor settings; avoid direct runtime mutation.
+            Debug.Log("[Burst Safety] To enable safety checks, open Jobs > Burst > Safety Checks in the editor.");
         }
 
         [MenuItem("PureDOTS/Enable Burst Safety Checks", true)]

@@ -3,8 +3,10 @@ using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Knowledge;
+using PureDOTS.Runtime.Orders;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Signals;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
@@ -37,22 +39,34 @@ namespace PureDOTS.Systems
         public static void EnsureSingletons(EntityManager entityManager)
         {
             Entity timeEntity;
-            using (var timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()))
+            if (!HasSingleton<TimeState>(entityManager))
             {
-                if (timeQuery.IsEmptyIgnoreFilter)
+                timeEntity = entityManager.CreateEntity(typeof(TimeState));
+                entityManager.SetComponentData(timeEntity, new TimeState
                 {
-                    timeEntity = entityManager.CreateEntity(typeof(TimeState));
-                    entityManager.SetComponentData(timeEntity, new TimeState
+                    FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                    CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                    Tick = 0,
+                    IsPaused = TimeSettingsDefaults.PauseOnStart
+                });
+
+                entityManager.AddComponentData(timeEntity, TimeSettingsDefaults.CreateTickTimeDefault());
+            }
+            else
+            {
+                timeEntity = GetSingletonEntity<TimeState>(entityManager);
+                if (!entityManager.HasComponent<TickTimeState>(timeEntity))
+                {
+                    var timeState = entityManager.GetComponentData<TimeState>(timeEntity);
+                    entityManager.AddComponentData(timeEntity, new TickTimeState
                     {
-                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
-                        CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
-                        Tick = 0,
-                        IsPaused = TimeSettingsDefaults.PauseOnStart
+                        FixedDeltaTime = timeState.FixedDeltaTime,
+                        CurrentSpeedMultiplier = timeState.CurrentSpeedMultiplier,
+                        Tick = timeState.Tick,
+                        TargetTick = timeState.Tick,
+                        IsPaused = timeState.IsPaused,
+                        IsPlaying = !timeState.IsPaused
                     });
-                }
-                else
-                {
-                    timeEntity = timeQuery.GetSingletonEntity();
                 }
             }
 
@@ -73,36 +87,92 @@ namespace PureDOTS.Systems
                 }
             }
 
-            using (var historyQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<HistorySettings>()))
+            if (!entityManager.HasComponent<TimeLogSettings>(timeEntity))
             {
-                if (historyQuery.IsEmptyIgnoreFilter)
+                entityManager.AddComponentData(timeEntity, TimeLogDefaults.CreateDefault());
+            }
+
+            if (!entityManager.HasComponent<PerformanceBudgetSettings>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, PerformanceBudgetDefaults.CreateDefault());
+            }
+
+            if (!entityManager.HasComponent<InputCommandLogState>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, new InputCommandLogState
                 {
-                    var entity = entityManager.CreateEntity(typeof(HistorySettings));
-                    entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
+                    Capacity = TimeLogUtility.ExpandSecondsToTicks(TimeLogDefaults.CommandLogSeconds),
+                    Count = 0,
+                    StartIndex = 0,
+                    LastTick = 0
+                });
+            }
+
+            if (!entityManager.HasComponent<TickSnapshotLogState>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, new TickSnapshotLogState
+                {
+                    Capacity = TimeLogUtility.ExpandSecondsToTicks(TimeLogDefaults.SnapshotLogSeconds),
+                    Count = 0,
+                    StartIndex = 0,
+                    LastTick = 0
+                });
+            }
+
+            if (!entityManager.HasBuffer<InputCommandLogEntry>(timeEntity))
+            {
+                var buffer = entityManager.AddBuffer<InputCommandLogEntry>(timeEntity);
+                buffer.ResizeUninitialized(TimeLogUtility.ExpandSecondsToTicks(TimeLogDefaults.CommandLogSeconds));
+            }
+            else
+            {
+                var cmdLogState = entityManager.GetComponentData<InputCommandLogState>(timeEntity);
+                var buffer = entityManager.GetBuffer<InputCommandLogEntry>(timeEntity);
+                if (buffer.Length < cmdLogState.Capacity)
+                {
+                    buffer.ResizeUninitialized(cmdLogState.Capacity);
                 }
             }
 
-            Entity rewindEntity;
-            using (var rewindQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()))
+            if (!entityManager.HasBuffer<TickSnapshotLogEntry>(timeEntity))
             {
-                if (rewindQuery.IsEmptyIgnoreFilter)
+                var buffer = entityManager.AddBuffer<TickSnapshotLogEntry>(timeEntity);
+                buffer.ResizeUninitialized(TimeLogUtility.ExpandSecondsToTicks(TimeLogDefaults.SnapshotLogSeconds));
+            }
+            else
+            {
+                var snapshotState = entityManager.GetComponentData<TickSnapshotLogState>(timeEntity);
+                var buffer = entityManager.GetBuffer<TickSnapshotLogEntry>(timeEntity);
+                if (buffer.Length < snapshotState.Capacity)
                 {
-                    rewindEntity = entityManager.CreateEntity(typeof(RewindState));
-                    entityManager.SetComponentData(rewindEntity, new RewindState
-                    {
-                        Mode = RewindMode.Record,
-                        StartTick = 0,
-                        TargetTick = 0,
-                        PlaybackTick = 0,
-                        PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
-                        ScrubDirection = 0,
-                        ScrubSpeedMultiplier = 1f
-                    });
+                    buffer.ResizeUninitialized(snapshotState.Capacity);
                 }
-                else
+            }
+
+            if (!HasSingleton<HistorySettings>(entityManager))
+            {
+                var entity = entityManager.CreateEntity(typeof(HistorySettings));
+                entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
+            }
+
+            Entity rewindEntity;
+            if (!HasSingleton<RewindState>(entityManager))
+            {
+                rewindEntity = entityManager.CreateEntity(typeof(RewindState));
+                entityManager.SetComponentData(rewindEntity, new RewindState
                 {
-                    rewindEntity = rewindQuery.GetSingletonEntity();
-                }
+                    Mode = RewindMode.Record,
+                    StartTick = 0,
+                    TargetTick = 0,
+                    PlaybackTick = 0,
+                    PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
+                    ScrubDirection = 0,
+                    ScrubSpeedMultiplier = 1f
+                });
+            }
+            else
+            {
+                rewindEntity = GetSingletonEntity<RewindState>(entityManager);
             }
 
             if (!entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
@@ -139,9 +209,12 @@ namespace PureDOTS.Systems
             EnsureKnowledgeLessonCatalog(entityManager);
             EnsureSkillXpCurveConfig(entityManager);
             EnsureTelemetryStream(entityManager);
+            EnsureSignalBus(entityManager);
+            EnsureOrderEventStream(entityManager);
             EnsureFrameTimingStream(entityManager);
             EnsureReplayCaptureStream(entityManager);
             EnsureRegistryHealthConfig(entityManager);
+            EnsureSpawnerTelemetry(entityManager);
 
             EnsureFlowFieldConfig(entityManager);
             EnsureTerrainVersion(entityManager);
@@ -149,6 +222,18 @@ namespace PureDOTS.Systems
             EnsureResourceRecipeSet(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
+        }
+
+        private static bool HasSingleton<T>(EntityManager entityManager) where T : unmanaged, IComponentData
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<T>());
+            return !query.IsEmptyIgnoreFilter;
+        }
+
+        private static Entity GetSingletonEntity<T>(EntityManager entityManager) where T : unmanaged, IComponentData
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<T>());
+            return query.GetSingletonEntity();
         }
 
         private static void EnsureRegistrySpatialSyncState(EntityManager entityManager)
@@ -366,6 +451,56 @@ namespace PureDOTS.Systems
             }
         }
 
+        private static void EnsureSignalBus(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SignalBus>());
+            Entity busEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                busEntity = entityManager.CreateEntity(typeof(SignalBus));
+            }
+            else
+            {
+                busEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<SignalEvent>(busEntity))
+            {
+                entityManager.AddBuffer<SignalEvent>(busEntity);
+            }
+
+            if (!entityManager.HasComponent<SignalBusConfig>(busEntity))
+            {
+                entityManager.AddComponentData(busEntity, SignalBusConfig.CreateDefault());
+            }
+        }
+
+        private static void EnsureOrderEventStream(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<OrderEventStream>());
+            Entity streamEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                streamEntity = entityManager.CreateEntity(typeof(OrderEventStream));
+            }
+            else
+            {
+                streamEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<OrderEvent>(streamEntity))
+            {
+                entityManager.AddBuffer<OrderEvent>(streamEntity);
+            }
+
+            if (!entityManager.HasComponent<OrderEventStreamConfig>(streamEntity))
+            {
+                entityManager.AddComponentData(streamEntity, OrderEventStreamConfig.CreateDefault());
+            }
+        }
+
         private static void EnsureFrameTimingStream(EntityManager entityManager)
         {
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<FrameTimingStream>());
@@ -421,6 +556,16 @@ namespace PureDOTS.Systems
             if (!entityManager.HasBuffer<ReplayCaptureEvent>(replayEntity))
             {
                 entityManager.AddBuffer<ReplayCaptureEvent>(replayEntity);
+            }
+        }
+
+        private static void EnsureSpawnerTelemetry(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpawnerTelemetry>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var telemetryEntity = entityManager.CreateEntity(typeof(SpawnerTelemetry));
+                entityManager.SetComponentData(telemetryEntity, default(SpawnerTelemetry));
             }
         }
 

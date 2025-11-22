@@ -13,6 +13,15 @@
 - [x] Companion systems: core request processors live in `PresentationSpawnSystem` / `PresentationRecycleSystem` with rewind guards.
 - [x] Authoring tooling: `PresentationRegistryAsset` + baker provide registry blobs consumed by `PresentationBootstrapSystem`.
 - [x] Architecture doc: `Docs/PresentationBridgeArchitecture.md` (formerly `PresentationBridges.md`) captures high-level responsibilities and data flow.
+- [x] Presentation spine refresh: `Presentable` tag, `PresentationBinding` blob, request hub (effect/companion/despawn), begin/end Presentation ECBs + editor guard, bridge playback/cleanup systems with rewind skip.
+- [x] Expanded binding schema (palette/size/speed, lifetime/attach rules) with GrayboxMinimal/GrayboxFancy sample sets + runtime toggle bootstrap and bridge pooling stats exposed to HUD/telemetry.
+
+## Scene Checklist (bridge runtime)
+- Ensure a single `PresentationBridge` MonoBehaviour exists in the scene (registers via locator; pools mesh/particle/VFX/audio placeholders).
+- `PresentationBootstrapSystem` creates the request hub (`PlayEffectRequest`/`SpawnCompanionRequest`/`DespawnCompanionRequest` + failure counters); keep it in playmode scenes.
+- Provide a `PresentationBindingReference` singleton (baked blob) mapping effect/companion IDs to `PresentationKind` + style tokens used by the bridge.
+- `BeginPresentationECBSystem`/`EndPresentationECBSystem` must be present (created at world bootstrap) so structural changes stay at group boundaries; editor guard will throw on direct structural changes.
+- Reset bridge pools between play sessions/tests if worlds are created/destroyed repeatedly to avoid stale handles.
 
 ## Milestone A – Registry & Prefab Alignment
 - [ ] Produce per-game registry assets (Godgame + Space4X) listing all required descriptors, keys, prefabs, and default flags; document the keys in `Docs/PresentationBridgeArchitecture.md`.
@@ -31,10 +40,12 @@
 ## Milestone C – Presentation Sync & Pooling
 - [x] Create a shared `PresentationHandleSyncSystem` that copies authoritative transforms into companion visuals each frame (configurable interpolation, optional offset curves).
 - [x] Add pooling metrics + configuration (`PresentationPoolStats`, `presentation.pool.*` counters) and expose them through Debug HUD + console.
-- [x] Provide a lightweight Mono/Entities Graphics bridge sample that demonstrates swapping materials, playing Animator states, and binding VFX graphs via `PresentationHandle`.
-- [x] Add a `PresentationReloadCommand` (console or menu item) that flushes visuals and respawns them from handles for debugging.
+- [ ] Provide a lightweight Mono/Entities Graphics bridge sample that demonstrates swapping materials, playing Animator states, and binding VFX graphs via `PresentationHandle`.
+- [ ] Add a `PresentationReloadCommand` (console or menu item) that flushes visuals and respawns them from handles for debugging.
 
 ## Milestone D – Testing & Observability
+- [x] Added playmode coverage for request playback, pool reuse, cleanup, and failure logging (`PresentationBridgePlaybackTests`).
+- [x] Added camera rig telemetry/HUD text plus screenshot hash utility (allocation-lite) to catch presentation regressions and palette/style drifts.
 - [ ] Expand `PresentationBridgeRewindTests` to cover spawn → recycle → respawn under Record/Playback/CatchUp modes and detect leaked handles.
 - [ ] Add stress test scene (50k presentation entities) to profile pooling + transform sync with Entities Graphics enabled.
 - [ ] Hook presentation stats into `Docs/Progress.md` + dashboards so designers can see active visual counts per domain.

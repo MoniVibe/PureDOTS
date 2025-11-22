@@ -26,7 +26,8 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
     - Update `Docs/TODO/DivineHandCamera_TODO.md` to flag orbit/visual parity as downstream work; PureDOTS baseline owns logical DOTS flow only.
   - [x] Re-implement remaining gameplay logic in pure DOTS (villager AI, resource economy, time control) referencing TruthSource contracts rather than hybrid adapters. For each legacy system, note any deviations required for the new architecture before implementation begins. (All core systems implemented: `VillagerAISystem`, `VillagerJobSystems`, `ResourceSystems`, `TimeTickSystem`, `RewindCoordinatorSystem`)
   - [x] Ensure each domain has deterministic update groups and clear scheduling.
-   - [x] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration. (Debug HUD + telemetry systems in place)
+  - [x] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration. (Debug HUD + telemetry systems in place)
+  - [ ] Flesh out villager job behavior stubs (`GatherJobBehavior`, `BuildJobBehavior`, `CraftJobBehavior`, `CombatJobBehavior`) and feed archetype catalog data into AI selection; current smoke coverage only validates scaffolding compiles.
    
    Vegetation Growth Loop (Agent Alpha & Beta):
    - [x] Scaffold vegetation lifecycle components (`VegetationComponents.cs`) with lifecycle stages, health, production, consumption, reproduction, and seasonal effects.
@@ -48,10 +49,11 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [x] Seed shared registry directory + handle lookup so systems can resolve registries without service locators (`RegistryDirectorySystem`).
    - [x] Provide registry lookup helpers and route core systems (spatial rebuild, job loops) through the directory for engine-agnostic access.
    - [x] Add runtime continuity validation and instrumentation buffers (`RegistryContinuityValidationSystem`, `RegistryInstrumentationSystem`) so registries surface spatial drift and health metrics to shared tooling.
+   - [x] Enforce registry definition/catalog continuity parity in validation alerts (flags definition mismatches in HUD/telemetry).
    - [x] Lock registry schemas to be theme-agnostic (villagers, logistics, miracles, construction) so downstream games only supply config/assets and intent commands. (Schema neutrality documented in `Docs/DesignNotes/SystemIntegration.md`)
    - [x] Expose construction/jobsite registry so both template games consume identical build-site data.
    - [x] Add neutral band/squad, creature/threat, and ability registries so shared systems can resolve formation, enemy, and special-action data.
-   - [x] Make spawner registry available for population/fauna/ship spawning coordination across games.
+   - [x] Make spawner registry available for population/fauna/ship spawning coordination across games; add deterministic telemetry counters + HUD/telemetry exposure for spawner readiness/attempts.
    - [ ] Build thin bridging layers only if legacy content/prefabs require temporary compatibility.
    - [x] Introduce pooled SoA-friendly memory utilities (NativeList/Queue pools, slab allocators) to eliminate per-frame allocations in hot systems. (Pooling utilities implemented; see `Runtime/Pooling/`)
      - Track detailed work items in `Docs/TODO/RegistryRewrite_TODO.md`.
@@ -70,6 +72,7 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
    - [ ] Draft CI/test-runner scripts for DOTS builds and playmode runs.
   - [ ] Expand deterministic playmode coverage for hand/camera/time controls and resource workflows; rely on console/log assertions for rewind until visual presenters exist.
   - [x] Add lightweight console instrumentation for rewind progress/state diffing to compensate for lack of visual entity representations.
+  - [x] HUD/telemetry stream now surfaces order/signal bus counts and spawner lifecycle stats for scenario harness consumption.
    - [ ] Build a 50k-entity performance harness that validates rewind determinism and captures frame timing budgets.
 
 7. Migration Plan & Asset Salvage

@@ -131,6 +131,30 @@ namespace PureDOTS.Input
     {
         public byte PlayerId;
     }
+
+    /// <summary>
+    /// Per-tick input snapshot used for rewind playback and deterministic re-simulation.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct InputSnapshotRecord : IBufferElementData
+    {
+        public uint Tick;
+        public DivineHandInput HandInput;
+        public CameraInputState CameraInput;
+        public int HandEdgeStart;
+        public int HandEdgeCount;
+        public int CameraEdgeStart;
+        public int CameraEdgeCount;
+    }
+
+    /// <summary>
+    /// Singleton state for the input history ring buffer.
+    /// </summary>
+    public struct InputHistoryState : IComponentData
+    {
+        public uint HorizonTicks;
+        public uint LastRecordedTick;
+    }
 }
 
 

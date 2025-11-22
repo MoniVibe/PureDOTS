@@ -2,7 +2,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using Unity.Burst;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Resource;
@@ -19,7 +18,6 @@ namespace Space4X.Registry
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(TransformSystemGroup))]
-    [BurstCompile]
     public partial struct CarrierPatrolSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -36,7 +34,6 @@ namespace Space4X.Registry
         {
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _transformLookup.Update(ref state);
@@ -151,7 +148,6 @@ namespace Space4X.Registry
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(CarrierPatrolSystem))]
     [UpdateBefore(typeof(TransformSystemGroup))]
-    [BurstCompile]
     public partial struct MiningVesselSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -161,7 +157,11 @@ namespace Space4X.Registry
         private ComponentLookup<SkillSet> _skillSetLookup;
         private ComponentLookup<VillagerKnowledge> _knowledgeLookup;
         private EntityQuery _asteroidQuery;
-        private static readonly FixedString64Bytes DefaultResourceTag = new FixedString64Bytes("space4x.resource");
+        private static readonly FixedString64Bytes DefaultResourceTag = default;
+        private static readonly FixedString64Bytes MineralsTag = CreateMineralsTag();
+        private static readonly FixedString64Bytes RareMetalsTag = CreateRareMetalsTag();
+        private static readonly FixedString64Bytes EnergyCrystalsTag = CreateEnergyCrystalsTag();
+        private static readonly FixedString64Bytes OrganicMatterTag = CreateOrganicMatterTag();
 
         public void OnCreate(ref SystemState state)
         {
@@ -183,7 +183,6 @@ namespace Space4X.Registry
         {
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _transformLookup.Update(ref state);
@@ -570,14 +569,47 @@ namespace Space4X.Registry
 
         private static FixedString64Bytes ToResourceTypeId(ResourceType type)
         {
-            FixedString64Bytes id = default;
-            var name = type.ToString();
-            if (!string.IsNullOrEmpty(name))
+            switch (type)
             {
-                id = new FixedString64Bytes($"space4x.{name.ToLowerInvariant()}");
+                case ResourceType.Minerals:
+                    return MineralsTag;
+                case ResourceType.RareMetals:
+                    return RareMetalsTag;
+                case ResourceType.EnergyCrystals:
+                    return EnergyCrystalsTag;
+                case ResourceType.OrganicMatter:
+                    return OrganicMatterTag;
+                default:
+                    return DefaultResourceTag;
             }
+        }
 
-            return id.Length == 0 ? DefaultResourceTag : id;
+        private static FixedString64Bytes CreateMineralsTag()
+        {
+            FixedString64Bytes fs = default;
+            fs.Append('s'); fs.Append('p'); fs.Append('a'); fs.Append('c'); fs.Append('e'); fs.Append('4'); fs.Append('x'); fs.Append('.'); fs.Append('m'); fs.Append('i'); fs.Append('n'); fs.Append('e'); fs.Append('r'); fs.Append('a'); fs.Append('l'); fs.Append('s');
+            return fs;
+        }
+
+        private static FixedString64Bytes CreateRareMetalsTag()
+        {
+            FixedString64Bytes fs = default;
+            fs.Append('s'); fs.Append('p'); fs.Append('a'); fs.Append('c'); fs.Append('e'); fs.Append('4'); fs.Append('x'); fs.Append('.'); fs.Append('r'); fs.Append('a'); fs.Append('r'); fs.Append('e'); fs.Append('_'); fs.Append('m'); fs.Append('e'); fs.Append('t'); fs.Append('a'); fs.Append('l'); fs.Append('s');
+            return fs;
+        }
+
+        private static FixedString64Bytes CreateEnergyCrystalsTag()
+        {
+            FixedString64Bytes fs = default;
+            fs.Append('s'); fs.Append('p'); fs.Append('a'); fs.Append('c'); fs.Append('e'); fs.Append('4'); fs.Append('x'); fs.Append('.'); fs.Append('e'); fs.Append('n'); fs.Append('e'); fs.Append('r'); fs.Append('g'); fs.Append('y'); fs.Append('_'); fs.Append('c'); fs.Append('r'); fs.Append('y'); fs.Append('s'); fs.Append('t'); fs.Append('a'); fs.Append('l'); fs.Append('s');
+            return fs;
+        }
+
+        private static FixedString64Bytes CreateOrganicMatterTag()
+        {
+            FixedString64Bytes fs = default;
+            fs.Append('s'); fs.Append('p'); fs.Append('a'); fs.Append('c'); fs.Append('e'); fs.Append('4'); fs.Append('x'); fs.Append('.'); fs.Append('o'); fs.Append('r'); fs.Append('g'); fs.Append('a'); fs.Append('n'); fs.Append('i'); fs.Append('c'); fs.Append('_'); fs.Append('m'); fs.Append('a'); fs.Append('t'); fs.Append('t'); fs.Append('e'); fs.Append('r');
+            return fs;
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-    "name": "PureDOTS.Tests",
+    "name": "PureDOTS.Tests.Playmode",
     "rootNamespace": "PureDOTS.Tests",
     "references": [
         "PureDOTS.Runtime",
@@ -10,7 +10,6 @@
         "Space4X.Gameplay",
         "Space4X.Placeholder",
         "Unity.Entities",
-        "Unity.Entities.Tests",
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.Transforms",

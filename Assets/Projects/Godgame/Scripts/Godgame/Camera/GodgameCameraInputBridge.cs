@@ -1,4 +1,3 @@
-using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Hybrid;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -26,6 +25,9 @@ namespace Godgame.Camera
             public bool MiddleHeld;
             public bool ThrowModifier;
             public bool ToggleMode;
+            public bool EffectPressed;
+            public Vector3 PointerWorld;
+            public bool HasPointerWorld;
             public int Frame;
         }
 
@@ -119,11 +121,6 @@ namespace Godgame.Camera
                 return;
             }
 
-            if (IsBw2RigPresent())
-            {
-                return;
-            }
-
             var go = new GameObject("Godgame Camera Input Bridge")
             {
                 hideFlags = HideFlags.HideAndDontSave
@@ -150,12 +147,6 @@ namespace Godgame.Camera
 
         private void OnEnable()
         {
-            if (IsBw2RigPresent())
-            {
-                enabled = false;
-                return;
-            }
-
             InputSystem.onBeforeUpdate += HandleBeforeUpdate;
             InputSystem.onAfterUpdate += HandleAfterUpdate;
             s_lastSampleTime = Time.realtimeSinceStartup;
@@ -173,12 +164,6 @@ namespace Godgame.Camera
 
         private void HandleBeforeUpdate()
         {
-            if (IsBw2RigPresent())
-            {
-                _capturePending = false;
-                return;
-            }
-
             if (InputState.currentUpdateType != InputUpdateType.Dynamic)
             {
                 return;
@@ -189,12 +174,6 @@ namespace Godgame.Camera
 
         private void HandleAfterUpdate()
         {
-            if (IsBw2RigPresent())
-            {
-                _capturePending = false;
-                return;
-            }
-
             if (!_capturePending || InputState.currentUpdateType != InputUpdateType.Dynamic)
             {
                 return;
@@ -337,23 +316,40 @@ namespace Godgame.Camera
             if (keyboard != null)
             {
                 snapshot.ThrowModifier = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+                snapshot.EffectPressed = keyboard.qKey.wasPressedThisFrame;
             }
+
+            snapshot.HasPointerWorld = TryProjectPointer(snapshot.PointerPosition, out var pointerWorld);
+            snapshot.PointerWorld = pointerWorld;
 
             _snapshot = snapshot;
         }
 
-        private static bool IsBw2RigPresent()
+        private static bool TryProjectPointer(in Vector2 pointer, out Vector3 worldPosition)
         {
-            if (BW2StyleCameraController.HasActiveRig)
+            var camera = UnityEngine.Camera.main;
+            if (camera == null)
             {
-                return true;
+                worldPosition = Vector3.zero;
+                return false;
             }
 
-#if UNITY_EDITOR
-            return UnityEngine.Object.FindFirstObjectByType<BW2StyleCameraController>(FindObjectsInactive.Include) != null;
-#else
-            return UnityEngine.Object.FindFirstObjectByType<BW2StyleCameraController>() != null;
-#endif
+            var ray = camera.ScreenPointToRay(pointer);
+            if (Mathf.Abs(ray.direction.y) < 1e-5f)
+            {
+                worldPosition = ray.origin;
+                return false;
+            }
+
+            var t = -ray.origin.y / ray.direction.y;
+            if (t < 0f)
+            {
+                worldPosition = ray.origin;
+                return false;
+            }
+
+            worldPosition = ray.origin + ray.direction * t;
+            return true;
         }
 
         private void EnsureInputActions()
@@ -365,7 +361,7 @@ namespace Godgame.Camera
 
             if (_inputActions == null)
             {
-                var asset = Resources.Load<InputActionAsset>("InputSystem_Actions");
+                var asset = UnityEngine.Resources.Load<InputActionAsset>("InputSystem_Actions");
 #if UNITY_EDITOR
                 if (asset == null)
                 {
@@ -412,3 +408,5 @@ namespace Godgame.Camera
         }
     }
 }
+
+

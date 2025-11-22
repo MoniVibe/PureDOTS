@@ -93,6 +93,8 @@ namespace PureDOTS.Systems
 
                 if (world.GetExistingSystemManaged<PresentationSystemGroup>() is { } presentationGroup)
                 {
+                    world.GetOrCreateSystemManaged<BeginPresentationECBSystem>();
+                    world.GetOrCreateSystemManaged<EndPresentationECBSystem>();
                     presentationGroup.SortSystems();
                 }
             }

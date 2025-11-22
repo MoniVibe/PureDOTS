@@ -1,45 +1,34 @@
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
-[UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
     public partial struct TimeSettingsConfigSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<TimeSettingsConfig>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
-            ApplyOverrides(state.EntityManager);
-            state.Enabled = false;
-        }
-
-        public static void ApplyOverrides(EntityManager entityManager)
-        {
-            var configQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeSettingsConfig>());
-            if (configQuery.IsEmptyIgnoreFilter)
+            if (!SystemAPI.HasSingleton<TimeSettingsConfig>())
             {
-                configQuery.Dispose();
+                state.Enabled = false;
                 return;
             }
 
-            var timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadWrite<TimeState>());
-            if (timeQuery.IsEmptyIgnoreFilter)
-            {
-                configQuery.Dispose();
-                timeQuery.Dispose();
-                return;
-            }
+            var configEntity = SystemAPI.GetSingletonEntity<TimeSettingsConfig>();
+            var config = SystemAPI.GetSingleton<TimeSettingsConfig>();
+            var tickHandle = SystemAPI.GetSingletonRW<TickTimeState>();
+            var timeHandle = SystemAPI.GetSingletonRW<TimeState>();
 
-            var configEntity = configQuery.GetSingletonEntity();
-            var config = entityManager.GetComponentData<TimeSettingsConfig>(configEntity);
-
-            var timeEntity = timeQuery.GetSingletonEntity();
-            var timeState = entityManager.GetComponentData<TimeState>(timeEntity);
+            ref var tickTimeState = ref tickHandle.ValueRW;
+            ref var timeState = ref timeHandle.ValueRW;
 
             float fixedDt = config.FixedDeltaTime > 0f ? config.FixedDeltaTime : TimeSettingsDefaults.FixedDeltaTime;
             float speed = config.DefaultSpeedMultiplier > 0f ? config.DefaultSpeedMultiplier : TimeSettingsDefaults.DefaultSpeedMultiplier;
@@ -48,11 +37,14 @@ namespace PureDOTS.Systems
             timeState.CurrentSpeedMultiplier = speed;
             timeState.IsPaused = config.PauseOnStart;
 
-            entityManager.SetComponentData(timeEntity, timeState);
-            entityManager.DestroyEntity(configEntity);
+            tickTimeState.FixedDeltaTime = fixedDt;
+            tickTimeState.CurrentSpeedMultiplier = speed;
+            tickTimeState.IsPaused = config.PauseOnStart;
+            tickTimeState.IsPlaying = !config.PauseOnStart;
+            tickTimeState.TargetTick = math.max(tickTimeState.TargetTick, tickTimeState.Tick);
 
-            configQuery.Dispose();
-            timeQuery.Dispose();
+            state.EntityManager.DestroyEntity(configEntity);
+            state.Enabled = false;
         }
     }
 }

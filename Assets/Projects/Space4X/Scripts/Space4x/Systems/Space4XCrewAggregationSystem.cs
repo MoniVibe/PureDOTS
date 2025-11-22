@@ -1,7 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Space4X.Runtime;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,7 +10,6 @@ namespace Space4X.Systems
     /// <summary>
     /// Maintains crew aggregate data (membership, averages, duty state) using the shared AggregateEntity contract.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(VillagerNeedsSystem))]
     [UpdateBefore(typeof(AggregateAggregationSystem))]
@@ -21,7 +19,6 @@ namespace Space4X.Systems
         private ComponentLookup<AggregateEntity> _aggregateLookup;
         private EntityQuery _crewAggregateQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _disciplineLookup = state.GetComponentLookup<VillagerDisciplineState>(true);
@@ -36,7 +33,6 @@ namespace Space4X.Systems
                 ComponentType.ReadWrite<AggregateMember>());
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var allocator = state.WorldUpdateAllocator;
@@ -188,7 +184,6 @@ namespace Space4X.Systems
             }
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
         }

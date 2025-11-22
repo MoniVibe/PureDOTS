@@ -1,5 +1,10 @@
 # PureDOTS Progress Log
 
+## 2025-12-XX (Phase 3 Presentation Follow-up)
+- Expanded presentation binding schema (palette/size/speed, lifetime/attach) and added GrayboxMinimal/GrayboxFancy sample sets with runtime toggle (`presentation.binding.sample`, see Samples~/PresentationBindings).
+- Presentation bridge now reports pool stats and camera rig telemetry to HUD/telemetry; companion sync system (offset + follow lerp) keeps pooled visuals aligned without allocations and remains rewind-safe.
+- Added screenshot hash utility/capture helper for ScenarioRunner/CI visual validation; updated docs for the new binding schema and samples.
+
 ## Technical Debt Tracking
 
 **Ownership & Slices** (2025-01-27):

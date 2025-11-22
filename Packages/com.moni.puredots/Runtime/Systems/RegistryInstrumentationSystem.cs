@@ -107,6 +107,7 @@ namespace PureDOTS.Systems
                     LastUpdateTick = metadata.LastUpdateTick,
                     SpatialVersion = metadata.Continuity.SpatialVersion,
                     SpatialVersionDelta = spatialDelta,
+                    TelemetryKey = metadata.TelemetryKey,
                     Label = metadata.Label
                 });
             }

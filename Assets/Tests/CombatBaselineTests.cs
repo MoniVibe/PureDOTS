@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Combat;
 using Unity.Entities;
-using Unity.Entities.Tests;
 
 namespace PureDOTS.Tests
 {
@@ -9,7 +8,7 @@ namespace PureDOTS.Tests
     /// Tests for PureDOTS combat baseline components.
     /// Verifies that combat components compile and can be instantiated.
     /// </summary>
-    public class CombatBaselineTests : ECSTestsFixture
+    public class CombatBaselineTests
     {
         [Test]
         public void CombatStats_CanBeCreated()

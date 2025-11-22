@@ -1,7 +1,5 @@
-using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
@@ -17,25 +15,13 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<TimeState>();
+            // Superseded by TimeTickSystem; keep disabled to avoid double-advancing ticks.
+            state.Enabled = false;
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var time = SystemAPI.GetSingletonRW<TimeState>();
-            if (time.ValueRO.IsPaused)
-            {
-                return;
-            }
-
-            uint increment = 1u;
-            if (time.ValueRO.CurrentSpeedMultiplier > 1f)
-            {
-                increment = (uint)math.max(1f, math.round(time.ValueRO.CurrentSpeedMultiplier));
-            }
-
-            time.ValueRW.Tick += increment;
         }
     }
 }

@@ -1,7 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Space4X.Runtime;
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -11,7 +10,6 @@ namespace Space4X.Presentation
     /// <summary>
     /// Spawns and maintains presentation handles for Space4X crew aggregate entities.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(Space4X.Systems.Space4XCrewAggregationSystem))]
     public partial struct Space4XCrewPresentationAdapterSystem : ISystem
@@ -20,7 +18,6 @@ namespace Space4X.Presentation
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<AggregateEntity> _aggregateLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _handleLookup = state.GetComponentLookup<PresentationHandle>();
@@ -31,7 +28,6 @@ namespace Space4X.Presentation
             state.RequireForUpdate<PresentationCommandQueue>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out var queueEntity))
@@ -117,7 +113,6 @@ namespace Space4X.Presentation
             }
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
         }

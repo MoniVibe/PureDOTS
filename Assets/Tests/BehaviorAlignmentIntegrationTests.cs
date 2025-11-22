@@ -4,7 +4,6 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Villagers;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.Tests;
 using Unity.Mathematics;
 
 namespace PureDOTS.Tests
@@ -14,7 +13,7 @@ namespace PureDOTS.Tests
     /// Verifies that personality traits (bold/craven, vengeful/forgiving) correctly modify initiative
     /// and combat behavior.
     /// </summary>
-    public class BehaviorAlignmentIntegrationTests : ECSTestsFixture
+    public class BehaviorAlignmentIntegrationTests
     {
         [Test]
         public void VillagerBehavior_CanBeCreated()

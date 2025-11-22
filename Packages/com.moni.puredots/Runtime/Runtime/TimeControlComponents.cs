@@ -30,11 +30,27 @@ namespace PureDOTS.Runtime.Components
             SetSpeed = 3,
             StartRewind = 4,
             StopRewind = 5,
-            ScrubTo = 6
+            ScrubTo = 6,
+            StepTicks = 7
         }
 
         public CommandType Type;
         public float FloatParam;
         public uint UintParam;
+    }
+
+    /// <summary>
+    /// Continuous time control inputs sampled per tick for rewind/pause/speed control.
+    /// </summary>
+    public struct TimeControlInputState : IComponentData
+    {
+        public uint SampleTick;
+        public byte RewindHeld;
+        public byte RewindPressedThisFrame;
+        public byte RewindSpeedLevel;
+        public byte EnterGhostPreview;
+        public byte StepDownTriggered;
+        public byte StepUpTriggered;
+        public byte PauseToggleTriggered;
     }
 }

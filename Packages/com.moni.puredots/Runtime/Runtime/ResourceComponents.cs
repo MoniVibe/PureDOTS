@@ -354,6 +354,19 @@ namespace PureDOTS.Runtime.Components
         public const byte Pending = 1 << 2;
     }
 
+    public struct SpawnerTelemetry : IComponentData
+    {
+        public int TotalSpawners;
+        public int ReadySpawners;
+        public int CoolingSpawners;
+        public int DisabledSpawners;
+        public int SpawnAttempts;
+        public int Spawned;
+        public int SpawnFailures;
+        public uint LastUpdateTick;
+        public uint CatalogVersion;
+    }
+
     public struct ResourceJobReservation : IComponentData
     {
         public byte ActiveTickets;

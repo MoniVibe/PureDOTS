@@ -23,6 +23,9 @@ namespace PureDOTS.Debugging
         
         [Tooltip("Text component displaying rewind state (optional)")]
         public Text rewindStateText;
+
+        [Tooltip("Text component displaying tick/command log summary (optional)")]
+        public Text tickLogText;
         
         [Tooltip("Text component displaying villager count (optional)")]
         public Text villagerCountText;
@@ -360,6 +363,11 @@ namespace PureDOTS.Debugging
             if (rewindStateText != null)
             {
                 rewindStateText.text = debugData.RewindStateText.ToString();
+            }
+
+            if (tickLogText != null)
+            {
+                tickLogText.text = debugData.TickLogText.ToString();
             }
 
             if (villagerCountText != null)

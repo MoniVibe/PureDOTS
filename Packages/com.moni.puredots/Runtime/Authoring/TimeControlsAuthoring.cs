@@ -1,5 +1,7 @@
-using PureDOTS.Input;
+#if UNITY_EDITOR
 using PureDOTS.Runtime.Components;
+using InputStateAuthoring = PureDOTS.Input.TimeControlInputState;
+using RuntimeTimeControlInputState = PureDOTS.Runtime.Components.TimeControlInputState;
 using Unity.Entities;
 using UnityEngine;
 
@@ -38,7 +40,7 @@ namespace PureDOTS.Authoring
             AddComponent(entity, config);
 
             AddComponent<TimeControlSingletonTag>(entity);
-            AddComponent(entity, new TimeControlInputState
+            AddComponent(entity, new RuntimeTimeControlInputState
             {
                 SampleTick = 0,
                 RewindHeld = 0,
@@ -52,3 +54,4 @@ namespace PureDOTS.Authoring
         }
     }
 }
+#endif

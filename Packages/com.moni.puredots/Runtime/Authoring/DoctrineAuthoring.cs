@@ -1,0 +1,118 @@
+using System;
+using System.Collections.Generic;
+using PureDOTS.Runtime.Alignment;
+using Unity.Collections;
+using Unity.Entities;
+using UnityEngine;
+
+namespace PureDOTS.Authoring
+{
+#if UNITY_EDITOR
+    [CreateAssetMenu(menuName = "PureDOTS/Alignment/DoctrineCatalog", fileName = "DoctrineCatalog")]
+    public sealed class DoctrineAuthoring : ScriptableObject
+    {
+        [Serializable]
+        public sealed class DoctrineDefinitionEntry
+        {
+            public string doctrineId;
+            public AffiliationKind kind = AffiliationKind.Faction;
+            [Range(-1f, 1f)] public float orderAffinity;
+            [Range(-1f, 1f)] public float compassionAffinity;
+            [Range(-1f, 1f)] public float innovationAffinity;
+            [Range(0f, 2f)] public float fanaticismCap = 1f;
+        }
+
+        public List<DoctrineDefinitionEntry> entries = new();
+
+        private void OnValidate()
+        {
+            foreach (var entry in entries)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                entry.fanaticismCap = Mathf.Clamp(entry.fanaticismCap, 0f, 2f);
+                entry.orderAffinity = Mathf.Clamp(entry.orderAffinity, -1f, 1f);
+                entry.compassionAffinity = Mathf.Clamp(entry.compassionAffinity, -1f, 1f);
+                entry.innovationAffinity = Mathf.Clamp(entry.innovationAffinity, -1f, 1f);
+            }
+        }
+    }
+#endif
+
+    [DisallowMultipleComponent]
+    public sealed class DoctrineCatalogAuthoring : MonoBehaviour
+    {
+#if UNITY_EDITOR
+        public DoctrineAuthoring catalog;
+#endif
+    }
+
+    public sealed class DoctrineCatalogBaker : Baker<DoctrineCatalogAuthoring>
+    {
+        public override void Bake(DoctrineCatalogAuthoring authoring)
+        {
+            var entity = GetEntity(authoring, TransformUsageFlags.None);
+#if UNITY_EDITOR
+            if (authoring.catalog == null || authoring.catalog.entries == null || authoring.catalog.entries.Count == 0)
+            {
+                AddComponent(entity, new DoctrineCatalog { Catalog = BlobAssetReference<DoctrineCatalogBlob>.Null });
+                return;
+            }
+
+            var definitions = authoring.catalog.entries;
+            var buildList = new List<DoctrineDefinition>(definitions.Count);
+
+            for (var i = 0; i < definitions.Count; i++)
+            {
+                var definition = definitions[i];
+                if (definition == null)
+                {
+                    continue;
+                }
+
+                var doctrineId = DoctrineId.FromString(definition.doctrineId);
+                if (doctrineId.Value.Length == 0)
+                {
+                    Debug.LogWarning($"Doctrine entry {i} has an empty id.", authoring);
+                    continue;
+                }
+
+                buildList.Add(new DoctrineDefinition
+                {
+                    Id = doctrineId,
+                    Kind = definition.kind,
+                    OrderAffinity = definition.orderAffinity,
+                    CompassionAffinity = definition.compassionAffinity,
+                    InnovationAffinity = definition.innovationAffinity,
+                    FanaticismCap = definition.fanaticismCap
+                });
+            }
+
+            if (buildList.Count == 0)
+            {
+                AddComponent(entity, new DoctrineCatalog { Catalog = BlobAssetReference<DoctrineCatalogBlob>.Null });
+                return;
+            }
+
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<DoctrineCatalogBlob>();
+            var blobArray = builder.Allocate(ref root.Definitions, buildList.Count);
+            for (var i = 0; i < buildList.Count; i++)
+            {
+                blobArray[i] = buildList[i];
+            }
+
+            var blob = builder.CreateBlobAssetReference<DoctrineCatalogBlob>(Allocator.Persistent);
+            builder.Dispose();
+            AddBlobAsset(ref blob, out _);
+
+            AddComponent(entity, new DoctrineCatalog { Catalog = blob });
+#else
+            AddComponent(entity, new DoctrineCatalog { Catalog = BlobAssetReference<DoctrineCatalogBlob>.Null });
+#endif
+        }
+    }
+}

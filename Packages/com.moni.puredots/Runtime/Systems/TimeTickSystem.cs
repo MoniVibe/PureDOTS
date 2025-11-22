@@ -8,9 +8,9 @@ namespace PureDOTS.Systems
     /// Manages tick advancement and fixed timestep simulation.
     /// Replaces TimeMonolith tick logic.
     /// </summary>
-[BurstCompile]
-[UpdateInGroup(typeof(TimeSystemGroup))]
-[UpdateAfter(typeof(HistorySettingsConfigSystem))]
+    [BurstCompile]
+    [UpdateInGroup(typeof(TimeSystemGroup))]
+    [UpdateAfter(typeof(HistorySettingsConfigSystem))]
     public partial struct TimeTickSystem : ISystem
     {
         private float _accumulator;
@@ -20,6 +20,8 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _accumulator = 0f;
             _lastRealTime = 0f;
         }
@@ -27,35 +29,62 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingletonRW<TimeState>();
+            var tickStateHandle = SystemAPI.GetSingletonRW<TickTimeState>();
+            var timeStateHandle = SystemAPI.GetSingletonRW<TimeState>();
+            ref var tickState = ref tickStateHandle.ValueRW;
+            ref var timeState = ref timeStateHandle.ValueRW;
+            var rewind = SystemAPI.GetSingleton<RewindState>();
 
-            // Skip if paused
-            if (timeState.ValueRO.IsPaused)
+            var elapsed = (float)SystemAPI.Time.ElapsedTime;
+            if (rewind.Mode != RewindMode.Record)
             {
-                _lastRealTime = (float)SystemAPI.Time.ElapsedTime;
+                tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
+                _accumulator = 0f;
+                _lastRealTime = elapsed;
+                SyncLegacyTime(ref tickState, ref timeState);
                 return;
             }
 
-            float currentRealTime = (float)SystemAPI.Time.ElapsedTime;
-            float deltaRealTime = currentRealTime - _lastRealTime;
-            _lastRealTime = currentRealTime;
+            var playing = tickState.IsPlaying && !tickState.IsPaused;
+
+            // Skip if paused
+            if (!playing)
+            {
+                if (tickState.Tick < tickState.TargetTick)
+                {
+                    tickState.Tick++;
+                }
+
+                _lastRealTime = elapsed;
+                tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
+                SyncLegacyTime(ref tickState, ref timeState);
+                return;
+            }
+
+            float deltaRealTime = elapsed - _lastRealTime;
+            _lastRealTime = elapsed;
 
             // Apply speed multiplier
-            float scaledDelta = deltaRealTime * timeState.ValueRO.CurrentSpeedMultiplier;
+            float scaledDelta = deltaRealTime * Unity.Mathematics.math.max(0.01f, tickState.CurrentSpeedMultiplier);
 
             // Accumulate time for fixed timestep
             _accumulator += scaledDelta;
 
-            var fixedDt = timeState.ValueRO.FixedDeltaTime;
-            int maxStepsPerFrame = 4; // Prevent spiral of death
-            int steps = 0;
+            var fixedDt = Unity.Mathematics.math.max(tickState.FixedDeltaTime, 1e-4f);
+            const int maxStepsPerFrame = 4; // Prevent spiral of death
+            var steps = 0;
 
             // Advance ticks based on accumulated time
             while (_accumulator >= fixedDt && steps < maxStepsPerFrame)
             {
                 _accumulator -= fixedDt;
-                timeState.ValueRW.Tick++;
+                tickState.Tick++;
                 steps++;
+            }
+
+            if (tickState.TargetTick < tickState.Tick)
+            {
+                tickState.TargetTick = tickState.Tick;
             }
 
             // Clamp accumulator if we're falling too far behind
@@ -63,6 +92,16 @@ namespace PureDOTS.Systems
             {
                 _accumulator = fixedDt;
             }
+
+            SyncLegacyTime(ref tickState, ref timeState);
+        }
+
+        private static void SyncLegacyTime(ref TickTimeState tickState, ref TimeState legacy)
+        {
+            legacy.Tick = tickState.Tick;
+            legacy.FixedDeltaTime = tickState.FixedDeltaTime;
+            legacy.CurrentSpeedMultiplier = tickState.CurrentSpeedMultiplier;
+            legacy.IsPaused = tickState.IsPaused;
         }
     }
 }

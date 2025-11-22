@@ -415,7 +415,6 @@ namespace Godgame.Systems
                 }
             }
 
-            var runtime = SystemAPI.GetSingletonRW<AggregatePileRuntimeState>();
             foreach (var entity in markedForRemoval)
             {
                 ecb.DestroyEntity(entity);

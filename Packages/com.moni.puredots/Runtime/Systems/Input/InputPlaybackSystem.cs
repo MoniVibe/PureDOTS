@@ -15,32 +15,39 @@ namespace PureDOTS.Systems.Input
     [UpdateBefore(typeof(CopyInputToEcsSystem))]
     public partial struct InputPlaybackSystem : ISystem
     {
-        private NativeHashMap<uint, InputSnapshotRecord> _playbackSnapshots;
-        private NativeList<HandInputEdge> _playbackHandEdges;
-        private NativeList<CameraInputEdge> _playbackCameraEdges;
-
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _playbackSnapshots = new NativeHashMap<uint, InputSnapshotRecord>(1024, Allocator.Persistent);
-            _playbackHandEdges = new NativeList<HandInputEdge>(1024, Allocator.Persistent);
-            _playbackCameraEdges = new NativeList<CameraInputEdge>(1024, Allocator.Persistent);
+            state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<TimeState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Playback)
+            if (rewindState.Mode == RewindMode.Record)
             {
                 return;
             }
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint currentTick = timeState.Tick;
 
-            if (!_playbackSnapshots.TryGetValue(currentTick, out var snapshot))
+            if (!SystemAPI.TryGetSingletonEntity<InputHistoryState>(out var historyEntity))
             {
-                return; // No recorded input for this tick
+                return;
+            }
+
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            uint targetTick = rewindState.Mode == RewindMode.Playback
+                ? rewindState.PlaybackTick
+                : timeState.Tick;
+
+            var snapshots = SystemAPI.GetBuffer<InputSnapshotRecord>(historyEntity);
+            var handEdges = SystemAPI.GetBuffer<HandInputEdge>(historyEntity);
+            var cameraEdges = SystemAPI.GetBuffer<CameraInputEdge>(historyEntity);
+
+            if (!TryGetSnapshotForTick(snapshots, targetTick, out var snapshot))
+            {
+                return;
             }
 
             foreach (var (handInputRef, handEntity) in SystemAPI.Query<RefRW<DivineHandInput>>().WithEntityAccess())
@@ -53,7 +60,7 @@ namespace PureDOTS.Systems.Input
                     edges.Clear();
                     for (int i = 0; i < snapshot.HandEdgeCount; i++)
                     {
-                        edges.Add(_playbackHandEdges[snapshot.HandEdgeStart + i]);
+                        edges.Add(handEdges[snapshot.HandEdgeStart + i]);
                     }
                 }
                 else if (snapshot.HandEdgeCount > 0)
@@ -61,7 +68,7 @@ namespace PureDOTS.Systems.Input
                     var edges = state.EntityManager.AddBuffer<HandInputEdge>(handEntity);
                     for (int i = 0; i < snapshot.HandEdgeCount; i++)
                     {
-                        edges.Add(_playbackHandEdges[snapshot.HandEdgeStart + i]);
+                        edges.Add(handEdges[snapshot.HandEdgeStart + i]);
                     }
                 }
             }
@@ -76,7 +83,7 @@ namespace PureDOTS.Systems.Input
                     edges.Clear();
                     for (int i = 0; i < snapshot.CameraEdgeCount; i++)
                     {
-                        edges.Add(_playbackCameraEdges[snapshot.CameraEdgeStart + i]);
+                        edges.Add(cameraEdges[snapshot.CameraEdgeStart + i]);
                     }
                 }
                 else if (snapshot.CameraEdgeCount > 0)
@@ -84,76 +91,38 @@ namespace PureDOTS.Systems.Input
                     var edges = state.EntityManager.AddBuffer<CameraInputEdge>(cameraEntity);
                     for (int i = 0; i < snapshot.CameraEdgeCount; i++)
                     {
-                        edges.Add(_playbackCameraEdges[snapshot.CameraEdgeStart + i]);
+                        edges.Add(cameraEdges[snapshot.CameraEdgeStart + i]);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Loads recorded snapshots for playback.
-        /// </summary>
-        public void LoadPlaybackData(
-            NativeList<InputSnapshotRecord> recordedSnapshots,
-            NativeList<HandInputEdge> recordedHandEdges,
-            NativeList<CameraInputEdge> recordedCameraEdges)
+        private static bool TryGetSnapshotForTick(
+            DynamicBuffer<InputSnapshotRecord> snapshots,
+            uint targetTick,
+            out InputSnapshotRecord snapshot)
         {
-            _playbackSnapshots.Clear();
-            _playbackHandEdges.Clear();
-            _playbackCameraEdges.Clear();
-
-            for (int i = 0; i < recordedSnapshots.Length; i++)
+            snapshot = default;
+            if (snapshots.Length == 0)
             {
-                var record = recordedSnapshots[i];
-                var remapped = record;
-
-                if (record.HandEdgeCount > 0)
-                {
-                    remapped.HandEdgeStart = _playbackHandEdges.Length;
-                    for (int j = 0; j < record.HandEdgeCount; j++)
-                    {
-                        _playbackHandEdges.Add(recordedHandEdges[record.HandEdgeStart + j]);
-                    }
-                }
-                else
-                {
-                    remapped.HandEdgeStart = _playbackHandEdges.Length;
-                }
-
-                if (record.CameraEdgeCount > 0)
-                {
-                    remapped.CameraEdgeStart = _playbackCameraEdges.Length;
-                    for (int j = 0; j < record.CameraEdgeCount; j++)
-                    {
-                        _playbackCameraEdges.Add(recordedCameraEdges[record.CameraEdgeStart + j]);
-                    }
-                }
-                else
-                {
-                    remapped.CameraEdgeStart = _playbackCameraEdges.Length;
-                }
-
-                _playbackSnapshots.TryAdd(remapped.Tick, remapped);
+                return false;
             }
+
+            for (int i = snapshots.Length - 1; i >= 0; i--)
+            {
+                if (snapshots[i].Tick <= targetTick)
+                {
+                    snapshot = snapshots[i];
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-            if (_playbackSnapshots.IsCreated)
-            {
-                _playbackSnapshots.Dispose();
-            }
-
-            if (_playbackHandEdges.IsCreated)
-            {
-                _playbackHandEdges.Dispose();
-            }
-
-            if (_playbackCameraEdges.IsCreated)
-            {
-                _playbackCameraEdges.Dispose();
-            }
         }
     }
 }

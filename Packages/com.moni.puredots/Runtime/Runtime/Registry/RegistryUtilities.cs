@@ -105,7 +105,11 @@ namespace PureDOTS.Runtime.Registry
         public int EntryCount;
         public uint Version;
         public uint LastUpdateTick;
+        public RegistryId Id;
+        public RegistryTelemetryKey TelemetryKey;
+        public RegistryContinuityMeta ContinuityMeta;
         public RegistryContinuitySnapshot Continuity;
+        public Unity.Entities.Hash128 HybridPrefabGuid;
         public FixedString64Bytes Label;
 
         public readonly bool SupportsSpatialQueries => ((RegistryHandleFlags)Flags & RegistryHandleFlags.SupportsSpatialQueries) != 0;
@@ -120,12 +124,26 @@ namespace PureDOTS.Runtime.Registry
                 Version);
         }
 
-        public void Initialise(RegistryKind kind, ushort archetypeId, RegistryHandleFlags flags, in FixedString64Bytes label)
+        public void Initialise(
+            RegistryKind kind,
+            ushort archetypeId,
+            RegistryHandleFlags flags,
+            in FixedString64Bytes label,
+            RegistryId id = default,
+            RegistryContinuityMeta continuityMeta = default,
+            RegistryTelemetryKey telemetryKey = default,
+            Unity.Entities.Hash128 hybridPrefabGuid = default)
         {
             Kind = kind;
             ArchetypeId = archetypeId;
             Flags = (byte)flags;
             Label = label;
+            ContinuityMeta = continuityMeta.WithDefaultsIfUnset();
+            Id = id.IsValid ? id : RegistryId.FromKind(kind, label);
+            TelemetryKey = telemetryKey.IsValid
+                ? telemetryKey
+                : RegistryTelemetryKey.FromString($"registry.{kind.ToString().ToLowerInvariant()}", Id);
+            HybridPrefabGuid = hybridPrefabGuid;
             Continuity = default;
             EntryCount = 0;
             Version = 0;

@@ -22,21 +22,14 @@ namespace PureDOTS.Systems.Combat
                          .Query<RefRO<PilotExperience>, RefRO<VesselManeuverProfile>, RefRW<CombatLoopState>>())
             {
                 var xp = experience.ValueRO.Experience;
-                var maneuver = CombatManeuver.None;
-                if (xp >= profile.ValueRO.JTurnThreshold)
+                // TODO: integrate maneuver into loop state/commands; wake placeholder branch for Burst path
+                if (xp >= profile.ValueRO.StrafeThreshold
+                    || xp >= profile.ValueRO.KiteThreshold
+                    || xp >= profile.ValueRO.JTurnThreshold)
                 {
-                    maneuver = CombatManeuver.JTurn;
+                    // placeholder no-op until maneuver integration lands
+                    loopState.ValueRW.PhaseTimer = loopState.ValueRO.PhaseTimer;
                 }
-                else if (xp >= profile.ValueRO.KiteThreshold)
-                {
-                    maneuver = CombatManeuver.Kite;
-                }
-                else if (xp >= profile.ValueRO.StrafeThreshold)
-                {
-                    maneuver = CombatManeuver.Strafe;
-                }
-
-                _ = maneuver; // TODO: integrate maneuver into combat loop commands
             }
         }
 

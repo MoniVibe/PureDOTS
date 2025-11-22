@@ -19,14 +19,21 @@ namespace PureDOTS.Systems
         protected override void OnCreate()
         {
             RequireForUpdate<TimeState>();
+            RequireForUpdate<TickTimeState>();
+            RequireForUpdate<RewindState>();
             RequireForUpdate<GameplayFixedStep>();
             _fixedStepGroup = World.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
         }
 
         protected override void OnUpdate()
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
             var fixedStep = SystemAPI.GetSingletonRW<GameplayFixedStep>();
+
+            if (SystemAPI.TryGetSingleton(out RewindState rewindState) && rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
 
             if (_fixedStepGroup == null)
             {
@@ -37,7 +44,7 @@ namespace PureDOTS.Systems
                 }
             }
 
-            var delta = math.max(timeState.FixedDeltaTime, 1e-4f);
+            var delta = math.max(tickTimeState.FixedDeltaTime, 1e-4f);
             if (math.abs(fixedStep.ValueRO.FixedDeltaTime - delta) > 1e-6f)
             {
                 fixedStep.ValueRW = new GameplayFixedStep

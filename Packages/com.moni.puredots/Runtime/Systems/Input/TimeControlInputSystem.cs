@@ -1,4 +1,5 @@
-using PureDOTS.Input;
+using InputState = PureDOTS.Input.TimeControlInputState;
+using RuntimeTimeControlInputState = PureDOTS.Runtime.Components.TimeControlInputState;
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
@@ -9,28 +10,25 @@ namespace PureDOTS.Systems.Input
     /// <summary>
     /// Converts player-facing time control input into deterministic commands consumed by <see cref="RewindCoordinatorSystem"/>.
     /// </summary>
-    [BurstCompile]
-    [UpdateInGroup(typeof(CameraInputSystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(CopyInputToEcsSystem))]
     public partial struct TimeControlInputSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeControlSingletonTag>();
             state.RequireForUpdate<TimeControlConfig>();
-            state.RequireForUpdate<TimeControlInputState>();
+            state.RequireForUpdate<RuntimeTimeControlInputState>();
             state.RequireForUpdate<TimeControlCommand>();
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeStateRO = SystemAPI.GetSingleton<TimeState>();
 
             foreach (var (inputRef, configRO, commandBuffer, entity) in SystemAPI
-                .Query<RefRW<TimeControlInputState>, RefRO<TimeControlConfig>, DynamicBuffer<TimeControlCommand>>()
+                .Query<RefRW<RuntimeTimeControlInputState>, RefRO<TimeControlConfig>, DynamicBuffer<TimeControlCommand>>()
                 .WithAll<TimeControlSingletonTag>()
                 .WithEntityAccess())
             {
@@ -48,10 +46,14 @@ namespace PureDOTS.Systems.Input
 
                 if (input.StepDownTriggered != 0)
                 {
+                    // When paused, treat as a single step; otherwise drop into slow-motion.
                     commandBuffer.Add(new TimeControlCommand
                     {
-                        Type = TimeControlCommand.CommandType.SetSpeed,
-                        FloatParam = math.max(0.1f, config.SlowMotionSpeed)
+                        Type = timeStateRO.IsPaused
+                            ? TimeControlCommand.CommandType.StepTicks
+                            : TimeControlCommand.CommandType.SetSpeed,
+                        FloatParam = math.max(0.1f, config.SlowMotionSpeed),
+                        UintParam = 1
                     });
                 }
 
@@ -59,15 +61,18 @@ namespace PureDOTS.Systems.Input
                 {
                     commandBuffer.Add(new TimeControlCommand
                     {
-                        Type = TimeControlCommand.CommandType.SetSpeed,
-                        FloatParam = math.max(0.1f, config.FastForwardSpeed)
+                        Type = timeStateRO.IsPaused
+                            ? TimeControlCommand.CommandType.StepTicks
+                            : TimeControlCommand.CommandType.SetSpeed,
+                        FloatParam = math.max(0.1f, config.FastForwardSpeed),
+                        UintParam = 1
                     });
                 }
 
                 if (input.RewindPressedThisFrame != 0)
                 {
                     uint currentTick = timeStateRO.Tick;
-                    uint depthTicks = (uint)math.clamp(input.RewindSpeedLevel * 120u, 60u, 480u);
+                    uint depthTicks = (uint)math.max(1f, math.round(3f / math.max(0.0001f, timeStateRO.FixedDeltaTime)));
                     uint targetTick = currentTick > depthTicks ? currentTick - depthTicks : 0u;
 
                     commandBuffer.Add(new TimeControlCommand
@@ -86,7 +91,7 @@ namespace PureDOTS.Systems.Input
                 }
 
                 // Reset one-shot fields but keep speed level if key remains held
-                inputRef.ValueRW = new TimeControlInputState
+                inputRef.ValueRW = new RuntimeTimeControlInputState
                 {
                     SampleTick = input.SampleTick,
                     RewindSpeedLevel = input.RewindHeld != 0 ? input.RewindSpeedLevel : (byte)0,

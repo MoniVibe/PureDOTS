@@ -1,54 +1,72 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Presentation;
 using PureDOTS.Systems;
 using Unity.Collections;
+using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace PureDOTS.Tests.Integration
 {
-    /// <summary>
-    /// Validates that presentation bridge systems respect rewind state and skip operations during playback.
-    /// These tests can be run manually in Unity Editor via Test Runner to verify rewind-safe behavior.
-    /// </summary>
-    public class PresentationBridgeRewindTests
+    public class PresentationBridgePlaybackTests
     {
         private World _world;
         private EntityManager _entityManager;
-        private SystemHandle _spawnSystemHandle;
-        private SystemHandle _recycleSystemHandle;
+        private PresentationBridge _bridge;
+        private BlobAssetReference<PresentationBindingBlob> _bindingBlob;
+        private Entity _requestHub;
+        private Entity _rewindEntity;
 
         [SetUp]
         public void SetUp()
         {
-            _world = new World("PresentationBridgeRewindTests");
+            _world = new World("PresentationBridgePlaybackTests");
             _entityManager = _world.EntityManager;
 
-            // Ensure required singletons
-            CoreSingletonBootstrapSystem.EnsureSingletons(_entityManager);
+            _world.GetOrCreateSystemManaged<InitializationSystemGroup>();
+            _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
+            _world.GetOrCreateSystemManaged<PresentationSystemGroup>();
+            _world.GetOrCreateSystemManaged<BeginPresentationECBSystem>();
+            _world.CreateSystem<PresentationBridgePlaybackSystem>();
+            _world.CreateSystem<CompanionPresentationSyncSystem>();
+            _world.CreateSystem<PresentationCleanupSystem>();
+            _world.GetOrCreateSystemManaged<EndPresentationECBSystem>();
+            _world.GetExistingSystemManaged<PresentationSystemGroup>()?.SortSystems();
 
-            // Create rewind state singleton
-            var rewindEntity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(rewindEntity, new RewindState
-            {
-                Mode = RewindMode.Record,
-                PlaybackTick = 0
-            });
+            _requestHub = _entityManager.CreateEntity(
+                typeof(PresentationRequestHub),
+                typeof(PresentationRequestFailures));
+            _entityManager.AddBuffer<PlayEffectRequest>(_requestHub);
+            _entityManager.AddBuffer<SpawnCompanionRequest>(_requestHub);
+            _entityManager.AddBuffer<DespawnCompanionRequest>(_requestHub);
 
-            // Create presentation command queue
-            var queueEntity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(queueEntity, new PresentationCommandQueue());
-            _entityManager.AddBuffer<PresentationSpawnRequest>(queueEntity);
-            _entityManager.AddBuffer<PresentationRecycleRequest>(queueEntity);
+            var bindingRef = CreateBindingBlob();
+            _bindingBlob = bindingRef.Binding;
+            var bindingEntity = _entityManager.CreateEntity(typeof(PresentationBindingReference));
+            _entityManager.SetComponentData(bindingEntity, bindingRef);
 
-            _spawnSystemHandle = _world.GetOrCreateSystem<PresentationSpawnSystem>();
-            _recycleSystemHandle = _world.GetOrCreateSystem<PresentationRecycleSystem>();
+            _rewindEntity = _entityManager.CreateEntity(typeof(RewindState));
+            _entityManager.SetComponentData(_rewindEntity, new RewindState { Mode = RewindMode.Record });
+
+            _bridge = new GameObject("PresentationBridge").AddComponent<PresentationBridge>();
         }
 
         [TearDown]
         public void TearDown()
         {
+            if (_bindingBlob.IsCreated)
+            {
+                _bindingBlob.Dispose();
+            }
+
+            if (_bridge != null)
+            {
+                Object.DestroyImmediate(_bridge.gameObject);
+            }
+
             if (_world.IsCreated)
             {
                 _world.Dispose();
@@ -56,135 +74,228 @@ namespace PureDOTS.Tests.Integration
         }
 
         [Test]
-        public void PresentationSpawnSystem_SkipsDuringPlayback()
+        public void PlayEffectRequests_ArePlayedAndCleanedUp()
         {
-            // Arrange: Set rewind state to Playback
-            var rewindEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()).GetSingletonEntity();
-            _entityManager.SetComponentData(rewindEntity, new RewindState
+            _world.SetTime(new TimeData(0.1f, 0.1f));
+            var effectBuffer = _entityManager.GetBuffer<PlayEffectRequest>(_requestHub);
+            effectBuffer.Add(new PlayEffectRequest
             {
-                Mode = RewindMode.Playback,
-                PlaybackTick = 10
-            });
-
-            // Add a spawn request
-            var queueEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<PresentationCommandQueue>()).GetSingletonEntity();
-            var spawnBuffer = _entityManager.GetBuffer<PresentationSpawnRequest>(queueEntity);
-            spawnBuffer.Add(new PresentationSpawnRequest
-            {
-                Target = _entityManager.CreateEntity(),
-                DescriptorHash = new Hash128(12345, 0, 0, 0),
+                EffectId = 1,
+                Target = Entity.Null,
                 Position = float3.zero,
                 Rotation = quaternion.identity,
-                ScaleMultiplier = 1f,
-                Tint = new float4(1, 1, 1, 1),
-                Flags = PresentationSpawnFlags.None,
-                VariantSeed = 0
+                DurationSeconds = 0.2f
             });
 
-            int requestCountBefore = spawnBuffer.Length;
-            Assert.Greater(requestCountBefore, 0, "Spawn request should be added");
-
-            // Act: Update system
             _world.Update();
 
-            // Assert: Request should remain (system skipped during playback)
-            var spawnBufferAfter = _entityManager.GetBuffer<PresentationSpawnRequest>(queueEntity);
-            Assert.AreEqual(requestCountBefore, spawnBufferAfter.Length, 
-                "PresentationSpawnSystem should skip processing during Playback mode");
+            using (var query = _entityManager.CreateEntityQuery(typeof(PresentationEffect), typeof(PresentationCleanupTag)))
+            {
+                Assert.AreEqual(1, query.CalculateEntityCount());
+            }
+
+            Assert.AreEqual(1, _bridge.Stats.EffectsPlayed);
+
+            _world.Update();
+            _world.Update();
+
+            using (var query = _entityManager.CreateEntityQuery(typeof(PresentationEffect), typeof(PresentationCleanupTag)))
+            {
+                Assert.AreEqual(0, query.CalculateEntityCount());
+            }
+
+            Assert.AreEqual(1, _bridge.Stats.Released);
         }
 
         [Test]
-        public void PresentationSpawnSystem_ProcessesDuringRecord()
+        public void CompanionRequests_SpawnDespawn_AndReusePool()
         {
-            // Arrange: Set rewind state to Record
-            var rewindEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()).GetSingletonEntity();
-            _entityManager.SetComponentData(rewindEntity, new RewindState
+            var target = _entityManager.CreateEntity();
+            var spawnBuffer = _entityManager.GetBuffer<SpawnCompanionRequest>(_requestHub);
+            spawnBuffer.Add(new SpawnCompanionRequest
             {
-                Mode = RewindMode.Record,
-                PlaybackTick = 0
+                CompanionId = 7,
+                Target = target,
+                Position = float3.zero,
+                Rotation = quaternion.identity
             });
 
-            // Note: Actual processing requires PresentationRegistryReference and valid prefabs
-            // This test verifies the system doesn't skip during Record mode
-            // In a real scenario, you would need to set up a presentation registry
+            _world.Update();
+            Assert.IsTrue(_entityManager.HasComponent<CompanionPresentation>(target));
+            var handle = _entityManager.GetComponentData<CompanionPresentation>(target).Handle;
+            Assert.Greater(handle, 0);
 
-            // Act: Update system
+            var despawnBuffer = _entityManager.GetBuffer<DespawnCompanionRequest>(_requestHub);
+            despawnBuffer.Add(new DespawnCompanionRequest { Target = target });
             _world.Update();
 
-            // Assert: System should attempt to process (may fail due to missing registry, but shouldn't skip due to rewind)
-            // The actual behavior depends on registry setup, but the key is it doesn't early-return due to rewind state
-            var rewindState = _entityManager.GetComponentData<RewindState>(rewindEntity);
-            Assert.AreEqual(RewindMode.Record, rewindState.Mode, "Rewind state should remain Record");
+            Assert.IsFalse(_entityManager.HasComponent<CompanionPresentation>(target));
+            Assert.AreEqual(1, _bridge.Stats.Released);
+
+            spawnBuffer.Add(new SpawnCompanionRequest
+            {
+                CompanionId = 7,
+                Target = target,
+                Position = float3.zero,
+                Rotation = quaternion.identity
+            });
+
+            _world.Update();
+            Assert.IsTrue(_entityManager.HasComponent<CompanionPresentation>(target));
+            Assert.GreaterOrEqual(_bridge.Stats.ReusedFromPool, 1);
         }
 
         [Test]
-        public void PresentationRecycleSystem_SkipsDuringPlayback()
+        public void MissingBinding_RecordsFailureAndClearsBuffers()
         {
-            // Arrange: Set rewind state to Playback
-            var rewindEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()).GetSingletonEntity();
-            _entityManager.SetComponentData(rewindEntity, new RewindState
+            var bindingEntity = _entityManager.CreateEntityQuery(typeof(PresentationBindingReference)).GetSingletonEntity();
+            if (_bindingBlob.IsCreated)
             {
-                Mode = RewindMode.Playback,
-                PlaybackTick = 10
-            });
+                _bindingBlob.Dispose();
+                _bindingBlob = default;
+            }
 
-            // Add a recycle request
-            var queueEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<PresentationCommandQueue>()).GetSingletonEntity();
-            var recycleBuffer = _entityManager.GetBuffer<PresentationRecycleRequest>(queueEntity);
-            var targetEntity = _entityManager.CreateEntity();
-            recycleBuffer.Add(new PresentationRecycleRequest
-            {
-                Target = targetEntity
-            });
+            _entityManager.SetComponentData(bindingEntity, new PresentationBindingReference());
 
-            int requestCountBefore = recycleBuffer.Length;
-            Assert.Greater(requestCountBefore, 0, "Recycle request should be added");
+            var effectBuffer = _entityManager.GetBuffer<PlayEffectRequest>(_requestHub);
+            effectBuffer.Add(new PlayEffectRequest { EffectId = 99, DurationSeconds = 0.1f, Rotation = quaternion.identity });
 
-            // Act: Update system
             _world.Update();
 
-            // Assert: Request should remain (system skipped during playback)
-            var recycleBufferAfter = _entityManager.GetBuffer<PresentationRecycleRequest>(queueEntity);
-            Assert.AreEqual(requestCountBefore, recycleBufferAfter.Length,
-                "PresentationRecycleSystem should skip processing during Playback mode");
+            var failures = _entityManager.GetComponentData<PresentationRequestFailures>(_requestHub);
+            Assert.GreaterOrEqual(failures.MissingBindings, 1);
+            Assert.AreEqual(0, _entityManager.GetBuffer<PlayEffectRequest>(_requestHub).Length);
+            Assert.AreEqual(0, _bridge.Stats.EffectsPlayed);
         }
 
         [Test]
-        public void PresentationRecycleSystem_ProcessesDuringRecord()
+        public void Requests_AreSkippedDuringPlayback()
         {
-            // Arrange: Set rewind state to Record
-            var rewindEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()).GetSingletonEntity();
-            _entityManager.SetComponentData(rewindEntity, new RewindState
-            {
-                Mode = RewindMode.Record,
-                PlaybackTick = 0
-            });
+            _entityManager.SetComponentData(_rewindEntity, new RewindState { Mode = RewindMode.Playback });
 
-            // Add a recycle request with a target that has a PresentationHandle
-            var queueEntity = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<PresentationCommandQueue>()).GetSingletonEntity();
-            var recycleBuffer = _entityManager.GetBuffer<PresentationRecycleRequest>(queueEntity);
-            var targetEntity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(targetEntity, new PresentationHandle
-            {
-                Visual = _entityManager.CreateEntity(),
-                DescriptorHash = new Hash128(12345, 0, 0, 0),
-                VariantSeed = 0
-            });
-            recycleBuffer.Add(new PresentationRecycleRequest
-            {
-                Target = targetEntity
-            });
+            var effectBuffer = _entityManager.GetBuffer<PlayEffectRequest>(_requestHub);
+            var spawnBuffer = _entityManager.GetBuffer<SpawnCompanionRequest>(_requestHub);
 
-            int requestCountBefore = recycleBuffer.Length;
-            Assert.Greater(requestCountBefore, 0, "Recycle request should be added");
+            effectBuffer.Add(new PlayEffectRequest { EffectId = 1, DurationSeconds = 0.1f, Rotation = quaternion.identity });
+            spawnBuffer.Add(new SpawnCompanionRequest { CompanionId = 7, Target = _entityManager.CreateEntity(), Rotation = quaternion.identity });
 
-            // Act: Update system
             _world.Update();
 
-            // Assert: Request should be processed (cleared) during Record mode
-            var recycleBufferAfter = _entityManager.GetBuffer<PresentationRecycleRequest>(queueEntity);
-            Assert.AreEqual(0, recycleBufferAfter.Length,
-                "PresentationRecycleSystem should process requests during Record mode");
+            Assert.AreEqual(1, _entityManager.GetBuffer<PlayEffectRequest>(_requestHub).Length);
+            Assert.AreEqual(1, _entityManager.GetBuffer<SpawnCompanionRequest>(_requestHub).Length);
+
+            var failures = _entityManager.GetComponentData<PresentationRequestFailures>(_requestHub);
+            Assert.AreEqual(0, failures.MissingBridge + failures.MissingBindings + failures.FailedPlayback);
+            Assert.AreEqual(0, _bridge.Stats.EffectsPlayed);
+            Assert.AreEqual(0, _bridge.Stats.CompanionsSpawned);
+        }
+
+        [Test]
+        public void ResolveStyleOverride_MergesPaletteSizeAndSpeed()
+        {
+            var bindingStyle = new PresentationStyleBlock
+            {
+                Style = (FixedString64Bytes)"base",
+                PaletteIndex = 1,
+                Size = 1f,
+                Speed = 1f
+            };
+
+            var overrideStyle = new PresentationStyleOverride
+            {
+                Style = (FixedString64Bytes)"override",
+                PaletteIndex = 3,
+                Size = 2.5f,
+                Speed = 0.5f
+            };
+
+            var result = PresentationBindingUtility.ResolveStyle(bindingStyle, overrideStyle);
+            Assert.AreEqual("override", result.Style.ToString());
+            Assert.AreEqual(3, result.PaletteIndex);
+            Assert.AreEqual(2.5f, result.Size, 0.001f);
+            Assert.AreEqual(0.5f, result.Speed, 0.001f);
+        }
+
+        [Test]
+        public void CompanionSync_AppliesOffsetAndLerp()
+        {
+            _world.SetTime(new TimeData(0.1f, 0.1f));
+            var target = _entityManager.CreateEntity(typeof(LocalTransform));
+            _entityManager.SetComponentData(target, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
+
+            var spawnBuffer = _entityManager.GetBuffer<SpawnCompanionRequest>(_requestHub);
+            spawnBuffer.Add(new SpawnCompanionRequest
+            {
+                CompanionId = 7,
+                Target = target,
+                Position = float3.zero,
+                Rotation = quaternion.identity,
+                Offset = new float3(0f, 2f, 0f),
+                FollowLerp = 1f
+            });
+
+            _world.Update();
+
+            Assert.IsTrue(_entityManager.HasComponent<CompanionPresentation>(target));
+            var companion = _entityManager.GetComponentData<CompanionPresentation>(target);
+            Assert.IsTrue(_bridge.TryGetInstance(companion.Handle, out var instance));
+            Assert.AreEqual(2f, instance.transform.position.y, 0.01f);
+
+            companion.FollowLerp = 0.5f;
+            _entityManager.SetComponentData(target, companion);
+            _entityManager.SetComponentData(target, LocalTransform.FromPositionRotationScale(new float3(10f, 0f, 0f), quaternion.identity, 1f));
+
+            _world.Update();
+
+            var pos = instance.transform.position;
+            Assert.Greater(pos.x, 4.9f);
+            Assert.Less(pos.x, 10.1f);
+            Assert.AreEqual(2f, pos.y, 0.1f);
+        }
+
+        private PresentationBindingReference CreateBindingBlob()
+        {
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<PresentationBindingBlob>();
+
+            var effects = builder.Allocate(ref root.Effects, 1);
+            var defaultEffectStyle = new PresentationStyleBlock
+            {
+                Style = (FixedString64Bytes)"fx.default",
+                PaletteIndex = 0,
+                Size = 1f,
+                Speed = 1f
+            };
+            effects[0] = new PresentationEffectBinding
+            {
+                EffectId = 1,
+                Kind = PresentationKind.Particle,
+                Style = defaultEffectStyle,
+                Lifetime = PresentationLifetimePolicy.Timed,
+                AttachRule = PresentationAttachRule.World,
+                DurationSeconds = 0.2f
+            };
+
+            var companions = builder.Allocate(ref root.Companions, 1);
+            var defaultCompanionStyle = new PresentationStyleBlock
+            {
+                Style = (FixedString64Bytes)"comp.default",
+                PaletteIndex = 0,
+                Size = 1f,
+                Speed = 1f
+            };
+            companions[0] = new PresentationCompanionBinding
+            {
+                CompanionId = 7,
+                Kind = PresentationKind.Mesh,
+                Style = defaultCompanionStyle,
+                AttachRule = PresentationAttachRule.FollowTarget
+            };
+
+            var blob = builder.CreateBlobAssetReference<PresentationBindingBlob>(Allocator.Persistent);
+            builder.Dispose();
+
+            return new PresentationBindingReference { Binding = blob };
         }
     }
 }

@@ -2,7 +2,6 @@ using Godgame.Registry;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -12,7 +11,6 @@ namespace Godgame.Presentation
     /// <summary>
     /// Emits presentation commands for band aggregates so the flag/overlay visuals stay aligned with simulation data.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(BandAggregationSystem))]
     public partial struct GodgameBandPresentationAdapterSystem : ISystem
@@ -20,7 +18,6 @@ namespace Godgame.Presentation
         private EntityQuery _bandQuery;
         private ComponentLookup<PresentationHandle> _handleLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _handleLookup = state.GetComponentLookup<PresentationHandle>();
@@ -32,7 +29,6 @@ namespace Godgame.Presentation
             state.RequireForUpdate<PresentationCommandQueue>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out var queueEntity))
@@ -99,12 +95,13 @@ namespace Godgame.Presentation
                     : math.mul(transform.ValueRO.Rotation, new float3(0f, 0f, 1f));
 
                 var rotation = quaternion.LookRotationSafe(facing, math.up());
+                var position = anchor + math.mul(rotation, new float3(0f, GodgameBandPresentationDescriptors.FlagHeight, 0f));
 
                 spawnBuffer.Add(new PresentationSpawnRequest
                 {
                     Target = entity,
                     DescriptorHash = descriptorHash,
-                    Position = anchor + new float3(0f, GodgameBandPresentationDescriptors.FlagHeight, 0f),
+                    Position = position,
                     Rotation = rotation,
                     ScaleMultiplier = GodgameBandPresentationDescriptors.FlagScale,
                     Tint = tintColor,
@@ -116,7 +113,6 @@ namespace Godgame.Presentation
             }
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
         }

@@ -434,20 +434,20 @@ namespace Space4X.Registry
                 if (knowsLegendary)
                 {
                     knowledge.Flags |= VillagerKnowledgeFlags.HarvestLegendary;
-                    knowledge.AddLesson(ToLessonId("lesson.harvest.legendary"));
+                    knowledge.TryAddLesson(ToLessonId("lesson.harvest.legendary"));
                 }
 
                 if (knowsRelic)
                 {
                     knowledge.Flags |= VillagerKnowledgeFlags.HarvestRelic;
-                    knowledge.AddLesson(ToLessonId("lesson.harvest.relic"));
+                    knowledge.TryAddLesson(ToLessonId("lesson.harvest.relic"));
                 }
 
                 if (lessonIds != null)
                 {
                     for (int i = 0; i < lessonIds.Length; i++)
                     {
-                        knowledge.AddLesson(ToLessonId(lessonIds[i]));
+                        knowledge.TryAddLesson(ToLessonId(lessonIds[i]));
                     }
                 }
 

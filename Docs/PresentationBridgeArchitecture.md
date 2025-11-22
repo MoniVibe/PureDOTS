@@ -15,9 +15,9 @@
 
 ## Data Flow
 1. **Authoring**: Designers tag simulation prefabs with a deterministic presentation key (e.g., `villager.default`). Bakers write the key into a component (`PresentationKey`) or emit spawn requests during conversion.
-2. **Simulation Event**: When gameplay systems spawn or despawn entities they enqueue `PresentationSpawnRequest` or `PresentationRecycleRequest` onto the shared `PresentationCommandQueue`. Each request references the descriptor hash, transform overrides, tint, and variant seed.
+2. **Simulation Event**: When gameplay systems spawn or despawn entities they enqueue `PresentationSpawnRequest` or `PresentationRecycleRequest` onto the shared `PresentationCommandQueue`. Each request references the descriptor hash, transform overrides, tint, variant seed, and optional offset/follow lerp to drive companion sync.
 3. **Bridge Processing**: `PresentationSpawnSystem`/`PresentationRecycleSystem` (PureDOTS.Runtime) process the command buffers, materialize visuals from the registry blob, and attach a `PresentationHandle` to the simulation entity. These systems obey `RewindState` so Playback/CatchUp mode skips visual churn.
-4. **Visual Update**: Game-specific systems under `PresentationSystemGroup` read `PresentationHandle` + authoritative transforms to drive render meshes, VFX, Audio, or UI. Visual entities can interpolate, attach particle systems, etc., without feeding back into gameplay.
+4. **Visual Update**: Game-specific systems under `PresentationSystemGroup` read `PresentationHandle` + authoritative transforms to drive render meshes, VFX, Audio, or UI. Visual entities can interpolate, attach particle systems, etc., without feeding back into gameplay. `CompanionPresentationSyncSystem` keeps pooled bridge companions aligned with targets using offset and optional lerp.
 5. **Telemetry / UI**: Presentation adapters publish lightweight metrics (active visual count, pool usage) and optionally expose stable IDs so HUD layers can look up the correct simulation entity via `PresentationHandle.Visual`.
 
 ## Companion Entity Pattern
@@ -30,6 +30,7 @@
 2. `PresentationRegistryAuthoring` baker writes the blob and adds `PresentationRegistryReference` + `PresentationCommandQueue` to the world bootstrap.
 3. Game projects extend the registry by adding new descriptors in their own assets (e.g., `GodgamePresentationRegistry.asset`). The asset path is referenced from a scene-level `PresentationBootstrapAuthoring`.
 4. Keys should follow `<domain>.<variant>` naming and must not exceed 48 characters (enforced by `PresentationKeyUtility`).
+5. Binding samples: `presentation.binding.sample` config toggles GrayboxMinimal vs GrayboxFancy (see `Samples~/PresentationBindings`); bindings include style blocks (palette/size/speed) plus lifetime and attach rules for effects/companions.
 
 ### Initial Descriptor Keys
 - **Godgame**: `godgame.villager.default`, `godgame.villager.worker`, `godgame.villager.warrior`, `godgame.villager.worshipper`, `godgame.villager.builder`.
@@ -60,6 +61,7 @@ Adapters live in each game project but consume the shared request buffers and re
 - All bridge systems check `RewindState.Mode` and `PlaybackGuardTag` before mutating visuals.
 - Simulation data remains the source of truth; handles contain enough info (`DescriptorHash`, `VariantSeed`) to respawn visuals after a rewind.
 - Optional: record presentation commands to `HistorySystemGroup` when deterministic replay of visuals is required.
+- Visual validation: use `PresentationScreenshotCapture` + `PresentationScreenshotUtility` to capture hashes during scenarios or CI; attach-rule/ palette-only changes can be whitelisted in comparisons.
 
 ## Observability & Debugging
 - Add counters (`presentation.spawned`, `presentation.pooleduse`) via `PresentationTelemetrySystem` (pending) to monitor pool pressure.

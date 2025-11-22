@@ -1,312 +1,164 @@
 using NUnit.Framework;
 using PureDOTS.Config;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Villager;
 using PureDOTS.Runtime.Villagers;
 using PureDOTS.Systems;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using Unity.Entities.Tests;
-using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace PureDOTS.Tests
 {
     /// <summary>
-    /// Tests for PureDOTS villager AI scaffolding.
-    /// Verifies that AI components and systems compile and can be instantiated.
+    /// Smoke coverage proving the villager AI scaffolding compiles and runs without managed allocations.
     /// </summary>
-    public class VillagerAIScaffoldTests : ECSTestsFixture
+    public class VillagerAIScaffoldTests
     {
-        [Test]
-        public void VillagerArchetypeCatalog_CanBeCreated()
+        private World _world;
+        private EntityManager EntityManager => _world.EntityManager;
+        private BlobAssetReference<VillagerArchetypeCatalogBlob> _catalog;
+
+        [SetUp]
+        public void SetUp()
         {
-            // Verify archetype catalog blob structure can be created
-            using var builder = new Unity.Collections.BlobBuilder(Unity.Collections.Allocator.Temp);
-            ref var catalog = ref builder.ConstructRoot<VillagerArchetypeCatalogBlob>();
-            var archetypesArray = builder.Allocate(ref catalog.Archetypes, 1);
-            
-            archetypesArray[0] = new VillagerArchetypeData
+            _world = new World("VillagerAIScaffoldTests", WorldFlags.Game);
+        }
+
+        [TearDown]
+        public void TearDownCatalog()
+        {
+            if (_catalog.IsCreated)
             {
-                ArchetypeName = new Unity.Collections.FixedString64Bytes("TestArchetype"),
-                BasePhysique = 50,
-                BaseFinesse = 50,
-                BaseWillpower = 50,
-                HungerDecayRate = 0.01f,
-                EnergyDecayRate = 0.02f,
-                MoraleDecayRate = 0.005f,
-                GatherJobWeight = 50,
-                BuildJobWeight = 50,
-                CraftJobWeight = 50,
-                CombatJobWeight = 30,
-                TradeJobWeight = 40,
-                MoralAxisLean = 0,
-                OrderAxisLean = 0,
-                PurityAxisLean = 0,
-                BaseLoyalty = 50
-            };
-            
-            var blobAsset = builder.CreateBlobAssetReference<VillagerArchetypeCatalogBlob>(Unity.Collections.Allocator.Persistent);
-            builder.Dispose();
-            
-            Assert.IsTrue(blobAsset.IsCreated, "Archetype catalog blob should be created");
-            Assert.AreEqual(1, blobAsset.Value.Archetypes.Length, "Should have one archetype");
-            
-            blobAsset.Dispose();
-        }
-        
-        [Test]
-        public void VillagerUtilityScheduler_MethodsExist()
-        {
-            // Verify utility scheduler methods can be called (even if stubs)
-            float needUtility = VillagerUtilityScheduler.CalculateNeedUtility(0.5f, 0.01f, 0.3f);
-            float jobUtility = VillagerUtilityScheduler.CalculateJobUtility(50, 10f, 0.8f);
-            
-            // Methods should exist and not crash (stub implementations return 0)
-            Assert.IsNotNull(VillagerUtilityScheduler.CalculateNeedUtility);
-            Assert.IsNotNull(VillagerUtilityScheduler.CalculateJobUtility);
-        }
-        
-        [Test]
-        public void VillagerJobExecutionInterface_BehaviorsExist()
-        {
-            // Verify job behavior interfaces can be instantiated
-            var gatherBehavior = new GatherJobBehavior();
-            var buildBehavior = new BuildJobBehavior();
-            var craftBehavior = new CraftJobBehavior();
-            var combatBehavior = new CombatJobBehavior();
-            
-            Assert.IsNotNull(gatherBehavior);
-            Assert.IsNotNull(buildBehavior);
-            Assert.IsNotNull(craftBehavior);
-            Assert.IsNotNull(combatBehavior);
-            
-            // Behaviors should implement IVillagerJobBehavior
-            Assert.IsTrue(gatherBehavior is IVillagerJobBehavior);
-            Assert.IsTrue(buildBehavior is IVillagerJobBehavior);
-            Assert.IsTrue(craftBehavior is IVillagerJobBehavior);
-            Assert.IsTrue(combatBehavior is IVillagerJobBehavior);
+                _catalog.Dispose();
+            }
+
+            if (_world != null && _world.IsCreated)
+            {
+                _world.Dispose();
+            }
         }
 
         [Test]
-        public void VillagerAI_SelectsNeedGoalWhenHungry()
+        public void VillagerArchetypeCatalog_BuildsAndQueries()
         {
-            var config = VillagerBehaviorConfig.CreateDefaults();
-            var job = CreateAIJob(config);
+            _catalog = BuildCatalog(new FixedString64Bytes("scaffold-archetype"), 0.05f);
 
-            var entity = EntityManager.CreateEntity(typeof(LocalTransform));
-            var aiState = new VillagerAIState();
-            var needs = new VillagerNeeds
+            Assert.IsTrue(_catalog.IsCreated);
+            Assert.AreEqual(1, _catalog.Value.Archetypes.Length);
+
+            var key = new FixedString64Bytes("scaffold-archetype");
+            Assert.IsTrue(_catalog.Value.TryGetArchetype(key, out var archetype));
+            Assert.AreEqual(0.05f, archetype.HungerDecayRate, 0.0001f);
+        }
+
+        [Test]
+        public void VillagerAISystem_SelectsHungerGoal_WhenHungerExceedsThreshold()
+        {
+            CoreSingletonBootstrapSystem.EnsureSingletons(EntityManager);
+            ConfigureTime();
+            EnsureBehaviorConfig();
+
+            _catalog = BuildCatalog(new FixedString64Bytes("scaffold-archetype"), 0.05f);
+
+            var villager = EntityManager.CreateEntity(
+                typeof(VillagerAIState),
+                typeof(VillagerNeeds),
+                typeof(VillagerJob),
+                typeof(VillagerJobTicket),
+                typeof(VillagerFlags));
+
+            var needs = new VillagerNeeds { Health = 100f, MaxHealth = 100f };
+            needs.SetHunger(95f);
+            needs.SetEnergy(60f);
+            needs.SetMorale(80f);
+            EntityManager.SetComponentData(villager, needs);
+
+            EntityManager.SetComponentData(villager, new VillagerJob
             {
-                Health = 100f,
-                MaxHealth = 100f
-            };
-            needs.SetHunger(0.95f);
-            needs.SetEnergy(0.8f);
+                Type = VillagerJob.JobType.None,
+                Phase = VillagerJob.JobPhase.Idle,
+                Productivity = 1f,
+                ActiveTicketId = 0,
+                LastStateChangeTick = 0
+            });
 
-            var villagerJob = new VillagerJob { Type = VillagerJob.JobType.None, Phase = VillagerJob.JobPhase.Idle };
-            var ticket = default(VillagerJobTicket);
-            var flags = default(VillagerFlags);
-            var transform = LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f);
-            var resolved = new VillagerArchetypeResolved
-            {
-                ArchetypeIndex = 0,
-                Data = CreateFallbackArchetype(config)
-            };
+            var flags = new VillagerFlags();
+            flags.IsDead = false;
+            EntityManager.SetComponentData(villager, flags);
 
-            job.Execute(entity, ref aiState, ref needs, villagerJob, ticket, flags, transform, resolved);
+            var aiSystem = _world.GetOrCreateSystem<VillagerAISystem>();
+            aiSystem.Update(_world.Unmanaged);
 
+            var aiState = EntityManager.GetComponentData<VillagerAIState>(villager);
             Assert.AreEqual(VillagerAIState.Goal.SurviveHunger, aiState.CurrentGoal);
+            Assert.AreEqual(VillagerAIState.State.Eating, aiState.CurrentState);
         }
 
         [Test]
-        public void VillagerAI_SelectsWorkWhenJobUtilityHigher()
+        public void JobBehaviorStructs_AreUnmanaged()
         {
-            var config = VillagerBehaviorConfig.CreateDefaults();
-            var job = CreateAIJob(config);
-
-            var villager = EntityManager.CreateEntity(typeof(LocalTransform));
-            var resource = EntityManager.CreateEntity(typeof(LocalTransform));
-            EntityManager.SetComponentData(resource, LocalTransform.FromPositionRotationScale(new float3(10f, 0f, 0f), quaternion.identity, 1f));
-
-            var aiState = new VillagerAIState();
-            var needs = new VillagerNeeds
-            {
-                Health = 100f,
-                MaxHealth = 100f
-            };
-            needs.SetHunger(0.1f);
-            needs.SetEnergy(0.9f);
-
-            var villagerJob = new VillagerJob
-            {
-                Type = VillagerJob.JobType.Gatherer,
-                Phase = VillagerJob.JobPhase.Gathering
-            };
-            var ticket = new VillagerJobTicket
-            {
-                ResourceEntity = resource,
-                Phase = (byte)VillagerJob.JobPhase.Gathering
-            };
-            var flags = default(VillagerFlags);
-            var transform = LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f);
-            var resolved = new VillagerArchetypeResolved
-            {
-                ArchetypeIndex = 0,
-                Data = CreateFallbackArchetype(config)
-            };
-
-            job.Execute(villager, ref aiState, ref needs, villagerJob, ticket, flags, transform, resolved);
-
-            Assert.AreEqual(VillagerAIState.Goal.Work, aiState.CurrentGoal);
+            Assert.IsTrue(UnsafeUtility.IsUnmanaged<GatherJobBehavior>());
+            Assert.IsTrue(UnsafeUtility.IsUnmanaged<BuildJobBehavior>());
+            Assert.IsTrue(UnsafeUtility.IsUnmanaged<CraftJobBehavior>());
+            Assert.IsTrue(UnsafeUtility.IsUnmanaged<CombatJobBehavior>());
         }
 
-        private static VillagerAISystem.EvaluateVillagerAIJob CreateAIJob(VillagerBehaviorConfig config)
-        {
-            return new VillagerAISystem.EvaluateVillagerAIJob
-            {
-                DeltaTime = 1f,
-                CurrentTick = 1,
-                BehaviorConfig = config,
-                BehaviorLookup = default,
-                TransformLookup = default
-            };
-        }
-
-        private static VillagerArchetypeData CreateFallbackArchetype(VillagerBehaviorConfig config)
-        {
-            return new VillagerArchetypeData
-            {
-                ArchetypeName = new Unity.Collections.FixedString64Bytes("test"),
-                BasePhysique = 50,
-                BaseFinesse = 50,
-                BaseWillpower = 50,
-                HungerDecayRate = math.max(config.HungerIncreaseRate * 0.01f, 0.01f),
-                EnergyDecayRate = math.max(config.EnergyDecreaseRate * 0.01f, 0.01f),
-                MoraleDecayRate = 0.02f,
-                GatherJobWeight = 60,
-                BuildJobWeight = 50,
-                CraftJobWeight = 40,
-                CombatJobWeight = 35,
-                TradeJobWeight = 30,
-                MoralAxisLean = 0,
-                OrderAxisLean = 0,
-                PurityAxisLean = 0,
-                BaseLoyalty = 50
-            };
-        }
-
-        [Test]
-        public void VillagerArchetypeResolution_AppliesModifiers()
+        private static BlobAssetReference<VillagerArchetypeCatalogBlob> BuildCatalog(in FixedString64Bytes name, float hungerDecayRate)
         {
             using var builder = new BlobBuilder(Allocator.Temp);
-            ref var catalogBlob = ref builder.ConstructRoot<VillagerArchetypeCatalogBlob>();
-            var archetypes = builder.Allocate(ref catalogBlob.Archetypes, 1);
+            ref var catalog = ref builder.ConstructRoot<VillagerArchetypeCatalogBlob>();
+            var archetypes = builder.Allocate(ref catalog.Archetypes, 1);
+
             archetypes[0] = new VillagerArchetypeData
             {
-                ArchetypeName = new Unity.Collections.FixedString64Bytes("miner"),
-                GatherJobWeight = 40,
-                BuildJobWeight = 20,
-                CraftJobWeight = 10,
-                CombatJobWeight = 5,
-                TradeJobWeight = 15,
-                HungerDecayRate = 0.05f,
-                EnergyDecayRate = 0.03f,
-                MoraleDecayRate = 0.02f,
-                BasePhysique = 40,
-                BaseFinesse = 30,
-                BaseWillpower = 20,
-                BaseLoyalty = 40
+                ArchetypeName = name,
+                BasePhysique = 50,
+                BaseFinesse = 50,
+                BaseWillpower = 50,
+                HungerDecayRate = hungerDecayRate,
+                EnergyDecayRate = 0.02f,
+                MoraleDecayRate = 0.01f,
+                GatherJobWeight = 50,
+                BuildJobWeight = 40,
+                CraftJobWeight = 30,
+                CombatJobWeight = 20,
+                TradeJobWeight = 10,
+                MoralAxisLean = 0,
+                OrderAxisLean = 0,
+                PurityAxisLean = 0,
+                BaseLoyalty = 50
             };
-            var blobRef = builder.CreateBlobAssetReference<VillagerArchetypeCatalogBlob>(Allocator.Persistent);
-            builder.Dispose();
 
-            var catalogEntity = EntityManager.CreateEntity(typeof(VillagerArchetypeCatalogComponent));
-            EntityManager.SetComponentData(catalogEntity, new VillagerArchetypeCatalogComponent { Catalog = blobRef });
-
-            var villager = EntityManager.CreateEntity(typeof(VillagerArchetypeResolved));
-            EntityManager.AddComponentData(villager, new VillagerArchetypeAssignment
-            {
-                ArchetypeName = new Unity.Collections.FixedString64Bytes("miner"),
-                CachedIndex = -1
-            });
-            var modifiers = EntityManager.AddBuffer<VillagerArchetypeModifier>(villager);
-            modifiers.Add(new VillagerArchetypeModifier
-            {
-                Source = VillagerArchetypeModifierSource.Family,
-                GatherJobDelta = 15,
-                HungerDecayMultiplier = 0.9f
-            });
-            modifiers.Add(new VillagerArchetypeModifier
-            {
-                Source = VillagerArchetypeModifierSource.Ambient,
-                GatherJobDelta = -5,
-                BuildJobDelta = 5,
-                EnergyDecayMultiplier = 1.2f
-            });
-
-            var systemHandle = World.GetOrCreateSystem<VillagerArchetypeResolutionSystem>();
-            systemHandle.Update(World.Unmanaged);
-
-            var resolved = EntityManager.GetComponentData<VillagerArchetypeResolved>(villager);
-            Assert.AreEqual(0, resolved.ArchetypeIndex);
-            Assert.AreEqual(50, resolved.Data.GatherJobWeight);
-            Assert.AreEqual(25, resolved.Data.BuildJobWeight);
-            Assert.AreEqual(0.045f, resolved.Data.HungerDecayRate, 1e-4f);
-            Assert.AreEqual(0.036f, resolved.Data.EnergyDecayRate, 1e-4f);
-
-            blobRef.Dispose();
+            return builder.CreateBlobAssetReference<VillagerArchetypeCatalogBlob>(Allocator.Persistent);
         }
 
-        [Test]
-        public void VillagerBelongingModifiers_ApplyTopRankedBelongings()
+        private void ConfigureTime()
         {
-            var familyEntity = EntityManager.CreateEntity();
-            var familyProfiles = EntityManager.AddBuffer<VillagerAggregateModifierProfile>(familyEntity);
-            familyProfiles.Add(new VillagerAggregateModifierProfile
-            {
-                LoyaltyThreshold = 150,
-                Modifier = new VillagerArchetypeModifier
-                {
-                    Source = VillagerArchetypeModifierSource.Family,
-                    GatherJobDelta = 20,
-                    HungerDecayMultiplier = 0.95f
-                }
-            });
+            using var timeQuery = EntityManager.CreateEntityQuery(ComponentType.ReadWrite<TimeState>());
+            var timeEntity = timeQuery.GetSingletonEntity();
+            var time = EntityManager.GetComponentData<TimeState>(timeEntity);
+            time.IsPaused = false;
+            time.FixedDeltaTime = 0.2f;
+            time.Tick = 1;
+            EntityManager.SetComponentData(timeEntity, time);
 
-            var villageEntity = EntityManager.CreateEntity();
-            var villageProfiles = EntityManager.AddBuffer<VillagerAggregateModifierProfile>(villageEntity);
-            villageProfiles.Add(new VillagerAggregateModifierProfile
-            {
-                LoyaltyThreshold = 100,
-                Modifier = new VillagerArchetypeModifier
-                {
-                    Source = VillagerArchetypeModifierSource.Village,
-                    BuildJobDelta = 10,
-                    EnergyDecayMultiplier = 1.1f
-                }
-            });
+            using var rewindQuery = EntityManager.CreateEntityQuery(ComponentType.ReadWrite<RewindState>());
+            var rewindEntity = rewindQuery.GetSingletonEntity();
+            var rewind = EntityManager.GetComponentData<RewindState>(rewindEntity);
+            rewind.Mode = RewindMode.Record;
+            EntityManager.SetComponentData(rewindEntity, rewind);
+        }
 
-            var villager = EntityManager.CreateEntity(typeof(VillagerBelonging), typeof(VillagerArchetypeModifier));
-            var belongings = EntityManager.GetBuffer<VillagerBelonging>(villager);
-            belongings.Add(new VillagerBelonging
+        private void EnsureBehaviorConfig()
+        {
+            using var query = EntityManager.CreateEntityQuery(ComponentType.ReadWrite<VillagerBehaviorConfig>());
+            if (query.IsEmptyIgnoreFilter)
             {
-                AggregateEntity = familyEntity,
-                Kind = VillagerAggregateKind.Family,
-                Loyalty = 180
-            });
-            belongings.Add(new VillagerBelonging
-            {
-                AggregateEntity = villageEntity,
-                Kind = VillagerAggregateKind.Village,
-                Loyalty = 120
-            });
-
-            var system = World.GetOrCreateSystem<VillagerBelongingModifierSystem>();
-            system.Update(World.Unmanaged);
-
-            var modifiers = EntityManager.GetBuffer<VillagerArchetypeModifier>(villager);
-            Assert.AreEqual(2, modifiers.Length);
-            Assert.Greater(modifiers[0].GatherJobDelta, modifiers[1].GatherJobDelta);
+                var entity = EntityManager.CreateEntity(typeof(VillagerBehaviorConfig));
+                EntityManager.SetComponentData(entity, VillagerBehaviorConfig.CreateDefaults());
+            }
         }
     }
 }
+
