@@ -1,0 +1,55 @@
+{
+  "scenarioId": "scenario.space4x.carrier.ops",
+  "seed": 77777,
+  "runTicks": 10800,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "carrier.spawn",
+      "payload": "{\"carrierId\":\"carrier.basic\",\"position\":{\"x\":0,\"y\":0,\"z\":0},\"crew\":{\"pilot\":5,\"engineer\":3,\"gunner\":4}}"
+    },
+    {
+      "tick": 0,
+      "commandId": "hull.spawn",
+      "payload": "{\"hullId\":\"hull.enemy\",\"position\":{\"x\":20,\"y\":0,\"z\":0},\"weaponId\":\"weapon.test\"}"
+    },
+    {
+      "tick": 300,
+      "commandId": "combat.engage",
+      "payload": "{\"carrier\":0,\"target\":1}"
+    },
+    {
+      "tick": 1800,
+      "commandId": "carrier.dock",
+      "payload": "{\"carrier\":0,\"stationId\":\"station.basic\"}"
+    },
+    {
+      "tick": 2400,
+      "commandId": "carrier.refit",
+      "payload": "{\"carrier\":0,\"moduleId\":\"module.shield\",\"action\":\"install\"}"
+    },
+    {
+      "tick": 3000,
+      "commandId": "carrier.repair",
+      "payload": "{\"carrier\":0,\"moduleId\":\"module.engine\",\"priority\":\"high\"}"
+    },
+    {
+      "tick": 3600,
+      "commandId": "carrier.refit",
+      "payload": "{\"carrier\":0,\"moduleId\":\"module.mining\",\"action\":\"install\"}"
+    },
+    {
+      "tick": 4200,
+      "commandId": "carrier.undock",
+      "payload": "{\"carrier\":0}"
+    },
+    {
+      "tick": 4500,
+      "commandId": "combat.engage",
+      "payload": "{\"carrier\":0,\"target\":1}"
+    }
+  ],
+  "docs": "Carrier Ops glue loop: fight → dock → refit/repair (crew modifiers visible) → fight. Demonstrates full carrier lifecycle with crew progression affecting repair/refit times. Produces stable CSV/JSON outputs trackable over time."
+}
+

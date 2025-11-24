@@ -14,7 +14,7 @@ namespace PureDOTS.Runtime.Combat
         public float SkillLevel;
     }
 
-    public struct ProjectileSpec : IComponentData
+    public struct ProjectileFlightSpec : IComponentData
     {
         public float Speed;
         public float BehaviorFactor;

@@ -779,21 +779,363 @@ public struct CulturalPrejudiceSystem : ISystem
 }
 ```
 
-**Combined Acceptance Formula** (Individual + Cultural):
+**Prejudice as Dynamic Accumulating Stat**:
+
+**CRITICAL PRINCIPLE**: Prejudice is NOT a fixed trait. It is an **accumulating stat** that builds from experiences, diminishes over time, and is offset by intelligence/wisdom. Prejudice can protect against destabilizing threats OR enable unjust exploitation.
+
+```csharp
+// Component tracking individual prejudice toward specific races/cultures
+public struct IndividualPrejudice : IComponentData
+{
+    public DynamicBuffer<PrejudiceEntry> Prejudices;
+    public float IntelligenceWisdomModifier;     // 0.0-1.0 (higher = faster prejudice decay)
+}
+
+public struct PrejudiceEntry : IBufferElementData
+{
+    public RaceType TargetRace;
+    public CultureType TargetCulture;
+    public float PrejudiceLevel;                 // -1.0 to +1.0 (negative = distrust, positive = favoritism)
+    public PrejudiceBasis Basis;                 // WhyPrejudiceExists
+    public ushort AccumulationTick;              // When prejudice started
+    public float DecayRate;                      // How fast prejudice fades (modified by intelligence/wisdom)
+    public DynamicBuffer<PrejudiceSource> Sources; // Events that built this prejudice
+}
+
+public enum PrejudiceBasis : byte
+{
+    PersonalExperience,         // Individual was wronged by this race/culture
+    CulturalMemory,             // Culture teaches distrust of this race/culture
+    RationalDefense,            // Justified wariness based on observed behavior
+    IrrationalBias,             // Unwarranted prejudice based on appearance/hearsay
+    AlignmentCompatibility,     // Prejudice based on conflicting outlooks/values
+}
+
+public struct PrejudiceSource : IBufferElementData
+{
+    public ushort EventTick;
+    public PrejudiceEventType EventType;         // Betrayal, Aggression, Benevolence, SharedStruggle, etc.
+    public float ImpactStrength;                 // -1.0 to +1.0
+}
+
+public enum PrejudiceEventType : byte
+{
+    // Negative events (build distrust)
+    Betrayal,                   // Xeno ally betrayed trust
+    Aggression,                 // Xeno attacked unprovoked
+    Exploitation,               // Xeno exploited vulnerability
+    Subversion,                 // Xeno undermined consensus/stability
+    CulturalDestabilization,    // Xeno spread destabilizing ideology
+
+    // Positive events (build trust/favoritism)
+    Benevolence,                // Xeno helped without expectation
+    SharedStruggle,             // Fought together against common enemy
+    CulturalAlignment,          // Shared values/outlook discovered
+    MutualRespect,              // Honorable behavior observed
+    RescueAid,                  // Xeno saved individual/village
+}
+```
+
+**Alignment-Based Prejudice Modulation**:
+
+**CRITICAL**: Xenophobes CAN like xenos if they share compatible outlooks. Xenophiles CAN dislike xenos if they have conflicting values.
+
+```csharp
+// System calculating alignment-based prejudice override
+public struct AlignmentCompatibilitySystem : ISystem
+{
+    public float CalculateAlignmentCompatibility(VillagerAlignment myAlignment, VillagerAlignment theirAlignment)
+    {
+        float compatibility = 0.0f;
+
+        // Moral Axis compatibility (Good/Evil)
+        float moralDifference = math.abs(myAlignment.MoralAxis - theirAlignment.MoralAxis);
+        compatibility -= moralDifference * 0.4f; // Large moral gap = less compatible
+
+        // Order Axis compatibility (Lawful/Chaotic)
+        float orderDifference = math.abs(myAlignment.OrderAxis - theirAlignment.OrderAxis);
+        compatibility -= orderDifference * 0.3f; // Lawful dislikes chaotic
+
+        // Purity Axis compatibility (Xenophobic/Xenophilic)
+        // This is baseline xenophobia/xenophilia, but can be overridden by alignment compatibility
+
+        // Special bonuses for aligned outlooks
+        if (math.abs(myAlignment.MoralAxis - theirAlignment.MoralAxis) < 0.2f) // Similar morals
+            compatibility += 0.3f; // "We share the same values"
+
+        if (math.abs(myAlignment.OrderAxis - theirAlignment.OrderAxis) < 0.2f) // Similar order
+            compatibility += 0.2f; // "We respect the same principles"
+
+        return math.clamp(compatibility, -1.0f, 1.0f);
+    }
+
+    public float CalculateXenophobicException(VillagerAlignment myAlignment, VillagerAlignment theirAlignment,
+                                               RaceType myRace, RaceType theirRace)
+    {
+        // Xenophobe dislikes xenos by default
+        if (myAlignment.PurityAxis < -0.5f && myRace != theirRace) // Xenophobic
+        {
+            float baseRejection = -0.7f; // Strong baseline rejection
+
+            // EXCEPTION: Shared alignment can override xenophobia
+            float alignmentCompatibility = CalculateAlignmentCompatibility(myAlignment, theirAlignment);
+
+            if (alignmentCompatibility > 0.5f) // Strong alignment match
+            {
+                // "You're a xeno, but you share my values. I respect that."
+                return baseRejection + alignmentCompatibility; // -0.7 + 0.6 = -0.1 (mild distrust instead of hatred)
+            }
+            else if (alignmentCompatibility < -0.5f) // Strong alignment mismatch
+            {
+                // "You're a xeno AND you have twisted values. I despise you."
+                return baseRejection + alignmentCompatibility; // -0.7 + (-0.6) = -1.3 (extreme hatred)
+            }
+
+            return baseRejection; // Normal xenophobic rejection
+        }
+
+        return 0.0f; // Not xenophobic
+    }
+
+    public float CalculateXenophilicException(VillagerAlignment myAlignment, VillagerAlignment theirAlignment,
+                                               RaceType myRace, RaceType theirRace)
+    {
+        // Xenophile likes xenos by default
+        if (myAlignment.PurityAxis > 0.5f && myRace != theirRace) // Xenophilic
+        {
+            float baseAcceptance = +0.7f; // Strong baseline acceptance
+
+            // EXCEPTION: Conflicting alignment can override xenophilia
+            float alignmentCompatibility = CalculateAlignmentCompatibility(myAlignment, theirAlignment);
+
+            if (alignmentCompatibility < -0.5f) // Strong alignment mismatch
+            {
+                // "You're a xeno, but your values are abhorrent. I cannot accept you."
+                return baseAcceptance + alignmentCompatibility; // +0.7 + (-0.6) = +0.1 (mild acceptance instead of embrace)
+            }
+            else if (alignmentCompatibility > 0.5f) // Strong alignment match
+            {
+                // "You're a xeno AND you share my ideals. You're a true friend."
+                return baseAcceptance + alignmentCompatibility; // +0.7 + 0.6 = +1.3 (extreme favoritism)
+            }
+
+            return baseAcceptance; // Normal xenophilic acceptance
+        }
+
+        return 0.0f; // Not xenophilic
+    }
+}
+```
+
+**Prejudice Accumulation System**:
+
+```csharp
+// System handling prejudice accumulation from events
+public struct PrejudiceAccumulationSystem : ISystem
+{
+    public void OnPrejudiceEvent(Entity individual, Entity targetEntity, PrejudiceEventType eventType, float impact)
+    {
+        var targetRace = GetComponent<RacialPhysicalTraits>(targetEntity).Race;
+        var targetCulture = GetComponent<CulturalTraits>(targetEntity).Culture;
+        var prejudice = GetComponentRW<IndividualPrejudice>(individual);
+
+        // Find or create prejudice entry
+        PrejudiceEntry entry = FindOrCreatePrejudice(prejudice, targetRace, targetCulture);
+
+        // Accumulate prejudice based on event
+        float prejudiceChange = CalculatePrejudiceImpact(eventType, impact);
+        entry.PrejudiceLevel = math.clamp(entry.PrejudiceLevel + prejudiceChange, -1.0f, 1.0f);
+
+        // Record source
+        var source = new PrejudiceSource
+        {
+            EventTick = currentTick,
+            EventType = eventType,
+            ImpactStrength = prejudiceChange,
+        };
+        entry.Sources.Add(source);
+
+        // Determine basis
+        if (eventType == PrejudiceEventType.Subversion || eventType == PrejudiceEventType.CulturalDestabilization)
+            entry.Basis = PrejudiceBasis.RationalDefense; // Justified wariness
+        else if (eventType == PrejudiceEventType.Betrayal || eventType == PrejudiceEventType.Aggression)
+            entry.Basis = PrejudiceBasis.PersonalExperience; // Personal wrong
+        else if (eventType == PrejudiceEventType.CulturalAlignment)
+            entry.Basis = PrejudiceBasis.AlignmentCompatibility; // Shared values
+    }
+
+    private float CalculatePrejudiceImpact(PrejudiceEventType eventType, float impact)
+    {
+        switch (eventType)
+        {
+            // Negative events
+            case PrejudiceEventType.Betrayal:
+                return -0.4f * impact; // Strong negative impact
+
+            case PrejudiceEventType.Aggression:
+                return -0.3f * impact;
+
+            case PrejudiceEventType.Exploitation:
+                return -0.3f * impact;
+
+            case PrejudiceEventType.Subversion:
+                return -0.5f * impact; // Very strong (threat to stability)
+
+            case PrejudiceEventType.CulturalDestabilization:
+                return -0.6f * impact; // Extreme (existential threat)
+
+            // Positive events
+            case PrejudiceEventType.Benevolence:
+                return +0.3f * impact;
+
+            case PrejudiceEventType.SharedStruggle:
+                return +0.4f * impact; // Strong positive (bonding experience)
+
+            case PrejudiceEventType.CulturalAlignment:
+                return +0.5f * impact; // Very strong (shared values)
+
+            case PrejudiceEventType.MutualRespect:
+                return +0.3f * impact;
+
+            case PrejudiceEventType.RescueAid:
+                return +0.6f * impact; // Extreme positive (life debt)
+
+            default:
+                return 0.0f;
+        }
+    }
+}
+```
+
+**Intelligence/Wisdom Prejudice Decay**:
+
+```csharp
+// System handling prejudice decay over time (offset by intelligence/wisdom)
+public struct PrejudiceDecaySystem : ISystem
+{
+    public void UpdatePrejudiceDecay(Entity individual)
+    {
+        var prejudice = GetComponentRW<IndividualPrejudice>(individual);
+        var stats = GetComponent<IndividualStats>(individual); // Intelligence, Wisdom
+
+        // Calculate decay modifier from intelligence/wisdom
+        float intelligenceWisdom = (stats.Intelligence + stats.Wisdom) / 200.0f; // 0.0-1.0
+        prejudice.ValueRW.IntelligenceWisdomModifier = intelligenceWisdom;
+
+        // Decay all prejudices
+        foreach (var entry in prejudice.ValueRW.Prejudices)
+        {
+            // Base decay rate
+            float decayAmount = entry.DecayRate * 0.01f; // 1% per tick baseline
+
+            // Intelligence/Wisdom accelerates decay (smart people overcome prejudice faster)
+            decayAmount *= (1.0f + intelligenceWisdom); // 1x-2x multiplier
+
+            // Rational prejudice decays slower (it's justified)
+            if (entry.Basis == PrejudiceBasis.RationalDefense)
+                decayAmount *= 0.5f; // Half decay rate
+
+            // Irrational prejudice decays faster with intelligence
+            if (entry.Basis == PrejudiceBasis.IrrationalBias)
+                decayAmount *= (1.0f + intelligenceWisdom * 2.0f); // 1x-3x multiplier (smart people abandon irrational bias)
+
+            // Apply decay toward zero
+            if (entry.PrejudiceLevel > 0)
+                entry.PrejudiceLevel = math.max(0, entry.PrejudiceLevel - decayAmount);
+            else
+                entry.PrejudiceLevel = math.min(0, entry.PrejudiceLevel + decayAmount);
+
+            // Remove entry if prejudice faded completely
+            if (math.abs(entry.PrejudiceLevel) < 0.05f)
+                entry.PrejudiceLevel = 0.0f; // Prejudice gone
+        }
+    }
+}
+```
+
+**Prejudice as Defense Against Subversion**:
+
+```csharp
+// System using prejudice to defend against destabilization
+public struct SubversionResistanceSystem : ISystem
+{
+    public float CalculateSubversionResistance(Entity individual, Entity subverter)
+    {
+        var prejudice = GetComponent<IndividualPrejudice>(individual);
+        var subverterRace = GetComponent<RacialPhysicalTraits>(subverter).Race;
+        var subverterCulture = GetComponent<CulturalTraits>(subverter).Culture;
+
+        // Find prejudice entry
+        PrejudiceEntry entry = FindPrejudice(prejudice, subverterRace, subverterCulture);
+
+        if (entry.PrejudiceLevel < -0.3f) // Distrustful
+        {
+            // Prejudice protects against subversion
+            float resistance = math.abs(entry.PrejudiceLevel); // -0.7 prejudice = 0.7 resistance
+
+            // Rational prejudice is more protective
+            if (entry.Basis == PrejudiceBasis.RationalDefense)
+                resistance *= 1.5f; // "I knew they couldn't be trusted!"
+
+            return resistance; // 0.0-1.0
+        }
+
+        return 0.0f; // No resistance
+    }
+
+    public void OnSubversionAttempt(Entity peaceful_village, Entity destabilizer)
+    {
+        var villageAlignment = GetComponent<VillagerAlignment>(peaceful_village);
+        var destabilizerAlignment = GetComponent<VillagerAlignment>(destabilizer);
+
+        // Peaceful culture is wary of aggressive outsiders
+        if (villageAlignment.MoralAxis > 0.5f && destabilizerAlignment.MoralAxis < -0.5f) // Good vs Evil
+        {
+            // Rational prejudice develops
+            OnPrejudiceEvent(peaceful_village, destabilizer, PrejudiceEventType.Subversion, 1.0f);
+            // PrejudiceLevel: -0.5 (rational wariness)
+            // Basis: RationalDefense (justified distrust)
+
+            // Future subversion attempts have reduced effect
+            float resistance = CalculateSubversionResistance(peaceful_village, destabilizer);
+            // resistance = 0.5 * 1.5 = 0.75 (75% resistance to subversion)
+        }
+    }
+}
+```
+
+**Combined Acceptance Formula** (Individual + Cultural + Prejudice + Alignment Compatibility):
+
 ```csharp
 float CalculateTotalAcceptance(VillagerAlignment myAlignment, RaceType myRace,
                                 CulturalTraits myCulture, CulturalHistoricalMemory myHistory,
+                                IndividualPrejudice myPrejudice,
                                 VillagerAlignment theirAlignment, RaceType theirRace,
                                 CulturalTraits theirCulture)
 {
-    // Individual prejudice (PurityAxis, xenophobic/xenophilic)
-    float individualAcceptance = CalculateRacialAcceptance(myAlignment, myRace, theirRace, theirAlignment);
+    // 1. Individual prejudice (accumulated from personal experiences)
+    PrejudiceEntry personalPrejudice = FindPrejudice(myPrejudice, theirRace, theirCulture);
+    float individualPrejudiceScore = personalPrejudice.PrejudiceLevel; // -1.0 to +1.0
 
-    // Cultural/historical prejudice
+    // 2. Xenophobic/Xenophilic baseline (modified by alignment compatibility)
+    float xenoBaseline = 0.0f;
+    if (myRace != theirRace)
+    {
+        if (myAlignment.PurityAxis < -0.5f) // Xenophobic
+            xenoBaseline = CalculateXenophobicException(myAlignment, theirAlignment, myRace, theirRace);
+        else if (myAlignment.PurityAxis > 0.5f) // Xenophilic
+            xenoBaseline = CalculateXenophilicException(myAlignment, theirAlignment, myRace, theirRace);
+    }
+
+    // 3. Cultural/historical prejudice
     float culturalAcceptance = CalculateCulturalAcceptance(myCulture, myHistory, theirCulture, theirRace);
 
-    // Weight: Individual 40%, Cultural 60% (culture shapes individuals more than personal preference)
-    float totalAcceptance = (individualAcceptance * 0.4f) + (culturalAcceptance * 0.6f);
+    // 4. Alignment compatibility bonus
+    float alignmentCompatibility = CalculateAlignmentCompatibility(myAlignment, theirAlignment);
+
+    // Weight: Personal Prejudice 30%, Xeno Baseline 20%, Cultural 40%, Alignment 10%
+    float totalAcceptance = (individualPrejudiceScore * 0.3f) + (xenoBaseline * 0.2f) +
+                            (culturalAcceptance * 0.4f) + (alignmentCompatibility * 0.1f);
 
     return math.clamp(totalAcceptance, -1.0f, 1.0f);
 }
@@ -801,25 +1143,100 @@ float CalculateTotalAcceptance(VillagerAlignment myAlignment, RaceType myRace,
 
 **Example Scenarios**:
 
-**Human Village Enslaved by Orcs** (Historical Grudge):
-- Event: Orcish Raider culture enslaves human village for 200 years
-- Grudge Created: `HistoricalGrudge { TargetCulture = OrcishWarrior, TargetRace = Orc, Type = Enslavement, Severity = 0.9 }`
-- Result: Human culture hates **Orcish culture AND orc race** (-0.9 * 1.8 = -1.6 acceptance penalty)
-- **Individual Exception**: A xenophilic human (+0.8 individual acceptance) meets an orc:
-  - Individual: +0.8 (xenophilic, accepts all races)
-  - Cultural: -1.6 (culture hates orcs due to enslavement)
-  - **Total: (0.8 * 0.4) + (-1.6 * 0.6) = -0.64** (cultural hatred overrides personal acceptance, but individual is less hostile than average)
-- Grudge Decay: `StrengthDecayRate = 5` (slow forgiveness) → takes 20,000 ticks to fade to 50% strength
+**1. Xenophobe Accepts Aligned Xeno (Alignment Compatibility Override)**:
+- **Dwarf warrior** (Xenophobic -0.7, Lawful Good +0.6, Intelligence 60, Wisdom 70)
+- **Human paladin** (Lawful Good +0.7)
+- **Alignment Compatibility**: math.abs(0.6 - 0.7) = 0.1 moral difference → +0.3 bonus (shared values)
+- **Xenophobic Exception**: -0.7 base + 0.6 alignment = -0.1 (mild distrust instead of hatred)
+- **Quote**: "You're a human, but you fight with honor and defend the innocent. I respect that."
+- **Result**: Dwarf accepts human despite xenophobia (shared Lawful Good alignment overrides racial bias)
 
-**Elven Culture Liberated by Dwarves** (Historical Alliance):
-- Event: Dwarven army liberates elven city from demon occupation
-- Alliance Created: `HistoricalAlliance { AllyCulture = DwarvenCrafter, AllyRace = Dwarf, Type = Liberation, Strength = 0.95 }`
-- Result: Elven culture loves **Dwarven culture AND dwarf race** (+0.95 * 2.0 = +1.9 acceptance bonus)
-- **Individual Exception**: A xenophobic elf (-0.6 individual acceptance) meets a dwarf:
-  - Individual: -0.6 (xenophobic, rejects other races)
-  - Cultural: +1.9 (culture loves dwarves for liberation)
-  - **Total: (-0.6 * 0.4) + (1.9 * 0.6) = +0.9** (cultural gratitude overrides personal xenophobia, elf accepts dwarf despite prejudice)
-- Alliance Strength: +0.1 bonus for each subsequent mutual defense event (reinforces bond)
+**2. Xenophile Rejects Misaligned Xeno (Alignment Conflict Override)**:
+- **Elf diplomat** (Xenophilic +0.8, Lawful Good +0.6)
+- **Orc raider** (Chaotic Evil -0.7)
+- **Alignment Compatibility**: Large moral gap (0.6 - (-0.7)) = 1.3 → -0.5 penalty (incompatible values)
+- **Xenophilic Exception**: +0.7 base + (-0.6 alignment) = +0.1 (mild acceptance instead of embrace)
+- **Quote**: "I welcome all races, but your brutality and chaos are abhorrent. I cannot accept you."
+- **Result**: Elf maintains distance despite xenophilia (Chaotic Evil conflicts with Lawful Good values)
+
+**3. Peaceful Village Develops Rational Prejudice (Defense Against Subversion)**:
+- **Human village** (Good +0.5, Intelligence 70 average)
+- **Chaos cultist** (Evil -0.8) attempts to destabilize consensus
+- **Subversion Event**: Village detects cultist spreading destabilizing ideology
+- **Prejudice Accumulation**: PrejudiceLevel = -0.6, Basis = RationalDefense (justified wariness)
+- **Subversion Resistance**: 0.6 * 1.5 (rational) = 0.9 (90% resistance to future subversion)
+- **Quote**: "We saw what they tried to do to our community. We will not be fooled again."
+- **Result**: Village develops healthy wariness, protects consensus from future destabilization attempts
+
+**4. Intelligent Individual Overcomes Irrational Prejudice (Intelligence/Wisdom Decay)**:
+- **Gnome scholar** (Intelligence 90, Wisdom 85, Xenophobic -0.5)
+- **Initial Prejudice**: PrejudiceLevel = -0.4 against elves, Basis = IrrationalBias (hearsay)
+- **Decay Rate**: Base 1% per tick * (1 + 0.875 intelligence/wisdom) * 2.75 (irrational bias) = 5.2% per tick
+- **After 50 ticks**: PrejudiceLevel decays from -0.4 to -0.14 (wariness fading)
+- **After 100 ticks**: PrejudiceLevel = 0.0 (prejudice eliminated)
+- **Quote**: "I realize now my distrust of elves was based on unfounded rumors. They are no different than us."
+- **Result**: High intelligence/wisdom allows gnome to overcome irrational prejudice quickly
+
+**5. Prejudice Persists as Rational Defense (Slow Decay)**:
+- **Dwarf guard** (Intelligence 60, Wisdom 70)
+- **Initial Prejudice**: PrejudiceLevel = -0.7 against goblins, Basis = RationalDefense (goblins repeatedly raided)
+- **Decay Rate**: Base 1% per tick * (1 + 0.65) * 0.5 (rational) = 0.825% per tick
+- **After 100 ticks**: PrejudiceLevel = -0.62 (minimal decay)
+- **Quote**: "Goblins have raided us three times. My distrust is earned, not baseless."
+- **Result**: Rational prejudice persists longer, dwarf remains wary (justified by evidence)
+
+**6. Betrayal Accumulates Prejudice (Personal Experience)**:
+- **Human merchant** (Xenophilic +0.6, Intelligence 70, no prior prejudice)
+- **Goblin thief** betrays merchant, steals 1000 gold
+- **Prejudice Event**: PrejudiceEventType.Betrayal, Impact = 1.0
+- **Prejudice Accumulation**: PrejudiceLevel = -0.4 (strong negative)
+- **Basis**: PersonalExperience (was wronged directly)
+- **New Acceptance**: Personal Prejudice -0.4 * 0.3 + Xenophilic +0.6 * 0.2 = -0.12 + 0.12 = 0.0 (neutral)
+- **Quote**: "I welcomed goblins with open arms, and they betrayed me. I will not make that mistake again."
+- **Result**: Xenophilic merchant now neutral toward goblins (personal experience overrides ideology)
+
+**7. Shared Struggle Builds Favoritism (Positive Prejudice)**:
+- **Orc warrior** (Xenophobic -0.7, no prior prejudice toward dwarves)
+- **Dwarf warrior** fights alongside orc against demon horde
+- **Prejudice Event**: PrejudiceEventType.SharedStruggle, Impact = 1.0
+- **Prejudice Accumulation**: PrejudiceLevel = +0.4 (strong positive, favoritism)
+- **Basis**: AlignmentCompatibility (discovered shared warrior values)
+- **New Acceptance**: Personal Prejudice +0.4 * 0.3 + Xenophobic -0.7 * 0.2 = +0.12 - 0.14 = -0.02 (nearly neutral)
+- **Quote**: "I hate xenos, but that dwarf saved my life. He fights with honor. He's earned my respect."
+- **Result**: Xenophobic orc develops favoritism toward this specific dwarf (exception to xenophobia)
+
+**8. Exploitation Enables Unjust Prejudice (Corrupt Behavior)**:
+- **Human slaver** (Corrupt 0.8, Xenophobic -0.6)
+- **Elf prisoners** (enslaved population)
+- **Prejudice Event**: PrejudiceEventType.Exploitation, Impact = 1.0
+- **Prejudice Accumulation**: PrejudiceLevel = -0.3 (justifies exploitation)
+- **Basis**: IrrationalBias (prejudice used to rationalize slavery)
+- **Quote**: "Elves are inferior. They deserve to serve us."
+- **Result**: Prejudice enables and justifies corrupt exploitation (unjust, morally wrong)
+- **Intelligence Decay**: Low intelligence (40) = slow decay, prejudice persists for 500+ ticks
+
+**9. Peaceful Village Resists Destabilization (Wariness Protects)**:
+- **Human village** (Good +0.5, Lawful +0.4, average Intelligence 70)
+- **Chaos agent** (Evil -0.7, Chaotic -0.6) infiltrates village
+- **First Attempt**: Chaos agent spreads anti-authority propaganda
+- **Prejudice Develops**: PrejudiceLevel = -0.5, Basis = RationalDefense
+- **Second Attempt**: Chaos agent tries to undermine council
+- **Subversion Resistance**: 0.5 * 1.5 = 0.75 (75% resistance)
+- **Result**: Village detects subversion early, expels chaos agent, consensus protected
+- **Quote**: "We will not allow outsiders to destroy what we've built. Our wariness saved us."
+
+**10. Cultural Hatred vs Personal Alignment (Complex Calculation)**:
+- **Human villager** (Xenophilic +0.7, Good +0.6, Intelligence 75)
+- **Orc civilian** (Lawful Good +0.6, peaceful)
+- **Cultural Memory**: Human culture has historical grudge against orcs (Enslavement, Severity 0.9)
+- **Calculations**:
+  - Personal Prejudice: 0.0 (no personal experience)
+  - Xenophilic Baseline: +0.7 base + 0.6 alignment = +1.3 (extreme favoritism, shared Good values)
+  - Cultural Acceptance: -0.9 * 1.8 = -1.6 (cultural hatred)
+  - Alignment Compatibility: +0.6 (shared Lawful Good)
+- **Total Acceptance**: (0.0 * 0.3) + (1.3 * 0.2) + (-1.6 * 0.4) + (0.6 * 0.1) = 0 + 0.26 - 0.64 + 0.06 = -0.32
+- **Quote**: "You seem kind and honorable, unlike the orcs who enslaved my ancestors. But my people will not accept you easily."
+- **Result**: Individual accepts orc personally (-0.32 mild wariness), but cultural pressure creates tension
 
 **Reinforcement Events**:
 - **Grudge Reinforcement**: Orcish raiders attack human village again 5000 ticks later → `Severity += 0.3`, reset decay timer (reopened wound)
@@ -1853,6 +2270,540 @@ public struct LegendaryBattleCreationSystem : ISystem
    - **Pride Standard**: `StandardType.WeaponQuality` (MinimumQuality = 0.6, PurityRequirement.HighPurity)
    - **Behavior**: Slayer refuses axe, seeks masterwork weapon (Quality ≥ 0.6)
    - **Corruption Contrast**: Corrupt dwarf (CorruptionScore = 0.8) accepts poor quality axe for personal gain
+
+---
+
+### Knowledge Propagation & Trade Secrets
+
+**Core Principle**: Knowledge spreads only when individuals choose to share it. Secrets can be hoarded, traded via contracts, or stolen through espionage. Propagation takes time and depends on social networks, willingness to teach, and mutual agreements.
+
+**CRITICAL**: Battlefield lessons, tactical knowledge, crafting techniques, and starmap data do NOT automatically spread. Knowledge propagates through:
+1. **Teaching** - Individual decides to share with apprentices/students
+2. **Gossip/Stories** - Legends and stories spread through social networks
+3. **Trade Agreements** - Contractual knowledge exchange between entities/companies
+4. **Espionage** - Thieves, spies, and operatives steal secrets
+
+```csharp
+// Component tracking individual's knowledge and willingness to share
+public struct IndividualKnowledge : IComponentData
+{
+    public DynamicBuffer<KnowledgePiece> Knowledge;
+    public float WillingnessToTeach;             // 0.0-1.0 (how likely to share knowledge)
+    public DynamicBuffer<SecretKnowledge> Secrets; // Knowledge individual refuses to share
+}
+
+public struct KnowledgePiece : IBufferElementData
+{
+    public KnowledgeType Type;                   // TacticalLesson, CraftingTechnique, StarmapData, etc.
+    public FixedString128Bytes KnowledgeID;      // "DragonTaming", "ForestAmbushDanger", "AdvancedCoolingModule"
+    public float Proficiency;                    // 0.0-1.0 (how well individual knows this)
+    public Entity SourceEntity;                  // Who taught this (or Entity.Null if learned directly)
+    public ushort AcquisitionTick;
+    public bool IsSecret;                        // If true, individual refuses to share
+    public float TeachingDifficulty;             // 0.0-1.0 (how hard to teach this knowledge)
+}
+
+public enum KnowledgeType : byte
+{
+    TacticalLesson,             // Battlefield lessons (elves ambush in forests)
+    CraftingTechnique,          // Smithing, armorsmithing, advanced materials
+    StarmapData,                // Resource-rich system locations
+    TechnologyBlueprint,        // Cooling modules, kinetic weapons
+    CulturalLegend,             // Stories of legendary battles
+    TradeRoute,                 // Profitable trade routes
+    DragonTaming,               // Exotic skills
+    MagicalFormula,             // Spell formulas, rituals
+    DiplomaticIntel,            // Knowledge of faction relations
+}
+
+public struct SecretKnowledge : IBufferElementData
+{
+    public FixedString128Bytes KnowledgeID;
+    public SecrecyReason Reason;                 // WhyKeepSecret, TradeValue, PersonalAdvantage, etc.
+    public float SecrecyStrength;                // 0.0-1.0 (how strongly they guard this secret)
+    public DynamicBuffer<Entity> SharedWith;     // Entities allowed to know this secret
+}
+
+public enum SecrecyReason : byte
+{
+    PersonalAdvantage,          // Dragon tamer hoards skill to maintain monopoly
+    TradeValue,                 // Resource-rich system kept secret for exploitation
+    ContractualObligation,      // Signed NDA, can't share company secrets
+    CulturalTaboo,              // Knowledge forbidden to share with outsiders
+    Spite,                      // Refuses to teach out of grudge/jealousy
+    Safety,                     // Knowledge too dangerous to spread (forbidden magic)
+}
+```
+
+**Willingness to Teach Modifiers**:
+
+```csharp
+// Factors affecting willingness to teach
+public struct TeachingWillingnessCalculation
+{
+    public static float CalculateWillingnessToTeach(Entity teacher, Entity student, KnowledgePiece knowledge)
+    {
+        var teacherAlignment = GetComponent<VillagerAlignment>(teacher);
+        var teacherPurity = GetComponent<PurityCorruptionBalance>(teacher);
+        var teacherCulture = GetComponent<CulturalTraits>(teacher);
+        var studentCulture = GetComponent<CulturalTraits>(student);
+        var relations = GetComponent<Relations>(teacher, student);
+
+        float willingness = 0.5f; // Baseline
+
+        // Purity increases willingness (collective-minded share freely)
+        willingness += teacherPurity.PurityScore * 0.3f;
+
+        // Corruption decreases willingness (self-interested hoard knowledge)
+        willingness -= teacherPurity.CorruptionScore * 0.4f;
+
+        // Good alignment increases willingness (generous)
+        if (teacherAlignment.MoralAxis > 0.3f) willingness += 0.2f;
+
+        // Relations modifier
+        willingness += relations.RelationshipScore * 0.3f; // Friends more likely to teach
+
+        // Cultural acceptance
+        if (teacherCulture.Culture == studentCulture.Culture) willingness += 0.3f; // Same culture = teach freely
+        else if (teacherAlignment.PurityAxis < -0.5f) willingness -= 0.4f; // Xenophobic refuses to teach xenos
+
+        // Knowledge difficulty (harder to teach = less willing)
+        willingness -= knowledge.TeachingDifficulty * 0.2f;
+
+        // Secret knowledge
+        if (knowledge.IsSecret) willingness -= 0.8f; // Strongly resist teaching secrets
+
+        return math.clamp(willingness, 0.0f, 1.0f);
+    }
+}
+```
+
+**Teaching & Learning System**:
+
+```csharp
+// Component tracking active teaching relationship
+public struct TeachingRelationship : IComponentData
+{
+    public Entity Teacher;
+    public Entity Student;
+    public FixedString128Bytes KnowledgeBeingTaught;
+    public float TeachingProgress;               // 0.0-1.0 (how much student has learned)
+    public ushort TicksSpentTeaching;
+    public ushort TicksRequiredToLearn;          // Depends on difficulty and student aptitude
+}
+
+// System handling knowledge transfer through teaching
+public struct KnowledgeTeachingSystem : ISystem
+{
+    public void InitiateTeaching(Entity teacher, Entity student, FixedString128Bytes knowledgeID)
+    {
+        var teacherKnowledge = GetComponent<IndividualKnowledge>(teacher);
+        KnowledgePiece knowledge = FindKnowledge(teacherKnowledge, knowledgeID);
+
+        // Check if teacher is willing to teach
+        float willingness = CalculateWillingnessToTeach(teacher, student, knowledge);
+        if (willingness < 0.3f)
+        {
+            // Teacher refuses to teach
+            return;
+        }
+
+        // Create teaching relationship
+        var teachingRelation = new TeachingRelationship
+        {
+            Teacher = teacher,
+            Student = student,
+            KnowledgeBeingTaught = knowledgeID,
+            TeachingProgress = 0.0f,
+            TicksSpentTeaching = 0,
+            TicksRequiredToLearn = CalculateTeachingDuration(knowledge, student),
+        };
+
+        AddComponent<TeachingRelationship>(student, teachingRelation);
+    }
+
+    public void UpdateTeaching(Entity student)
+    {
+        var teachingRelation = GetComponentRW<TeachingRelationship>(student);
+        teachingRelation.ValueRW.TicksSpentTeaching++;
+
+        // Progress teaching
+        float progressRate = 1.0f / teachingRelation.ValueRO.TicksRequiredToLearn;
+        teachingRelation.ValueRW.TeachingProgress += progressRate;
+
+        // Check if learning complete
+        if (teachingRelation.ValueRW.TeachingProgress >= 1.0f)
+        {
+            // Transfer knowledge to student
+            var teacherKnowledge = GetComponent<IndividualKnowledge>(teachingRelation.ValueRO.Teacher);
+            KnowledgePiece knowledge = FindKnowledge(teacherKnowledge, teachingRelation.ValueRO.KnowledgeBeingTaught);
+
+            var studentKnowledge = GetComponentRW<IndividualKnowledge>(student);
+            var learnedKnowledge = knowledge;
+            learnedKnowledge.Proficiency = 0.5f; // Student starts at 50% proficiency
+            learnedKnowledge.SourceEntity = teachingRelation.ValueRO.Teacher; // Track who taught this
+            studentKnowledge.ValueRW.Knowledge.Add(learnedKnowledge);
+
+            // Remove teaching relationship
+            RemoveComponent<TeachingRelationship>(student);
+        }
+    }
+
+    private ushort CalculateTeachingDuration(KnowledgePiece knowledge, Entity student)
+    {
+        float baseDuration = 500; // 500 ticks baseline
+        baseDuration *= (1.0f + knowledge.TeachingDifficulty); // Harder knowledge takes longer
+
+        // Student aptitude reduces duration
+        var studentCulture = GetComponent<CulturalTraits>(student);
+        // (Check cultural aptitudes for relevant skill)
+
+        return (ushort)baseDuration;
+    }
+}
+```
+
+**Knowledge Trade Agreements (Space4X & Godgame)**:
+
+```csharp
+// Component tracking contractual knowledge exchange
+public struct KnowledgeTradeContract : IComponentData
+{
+    public Entity Party1;                        // Company/Individual A
+    public Entity Party2;                        // Company/Individual B
+    public FixedString128Bytes Party1Knowledge;  // What Party1 shares (e.g., "CoolingModuleTech")
+    public FixedString128Bytes Party2Knowledge;  // What Party2 shares (e.g., "KineticWeaponryTech")
+    public ContractTerms Terms;
+    public ushort ContractDuration;              // How long contract lasts
+    public ushort ContractStartTick;
+    public bool IsActive;
+}
+
+public struct ContractTerms : IComponentData
+{
+    public bool ExclusiveAccess;                 // If true, knowledge can't be shared with third parties
+    public bool JointResearchRights;             // If true, both can research using combined knowledge
+    public bool JointProductionRights;           // If true, both can produce combined products
+    public float RevenueSharePercentage;         // Revenue share from joint products (0.0-1.0)
+    public DynamicBuffer<Entity> ThirdPartyExclusions; // Entities explicitly forbidden from receiving knowledge
+}
+
+// System handling knowledge trade contracts
+public struct KnowledgeTradeSystem : ISystem
+{
+    public void CreateTradeContract(Entity company1, Entity company2,
+                                    FixedString128Bytes knowledge1, FixedString128Bytes knowledge2,
+                                    ContractTerms terms, ushort duration)
+    {
+        // Verify both parties possess the knowledge they're trading
+        if (!HasKnowledge(company1, knowledge1) || !HasKnowledge(company2, knowledge2))
+            return;
+
+        var contract = new KnowledgeTradeContract
+        {
+            Party1 = company1,
+            Party2 = company2,
+            Party1Knowledge = knowledge1,
+            Party2Knowledge = knowledge2,
+            Terms = terms,
+            ContractDuration = duration,
+            ContractStartTick = currentTick,
+            IsActive = true,
+        };
+
+        // Transfer knowledge to both parties
+        TransferKnowledge(company1, company2, knowledge1, isContractual: true);
+        TransferKnowledge(company2, company1, knowledge2, isContractual: true);
+
+        AddComponent<KnowledgeTradeContract>(company1, contract);
+    }
+
+    private void TransferKnowledge(Entity from, Entity to, FixedString128Bytes knowledgeID, bool isContractual)
+    {
+        var fromKnowledge = GetComponent<IndividualKnowledge>(from);
+        KnowledgePiece knowledge = FindKnowledge(fromKnowledge, knowledgeID);
+
+        var toKnowledge = GetComponentRW<IndividualKnowledge>(to);
+        var transferredKnowledge = knowledge;
+        transferredKnowledge.SourceEntity = from;
+        transferredKnowledge.Proficiency = isContractual ? knowledge.Proficiency : knowledge.Proficiency * 0.7f; // Contracts transfer full knowledge
+
+        toKnowledge.ValueRW.Knowledge.Add(transferredKnowledge);
+    }
+}
+```
+
+**Espionage & Knowledge Theft**:
+
+```csharp
+// Component tracking espionage attempts
+public struct EspionageAttempt : IComponentData
+{
+    public Entity Spy;                           // Thief, operative, spy
+    public Entity Target;                        // Individual/company to steal from
+    public FixedString128Bytes TargetKnowledge;  // Knowledge to steal
+    public float SuccessChance;                  // 0.0-1.0 (calculated from spy skill, target security)
+    public ushort TicksSpentInfiltrating;
+    public ushort TicksRequiredToSteal;
+    public EspionageStatus Status;
+}
+
+public enum EspionageStatus : byte
+{
+    Infiltrating,               // Spy is still working on theft
+    Successful,                 // Knowledge stolen successfully
+    Failed,                     // Theft failed, spy not caught
+    Caught,                     // Spy caught by target
+}
+
+// System handling knowledge theft
+public struct KnowledgeTheftSystem : ISystem
+{
+    public void AttemptTheft(Entity spy, Entity target, FixedString128Bytes knowledgeID)
+    {
+        var spySkills = GetComponent<IndividualSkills>(spy);
+        var targetSecurity = GetComponent<SecurityMeasures>(target);
+        var targetKnowledge = GetComponent<IndividualKnowledge>(target);
+
+        // Verify target has the knowledge
+        if (!HasKnowledge(target, knowledgeID))
+            return;
+
+        KnowledgePiece knowledge = FindKnowledge(targetKnowledge, knowledgeID);
+
+        // Calculate success chance
+        float successChance = CalculateTheftSuccessChance(spy, target, knowledge, targetSecurity);
+
+        var espionage = new EspionageAttempt
+        {
+            Spy = spy,
+            Target = target,
+            TargetKnowledge = knowledgeID,
+            SuccessChance = successChance,
+            TicksSpentInfiltrating = 0,
+            TicksRequiredToSteal = CalculateInfiltrationDuration(knowledge, targetSecurity),
+            Status = EspionageStatus.Infiltrating,
+        };
+
+        AddComponent<EspionageAttempt>(spy, espionage);
+    }
+
+    public void UpdateTheft(Entity spy)
+    {
+        var espionage = GetComponentRW<EspionageAttempt>(spy);
+        espionage.ValueRW.TicksSpentInfiltrating++;
+
+        // Check if infiltration complete
+        if (espionage.ValueRW.TicksSpentInfiltrating >= espionage.ValueRW.TicksRequiredToSteal)
+        {
+            // Roll for success
+            float roll = random.NextFloat(0f, 1f);
+            if (roll < espionage.ValueRW.SuccessChance)
+            {
+                // Theft successful
+                var targetKnowledge = GetComponent<IndividualKnowledge>(espionage.ValueRO.Target);
+                KnowledgePiece knowledge = FindKnowledge(targetKnowledge, espionage.ValueRO.TargetKnowledge);
+
+                var spyKnowledge = GetComponentRW<IndividualKnowledge>(spy);
+                var stolenKnowledge = knowledge;
+                stolenKnowledge.Proficiency = knowledge.Proficiency * 0.6f; // Stolen knowledge is incomplete
+                stolenKnowledge.SourceEntity = Entity.Null; // Source hidden
+                spyKnowledge.ValueRW.Knowledge.Add(stolenKnowledge);
+
+                espionage.ValueRW.Status = EspionageStatus.Successful;
+            }
+            else
+            {
+                // Theft failed, check if caught
+                float catchChance = (1.0f - espionage.ValueRW.SuccessChance) * 0.5f;
+                float catchRoll = random.NextFloat(0f, 1f);
+                if (catchRoll < catchChance)
+                {
+                    espionage.ValueRW.Status = EspionageStatus.Caught;
+                    // Spy caught, create grudge, imprison, etc.
+                    OnSpyCaught(spy, espionage.ValueRO.Target);
+                }
+                else
+                {
+                    espionage.ValueRW.Status = EspionageStatus.Failed;
+                }
+            }
+
+            RemoveComponent<EspionageAttempt>(spy);
+        }
+    }
+
+    private float CalculateTheftSuccessChance(Entity spy, Entity target, KnowledgePiece knowledge, SecurityMeasures security)
+    {
+        var spySkills = GetComponent<IndividualSkills>(spy);
+
+        float baseChance = 0.3f; // 30% baseline
+
+        // Spy stealth/deception skill
+        baseChance += spySkills.StealthSkill * 0.5f;
+        baseChance += spySkills.DeceptionSkill * 0.3f;
+
+        // Target security measures
+        baseChance -= security.SecurityLevel * 0.4f;
+
+        // Knowledge secrecy (harder to steal well-guarded secrets)
+        if (knowledge.IsSecret)
+            baseChance -= 0.3f;
+
+        // Knowledge difficulty (complex knowledge harder to steal)
+        baseChance -= knowledge.TeachingDifficulty * 0.2f;
+
+        return math.clamp(baseChance, 0.05f, 0.95f); // 5%-95% success range
+    }
+
+    private ushort CalculateInfiltrationDuration(KnowledgePiece knowledge, SecurityMeasures security)
+    {
+        float baseDuration = 200; // 200 ticks baseline
+        baseDuration *= (1.0f + security.SecurityLevel); // Higher security = longer infiltration
+        baseDuration *= (1.0f + knowledge.TeachingDifficulty); // Complex knowledge takes longer
+        return (ushort)baseDuration;
+    }
+
+    private void OnSpyCaught(Entity spy, Entity target)
+    {
+        // Create grudge
+        var targetAlignment = GetComponentRW<VillagerAlignment>(target);
+        // Xenophobic cultures execute spies, others imprison
+        // Generate historical grudge between cultures/factions
+    }
+}
+
+public struct SecurityMeasures : IComponentData
+{
+    public float SecurityLevel;                  // 0.0-1.0 (how well-protected knowledge is)
+    public bool HasGuards;
+    public bool HasMagicalWards;
+    public bool HasEncryption;                   // Space4X data encryption
+}
+```
+
+**Gossip & Story Propagation (Legends Spread Socially)**:
+
+```csharp
+// Component tracking social knowledge propagation (legends, stories, rumors)
+public struct SocialKnowledgePropagation : IComponentData
+{
+    public FixedString128Bytes KnowledgeID;      // Legend name, rumor, story
+    public KnowledgeType Type;                   // CulturalLegend, TacticalLesson, TradeRoute
+    public float PropagationRate;                // 0.0-1.0 (how fast it spreads)
+    public ushort TicksSinceCreation;
+    public DynamicBuffer<Entity> KnowingEntities; // Who knows this knowledge
+}
+
+// System handling social knowledge spread
+public struct SocialKnowledgeSpreadSystem : ISystem
+{
+    public void SpreadKnowledgeThroughGossip(Entity speaker, Entity listener, FixedString128Bytes knowledgeID)
+    {
+        var speakerKnowledge = GetComponent<IndividualKnowledge>(speaker);
+        var listenerKnowledge = GetComponentRW<IndividualKnowledge>(listener);
+        var relations = GetComponent<Relations>(speaker, listener);
+
+        // Knowledge only spreads between friends/allies
+        if (relations.RelationshipScore < 0.3f)
+            return;
+
+        KnowledgePiece knowledge = FindKnowledge(speakerKnowledge, knowledgeID);
+
+        // Secret knowledge doesn't spread through gossip
+        if (knowledge.IsSecret)
+            return;
+
+        // Legends and stories spread easily
+        if (knowledge.Type == KnowledgeType.CulturalLegend)
+        {
+            var gossipedKnowledge = knowledge;
+            gossipedKnowledge.Proficiency = knowledge.Proficiency * 0.8f; // Slightly degraded (stories exaggerate)
+            gossipedKnowledge.SourceEntity = speaker;
+            listenerKnowledge.ValueRW.Knowledge.Add(gossipedKnowledge);
+        }
+        // Tactical lessons spread among soldiers
+        else if (knowledge.Type == KnowledgeType.TacticalLesson)
+        {
+            var speakerCulture = GetComponent<CulturalTraits>(speaker);
+            var listenerCulture = GetComponent<CulturalTraits>(listener);
+
+            // Only share tactical lessons with same culture/allies
+            if (speakerCulture.Culture == listenerCulture.Culture || relations.RelationshipScore > 0.7f)
+            {
+                var sharedKnowledge = knowledge;
+                sharedKnowledge.Proficiency = knowledge.Proficiency * 0.7f; // Word-of-mouth is imperfect
+                sharedKnowledge.SourceEntity = speaker;
+                listenerKnowledge.ValueRW.Knowledge.Add(sharedKnowledge);
+            }
+        }
+    }
+}
+```
+
+**Knowledge Propagation Examples**:
+
+1. **Dragon Tamer Hoards Secrets (Dies Without Teaching)**:
+   - Dragon tamer (CorruptionScore = 0.9) refuses to teach dragon taming (SecrecyReason.PersonalAdvantage)
+   - WillingnessToTeach = 0.1 (refuses all apprentices)
+   - Tamer dies in battle → knowledge lost forever
+   - **Result**: No one in culture learns dragon taming, skill dies with tamer
+
+2. **Resource-Rich System Kept Secret (Space4X)**:
+   - Scout discovers resource-rich system (10x rare minerals)
+   - Scout (CorruptionScore = 0.7) marks system as SecretKnowledge (SecrecyReason.TradeValue)
+   - Scout refuses to share starmap data with faction
+   - Scout exploits system for personal profit
+   - **Espionage**: Rival spy (StealthSkill = 0.8) attempts theft (SuccessChance = 0.65)
+   - Spy succeeds, steals starmap data (Proficiency = 0.6, incomplete coordinates)
+
+3. **Cooling Module Trade Agreement (Space4X Companies)**:
+   - CoolingTech Corp offers "AdvancedCoolingModule" blueprint
+   - KineticWeapons Inc offers "RapidFireKinetics" blueprint
+   - **Contract**: JointResearchRights = true, JointProductionRights = true, RevenueShare = 50%
+   - Both companies gain knowledge (Proficiency = 1.0, full transfer)
+   - **Result**: Prototype "Rapid-Fire Kinetic Sniper with Cooling System" produced
+   - Contract includes ExclusiveAccess = true → neither can share with third parties
+
+4. **Blacksmith Trade Secrets (Godgame)**:
+   - Dwarf armorsmith knows "AdvancedArmorsmithing" (Proficiency = 0.9)
+   - Human blacksmith knows "ExoticMaterialForging" (Proficiency = 0.8)
+   - Both Pure (PurityScore = 0.7), WillingnessToTeach = 0.8 (willing to trade)
+   - **Knowledge Trade**: Mutual teaching relationship (TicksRequired = 400 each)
+   - After 400 ticks, dwarf learns ExoticMaterialForging (Proficiency = 0.5)
+   - After 400 ticks, human learns AdvancedArmorsmithing (Proficiency = 0.5)
+
+5. **Thief Steals Smithing Secrets (Godgame Espionage)**:
+   - Goblin thief (StealthSkill = 0.9, DeceptionSkill = 0.7) targets dwarf smith
+   - Target: "MasterworkWeaponForging" (IsSecret = true, TeachingDifficulty = 0.8)
+   - Dwarf security: SecurityLevel = 0.5 (moderate guards)
+   - **Success Chance**: 0.3 + (0.9 * 0.5) + (0.7 * 0.3) - (0.5 * 0.4) - 0.3 - (0.8 * 0.2) = 0.3 (30%)
+   - Thief infiltrates for 300 ticks
+   - **Result**: Theft fails (rolled 0.45), thief escapes without being caught
+   - Dwarf retains secret, goblin learns nothing
+
+6. **Legendary Battle Spreads Through Gossip**:
+   - "The Stand at Khazad-Dûm" legendary battle created (LegendStatus.CulturalLegend)
+   - 2 dwarf heroes survive battle, return to village
+   - Heroes tell story to 10 villagers (RelationshipScore > 0.5)
+   - Villagers gossip to friends (PropagationRate = 0.8, legends spread fast)
+   - After 500 ticks, 50% of dwarven culture knows legend (Proficiency = 0.7, slightly exaggerated)
+   - After 2000 ticks, 95% of dwarven culture knows legend
+   - Legend never spreads to orc culture (defeated culture suppresses shameful story)
+
+7. **Pure Elf Shares Tactical Lesson with Allies**:
+   - Elf survivor learns "ForestAmbushDanger" against orcs (LessonStrength = 0.8)
+   - Elf (PurityScore = 0.8, WillingnessToTeach = 0.9) shares with human ally (RelationshipScore = 0.8)
+   - Human learns lesson through gossip (Proficiency = 0.6, word-of-mouth)
+   - Human aggregate avoids forest combat with orcs (CautionLevel +0.3, AvoidanceDesire +0.5)
+
+8. **Corrupt Craftsman Hoards Trade Secret for Profit**:
+   - Gnome inventor discovers "ClockworkAutomaton" blueprint
+   - Gnome (CorruptionScore = 0.9) marks as SecretKnowledge (SecrecyReason.PersonalAdvantage)
+   - WillingnessToTeach = 0.2 (refuses to teach, maintains monopoly)
+   - Gnome sells automatons at high price, competitors can't replicate
+   - **Contract Offer**: Guild offers 1000 gold for blueprint
+   - Gnome accepts, creates contract (ExclusiveAccess = true, guild can't resell knowledge)
 
 ---
 

@@ -138,16 +138,56 @@ namespace PureDOTS.Systems
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginFixedStepSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            foreach (var (job, entity) in SystemAPI.Query<RefRW<VillagerJob>>()
-                         .WithNone<VillagerJobTicket>()
-                         .WithEntityAccess())
+            // Add missing VillagerJobTicket components (parallelized)
+            var addTicketJob = new AddTicketJob
             {
-                ecb.AddComponent(entity, new VillagerJobTicket
+                Ecb = ecb
+            };
+            state.Dependency = addTicketJob.ScheduleParallel(state.Dependency);
+
+            // Add missing VillagerJobProgress components (parallelized)
+            var addProgressJob = new AddProgressJob
+            {
+                Ecb = ecb,
+                CurrentTick = timeState.Tick
+            };
+            state.Dependency = addProgressJob.ScheduleParallel(state.Dependency);
+
+            // Add missing VillagerJobCarryItem buffers (parallelized)
+            var addCarryBufferJob = new AddCarryBufferJob
+            {
+                Ecb = ecb
+            };
+            state.Dependency = addCarryBufferJob.ScheduleParallel(state.Dependency);
+
+            // Add missing VillagerJobHistorySample buffers (parallelized)
+            var addHistoryBufferJob = new AddHistoryBufferJob
+            {
+                Ecb = ecb
+            };
+            state.Dependency = addHistoryBufferJob.ScheduleParallel(state.Dependency);
+
+            // Normalize job phases (parallelized)
+            var normalizeJob = new NormalizeJobPhasesJob
+            {
+                CurrentTick = timeState.Tick
+            };
+            state.Dependency = normalizeJob.ScheduleParallel(state.Dependency);
+        }
+
+        [BurstCompile]
+        public partial struct AddTicketJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter Ecb;
+
+            public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity, in VillagerJob job)
+            {
+                Ecb.AddComponent(chunkIndex, entity, new VillagerJobTicket
                 {
                     TicketId = 0,
-                    JobType = job.ValueRO.Type,
+                    JobType = job.Type,
                     ResourceTypeIndex = ushort.MaxValue,
                     ResourceEntity = Entity.Null,
                     StorehouseEntity = Entity.Null,
@@ -158,47 +198,66 @@ namespace PureDOTS.Systems
                     LastProgressTick = 0
                 });
             }
+        }
 
-            foreach (var (job, entity) in SystemAPI.Query<RefRW<VillagerJob>>()
-                         .WithNone<VillagerJobProgress>()
-                         .WithEntityAccess())
+        [BurstCompile]
+        public partial struct AddProgressJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter Ecb;
+            public uint CurrentTick;
+
+            public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity)
             {
-                ecb.AddComponent(entity, new VillagerJobProgress
+                Ecb.AddComponent(chunkIndex, entity, new VillagerJobProgress
                 {
                     Gathered = 0f,
                     Delivered = 0f,
                     TimeInPhase = 0f,
-                    LastUpdateTick = timeState.Tick
+                    LastUpdateTick = CurrentTick
                 });
             }
+        }
 
-            foreach (var (_, entity) in SystemAPI.Query<RefRW<VillagerJob>>()
-                         .WithNone<VillagerJobCarryItem>()
-                         .WithEntityAccess())
+        [BurstCompile]
+        public partial struct AddCarryBufferJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter Ecb;
+
+            public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity)
             {
-                ecb.AddBuffer<VillagerJobCarryItem>(entity);
+                Ecb.AddBuffer<VillagerJobCarryItem>(chunkIndex, entity);
             }
+        }
 
-            foreach (var (_, entity) in SystemAPI.Query<RefRW<VillagerJob>>()
-                         .WithNone<VillagerJobHistorySample>()
-                         .WithEntityAccess())
+        [BurstCompile]
+        public partial struct AddHistoryBufferJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter Ecb;
+
+            public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity)
             {
-                ecb.AddBuffer<VillagerJobHistorySample>(entity);
+                Ecb.AddBuffer<VillagerJobHistorySample>(chunkIndex, entity);
             }
+        }
 
-            foreach (var job in SystemAPI.Query<RefRW<VillagerJob>>())
+        [BurstCompile]
+        public partial struct NormalizeJobPhasesJob : IJobEntity
+        {
+            public uint CurrentTick;
+
+            public void Execute(ref VillagerJob job)
             {
-                if (job.ValueRO.Type == VillagerJob.JobType.None)
+                if (job.Type == VillagerJob.JobType.None)
                 {
-                    job.ValueRW.Phase = VillagerJob.JobPhase.Idle;
-                    job.ValueRW.ActiveTicketId = 0;
-                    continue;
+                    job.Phase = VillagerJob.JobPhase.Idle;
+                    job.ActiveTicketId = 0;
+                    return;
                 }
 
-                if (job.ValueRO.Phase == 0)
+                if (job.Phase == 0)
                 {
-                    job.ValueRW.Phase = VillagerJob.JobPhase.Idle;
-                    job.ValueRW.LastStateChangeTick = timeState.Tick;
+                    job.Phase = VillagerJob.JobPhase.Idle;
+                    job.LastStateChangeTick = CurrentTick;
                 }
             }
         }
@@ -231,47 +290,72 @@ namespace PureDOTS.Systems
             var requestEntity = SystemAPI.GetSingletonEntity<VillagerJobRequestQueue>();
             var requests = state.EntityManager.GetBuffer<VillagerJobRequest>(requestEntity);
 
-            foreach (var (job, ticket, availability, entity) in SystemAPI.Query<RefRW<VillagerJob>, RefRW<VillagerJobTicket>, RefRO<VillagerAvailability>>()
-                         .WithEntityAccess())
+            // Parallelize request collection using NativeList
+            var requestList = new NativeList<VillagerJobRequest>(Allocator.TempJob);
+            var collectRequestsJob = new CollectRequestsJob
             {
-                if (job.ValueRO.Type == VillagerJob.JobType.None)
+                Requests = requestList.AsParallelWriter(),
+                CurrentTick = timeState.Tick
+            };
+            state.Dependency = collectRequestsJob.ScheduleParallel(state.Dependency);
+            state.Dependency.Complete();
+
+            // Copy collected requests to buffer
+            requests.Clear();
+            requests.AddRange(requestList.AsArray());
+            requestList.Dispose();
+        }
+
+        [BurstCompile]
+        public partial struct CollectRequestsJob : IJobEntity
+        {
+            public NativeList<VillagerJobRequest>.ParallelWriter Requests;
+            public uint CurrentTick;
+
+            public void Execute(
+                Entity entity,
+                ref VillagerJob job,
+                ref VillagerJobTicket ticket,
+                in VillagerAvailability availability)
+            {
+                if (job.Type == VillagerJob.JobType.None)
                 {
-                    continue;
+                    return;
                 }
 
-                switch (job.ValueRO.Phase)
+                switch (job.Phase)
                 {
                     case VillagerJob.JobPhase.Idle:
                     case VillagerJob.JobPhase.Completed:
                     case VillagerJob.JobPhase.Interrupted:
                         break;
                     default:
-                        continue;
+                        return;
                 }
 
-                if (availability.ValueRO.IsAvailable == 0)
+                if (availability.IsAvailable == 0)
                 {
-                    continue;
+                    return;
                 }
 
-                ticket.ValueRW.JobType = job.ValueRO.Type;
-                ticket.ValueRW.Priority = (byte)math.select((int)ticket.ValueRO.Priority, 1, availability.ValueRO.IsReserved != 0);
-                ticket.ValueRW.Phase = (byte)VillagerJob.JobPhase.Idle;
-                ticket.ValueRW.ResourceEntity = Entity.Null;
-                ticket.ValueRW.StorehouseEntity = Entity.Null;
-                ticket.ValueRW.ResourceTypeIndex = ushort.MaxValue;
-                ticket.ValueRW.ReservedUnits = 0f;
-                ticket.ValueRW.LastProgressTick = timeState.Tick;
+                ticket.JobType = job.Type;
+                ticket.Priority = (byte)math.select((int)ticket.Priority, 1, availability.IsReserved != 0);
+                ticket.Phase = (byte)VillagerJob.JobPhase.Idle;
+                ticket.ResourceEntity = Entity.Null;
+                ticket.StorehouseEntity = Entity.Null;
+                ticket.ResourceTypeIndex = ushort.MaxValue;
+                ticket.ReservedUnits = 0f;
+                ticket.LastProgressTick = CurrentTick;
 
-                job.ValueRW.Phase = VillagerJob.JobPhase.Idle;
-                job.ValueRW.ActiveTicketId = 0;
-                job.ValueRW.LastStateChangeTick = timeState.Tick;
+                job.Phase = VillagerJob.JobPhase.Idle;
+                job.ActiveTicketId = 0;
+                job.LastStateChangeTick = CurrentTick;
 
-                requests.Add(new VillagerJobRequest
+                Requests.AddNoResize(new VillagerJobRequest
                 {
                     Villager = entity,
-                    JobType = job.ValueRO.Type,
-                    Priority = ticket.ValueRO.Priority
+                    JobType = job.Type,
+                    Priority = ticket.Priority
                 });
             }
         }
@@ -611,6 +695,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<VillagerStats> _statsLookup;
         private ComponentLookup<VillagerAttributes> _attributesLookup;
         private BufferLookup<VillagerLessonShare> _lessonShareLookup;
+        private BufferLookup<VillagerJobEvent> _eventBufferLookup;
         private const float SecondsPerSimYear = 600f;
 
         public void OnCreate(ref SystemState state)
@@ -625,6 +710,7 @@ namespace PureDOTS.Systems
             _statsLookup = state.GetComponentLookup<VillagerStats>(true);
             _attributesLookup = state.GetComponentLookup<VillagerAttributes>(true);
             _lessonShareLookup = state.GetBufferLookup<VillagerLessonShare>(false);
+            _eventBufferLookup = state.GetBufferLookup<VillagerJobEvent>(false);
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
@@ -653,11 +739,11 @@ namespace PureDOTS.Systems
             _statsLookup.Update(ref state);
             _attributesLookup.Update(ref state);
             _lessonShareLookup.Update(ref state);
+            _eventBufferLookup.Update(ref state);
 
             var gatherDistanceSq = 9f;
             var deltaTime = timeState.FixedDeltaTime;
             var eventEntity = SystemAPI.GetSingletonEntity<VillagerJobEventStream>();
-            var events = state.EntityManager.GetBuffer<VillagerJobEvent>(eventEntity);
             var lessonCatalog = SystemAPI.GetSingleton<KnowledgeLessonEffectCatalog>();
             var lessonBlob = lessonCatalog.Blob;
             var xpCurve = SystemAPI.TryGetSingleton(out SkillXpCurveConfig xpConfig)
@@ -669,107 +755,158 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            foreach (var (job, ticket, progress, needs, transform, carry, entity) in SystemAPI.Query<RefRW<VillagerJob>, RefRW<VillagerJobTicket>, RefRW<VillagerJobProgress>, RefRO<VillagerNeeds>, RefRO<LocalTransform>, DynamicBuffer<VillagerJobCarryItem>>()
-                         .WithEntityAccess())
+            // Parallelize job execution
+            var executeJob = new ExecuteJobJob
             {
-                if (job.ValueRO.Type == VillagerJob.JobType.None)
+                ResourceStateLookup = _resourceStateLookup,
+                ResourceConfigLookup = _resourceConfigLookup,
+                ResourceReservationLookup = _resourceReservationLookup,
+                ResourceActiveTicketLookup = _resourceActiveTicketLookup,
+                TransformLookup = _transformLookup,
+                SkillSetLookup = _skillSetLookup,
+                KnowledgeLookup = _knowledgeLookup,
+                StatsLookup = _statsLookup,
+                AttributesLookup = _attributesLookup,
+                LessonShareLookup = _lessonShareLookup,
+                EventBuffers = _eventBufferLookup,
+                EventEntity = eventEntity,
+                LessonBlob = lessonBlob,
+                XpCurve = xpCurve,
+                ResourceCatalog = resourceCatalog.Catalog,
+                GatherDistanceSq = gatherDistanceSq,
+                DeltaTime = deltaTime,
+                CurrentTick = timeState.Tick
+            };
+            state.Dependency = executeJob.ScheduleParallel(state.Dependency);
+            state.Dependency.Complete();
+        }
+
+        [BurstCompile]
+        public partial struct ExecuteJobJob : IJobEntity
+        {
+            [NativeDisableParallelForRestriction] public ComponentLookup<ResourceSourceState> ResourceStateLookup;
+            [ReadOnly] public ComponentLookup<ResourceSourceConfig> ResourceConfigLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<ResourceJobReservation> ResourceReservationLookup;
+            [NativeDisableParallelForRestriction] public BufferLookup<ResourceActiveTicket> ResourceActiveTicketLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<SkillSet> SkillSetLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<VillagerKnowledge> KnowledgeLookup;
+            [ReadOnly] public ComponentLookup<VillagerStats> StatsLookup;
+            [ReadOnly] public ComponentLookup<VillagerAttributes> AttributesLookup;
+            [NativeDisableParallelForRestriction] public BufferLookup<VillagerLessonShare> LessonShareLookup;
+            [NativeDisableParallelForRestriction] public BufferLookup<VillagerJobEvent> EventBuffers;
+            public Entity EventEntity;
+            [ReadOnly] public BlobAssetReference<KnowledgeLessonEffectBlob> LessonBlob;
+            [ReadOnly] public SkillXpCurveConfig XpCurve;
+            [ReadOnly] public BlobAssetReference<ResourceTypeIndexBlob> ResourceCatalog;
+            public float GatherDistanceSq;
+            public float DeltaTime;
+            public uint CurrentTick;
+
+            public void Execute(
+                Entity entity,
+                ref VillagerJob job,
+                ref VillagerJobTicket ticket,
+                ref VillagerJobProgress progress,
+                in VillagerNeeds needs,
+                in LocalTransform transform,
+                DynamicBuffer<VillagerJobCarryItem> carry)
+            {
+                if (job.Type == VillagerJob.JobType.None)
                 {
-                    continue;
+                    return;
                 }
 
-                if (ticket.ValueRO.ResourceEntity == Entity.Null)
+                if (ticket.ResourceEntity == Entity.Null)
                 {
-                    continue;
+                    return;
                 }
 
-                if (!_resourceStateLookup.HasComponent(ticket.ValueRO.ResourceEntity) ||
-                    !_transformLookup.HasComponent(ticket.ValueRO.ResourceEntity))
+                if (!ResourceStateLookup.HasComponent(ticket.ResourceEntity) ||
+                    !TransformLookup.HasComponent(ticket.ResourceEntity))
                 {
-                    continue;
+                    return;
                 }
 
-                var resourceState = _resourceStateLookup[ticket.ValueRO.ResourceEntity];
-                var hasKnowledge = _knowledgeLookup.HasComponent(entity);
-                var knowledge = hasKnowledge ? _knowledgeLookup[entity] : default;
+                var resourceState = ResourceStateLookup[ticket.ResourceEntity];
+                var hasKnowledge = KnowledgeLookup.HasComponent(entity);
+                var knowledge = hasKnowledge ? KnowledgeLookup[entity] : default;
                 var knowledgeDirty = false;
                 DynamicBuffer<VillagerLessonShare> lessonShares = default;
-                if (_lessonShareLookup.HasBuffer(entity))
+                if (LessonShareLookup.HasBuffer(entity))
                 {
-                    lessonShares = _lessonShareLookup[entity];
+                    lessonShares = LessonShareLookup[entity];
                 }
-                var ageYears = ResolveAgeYears(entity, timeState.Tick, timeState.FixedDeltaTime);
+                var ageYears = ResolveAgeYears(entity);
                 ResolveMindStats(entity, out var intelligence, out var wisdom);
 
-                var resourceId = ResolveResourceId(resourceCatalog.Catalog, ticket.ValueRO.ResourceTypeIndex);
-                var harvestModifiers = lessonBlob.IsCreated
-                    ? KnowledgeLessonEffectUtility.EvaluateHarvestModifiers(ref lessonBlob.Value, knowledge.Lessons, resourceId, resourceState.QualityTier)
+                var resourceId = ResolveResourceId(ResourceCatalog, ticket.ResourceTypeIndex);
+                var harvestModifiers = LessonBlob.IsCreated
+                    ? KnowledgeLessonEffectUtility.EvaluateHarvestModifiers(ref LessonBlob.Value, knowledge.Lessons, resourceId, resourceState.QualityTier)
                     : HarvestLessonModifiers.Identity;
 
                 var knowledgeFlags = knowledge.Flags;
-                var resourceTransform = _transformLookup[ticket.ValueRO.ResourceEntity];
-                var distSq = math.distancesq(transform.ValueRO.Position, resourceTransform.Position);
+                var resourceTransform = TransformLookup[ticket.ResourceEntity];
+                var distSq = math.distancesq(transform.Position, resourceTransform.Position);
 
-                if (job.ValueRO.Phase == VillagerJob.JobPhase.Assigned)
+                if (job.Phase == VillagerJob.JobPhase.Assigned)
                 {
-                    job.ValueRW.Phase = VillagerJob.JobPhase.Gathering;
-                    job.ValueRW.LastStateChangeTick = timeState.Tick;
-                    ticket.ValueRW.Phase = (byte)VillagerJob.JobPhase.Gathering;
-                    ticket.ValueRW.LastProgressTick = timeState.Tick;
+                    job.Phase = VillagerJob.JobPhase.Gathering;
+                    job.LastStateChangeTick = CurrentTick;
+                    ticket.Phase = (byte)VillagerJob.JobPhase.Gathering;
+                    ticket.LastProgressTick = CurrentTick;
                 }
 
-                if (job.ValueRO.Phase != VillagerJob.JobPhase.Gathering)
+                if (job.Phase != VillagerJob.JobPhase.Gathering)
                 {
-                    continue;
+                    return;
                 }
 
-                if (distSq > gatherDistanceSq)
+                if (distSq > GatherDistanceSq)
                 {
-                    progress.ValueRW.TimeInPhase += deltaTime;
-                    continue;
+                    progress.TimeInPhase += DeltaTime;
+                    return;
                 }
 
-                var config = _resourceConfigLookup.HasComponent(ticket.ValueRO.ResourceEntity)
-                    ? _resourceConfigLookup[ticket.ValueRO.ResourceEntity]
+                var config = ResourceConfigLookup.HasComponent(ticket.ResourceEntity)
+                    ? ResourceConfigLookup[ticket.ResourceEntity]
                     : new ResourceSourceConfig { GatherRatePerWorker = 10f };
 
-                var skillId = ResolveSkillId(job.ValueRO.Type);
+                var skillId = ResolveSkillId(job.Type);
                 var skillLevel = 0f;
-                if (_skillSetLookup.HasComponent(entity))
+                if (SkillSetLookup.HasComponent(entity))
                 {
-                    var skillSet = _skillSetLookup[entity];
+                    var skillSet = SkillSetLookup[entity];
                     skillLevel = skillSet.GetLevel(skillId);
                 }
 
                 var gatherRate = math.max(0.1f, config.GatherRatePerWorker) * harvestModifiers.YieldMultiplier;
                 var timeMultiplier = math.max(0.1f, harvestModifiers.HarvestTimeMultiplier);
                 var harvestMultiplier = math.max(0.1f, ResourceQualityUtility.GetHarvestTimeMultiplier(skillLevel)) * timeMultiplier;
-                var gatherAmount = (gatherRate * job.ValueRO.Productivity * deltaTime) / harvestMultiplier;
-                // Extension point: job-type specific modifiers can adjust gatherAmount here.
-                var energyMultiplier = math.saturate(needs.ValueRO.Energy / 50f);
+                var gatherAmount = (gatherRate * job.Productivity * DeltaTime) / harvestMultiplier;
+                var energyMultiplier = math.saturate(needs.Energy / 50f);
                 gatherAmount *= energyMultiplier;
                 gatherAmount = math.min(gatherAmount, resourceState.UnitsRemaining);
 
                 if (gatherAmount <= 0f)
                 {
-                    progress.ValueRW.TimeInPhase += deltaTime;
-                    continue;
+                    progress.TimeInPhase += DeltaTime;
+                    return;
                 }
 
                 resourceState.UnitsRemaining -= gatherAmount;
-                _resourceStateLookup[ticket.ValueRO.ResourceEntity] = resourceState;
+                ResourceStateLookup[ticket.ResourceEntity] = resourceState;
 
-                if (_resourceReservationLookup.HasComponent(ticket.ValueRO.ResourceEntity))
+                if (ResourceReservationLookup.HasComponent(ticket.ResourceEntity))
                 {
-                    var reservation = _resourceReservationLookup[ticket.ValueRO.ResourceEntity];
+                    var reservation = ResourceReservationLookup[ticket.ResourceEntity];
                     reservation.ReservedUnits = math.max(0f, reservation.ReservedUnits - gatherAmount);
-                    reservation.LastMutationTick = timeState.Tick;
-                    _resourceReservationLookup[ticket.ValueRO.ResourceEntity] = reservation;
+                    reservation.LastMutationTick = CurrentTick;
+                    ResourceReservationLookup[ticket.ResourceEntity] = reservation;
                 }
 
-                var ticketReserved = ticket.ValueRO.ReservedUnits;
-                ticket.ValueRW.ReservedUnits = math.max(0f, ticketReserved - gatherAmount);
-
-                var knowledgeFlags2 = knowledge.Flags;
+                var ticketReserved = ticket.ReservedUnits;
+                ticket.ReservedUnits = math.max(0f, ticketReserved - gatherAmount);
 
                 var villagerQuality = KnowledgeLessonEffectUtility.EvaluateHarvestQuality(
                     resourceState.BaseQuality,
@@ -777,14 +914,13 @@ namespace PureDOTS.Systems
                     resourceState.QualityTier,
                     skillLevel,
                     harvestModifiers,
-                    knowledgeFlags2);
+                    knowledgeFlags);
                 var carryTier = (byte)ResourceQualityUtility.DetermineTier(villagerQuality);
 
                 var carryIndex = -1;
-                var mutableCarry = carry;
-                for (int i = 0; i < mutableCarry.Length; i++)
+                for (int i = 0; i < carry.Length; i++)
                 {
-                    if (mutableCarry[i].ResourceTypeIndex == ticket.ValueRO.ResourceTypeIndex && mutableCarry[i].TierId == carryTier)
+                    if (carry[i].ResourceTypeIndex == ticket.ResourceTypeIndex && carry[i].TierId == carryTier)
                     {
                         carryIndex = i;
                         break;
@@ -792,56 +928,317 @@ namespace PureDOTS.Systems
                 }
 
                 var incomingPayload = ResourcePayloadUtility.Create(
-                    ticket.ValueRO.ResourceTypeIndex,
+                    ticket.ResourceTypeIndex,
                     gatherAmount,
                     carryTier,
                     villagerQuality);
 
                 if (carryIndex >= 0)
                 {
-                    var payload = mutableCarry[carryIndex].AsPayload();
+                    var payload = carry[carryIndex].AsPayload();
                     ResourcePayloadUtility.Merge(ref payload, in incomingPayload);
-                    mutableCarry[carryIndex].ApplyPayload(payload);
+                    carry[carryIndex].ApplyPayload(payload);
                 }
                 else
                 {
-                    mutableCarry.Add(VillagerJobCarryItem.FromPayload(in incomingPayload));
+                    carry.Add(VillagerJobCarryItem.FromPayload(in incomingPayload));
                 }
 
-                GrantHarvestXp(entity, skillId, gatherAmount, xpCurve);
+                GrantHarvestXp(entity, skillId, gatherAmount);
 
-                progress.ValueRW.Gathered += gatherAmount;
-                progress.ValueRW.TimeInPhase += deltaTime;
-                progress.ValueRW.LastUpdateTick = timeState.Tick;
-                ticket.ValueRW.LastProgressTick = timeState.Tick;
+                progress.Gathered += gatherAmount;
+                progress.TimeInPhase += DeltaTime;
+                progress.LastUpdateTick = CurrentTick;
+                ticket.LastProgressTick = CurrentTick;
 
+                var events = EventBuffers[EventEntity];
                 events.Add(new VillagerJobEvent
                 {
-                    Tick = timeState.Tick,
+                    Tick = CurrentTick,
                     Villager = entity,
                     EventType = VillagerJobEventType.JobProgress,
-                    ResourceTypeIndex = ticket.ValueRO.ResourceTypeIndex,
+                    ResourceTypeIndex = ticket.ResourceTypeIndex,
                     Amount = gatherAmount,
-                    TicketId = ticket.ValueRO.TicketId
+                    TicketId = ticket.TicketId
                 });
 
-                if (hasKnowledge && TryLearnResourceLesson(ref knowledge, resourceId, skillLevel, gatherAmount, ageYears, intelligence, wisdom, lessonShares, ref lessonBlob.Value))
+                if (hasKnowledge && TryLearnResourceLesson(ref knowledge, resourceId, skillLevel, gatherAmount, ageYears, intelligence, wisdom, lessonShares))
                 {
                     knowledgeDirty = true;
                 }
 
                 if (resourceState.UnitsRemaining <= 0f ||
-                    GetCarryAmount(carry, ticket.ValueRO.ResourceTypeIndex) >= 40f)
+                    GetCarryAmount(carry, ticket.ResourceTypeIndex) >= 40f)
                 {
-                    job.ValueRW.Phase = VillagerJob.JobPhase.Delivering;
-                    job.ValueRW.LastStateChangeTick = timeState.Tick;
-                    ticket.ValueRW.Phase = (byte)VillagerJob.JobPhase.Delivering;
+                    job.Phase = VillagerJob.JobPhase.Delivering;
+                    job.LastStateChangeTick = CurrentTick;
+                    ticket.Phase = (byte)VillagerJob.JobPhase.Delivering;
                 }
 
                 if (knowledgeDirty)
                 {
-                    _knowledgeLookup[entity] = knowledge;
+                    KnowledgeLookup[entity] = knowledge;
                 }
+            }
+
+            private float ResolveAgeYears(Entity entity)
+            {
+                if (!StatsLookup.HasComponent(entity))
+                {
+                    return 25f;
+                }
+
+                var stats = StatsLookup[entity];
+                var livedTicks = CurrentTick >= stats.BirthTick ? CurrentTick - stats.BirthTick : 0u;
+                var livedSeconds = livedTicks * DeltaTime;
+                const float SecondsPerSimYear = 600f;
+                return math.max(1f, livedSeconds / SecondsPerSimYear);
+            }
+
+            private void ResolveMindStats(Entity entity, out float intelligence, out float wisdom)
+            {
+                if (AttributesLookup.HasComponent(entity))
+                {
+                    var attributes = AttributesLookup[entity];
+                    intelligence = attributes.Intelligence;
+                    wisdom = attributes.Wisdom;
+                }
+                else
+                {
+                    intelligence = 50f;
+                    wisdom = 50f;
+                }
+            }
+
+            private static FixedString64Bytes ResolveResourceId(BlobAssetReference<ResourceTypeIndexBlob> catalog, ushort resourceTypeIndex)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return default;
+                }
+
+                ref var blob = ref catalog.Value;
+                if (resourceTypeIndex >= blob.Ids.Length)
+                {
+                    return default;
+                }
+
+                return blob.Ids[resourceTypeIndex];
+            }
+
+            private static SkillId ResolveSkillId(VillagerJob.JobType jobType)
+            {
+                return jobType switch
+                {
+                    VillagerJob.JobType.Hunter => SkillId.AnimalHandling,
+                    VillagerJob.JobType.Crafter => SkillId.Processing,
+                    _ => SkillId.HarvestBotany
+                };
+            }
+
+            private void GrantHarvestXp(Entity villager, SkillId skillId, float gatherAmount)
+            {
+                if (!SkillSetLookup.HasComponent(villager) || gatherAmount <= 0f)
+                {
+                    return;
+                }
+
+                var skillSet = SkillSetLookup[villager];
+                var pool = ResolveXpPool(skillId);
+                var scalar = XpCurve.GetScalar(pool);
+                var adjusted = gatherAmount * scalar;
+                skillSet.AddSkillXp(skillId, adjusted);
+                switch (pool)
+                {
+                    case XpPool.Physique:
+                        skillSet.PhysiqueXp += adjusted;
+                        break;
+                    case XpPool.Finesse:
+                        skillSet.FinesseXp += adjusted;
+                        break;
+                    case XpPool.Will:
+                        skillSet.WillXp += adjusted;
+                        break;
+                    default:
+                        skillSet.GeneralXp += adjusted;
+                        break;
+                }
+                SkillSetLookup[villager] = skillSet;
+            }
+
+            private static XpPool ResolveXpPool(SkillId skillId)
+            {
+                return skillId switch
+                {
+                    SkillId.AnimalHandling => XpPool.Will,
+                    SkillId.Processing => XpPool.Finesse,
+                    SkillId.Mining => XpPool.Physique,
+                    SkillId.HarvestBotany => XpPool.Physique,
+                    _ => XpPool.General
+                };
+            }
+
+            private static float GetCarryAmount(DynamicBuffer<VillagerJobCarryItem> carry, ushort resourceTypeIndex)
+            {
+                var total = 0f;
+                for (int i = 0; i < carry.Length; i++)
+                {
+                    if (carry[i].ResourceTypeIndex == resourceTypeIndex)
+                    {
+                        total += carry[i].Amount;
+                    }
+                }
+                return total;
+            }
+
+            private bool TryLearnResourceLesson(
+                ref VillagerKnowledge knowledge,
+                in FixedString64Bytes resourceId,
+                float skillLevel,
+                float gatherAmount,
+                float ageYears,
+                float intelligence,
+                float wisdom,
+                DynamicBuffer<VillagerLessonShare> lessonShares)
+            {
+                if (resourceId.Length == 0 || gatherAmount <= 0f || !LessonBlob.IsCreated)
+                {
+                    return false;
+                }
+
+                var lessonId = MapPlaceholderLesson(resourceId);
+                if (lessonId.Length == 0)
+                {
+                    return false;
+                }
+
+                if (knowledge.FindLessonIndex(lessonId) < 0 && knowledge.Lessons.Length >= knowledge.Lessons.Capacity)
+                {
+                    return false;
+                }
+
+                ref var lessonBlobValue = ref LessonBlob.Value;
+                var previousProgress = knowledge.GetProgress(lessonId);
+                var hasMetadata = KnowledgeLessonEffectUtility.TryGetLessonMetadata(ref lessonBlobValue, lessonId, out var metadata);
+                var difficulty = hasMetadata && metadata.Difficulty > 0 ? metadata.Difficulty : (byte)25;
+
+                var baseDelta = gatherAmount * 0.001f;
+                baseDelta *= math.max(0.35f, skillLevel / 120f);
+                baseDelta /= math.max(10f, difficulty);
+
+                var delta = baseDelta * ComputeAgeLearningScalar(ageYears) * ComputeMindScalar(intelligence, wisdom);
+                delta += ConsumeLessonShares(ref lessonShares, lessonId);
+
+                if (hasMetadata)
+                {
+                    delta = ApplyOppositionRules(ref knowledge, metadata, delta);
+                }
+
+                if (delta <= 0f)
+                {
+                    return false;
+                }
+
+                knowledge.AddProgress(lessonId, delta, out var newProgress);
+                return newProgress > previousProgress;
+            }
+
+            private static FixedString64Bytes MapPlaceholderLesson(in FixedString64Bytes resourceId)
+            {
+                var ResourceIdIronOre = new FixedString64Bytes("space4x.minerals");
+                var ResourceIdRareMetals = new FixedString64Bytes("space4x.rare_metals");
+                var ResourceIdIronOak = new FixedString64Bytes("resource.tree.ironoak");
+                var LessonIdIronOre = new FixedString64Bytes("lesson.harvest.iron_ore");
+                var LessonIdRareMetals = new FixedString64Bytes("lesson.harvest.legendary_alloy");
+                var LessonIdIronOak = new FixedString64Bytes("lesson.harvest.ironoak");
+                var LessonIdGeneral = new FixedString64Bytes("lesson.harvest.general");
+
+                if (resourceId.Equals(ResourceIdIronOre))
+                {
+                    return LessonIdIronOre;
+                }
+                if (resourceId.Equals(ResourceIdRareMetals))
+                {
+                    return LessonIdRareMetals;
+                }
+                if (resourceId.Equals(ResourceIdIronOak))
+                {
+                    return LessonIdIronOak;
+                }
+                return LessonIdGeneral;
+            }
+
+            private static float ComputeAgeLearningScalar(float ageYears)
+            {
+                if (ageYears <= 12f)
+                {
+                    return math.lerp(1.75f, 1.3f, math.saturate(ageYears / 12f));
+                }
+                if (ageYears <= 25f)
+                {
+                    return math.lerp(1.3f, 1f, (ageYears - 12f) / 13f);
+                }
+                if (ageYears <= 45f)
+                {
+                    return 1f;
+                }
+                if (ageYears <= 70f)
+                {
+                    return math.lerp(1f, 0.85f, (ageYears - 45f) / 25f);
+                }
+                return 0.7f;
+            }
+
+            private static float ComputeMindScalar(float intelligence, float wisdom)
+            {
+                var combined = math.max(5f, (intelligence + wisdom) * 0.5f);
+                return math.clamp(0.6f + combined / 200f, 0.6f, 1.8f);
+            }
+
+            private static float ConsumeLessonShares(ref DynamicBuffer<VillagerLessonShare> shares, in FixedString64Bytes lessonId)
+            {
+                if (!shares.IsCreated || shares.Length == 0)
+                {
+                    return 0f;
+                }
+
+                float granted = 0f;
+                for (int i = 0; i < shares.Length; i++)
+                {
+                    if (!shares[i].LessonId.Equals(lessonId) || shares[i].Progress <= 0f)
+                    {
+                        continue;
+                    }
+
+                    granted += shares[i].Progress;
+                    var entry = shares[i];
+                    entry.Progress = 0f;
+                    shares[i] = entry;
+                }
+
+                return granted;
+            }
+
+            private static float ApplyOppositionRules(ref VillagerKnowledge knowledge, in KnowledgeLessonMetadata metadata, float delta)
+            {
+                if (delta <= 0f || metadata.OppositeLessonId.Length == 0)
+                {
+                    return delta;
+                }
+
+                var oppositeProgress = knowledge.GetProgress(metadata.OppositeLessonId);
+                if (oppositeProgress > 0f)
+                {
+                    var penalty = delta * 0.33f;
+                    knowledge.AddProgress(metadata.OppositeLessonId, -penalty, out _);
+                }
+
+                if ((metadata.Flags & KnowledgeLessonFlags.AllowParallelOpposites) == 0 && oppositeProgress < 1f)
+                {
+                    delta *= 0.4f;
+                }
+
+                return delta;
             }
         }
 
@@ -1831,7 +2228,7 @@ namespace PureDOTS.Systems
 
             diagnostics.ValueRW = new VillagerJobDiagnostics
             {
-                Frame = (uint)UnityEngine.Time.frameCount,
+                Frame = timeState.Tick,
                 TotalVillagers = totalVillagers,
                 IdleVillagers = idleVillagers,
                 AssignedVillagers = assignedVillagers,

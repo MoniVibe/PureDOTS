@@ -127,15 +127,21 @@ From `demoscenefix.md`:
 
 ## Architecture Notes
 
-### Vessel Mining Flow
-1. **Idle** → VesselAISystem finds nearest asteroid → **MovingToTarget**
+### Vessel Mining Flow (Updated with AI Pipeline)
+1. **Idle** → AISensorUpdateSystem detects asteroids → AIUtilityScoringSystem selects Mining action → Space4XVesselAICommandBridgeSystem updates VesselAIState → **MovingToTarget**
 2. **MovingToTarget** → VesselMovementSystem moves vessel → Arrives at asteroid
 3. **MovingToTarget** → VesselGatheringSystem detects close → **Mining**
 4. **Mining** → VesselGatheringSystem gathers resources → Vessel fills up
-5. **Mining** → Vessel reaches 95% capacity → **Returning** (target = carrier)
+5. **Mining** → Vessel reaches 95% capacity → VesselAISystem overrides goal → **Returning** (target = carrier from AI pipeline)
 6. **Returning** → VesselMovementSystem moves to carrier → Arrives at carrier
 7. **Returning** → VesselDepositSystem deposits resources → Vessel empties
-8. **Returning** → Vessel empty → **Idle** → Repeat
+8. **Returning** → Vessel empty → AI pipeline selects Mining → **MovingToTarget** → Repeat
+
+### AI Integration Status
+- ✅ Vessels now use shared `AISystemGroup` pipeline for target selection
+- ✅ `Space4XVesselAICommandBridgeSystem` bridges AI commands to vessel state
+- ✅ `VesselAISystem` simplified to handle capacity-based overrides only
+- ✅ Sensor categories extended to support `TransportUnit` detection
 
 ### Key Differences from Villager Mining
 - Vessels use simpler state machine (no ticket system)

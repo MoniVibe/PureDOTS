@@ -3,6 +3,7 @@ using global::Godgame.Registry;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Registry;
+using PureDOTS.Runtime.Villagers;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -191,6 +192,21 @@ namespace Godgame.Authoring
                         CurrentResourceTypeIndex = definition.CurrentResourceTypeIndex,
                         Productivity = math.max(0f, definition.Productivity)
                     });
+
+                    // Add new WorkOffer/WorkClaim system components
+                    AddComponent(entity, new WorkClaim());
+                    AddComponent(entity, new VillagerSeed { Value = (uint)(entity.Index ^ 0x12345678) });
+                    AddComponent(entity, new VillagerNeedsHot());
+                    AddComponent(entity, new VillagerShiftState 
+                    { 
+                        DayShiftEnabled = 1, 
+                        NightShiftEnabled = 0,
+                        IsDaytime = 1,
+                        ShouldWork = 1,
+                        LastUpdateTick = 0
+                    });
+                    AddComponent(entity, new VillagerJobPriorityState());
+                    AddComponent(entity, new SpatialLayerTag { LayerId = 0 });
                 }
             }
 

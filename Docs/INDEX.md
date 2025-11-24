@@ -47,6 +47,13 @@ Updated: 2025-10-25
 - `Docs/Architecture/Framework_Formalization_Summary.md` - Formalization overview
 - `Docs/Architecture/GameDOTS_Separation.md` - Separation conventions
 
+## AI Documentation
+- `Docs/Guides/AI_Integration_Guide.md` - Comprehensive guide for integrating entities with AI pipeline (includes advanced behavior recipes)
+- `Docs/AI_Gap_Audit.md` - Gap analysis and catalog of remaining AI work
+- `Docs/AI_Backlog.md` - Prioritized implementation backlog (AI-001 through AI-008)
+- `Docs/AI_Validation_Plan.md` - Testing and metrics framework for AI systems
+- `Docs/AI_Readiness_Implementation_Summary.md` - Summary of completed AI integration work
+
 ## Guides & Authoring
 - `Docs/Guides/GameProject_Integration.md` - Integrating PureDOTS into game projects
 - `Docs/Guides/LinkingExternalGameProjects.md` - Linking external game projects

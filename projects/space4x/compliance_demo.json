@@ -1,0 +1,25 @@
+{
+  "scenarioId": "scenario.space4x.compliance.demo",
+  "seed": 99999,
+  "runTicks": 1800,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "compliance.setup.rules",
+      "payload": "{\"rules\":[{\"id\":\"rule.safezone\",\"verb\":\"forbid\",\"tags\":[\"SafeZoneViolation\"],\"magnitude\":100.0,\"enforcement\":\"fine\"}]}"
+    },
+    {
+      "tick": 300,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.test\",\"position\":{\"x\":0,\"y\":0,\"z\":0},\"weaponId\":\"weapon.test\",\"inSafeZone\":true}"
+    },
+    {
+      "tick": 360,
+      "commandId": "combat.fire.weapon",
+      "payload": "{\"hull\":0,\"target\":{\"x\":5,\"y\":0,\"z\":0}}"
+    }
+  ],
+  "docs": "Compliance demo: Scripted infraction (weapon fire in safe zone) triggers sanction path. Verifies deterministic sanction outcomes for identical sequence. Rules pass lints (no contradictions, valid targets)."
+}
+

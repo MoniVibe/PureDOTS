@@ -16,28 +16,46 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Villager needs that must be satisfied.
-    /// Optimized for SoA: uses ushort for 0-100 range values to reduce memory footprint.
+    /// Need stats tracking for individual entities.
+    /// Tracks hunger, fatigue, sleep, and general health.
+    /// Matches Godgame schema requirements exactly.
     /// </summary>
     public struct VillagerNeeds : IComponentData
     {
-        public float Health;           // Full precision for health (may exceed 100)
-        public float MaxHealth;         // Full precision for max health
-        public ushort Hunger;          // 0-100, increases over time (0.1% precision)
-        public ushort Energy;          // 0-100, decreases with work (0.1% precision)
-        public ushort Morale;          // 0-100, affects productivity (0.1% precision)
-        public short Temperature;       // Comfort level (-100 to +100, 0.1°C precision)
+        /// <summary>
+        /// Hunger level (0-100, where 0 = starving, 100 = fully fed).
+        /// </summary>
+        public byte Food;
 
-        // Helper methods for conversion
-        public float HungerFloat => Hunger * 0.1f;
-        public float EnergyFloat => Energy * 0.1f;
-        public float MoraleFloat => Morale * 0.1f;
-        public float TemperatureFloat => Temperature * 0.1f;
+        /// <summary>
+        /// Fatigue level (0-100, where 0 = exhausted, 100 = fully rested).
+        /// </summary>
+        public byte Rest;
 
-        public void SetHunger(float value) => Hunger = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
-        public void SetEnergy(float value) => Energy = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
-        public void SetMorale(float value) => Morale = (ushort)math.clamp(math.round(value * 10f), 0f, 1000f);
-        public void SetTemperature(float value) => Temperature = (short)math.clamp(math.round(value * 10f), -1000f, 1000f);
+        /// <summary>
+        /// Sleep need (0-100, where 0 = sleep-deprived, 100 = fully rested).
+        /// </summary>
+        public byte Sleep;
+
+        /// <summary>
+        /// Overall health status (0-100, separate from combat HP).
+        /// </summary>
+        public byte GeneralHealth;
+
+        /// <summary>
+        /// Current health value (for combat/registry compatibility).
+        /// </summary>
+        public float Health;
+
+        /// <summary>
+        /// Maximum health value (for combat/registry compatibility).
+        /// </summary>
+        public float MaxHealth;
+
+        /// <summary>
+        /// Energy level (0-100, typically synced with Rest).
+        /// </summary>
+        public float Energy;
     }
 
     /// <summary>
@@ -138,14 +156,16 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// High level mood / wellbeing metrics derived from needs.
+    /// Mood/morale stat for individual entities.
+    /// Affects behavior, productivity, and social interactions.
+    /// Matches Godgame schema requirements exactly.
     /// </summary>
     public struct VillagerMood : IComponentData
     {
-        public float Mood;          // 0-100 current mood
-        public float TargetMood;    // Desired mood (for lerp)
-        public float MoodChangeRate; // Units per second toward target
-        public float Wellbeing;     // Aggregate of needs (0-100)
+        /// <summary>
+        /// Current mood value (0-100, where 0 = very unhappy, 100 = very happy).
+        /// </summary>
+        public float Mood;
     }
 
     /// <summary>
@@ -275,16 +295,26 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Combat stats for villager.
+    /// Combat stats for individual entities.
+    /// Used for combat calculations and registry queries.
+    /// Matches Godgame schema requirements exactly.
     /// </summary>
     public struct VillagerCombatStats : IComponentData
     {
+        /// <summary>
+        /// Attack damage value (for damage calculations).
+        /// </summary>
         public float AttackDamage;
+
+        /// <summary>
+        /// Attack speed value (attacks per second or similar).
+        /// </summary>
         public float AttackSpeed;
-        public float DefenseRating;
-        public float AttackRange;
+
+        /// <summary>
+        /// Current combat target entity.
+        /// </summary>
         public Entity CurrentTarget;
-        public float LastAttackTime;
     }
 
     /// <summary>

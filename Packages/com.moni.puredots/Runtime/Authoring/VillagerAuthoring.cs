@@ -342,6 +342,23 @@ namespace PureDOTS.Authoring
             // Add VillagerFlags for SoA optimization (replaces legacy tags)
             AddComponent(entity, new VillagerFlags());
             AddComponent(entity, new VillagerLessonShareState());
+            
+            // Add WorkOffer/WorkClaim system components
+            AddComponent(entity, new WorkClaim());
+            AddComponent(entity, new VillagerSeed { Value = (uint)(entity.Index ^ 0x12345678) });
+            AddComponent(entity, new VillagerNeedsHot());
+            AddComponent(entity, new VillagerShiftState 
+            { 
+                DayShiftEnabled = 1, 
+                NightShiftEnabled = 0,
+                IsDaytime = 1,
+                ShouldWork = 1,
+                LastUpdateTick = 0
+            });
+            AddComponent(entity, new VillagerJobPriorityState());
+            
+            // Add spatial layer tag (default to ground layer)
+            AddComponent(entity, new SpatialLayerTag { LayerId = 0 });
 
             AddComponent<RewindableTag>(entity);
             AddComponent(entity, new HistoryTier

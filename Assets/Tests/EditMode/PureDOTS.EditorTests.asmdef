@@ -12,7 +12,8 @@
                        "UnityEditor.TestRunner",
                        "UnityEditor",
                        "Unity.Collections",
-                       "PureDOTS.Editor"
+                       "PureDOTS.Editor",
+                       "PureDOTS.Systems"
                    ],
     "includePlatforms":  [
                              "Editor"

@@ -80,6 +80,7 @@
     <Compile Include="Assets\Tests\Integration\DeterministicRewindFlowTests.cs" />
     <Compile Include="Assets\Tests\Integration\PresentationBridgeRewindTests.cs" />
     <Compile Include="Assets\Tests\Integration\SpatialGridSnapshotTests.cs" />
+    <Compile Include="Assets\Tests\Integration\PureDots_Integration_Tests.cs" />
     <Compile Include="Assets\Tests\Integration\HandMiracleFlowTests.cs" />
     <Compile Include="Assets\Tests\Integration\EnvironmentOverlayValidationTests.cs" />
     <Compile Include="Assets\Tests\Integration\ResourceEnvironmentIntegrationTests.cs" />

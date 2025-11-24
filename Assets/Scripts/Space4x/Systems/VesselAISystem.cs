@@ -1,44 +1,30 @@
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Registry;
-using PureDOTS.Runtime.Resource;
 using PureDOTS.Systems;
 using Space4X.Runtime;
 using Space4X.Runtime.Transport;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-using Unity.Jobs;
 
 namespace Space4X.Systems
 {
     /// <summary>
-    /// AI system for vessels - assigns vessels to asteroids for mining.
-    /// Similar to VillagerAISystem but designed for vessels.
+    /// AI system for vessels - handles state transitions and capacity-based goal overrides.
+    /// Target selection is now handled by the shared AI pipeline (AISensorUpdateSystem -> AIUtilityScoringSystem -> AITaskResolutionSystem).
+    /// This system ensures vessels switch between Mining and Returning based on capacity.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PureDOTS.Systems.ResourceSystemGroup))]
+    [UpdateAfter(typeof(Space4XVesselAICommandBridgeSystem))]
     [UpdateBefore(typeof(VesselTargetingSystem))]
     public partial struct VesselAISystem : ISystem
     {
         private EntityQuery _vesselQuery;
-        private EntityQuery _resourceRegistryQuery;
-        private EntityQuery _carrierQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _vesselQuery = SystemAPI.QueryBuilder()
                 .WithAll<VesselAIState, MinerVessel, LocalTransform>()
-                .Build();
-
-            _resourceRegistryQuery = SystemAPI.QueryBuilder()
-                .WithAll<ResourceRegistry, ResourceRegistryEntry>()
-                .Build();
-
-            _carrierQuery = SystemAPI.QueryBuilder()
-                .WithAll<Carrier, LocalTransform>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -65,75 +51,20 @@ namespace Space4X.Systems
                 return;
             }
 
-            // Get resource registry to find asteroids
-            if (!_resourceRegistryQuery.IsEmptyIgnoreFilter)
+            // Simplified: just handle capacity-based goal overrides and state transitions
+            // Target selection is handled by the shared AI pipeline
+            var job = new UpdateVesselAIJob
             {
-                var resourceEntity = _resourceRegistryQuery.GetSingletonEntity();
-                if (state.EntityManager.HasBuffer<ResourceRegistryEntry>(resourceEntity))
-                {
-                    var resourceEntries = state.EntityManager.GetBuffer<ResourceRegistryEntry>(resourceEntity);
-                    var hasResources = resourceEntries.Length > 0;
-                    
-                    // Debug logging (only first frame)
-                    if (timeState.Tick == 1)
-                    {
-                        UnityEngine.Debug.Log($"[VesselAISystem] Found {_vesselQuery.CalculateEntityCount()} vessels, Registry has {resourceEntries.Length} resources, HasResources={hasResources}");
-                    }
-                    
-                    // Get carrier entities and transforms for finding nearest carrier
-                    var carriers = new NativeList<Entity>(Allocator.TempJob);
-                    var carrierTransforms = new NativeList<LocalTransform>(Allocator.TempJob);
+                DeltaTime = timeState.FixedDeltaTime,
+                CurrentTick = timeState.Tick
+            };
 
-                    if (!_carrierQuery.IsEmptyIgnoreFilter)
-                    {
-                        foreach (var (carrierTransform, entity) in SystemAPI.Query<RefRO<LocalTransform>>()
-                            .WithAll<Carrier>()
-                            .WithEntityAccess())
-                        {
-                            carriers.Add(entity);
-                            carrierTransforms.Add(carrierTransform.ValueRO);
-                        }
-                    }
-
-                    var job = new UpdateVesselAIJob
-                    {
-                        ResourceEntries = resourceEntries.AsNativeArray(),
-                        HasResources = hasResources,
-                        Carriers = carriers.AsArray(),
-                        CarrierTransforms = carrierTransforms.AsArray(),
-                        DeltaTime = timeState.FixedDeltaTime,
-                        CurrentTick = timeState.Tick
-                    };
-
-                    var jobHandle = job.ScheduleParallel(state.Dependency);
-                    var carriersDisposeHandle = carriers.Dispose(jobHandle);
-                    var carrierTransformsDisposeHandle = carrierTransforms.Dispose(jobHandle);
-                    state.Dependency = JobHandle.CombineDependencies(carriersDisposeHandle, carrierTransformsDisposeHandle);
-                }
-                else
-                {
-                    if (timeState.Tick == 1)
-                    {
-                        UnityEngine.Debug.LogWarning("[VesselAISystem] ResourceRegistry entity found but has no ResourceRegistryEntry buffer!");
-                    }
-                }
-            }
-            else
-            {
-                if (timeState.Tick == 1)
-                {
-                    UnityEngine.Debug.LogWarning("[VesselAISystem] ResourceRegistry singleton NOT FOUND! Resources won't be registered, vessels can't find targets.");
-                }
-            }
+            state.Dependency = job.ScheduleParallel(state.Dependency);
         }
 
         [BurstCompile]
         public partial struct UpdateVesselAIJob : IJobEntity
         {
-            [ReadOnly] public NativeArray<ResourceRegistryEntry> ResourceEntries;
-            public bool HasResources;
-            [ReadOnly] public NativeArray<Entity> Carriers;
-            [ReadOnly] public NativeArray<LocalTransform> CarrierTransforms;
             public float DeltaTime;
             public uint CurrentTick;
 
@@ -141,104 +72,31 @@ namespace Space4X.Systems
             {
                 aiState.StateTimer += DeltaTime;
 
-                // If vessel is idle and has capacity, find a target asteroid
-                if (aiState.CurrentState == VesselAIState.State.Idle && vessel.Load < vessel.Capacity * 0.95f)
-                {
-                    // Find nearest asteroid that matches vessel's resource type
-                    Entity bestTarget = Entity.Null;
-                    float bestDistance = float.MaxValue;
-
-                    if (HasResources)
-                    {
-                        var desiredResourceIndex = vessel.ResourceTypeIndex;
-                        var restrictToResourceType = desiredResourceIndex != ushort.MaxValue;
-
-                        for (int i = 0; i < ResourceEntries.Length; i++)
-                        {
-                            var entry = ResourceEntries[i];
-
-                            if (entry.Tier != ResourceTier.Raw)
-                            {
-                                continue;
-                            }
-
-                            if (restrictToResourceType && entry.ResourceTypeIndex != desiredResourceIndex)
-                            {
-                                continue;
-                            }
-
-                            if (entry.ResourceTypeIndex == ushort.MaxValue)
-                            {
-                                continue;
-                            }
-
-                            var distance = math.distance(transform.Position, entry.Position);
-                            if (distance < bestDistance)
-                            {
-                                bestTarget = entry.SourceEntity;
-                                bestDistance = distance;
-                            }
-                        }
-                    }
-
-                    if (bestTarget != Entity.Null)
-                    {
-                        aiState.CurrentGoal = VesselAIState.Goal.Mining;
-                        aiState.CurrentState = VesselAIState.State.MovingToTarget;
-                        aiState.TargetEntity = bestTarget;
-                        aiState.StateTimer = 0f;
-                        aiState.StateStartTick = CurrentTick;
-                    }
-                }
-                // If vessel is full, return to carrier (or origin if no carrier)
-                else if (vessel.Load >= vessel.Capacity * 0.95f && aiState.CurrentState != VesselAIState.State.Returning)
+                // Capacity-based goal override: if vessel becomes full, force Returning goal
+                if (vessel.Load >= vessel.Capacity * 0.95f && aiState.CurrentGoal != VesselAIState.Goal.Returning)
                 {
                     aiState.CurrentGoal = VesselAIState.Goal.Returning;
                     aiState.CurrentState = VesselAIState.State.Returning;
-                    
-                    // Find nearest carrier
-                    Entity nearestCarrier = Entity.Null;
-                    float nearestDistance = float.MaxValue;
-                    
-                    if (Carriers.Length > 0 && CarrierTransforms.Length == Carriers.Length)
-                    {
-                        for (int i = 0; i < Carriers.Length; i++)
-                        {
-                            var distance = math.distance(transform.Position, CarrierTransforms[i].Position);
-                            if (distance < nearestDistance)
-                            {
-                                nearestCarrier = Carriers[i];
-                                nearestDistance = distance;
-                            }
-                        }
-                    }
-                    
-                    if (nearestCarrier != Entity.Null)
-                    {
-                        aiState.TargetEntity = nearestCarrier;
-                        // TargetPosition will be resolved by VesselTargetingSystem
-                        // Debug logging removed - Burst doesn't support string formatting in jobs
-                    }
-                    else
-                    {
-                        // No carrier found, return to origin (0,0,0)
-                        aiState.TargetEntity = Entity.Null;
-                        aiState.TargetPosition = float3.zero;
-                        // Debug logging removed - Burst doesn't support Debug.Log in jobs
-                    }
-                    
                     aiState.StateTimer = 0f;
                     aiState.StateStartTick = CurrentTick;
                 }
-                // If vessel is at target and not full, transition to mining state
-                else if (aiState.CurrentState == VesselAIState.State.MovingToTarget && 
-                         aiState.TargetEntity != Entity.Null &&
-                         vessel.Load < vessel.Capacity * 0.95f)
+                // If vessel is not full and goal is Returning, switch to Mining
+                else if (vessel.Load < vessel.Capacity * 0.95f && aiState.CurrentGoal == VesselAIState.Goal.Returning && aiState.CurrentState != VesselAIState.State.Mining)
                 {
-                    // Transition to mining state - VesselGatheringSystem will handle actual gathering
-                    aiState.CurrentState = VesselAIState.State.Mining;
+                    aiState.CurrentGoal = VesselAIState.Goal.Mining;
+                    aiState.CurrentState = VesselAIState.State.MovingToTarget;
                     aiState.StateTimer = 0f;
                     aiState.StateStartTick = CurrentTick;
+                }
+                // State transition: when moving to target and close enough, transition to mining
+                // (Actual distance check happens in VesselGatheringSystem, but we can set state here)
+                else if (aiState.CurrentState == VesselAIState.State.MovingToTarget && 
+                         aiState.TargetEntity != Entity.Null &&
+                         vessel.Load < vessel.Capacity * 0.95f &&
+                         aiState.CurrentGoal == VesselAIState.Goal.Mining)
+                {
+                    // VesselGatheringSystem will handle the actual transition when close enough
+                    // This is just a placeholder - the real transition happens in VesselGatheringSystem
                 }
             }
         }

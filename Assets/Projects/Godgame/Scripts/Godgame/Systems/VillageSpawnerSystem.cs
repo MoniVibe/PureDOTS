@@ -1,5 +1,7 @@
 using Godgame.Authoring;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Spatial;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -101,6 +103,39 @@ namespace Godgame.Systems
                             CurrentGoal = config.DefaultAIGoal,
                             TargetEntity = Entity.Null
                         });
+                    }
+
+                    // Add new WorkOffer/WorkClaim system components
+                    if (!state.EntityManager.HasComponent<WorkClaim>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new WorkClaim());
+                    }
+                    if (!state.EntityManager.HasComponent<VillagerSeed>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new VillagerSeed { Value = (uint)(villagerEntity.Index ^ 0x12345678) });
+                    }
+                    if (!state.EntityManager.HasComponent<VillagerNeedsHot>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new VillagerNeedsHot());
+                    }
+                    if (!state.EntityManager.HasComponent<VillagerShiftState>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new VillagerShiftState 
+                        { 
+                            DayShiftEnabled = 1, 
+                            NightShiftEnabled = 0,
+                            IsDaytime = 1,
+                            ShouldWork = 1,
+                            LastUpdateTick = 0
+                        });
+                    }
+                    if (!state.EntityManager.HasComponent<VillagerJobPriorityState>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new VillagerJobPriorityState());
+                    }
+                    if (!state.EntityManager.HasComponent<SpatialLayerTag>(villagerEntity))
+                    {
+                        ecb.AddComponent(villagerEntity, new SpatialLayerTag { LayerId = 0 });
                     }
                 }
 

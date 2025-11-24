@@ -72,6 +72,7 @@
     <Analyzer Include="C:\Users\shonh\OneDrive\Documents\claudeprojects\Unity\PureDOTS\Library\PackageCache\com.unity.entities@f6e02210e263\Unity.Entities\SourceGenerators\Unity.Entities.Analyzer.CodeFixes.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Tests\EditMode\PureDots_Budget_Tests.cs" />
     <Compile Include="Assets\Tests\EditMode\Migrations\PureDotsMigrationRunnerTests.cs" />
     <Compile Include="Assets\Tests\EditMode\PresentationScreenshotUtilityTests.cs" />
     <Compile Include="Assets\Tests\EditMode\StreamingValidatorTests.cs" />
@@ -1162,6 +1163,10 @@
     <ProjectReference Include="PureDOTS.Editor.csproj">
       <Project>{A7E708EB-E694-C48C-AEC8-CFE09D6153A2}</Project>
       <Name>PureDOTS.Editor</Name>
+    </ProjectReference>
+    <ProjectReference Include="PureDOTS.Systems.csproj">
+      <Project>{379B40A0-3AFF-1121-58CD-6605ACAD7448}</Project>
+      <Name>PureDOTS.Systems</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

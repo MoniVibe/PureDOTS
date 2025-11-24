@@ -84,9 +84,11 @@
     <Compile Include="Packages\com.moni.puredots\Editor\PureDOTS\PureDotsAssetValidator.cs" />
     <Compile Include="Packages\com.moni.puredots\Editor\ReconvertSubScene.cs" />
     <Compile Include="Packages\com.moni.puredots\Editor\MaterialUtilities.cs" />
+    <Compile Include="Packages\com.moni.puredots\Editor\PureDOTS\PresentationMutationCounter.cs" />
     <Compile Include="Packages\com.moni.puredots\Editor\PureDOTS\PureDotsTestMenu.cs" />
     <Compile Include="Packages\com.moni.puredots\Editor\ApplyPlaceholderVisuals.cs" />
     <Compile Include="Packages\com.moni.puredots\Editor\PureDOTS\Migrations\PureDotsMigration.cs" />
+    <Compile Include="Packages\com.moni.puredots\Editor\PureDOTS\PureDotsBudgetValidator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Packages\com.moni.puredots\Editor\PureDOTS.Editor.asmdef" />

@@ -29,12 +29,16 @@ namespace PureDOTS.Authoring
         [SerializeField]
         private PoolingSettingsData _pooling = PoolingSettingsData.CreateDefault();
 
+        [SerializeField]
+        private ThreadingSettingsData _threading = ThreadingSettingsData.CreateDefault();
+
         public int SchemaVersion => _schemaVersion;
         public TimeSettingsData Time => _time;
         public HistorySettingsData History => _history;
         public ResourceTypeCatalog ResourceTypes => _resourceTypes;
         public ResourceRecipeCatalog RecipeCatalog => _recipeCatalog;
         public PoolingSettingsData Pooling => _pooling;
+        public ThreadingSettingsData Threading => _threading;
 
 #if UNITY_EDITOR
         public void SetSchemaVersion(int value)
@@ -47,6 +51,7 @@ namespace PureDOTS.Authoring
             _time.Clamp();
             _history.Clamp();
             _pooling.Clamp();
+            _threading.Clamp();
         }
 #endif
     }
@@ -287,6 +292,58 @@ namespace PureDOTS.Authoring
             maxTicksPerSecond = Mathf.Max(minTicksPerSecond, maxTicksPerSecond);
             defaultTicksPerSecond = Mathf.Clamp(defaultTicksPerSecond, minTicksPerSecond, maxTicksPerSecond);
             strideScale = Mathf.Max(0f, strideScale);
+        }
+#endif
+    }
+
+    [Serializable]
+    public struct ThreadingSettingsData
+    {
+        [Tooltip("Override worker thread count (0 = use Unity default).")]
+        public int overrideWorkerCount;
+
+        [Tooltip("Enable cold path throttling (skip systems every N frames).")]
+        public bool enableColdThrottling;
+
+        [Tooltip("History snapshot cadence (every N frames).")]
+        public int historySnapshotCadence;
+
+        [Tooltip("Cold path time budget per frame (seconds).")]
+        public float coldPathTimeBudget;
+
+        [Tooltip("Enable Burst synchronous compilation in development (catches errors early).")]
+        public bool burstCompileSynchronously;
+
+        public static ThreadingSettingsData CreateDefault()
+        {
+            return new ThreadingSettingsData
+            {
+                overrideWorkerCount = 0, // Use Unity default
+                enableColdThrottling = true,
+                historySnapshotCadence = 3,
+                coldPathTimeBudget = 0.002f, // 2ms
+                burstCompileSynchronously = true // Development default
+            };
+        }
+
+        public ThreadingSettingsConfig ToComponent()
+        {
+            return new ThreadingSettingsConfig
+            {
+                OverrideWorkerCount = math.max(0, overrideWorkerCount),
+                EnableColdThrottling = enableColdThrottling,
+                HistorySnapshotCadence = math.max(1, historySnapshotCadence),
+                ColdPathTimeBudget = math.max(0.001f, coldPathTimeBudget),
+                BurstCompileSynchronously = burstCompileSynchronously
+            };
+        }
+
+#if UNITY_EDITOR
+        public void Clamp()
+        {
+            overrideWorkerCount = Mathf.Max(0, overrideWorkerCount);
+            historySnapshotCadence = Mathf.Max(1, historySnapshotCadence);
+            coldPathTimeBudget = Mathf.Max(0.001f, coldPathTimeBudget);
         }
 #endif
     }

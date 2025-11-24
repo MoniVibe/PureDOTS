@@ -125,4 +125,13 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial class LateSimulationSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Presentation system group for rendering/UI bridge systems.
+    /// Consumes simulation data for visualization. Guarded by PresentationRewindGuardSystem.
+    /// </summary>
+    /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
+    [UpdateAfter(typeof(LateSimulationSystemGroup))]
+    public partial class PresentationSystemGroup : ComponentSystemGroup { }
 }

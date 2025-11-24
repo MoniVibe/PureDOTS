@@ -12,12 +12,22 @@ namespace PureDOTS.Tests.Playmode
         protected EntityManager EntityManager { get; private set; }
             = default;
 
+        protected void RecreateWorld(string name = "PureDOTS Test World")
+        {
+            if (World.IsCreated)
+            {
+                World.Dispose();
+            }
+
+            World = new World(name);
+            World.DefaultGameObjectInjectionWorld = World;
+            EntityManager = World.EntityManager;
+        }
+
         [SetUp]
         public virtual void SetUp()
         {
-            World = new World("PureDOTS Test World");
-            World.DefaultGameObjectInjectionWorld = World;
-            EntityManager = World.EntityManager;
+            RecreateWorld("PureDOTS Test World");
         }
 
         [TearDown]

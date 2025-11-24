@@ -69,11 +69,36 @@ PureDOTS expects a small set of ScriptableObjects to exist in every consuming pr
 3. Because this workspace relies on the external games as regression coverage, keep at least one `Godgame` and one `Space4x` scene compiling against the latest package at all times.
 4. Record manual validation steps in your dev log (e.g., "Run Godgame > Sandbox scene → ensure registries populate, rewind toggles succeed"). This compensates for the lack of automated playmode suites.
 
-## 6. Maintenance Checklist
+## 6. Integrate Entities with AI Pipeline (Optional)
+
+To use the shared `AISystemGroup` pipeline for autonomous agent behavior:
+
+1. **Add AI components during authoring:**
+   - See `Docs/Guides/AI_Integration_Guide.md` for detailed steps
+   - Add `AISensorConfig`, `AIBehaviourArchetype`, `AISteeringConfig`, etc. to your entity bakers
+   - Create utility archetype blobs that define action scoring curves
+
+2. **Create a bridge system:**
+   - Create a system that consumes `AICommand` from the shared queue
+   - Map action indices to your entity's goal/state enums
+   - Update entity state based on commands
+
+3. **Examples:**
+   - Godgame: `GodgameVillagerAICommandBridgeSystem` bridges commands to `VillagerAIState`
+   - Space4X: `Space4XVesselAICommandBridgeSystem` bridges commands to `VesselAIState`
+
+4. **Sensor categories:**
+   - Extend `AISensorCategory` if you need custom entity detection
+   - Update `AISensorCategoryFilter` in the package to recognize your component types
+
+See `Docs/Guides/AI_Integration_Guide.md` for complete documentation.
+
+## 7. Maintenance Checklist
 
 - Rerun `Assets → Reimport All` after major package updates to rebuild Burst caches.
 - Review `PureDOTS/Docs/ROADMAP_STATUS.md` for upcoming changes that may require adapter updates.
 - When `package.json` version changes, update the dependency string in your manifest to match.
 - Keep an eye on the pinned advisory in `PureDOTS_TODO.md`—avoid introducing Entities 1.5+ APIs or legacy input into your project until the heads-up is cleared.
+- If using AI pipeline, ensure bridge systems run after `AITaskResolutionSystem` using `[UpdateAfter]`.
 
 Following these steps keeps each game aligned with the shared runtime while preserving deterministic behaviour and quick iteration loops for the solo development workflow.

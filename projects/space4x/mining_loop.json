@@ -1,0 +1,40 @@
+{
+  "scenarioId": "scenario.space4x.mining.loop",
+  "seed": 54321,
+  "runTicks": 14400,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.deposit",
+      "payload": "{\"depositId\":\"deposit.ore.rich\",\"position\":{\"x\":20,\"y\":0,\"z\":20},\"richness\":2.0}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.miner",
+      "payload": "{\"minerId\":\"miner.basic\",\"position\":{\"x\":18,\"y\":0,\"z\":18},\"count\":4}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.hauler",
+      "payload": "{\"haulerId\":\"hauler.basic\",\"position\":{\"x\":15,\"y\":0,\"z\":15},\"count\":2}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.station",
+      "payload": "{\"stationId\":\"station.basic\",\"position\":{\"x\":0,\"y\":0,\"z\":0},\"pricing\":{\"ore\":{\"buy\":10.0,\"sell\":12.0}}}"
+    },
+    {
+      "tick": 3600,
+      "commandId": "station.trade.sell",
+      "payload": "{\"station\":0,\"resourceId\":\"ore\",\"amount\":100}"
+    },
+    {
+      "tick": 7200,
+      "commandId": "station.trade.buy",
+      "payload": "{\"station\":0,\"resourceId\":\"ore\",\"amount\":50}"
+    }
+  ],
+  "docs": "Mining Loop glue scenario: miners + haulers + station pricing (simple buy/sell table) → throughput graph. Demonstrates full mining economy loop with deterministic pricing and resource flow. Produces stable CSV/JSON outputs trackable over time."
+}
+

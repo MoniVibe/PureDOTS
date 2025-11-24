@@ -42,7 +42,11 @@ namespace PureDOTS.Systems.Mobility
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                return;
+            }
+
             if (timeState.IsPaused || (SystemAPI.TryGetSingleton(out RewindState rewindState) && rewindState.Mode != RewindMode.Record))
             {
                 return;

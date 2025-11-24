@@ -28,6 +28,8 @@ This file captures the first wave of work for the new PureDOTS Unity project. Th
   - [x] Ensure each domain has deterministic update groups and clear scheduling.
   - [x] Add debugging/visualisation systems (HUD, gizmos) to inspect DOTS state during iteration. (Debug HUD + telemetry systems in place)
   - [ ] Flesh out villager job behavior stubs (`GatherJobBehavior`, `BuildJobBehavior`, `CraftJobBehavior`, `CombatJobBehavior`) and feed archetype catalog data into AI selection; current smoke coverage only validates scaffolding compiles.
+  - [x] Integrate Godgame villagers and Space4X vessels with shared `AISystemGroup` pipeline via bridge systems and AI component authoring (completed: `GodgameVillagerAICommandBridgeSystem`, `Space4XVesselAICommandBridgeSystem`, sensor category extensions, utility bindings).
+  - [ ] Complete AI gap closure: virtual sensors for internal needs, miracle detection, performance metrics, flow field integration (see `Docs/AI_Backlog.md` for prioritized items).
    
    Vegetation Growth Loop (Agent Alpha & Beta):
    - [x] Scaffold vegetation lifecycle components (`VegetationComponents.cs`) with lifecycle stages, health, production, consumption, reproduction, and seasonal effects.

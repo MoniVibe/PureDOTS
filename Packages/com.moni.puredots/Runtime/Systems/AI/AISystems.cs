@@ -7,6 +7,10 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
+#if SPACE4X_TRANSPORT
+using Space4X.Runtime.Transport;
+using Space4X.Runtime;
+#endif
 
 namespace PureDOTS.Systems.AI
 {
@@ -38,6 +42,13 @@ namespace PureDOTS.Systems.AI
         [ReadOnly] public ComponentLookup<VillagerId> VillagerLookup;
         [ReadOnly] public ComponentLookup<ResourceSourceConfig> ResourceLookup;
         [ReadOnly] public ComponentLookup<StorehouseConfig> StorehouseLookup;
+#if SPACE4X_TRANSPORT
+        [ReadOnly] public ComponentLookup<MinerVessel> MinerVesselLookup;
+        [ReadOnly] public ComponentLookup<Carrier> CarrierLookup;
+        [ReadOnly] public ComponentLookup<Hauler> HaulerLookup;
+        [ReadOnly] public ComponentLookup<Freighter> FreighterLookup;
+        [ReadOnly] public ComponentLookup<Wagon> WagonLookup;
+#endif
 
         public bool Accept(int descriptorIndex, in SpatialQueryDescriptor descriptor, in SpatialGridEntry entry)
         {
@@ -75,6 +86,21 @@ namespace PureDOTS.Systems.AI
                             return true;
                         }
                         break;
+                    case AISensorCategory.TransportUnit:
+#if SPACE4X_TRANSPORT
+                        if (MinerVesselLookup.HasComponent(entry.Entity) ||
+                            CarrierLookup.HasComponent(entry.Entity) ||
+                            HaulerLookup.HasComponent(entry.Entity) ||
+                            FreighterLookup.HasComponent(entry.Entity) ||
+                            WagonLookup.HasComponent(entry.Entity))
+                        {
+                            return true;
+                        }
+#endif
+                        break;
+                    case AISensorCategory.Miracle:
+                        // Miracle detection can be added when miracle components are available
+                        break;
                     default:
                         return true;
                 }
@@ -93,6 +119,13 @@ namespace PureDOTS.Systems.AI
         private ComponentLookup<ResourceSourceConfig> _resourceLookup;
         private ComponentLookup<StorehouseConfig> _storehouseLookup;
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
+#if SPACE4X_TRANSPORT
+        private ComponentLookup<MinerVessel> _minerVesselLookup;
+        private ComponentLookup<Carrier> _carrierLookup;
+        private ComponentLookup<Hauler> _haulerLookup;
+        private ComponentLookup<Freighter> _freighterLookup;
+        private ComponentLookup<Wagon> _wagonLookup;
+#endif
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -110,6 +143,13 @@ namespace PureDOTS.Systems.AI
             _resourceLookup = state.GetComponentLookup<ResourceSourceConfig>(true);
             _storehouseLookup = state.GetComponentLookup<StorehouseConfig>(true);
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
+#if SPACE4X_TRANSPORT
+            _minerVesselLookup = state.GetComponentLookup<MinerVessel>(true);
+            _carrierLookup = state.GetComponentLookup<Carrier>(true);
+            _haulerLookup = state.GetComponentLookup<Hauler>(true);
+            _freighterLookup = state.GetComponentLookup<Freighter>(true);
+            _wagonLookup = state.GetComponentLookup<Wagon>(true);
+#endif
         }
 
         [BurstCompile]
@@ -135,6 +175,13 @@ namespace PureDOTS.Systems.AI
             _resourceLookup.Update(ref state);
             _storehouseLookup.Update(ref state);
             _residencyLookup.Update(ref state);
+#if SPACE4X_TRANSPORT
+            _minerVesselLookup.Update(ref state);
+            _carrierLookup.Update(ref state);
+            _haulerLookup.Update(ref state);
+            _freighterLookup.Update(ref state);
+            _wagonLookup.Update(ref state);
+#endif
 
             var descriptorList = new NativeList<SpatialQueryDescriptor>(Allocator.TempJob);
             var rangeList = new NativeList<SpatialQueryRange>(Allocator.TempJob);
@@ -212,6 +259,13 @@ namespace PureDOTS.Systems.AI
                     VillagerLookup = _villagerLookup,
                     ResourceLookup = _resourceLookup,
                     StorehouseLookup = _storehouseLookup
+#if SPACE4X_TRANSPORT
+                    , MinerVesselLookup = _minerVesselLookup,
+                    CarrierLookup = _carrierLookup,
+                    HaulerLookup = _haulerLookup,
+                    FreighterLookup = _freighterLookup,
+                    WagonLookup = _wagonLookup
+#endif
                 }
             };
 
@@ -243,7 +297,11 @@ namespace PureDOTS.Systems.AI
                 for (var r = 0; r < slice.Length; r++)
                 {
                     var nearest = slice[r];
-                    var category = ResolveCategory(nearest.Entity, mask, _villagerLookup, _resourceLookup, _storehouseLookup);
+                    var category = ResolveCategory(nearest.Entity, mask, _villagerLookup, _resourceLookup, _storehouseLookup
+#if SPACE4X_TRANSPORT
+                        , _minerVesselLookup, _carrierLookup, _haulerLookup, _freighterLookup, _wagonLookup
+#endif
+                    );
                     var normalized = ComputeSensorScore(nearest.DistanceSq, sensorConfig.Range);
                     var cellId = -1;
                     uint spatialVersion = 0;
@@ -303,7 +361,15 @@ namespace PureDOTS.Systems.AI
             in AISensorCategoryMask mask,
             ComponentLookup<VillagerId> villagerLookup,
             ComponentLookup<ResourceSourceConfig> resourceLookup,
-            ComponentLookup<StorehouseConfig> storehouseLookup)
+            ComponentLookup<StorehouseConfig> storehouseLookup
+#if SPACE4X_TRANSPORT
+            , ComponentLookup<MinerVessel> minerVesselLookup,
+            ComponentLookup<Carrier> carrierLookup,
+            ComponentLookup<Hauler> haulerLookup,
+            ComponentLookup<Freighter> freighterLookup,
+            ComponentLookup<Wagon> wagonLookup
+#endif
+        )
         {
             if (entity == Entity.Null)
             {
@@ -316,7 +382,11 @@ namespace PureDOTS.Systems.AI
                 for (var i = 0; i < categories.Length; i++)
                 {
                     var category = categories[i];
-                    if (MatchesCategory(entity, category, villagerLookup, resourceLookup, storehouseLookup))
+                    if (MatchesCategory(entity, category, villagerLookup, resourceLookup, storehouseLookup
+#if SPACE4X_TRANSPORT
+                        , minerVesselLookup, carrierLookup, haulerLookup, freighterLookup, wagonLookup
+#endif
+                    ))
                     {
                         return category;
                     }
@@ -324,20 +394,40 @@ namespace PureDOTS.Systems.AI
             }
             else
             {
-                if (MatchesCategory(entity, AISensorCategory.Villager, villagerLookup, resourceLookup, storehouseLookup))
+                if (MatchesCategory(entity, AISensorCategory.Villager, villagerLookup, resourceLookup, storehouseLookup
+#if SPACE4X_TRANSPORT
+                    , minerVesselLookup, carrierLookup, haulerLookup, freighterLookup, wagonLookup
+#endif
+                ))
                 {
                     return AISensorCategory.Villager;
                 }
 
-                if (MatchesCategory(entity, AISensorCategory.ResourceNode, villagerLookup, resourceLookup, storehouseLookup))
+                if (MatchesCategory(entity, AISensorCategory.ResourceNode, villagerLookup, resourceLookup, storehouseLookup
+#if SPACE4X_TRANSPORT
+                    , minerVesselLookup, carrierLookup, haulerLookup, freighterLookup, wagonLookup
+#endif
+                ))
                 {
                     return AISensorCategory.ResourceNode;
                 }
 
-                if (MatchesCategory(entity, AISensorCategory.Storehouse, villagerLookup, resourceLookup, storehouseLookup))
+                if (MatchesCategory(entity, AISensorCategory.Storehouse, villagerLookup, resourceLookup, storehouseLookup
+#if SPACE4X_TRANSPORT
+                    , minerVesselLookup, carrierLookup, haulerLookup, freighterLookup, wagonLookup
+#endif
+                ))
                 {
                     return AISensorCategory.Storehouse;
                 }
+
+#if SPACE4X_TRANSPORT
+                if (MatchesCategory(entity, AISensorCategory.TransportUnit, villagerLookup, resourceLookup, storehouseLookup
+                    , minerVesselLookup, carrierLookup, haulerLookup, freighterLookup, wagonLookup))
+                {
+                    return AISensorCategory.TransportUnit;
+                }
+#endif
             }
 
             return AISensorCategory.None;
@@ -348,13 +438,29 @@ namespace PureDOTS.Systems.AI
             AISensorCategory category,
             ComponentLookup<VillagerId> villagerLookup,
             ComponentLookup<ResourceSourceConfig> resourceLookup,
-            ComponentLookup<StorehouseConfig> storehouseLookup)
+            ComponentLookup<StorehouseConfig> storehouseLookup
+#if SPACE4X_TRANSPORT
+            , ComponentLookup<MinerVessel> minerVesselLookup,
+            ComponentLookup<Carrier> carrierLookup,
+            ComponentLookup<Hauler> haulerLookup,
+            ComponentLookup<Freighter> freighterLookup,
+            ComponentLookup<Wagon> wagonLookup
+#endif
+        )
         {
             return category switch
             {
                 AISensorCategory.Villager => villagerLookup.HasComponent(entity),
                 AISensorCategory.ResourceNode => resourceLookup.HasComponent(entity),
                 AISensorCategory.Storehouse => storehouseLookup.HasComponent(entity),
+#if SPACE4X_TRANSPORT
+                AISensorCategory.TransportUnit => minerVesselLookup.HasComponent(entity) ||
+                    carrierLookup.HasComponent(entity) ||
+                    haulerLookup.HasComponent(entity) ||
+                    freighterLookup.HasComponent(entity) ||
+                    wagonLookup.HasComponent(entity),
+#endif
+                AISensorCategory.Miracle => false, // Miracle detection to be implemented when components are available
                 _ => true
             };
         }

@@ -106,6 +106,7 @@
     <Compile Include="Assets\Tests\Playmode\SpatialRegistryPerformanceTests.cs" />
     <Compile Include="Assets\Tests\Playmode\StorehouseRegistryTests.cs" />
     <Compile Include="Assets\Tests\Playmode\ManualPhaseGroupTests.cs" />
+    <Compile Include="Assets\Tests\Playmode\Presentation_Bridge_Contract_Tests.cs" />
     <Compile Include="Assets\Tests\Playmode\LogisticsRequestRegistryTests.cs" />
     <Compile Include="Assets\Tests\Playmode\CreatureRegistrySystemTests.cs" />
     <Compile Include="Assets\Tests\Playmode\AbilityRegistrySystemTests.cs" />

@@ -22,7 +22,7 @@ namespace PureDOTS.Systems.Combat
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
             foreach (var (computer, gunnery, projectile, loopState, transform) in SystemAPI
-                         .Query<RefRO<TargetingComputer>, RefRO<GunnerySkill>, RefRO<ProjectileSpec>, RefRO<CombatLoopState>, RefRO<LocalTransform>>())
+                         .Query<RefRO<TargetingComputer>, RefRO<GunnerySkill>, RefRO<ProjectileFlightSpec>, RefRO<CombatLoopState>, RefRO<LocalTransform>>())
             {
                 if (loopState.ValueRO.Target == Entity.Null)
                 {

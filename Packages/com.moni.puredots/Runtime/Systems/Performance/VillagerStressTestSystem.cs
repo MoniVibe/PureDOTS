@@ -69,12 +69,12 @@ namespace PureDOTS.Systems.Performance
                 }
             }
 
-            // Measure performance
-            var startTime = Time.realtimeSinceStartup;
+            // Measure performance (using deterministic time)
+            var timeState = SystemAPI.GetSingleton<TimeState>();
             _frameCount++;
 
-            // Accumulate frame time
-            var frameTime = Time.realtimeSinceStartup - startTime;
+            // Accumulate frame time (using fixed delta time for deterministic measurement)
+            var frameTime = timeState.FixedDeltaTime;
             _accumulatedFrameTime += frameTime;
 
             // Log summary every N measurements
