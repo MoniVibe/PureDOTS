@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using PureDOTS.Runtime.Villagers;
 
 namespace PureDOTS.Authoring
 {

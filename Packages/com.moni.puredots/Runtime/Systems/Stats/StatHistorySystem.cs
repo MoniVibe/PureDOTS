@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Stats;
 using Unity.Burst;
 using Unity.Collections;
@@ -37,13 +38,12 @@ namespace PureDOTS.Systems.Stats
                 return;
             }
 
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
-
             foreach (var (stats, historyBuffer, entity) in SystemAPI.Query<RefRO<IndividualStats>, DynamicBuffer<StatHistorySample>>()
                 .WithEntityAccess())
             {
                 var statsData = stats.ValueRO;
-                historyBuffer.Add(new StatHistorySample
+                var buffer = historyBuffer;
+                buffer.Add(new StatHistorySample
                 {
                     Tick = currentTick,
                     Command = statsData.Command,
@@ -59,14 +59,13 @@ namespace PureDOTS.Systems.Stats
                 if (SystemAPI.HasComponent<PhysiqueFinesseWill>(entity))
                 {
                     var pfw = SystemAPI.GetComponent<PhysiqueFinesseWill>(entity);
-                    var lastSample = historyBuffer[historyBuffer.Length - 1];
+                    var lastSample = buffer[buffer.Length - 1];
                     lastSample.GeneralXP = pfw.GeneralXP;
-                    historyBuffer[historyBuffer.Length - 1] = lastSample;
+                    buffer[buffer.Length - 1] = lastSample;
                 }
+
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }

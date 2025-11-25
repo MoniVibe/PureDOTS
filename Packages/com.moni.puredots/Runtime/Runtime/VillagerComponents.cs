@@ -53,9 +53,63 @@ namespace PureDOTS.Runtime.Components
         public float MaxHealth;
 
         /// <summary>
+        /// Hunger level (0-100). Backed by both byte Food (legacy) and float Hunger for precision.
+        /// </summary>
+        public float Hunger;
+
+        /// <summary>
         /// Energy level (0-100, typically synced with Rest).
         /// </summary>
         public float Energy;
+
+        /// <summary>
+        /// Current morale (0-100).
+        /// </summary>
+        public float Morale;
+
+        /// <summary>
+        /// Comfort temperature preference (-100 to 100).
+        /// </summary>
+        public float Temperature;
+
+        // Convenience float accessors (clamped to 0-100 range).
+        public float HungerFloat
+        {
+            get
+            {
+                // Prefer float storage; fall back to legacy byte if float is unset.
+                var value = math.abs(Hunger) > 1e-5f ? Hunger : Food;
+                return math.clamp(value, 0f, 100f);
+            }
+        }
+        public float EnergyFloat => math.clamp(Energy, 0f, 100f);
+        public float MoraleFloat => math.clamp(Morale, 0f, 100f);
+        public float TemperatureFloat => math.clamp(Temperature, -100f, 100f);
+
+        public void SetHunger(float value)
+        {
+            var clamped = math.clamp(value, 0f, 100f);
+            Hunger = clamped;
+            Food = (byte)math.round(clamped);
+        }
+
+        public void SetEnergy(float value)
+        {
+            var clamped = math.clamp(value, 0f, 100f);
+            Energy = clamped;
+            Rest = (byte)math.round(clamped);
+        }
+
+        public void SetMorale(float value)
+        {
+            var clamped = math.clamp(value, 0f, 100f);
+            Morale = clamped;
+        }
+
+        public void SetTemperature(float value)
+        {
+            Temperature = math.clamp(value, -100f, 100f);
+        }
     }
 
     /// <summary>
@@ -166,6 +220,21 @@ namespace PureDOTS.Runtime.Components
         /// Current mood value (0-100, where 0 = very unhappy, 100 = very happy).
         /// </summary>
         public float Mood;
+
+        /// <summary>
+        /// Target mood value that mood lerps toward.
+        /// </summary>
+        public float TargetMood;
+
+        /// <summary>
+        /// Rate multiplier for mood adjustment per second.
+        /// </summary>
+        public float MoodChangeRate;
+
+        /// <summary>
+        /// Current wellbeing score (0-100) derived from needs.
+        /// </summary>
+        public float Wellbeing;
     }
 
     /// <summary>

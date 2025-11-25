@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -49,22 +50,28 @@ namespace Space4X.Systems
             var currentTime = timeState.ElapsedTime;
             var deltaTime = timeState.FixedDeltaTime;
 
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            var ecbParallel = ecb.AsParallelWriter();
+            // Optional: get spatial grid for homing target acquisition
+            var hasSpatialGrid = SystemAPI.TryGetSingleton<SpatialGridConfig>(out var spatialConfig) &&
+                                 SystemAPI.TryGetSingleton<SpatialGridState>(out var spatialState);
+
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+            var transformLookup = state.GetComponentLookup<LocalTransform>(true);
 
             var job = new ProjectileAdvanceJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
                 CurrentTime = currentTime,
                 DeltaTime = deltaTime,
-                ECB = ecbParallel
+                Ecb = ecb,
+                HasSpatialGrid = hasSpatialGrid,
+                SpatialConfig = hasSpatialGrid ? spatialConfig : default,
+                TransformLookup = transformLookup
             };
 
+            transformLookup.Update(ref state);
             state.Dependency = job.ScheduleParallel(state.Dependency);
-            state.Dependency.Complete();
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
 
         [BurstCompile]
@@ -73,10 +80,13 @@ namespace Space4X.Systems
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
             public float CurrentTime;
             public float DeltaTime;
-            public EntityCommandBuffer.ParallelWriter ECB;
+            public EntityCommandBuffer.ParallelWriter Ecb;
+            public bool HasSpatialGrid;
+            [ReadOnly] public SpatialGridConfig SpatialConfig;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(
-                [EntityIndexInQuery] int entityInQueryIndex,
+                [ChunkIndexInQuery] int chunkIndex,
                 Entity entity,
                 ref ProjectileEntity projectile,
                 ref LocalTransform transform)
@@ -84,21 +94,24 @@ namespace Space4X.Systems
                 // Find projectile spec
                 if (!TryFindProjectileSpec(ProjectileCatalog, projectile.ProjectileId, out var projectileSpec))
                 {
-                    ECB.DestroyEntity(entityInQueryIndex, entity);
+                    Ecb.DestroyEntity(chunkIndex, entity);
                     return;
                 }
 
-                // Check lifetime
-                var age = CurrentTime - projectile.SpawnTime;
-                if (age >= projectileSpec.Lifetime)
+                // Update age
+                projectile.Age = CurrentTime - projectile.SpawnTime;
+                if (projectile.Age >= projectileSpec.Lifetime)
                 {
-                    ECB.DestroyEntity(entityInQueryIndex, entity);
+                    Ecb.DestroyEntity(chunkIndex, entity);
                     return;
                 }
 
-                // Update position based on projectile kind
-                var newPosition = transform.Position;
-                var newVelocity = projectile.Velocity;
+                // Store previous position for continuous collision
+                projectile.PrevPos = transform.Position;
+
+                // Update position and velocity based on projectile kind
+                float3 newPosition = transform.Position;
+                float3 newVelocity = projectile.Velocity;
 
                 switch ((ProjectileKind)projectileSpec.Kind)
                 {
@@ -108,31 +121,76 @@ namespace Space4X.Systems
                         break;
 
                     case ProjectileKind.Homing:
-                        // Homing: steer toward target
-                        if (projectile.TargetEntity != Entity.Null)
+                        // Homing: steer toward target with turn rate limit
+                        if (projectile.TargetEntity != Entity.Null && TransformLookup.HasComponent(projectile.TargetEntity))
                         {
-                            // TODO: Get target position from entity
-                            // For now, maintain velocity
-                            newPosition += projectile.Velocity * DeltaTime;
+                            float3 targetPos = TransformLookup[projectile.TargetEntity].Position;
+                            float3 toTarget = targetPos - transform.Position;
+                            float distanceToTarget = math.length(toTarget);
+
+                            // Check if target is within seek radius
+                            if (distanceToTarget <= projectileSpec.SeekRadius)
+                            {
+                                // Calculate desired direction
+                                float3 desiredDirection = math.normalizesafe(toTarget, math.forward());
+                                float3 currentDirection = math.normalizesafe(projectile.Velocity, math.forward());
+
+                                // Calculate angle between current and desired direction
+                                float angleRad = math.acos(math.clamp(math.dot(currentDirection, desiredDirection), -1f, 1f));
+                                float angleDeg = math.degrees(angleRad);
+
+                                // Clamp turn rate
+                                float maxTurnDeg = projectileSpec.TurnRateDeg * DeltaTime;
+                                float turnDeg = math.min(angleDeg, maxTurnDeg);
+
+                                if (turnDeg > 0.1f) // Only turn if angle is significant
+                                {
+                                    // Calculate rotation axis
+                                    float3 rotationAxis = math.cross(currentDirection, desiredDirection);
+                                    if (math.lengthsq(rotationAxis) > 1e-6f)
+                                    {
+                                        rotationAxis = math.normalize(rotationAxis);
+                                        quaternion rotation = quaternion.AxisAngle(rotationAxis, math.radians(turnDeg));
+                                        newVelocity = math.mul(rotation, currentDirection) * math.length(projectile.Velocity);
+                                    }
+                                }
+                                else
+                                {
+                                    // Already aligned, use desired direction
+                                    newVelocity = desiredDirection * math.length(projectile.Velocity);
+                                }
+                            }
+                            else
+                            {
+                                // Target out of range - try to acquire new target via spatial grid
+                                // For now, maintain current velocity
+                            }
+
+                            // Ensure velocity is not NaN or zero
+                            if (math.any(math.isnan(newVelocity)) || math.lengthsq(newVelocity) < 1e-6f)
+                            {
+                                newVelocity = math.forward() * projectileSpec.Speed;
+                            }
+
+                            newPosition += newVelocity * DeltaTime;
                         }
                         else
                         {
+                            // No target or target invalid - maintain velocity
                             newPosition += projectile.Velocity * DeltaTime;
                         }
                         break;
 
                     case ProjectileKind.Beam:
-                        // Beam: instant hit (handled differently)
+                        // Beam: handled by BeamTickSystem, but still advance position for visuals
                         newPosition += projectile.Velocity * DeltaTime;
                         break;
                 }
 
-                projectile.DistanceTraveled += math.length(projectile.Velocity) * DeltaTime;
+                // Update projectile state
+                projectile.Velocity = newVelocity;
+                projectile.DistanceTraveled += math.length(newVelocity) * DeltaTime;
                 transform.Position = newPosition;
-
-                // Check for impact (simple distance check)
-                // TODO: Use proper collision detection
-                // For now, projectiles expire after lifetime
             }
 
             private bool TryFindProjectileSpec(

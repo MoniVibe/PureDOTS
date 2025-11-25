@@ -212,6 +212,9 @@ public struct CulturalTraits : IComponentData
     public DynamicBuffer<FoodPreference> FoodPreferences;
     public DynamicBuffer<AestheticPreference> AestheticPreferences;
 
+    // Animal relationship preferences (learned, not racial)
+    public DynamicBuffer<AnimalRelationship> AnimalRelationships;
+
     // Social behaviors (learned, not racial)
     public SocialBehaviorPattern SocialBehaviors;
 
@@ -539,6 +542,2003 @@ public struct AggregateCompositionSystem : ISystem
   - Minor 1: MilitaryDiscipline (15%) (human officers bring military culture)
   - Minor 2: CorporateTechnocrat (10%) (construct engineers)
 - **NOTE**: Hivemind carrier has mostly hivemind crew (racial), but guest officers contribute cultural diversity
+
+---
+
+### Cultural Conversion & Hybridization
+
+**Core Principle**: Entities gradually convert to the cultures they are surrounded by, depending on their xenophobia/acceptance toward that culture. Some willingly renounce their former culture, others maintain it. Cultures hybridize through intermarriage and semi-conversion. Cultural dominance depends on member patriotism.
+
+**CRITICAL**: Cultural conversion is NOT automatic. It depends on:
+1. **Acceptance** - Individual's prejudice/acceptance of surrounding culture
+2. **Time** - Conversion takes hundreds/thousands of ticks
+3. **Cultural Dominance** - Strong cultures spread faster than weak ones
+4. **Patriotism** - High patriotism resists conversion, low patriotism enables it
+
+```csharp
+// Component tracking individual's cultural conversion progress
+public struct CulturalConversionState : IComponentData
+{
+    public CultureType OriginalCulture;          // Birth culture
+    public CultureType CurrentCulture;           // Current culture (may differ from original)
+    public CultureType SurroundingCulture;       // Dominant culture of current aggregate
+    public float ConversionProgress;             // 0.0-1.0 (how far converted)
+    public ConversionType Type;                  // WillingConversion, ForcedAssimilation, Hybridization
+    public float PatriotismToOriginalCulture;    // 0.0-1.0 (how much they cling to original culture)
+}
+
+public enum ConversionType : byte
+{
+    WillingConversion,          // Individual accepts surrounding culture, abandons original
+    ForcedAssimilation,         // Individual resists but slowly assimilates under pressure
+    CulturalHybridization,      // Individual blends both cultures (maintains aspects of both)
+    ResistedConversion,         // Individual refuses conversion, maintains original culture
+}
+
+// Component tracking cultural patriotism (resistance to conversion)
+public struct CulturalPatriotism : IComponentData
+{
+    public CultureType Culture;                  // Culture individual is patriotic toward
+    public float PatriotismLevel;                // 0.0-1.0 (how loyal to culture)
+    public DynamicBuffer<PatriotismSource> Sources; // What built patriotism
+}
+
+public struct PatriotismSource : IBufferElementData
+{
+    public PatriotismSourceType Type;
+    public float Strength;                       // 0.0-1.0
+}
+
+public enum PatriotismSourceType : byte
+{
+    Upbringing,                 // Raised in culture (baseline patriotism)
+    CulturalPride,              // Culture has strong reputation (legends, victories)
+    SharedStruggle,             // Fought for culture's survival
+    CulturalOppression,         // Culture persecuted, cling to identity
+    ReligiousFervor,            // Religious/ideological devotion
+    FamilyTradition,            // Family legacy tied to culture
+}
+```
+
+**Cultural Conversion Rate Calculation**:
+
+```csharp
+// System calculating cultural conversion over time
+public struct CulturalConversionSystem : ISystem
+{
+    public void UpdateConversion(Entity individual)
+    {
+        var conversion = GetComponentRW<CulturalConversionState>(individual);
+        var patriotism = GetComponent<CulturalPatriotism>(individual);
+        var prejudice = GetComponent<IndividualPrejudice>(individual);
+        var alignment = GetComponent<VillagerAlignment>(individual);
+
+        // Calculate acceptance of surrounding culture
+        PrejudiceEntry culturalPrejudice = FindPrejudice(prejudice, conversion.ValueRO.SurroundingCulture);
+        float acceptance = culturalPrejudice.PrejudiceLevel; // -1.0 to +1.0
+
+        // Calculate conversion rate per tick
+        float baseConversionRate = 0.001f; // 0.1% per tick baseline
+
+        // Acceptance modifier (positive prejudice = faster conversion)
+        if (acceptance > 0)
+            baseConversionRate *= (1.0f + acceptance); // 1x-2x multiplier
+        else
+            baseConversionRate *= (1.0f + (acceptance * 0.5f)); // 0.5x-1x multiplier (resistance)
+
+        // Patriotism resistance (high patriotism = slower conversion)
+        baseConversionRate *= (1.0f - patriotism.PatriotismLevel); // 0x-1x multiplier
+
+        // Cultural dominance modifier (strong cultures spread faster)
+        var aggregateCulture = GetComponent<AggregateCulturalComposition>(GetCurrentAggregate(individual));
+        float culturalDominance = CalculateCulturalDominance(aggregateCulture, conversion.ValueRO.SurroundingCulture);
+        baseConversionRate *= (0.5f + culturalDominance); // 0.5x-1.5x multiplier
+
+        // Xenophobia modifier (xenophobes resist cultural change)
+        if (alignment.PurityAxis < -0.5f) // Xenophobic
+            baseConversionRate *= 0.5f; // Half rate (resist foreign culture)
+        else if (alignment.PurityAxis > 0.5f) // Xenophilic
+            baseConversionRate *= 1.5f; // 1.5x rate (embrace foreign culture)
+
+        // Apply conversion
+        conversion.ValueRW.ConversionProgress += baseConversionRate;
+
+        // Check if conversion complete
+        if (conversion.ValueRW.ConversionProgress >= 1.0f)
+        {
+            CompleteConversion(individual, conversion.ValueRO);
+        }
+    }
+
+    private void CompleteConversion(Entity individual, CulturalConversionState conversion)
+    {
+        var culturalTraits = GetComponentRW<CulturalTraits>(individual);
+
+        // Determine conversion type
+        if (conversion.PatriotismToOriginalCulture < 0.3f)
+        {
+            // Willing conversion - fully adopt new culture
+            conversion.Type = ConversionType.WillingConversion;
+            culturalTraits.ValueRW.Culture = conversion.SurroundingCulture;
+            culturalTraits.ValueRW.UpbringingCulture = conversion.OriginalCulture; // Remember roots
+
+            // Fully adopt new culture's traits
+            culturalTraits.ValueRW.OccupationBias = GetCultureOccupationPreferences(conversion.SurroundingCulture);
+            culturalTraits.ValueRW.FoodPreferences = GetCultureFoodPreferences(conversion.SurroundingCulture);
+            culturalTraits.ValueRW.AestheticPreferences = GetCultureAestheticPreferences(conversion.SurroundingCulture);
+            culturalTraits.ValueRW.SocialBehaviors = GetCultureSocialBehaviors(conversion.SurroundingCulture);
+            culturalTraits.ValueRW.Aptitudes = GetCultureAptitudes(conversion.SurroundingCulture);
+        }
+        else if (conversion.PatriotismToOriginalCulture > 0.7f)
+        {
+            // Resisted conversion - maintain original culture
+            conversion.Type = ConversionType.ResistedConversion;
+            // No change to cultural traits
+        }
+        else
+        {
+            // Cultural hybridization - blend both cultures
+            conversion.Type = ConversionType.CulturalHybridization;
+            CreateHybridCulture(individual, conversion.OriginalCulture, conversion.SurroundingCulture);
+        }
+    }
+
+    private float CalculateCulturalDominance(AggregateCulturalComposition composition, CultureType targetCulture)
+    {
+        // Cultural dominance = percentage + average patriotism of members
+        float percentage = 0.0f;
+        if (composition.DominantCulture == targetCulture)
+            percentage = composition.DominantCulturePercentage;
+        else if (composition.MinorCulture1 == targetCulture)
+            percentage = composition.MinorCulture1Percentage;
+        else if (composition.MinorCulture2 == targetCulture)
+            percentage = composition.MinorCulture2Percentage;
+
+        // Calculate average patriotism of culture members
+        float averagePatriotism = CalculateAveragePatriotism(targetCulture);
+
+        // Dominance = (percentage * 0.6) + (patriotism * 0.4)
+        return (percentage * 0.6f) + (averagePatriotism * 0.4f);
+    }
+}
+```
+
+**Cultural Hybridization System**:
+
+```csharp
+// Component tracking hybrid cultures (blended from two parent cultures)
+public struct HybridCulture : IComponentData
+{
+    public CultureType HybridName;               // e.g., "Anglo-Saxon", "Sino-Japanese"
+    public CultureType ParentCulture1;
+    public CultureType ParentCulture2;
+    public float Parent1Dominance;               // 0.0-1.0 (which culture is stronger)
+    public ushort MembersWithHybridCulture;      // How many entities have this hybrid
+}
+
+// System creating hybrid cultures from intermarriage and semi-conversion
+public struct CulturalHybridizationSystem : ISystem
+{
+    public void CreateHybridCulture(Entity individual, CultureType culture1, CultureType culture2)
+    {
+        var culturalTraits = GetComponentRW<CulturalTraits>(individual);
+
+        // Check if hybrid already exists
+        HybridCulture existingHybrid = FindHybridCulture(culture1, culture2);
+        if (existingHybrid != null)
+        {
+            // Join existing hybrid
+            culturalTraits.ValueRW.Culture = existingHybrid.HybridName;
+            existingHybrid.MembersWithHybridCulture++;
+            return;
+        }
+
+        // Create new hybrid culture
+        var hybrid = new HybridCulture
+        {
+            HybridName = GenerateHybridName(culture1, culture2),
+            ParentCulture1 = culture1,
+            ParentCulture2 = culture2,
+            Parent1Dominance = 0.5f, // 50/50 blend initially
+            MembersWithHybridCulture = 1,
+        };
+
+        // Blend cultural traits
+        culturalTraits.ValueRW.Culture = hybrid.HybridName;
+        culturalTraits.ValueRW.OccupationBias = BlendOccupationBias(culture1, culture2, 0.5f);
+        culturalTraits.ValueRW.FoodPreferences = BlendFoodPreferences(culture1, culture2, 0.5f);
+        culturalTraits.ValueRW.AestheticPreferences = BlendAestheticPreferences(culture1, culture2, 0.5f);
+        culturalTraits.ValueRW.SocialBehaviors = BlendSocialBehaviors(culture1, culture2, 0.5f);
+        culturalTraits.ValueRW.Aptitudes = BlendAptitudes(culture1, culture2, 0.5f);
+
+        RegisterHybridCulture(hybrid);
+    }
+
+    private DynamicBuffer<OccupationPreference> BlendOccupationBias(CultureType culture1, CultureType culture2, float culture1Weight)
+    {
+        var prefs1 = GetCultureOccupationPreferences(culture1);
+        var prefs2 = GetCultureOccupationPreferences(culture2);
+
+        // Blend preferences (weighted average)
+        var blended = new DynamicBuffer<OccupationPreference>();
+        foreach (var occupation in AllOccupationTypes)
+        {
+            float pref1 = FindPreference(prefs1, occupation);
+            float pref2 = FindPreference(prefs2, occupation);
+            float blendedPref = (pref1 * culture1Weight) + (pref2 * (1.0f - culture1Weight));
+
+            blended.Add(new OccupationPreference { Occupation = occupation, Preference = blendedPref });
+        }
+
+        return blended;
+    }
+}
+```
+
+**Intermarriage Cultural Effects**:
+
+```csharp
+// System handling cultural effects of intermarriage
+public struct IntermarriageCulturalEffects : ISystem
+{
+    public void OnIntermarriage(Entity spouse1, Entity spouse2)
+    {
+        var culture1 = GetComponent<CulturalTraits>(spouse1);
+        var culture2 = GetComponent<CulturalTraits>(spouse2);
+
+        // Intermarriage between different cultures
+        if (culture1.Culture != culture2.Culture)
+        {
+            // Create cultural alliance (increases acceptance)
+            var prejudice1 = GetComponentRW<IndividualPrejudice>(spouse1);
+            var prejudice2 = GetComponentRW<IndividualPrejudice>(spouse2);
+
+            OnPrejudiceEvent(spouse1, spouse2, PrejudiceEventType.CulturalAlignment, 0.8f);
+            OnPrejudiceEvent(spouse2, spouse1, PrejudiceEventType.CulturalAlignment, 0.8f);
+
+            // Spouses begin cultural conversion toward each other
+            InitiateCulturalConversion(spouse1, culture2.Culture);
+            InitiateCulturalConversion(spouse2, culture1.Culture);
+
+            // Offspring will be hybrid culture (if born)
+            // (handled by CulturalInheritanceSystem when offspring created)
+        }
+    }
+
+    public CulturalTraits DetermineOffspringCultureFromIntermarriage(Entity parent1, Entity parent2, Entity birthVillage)
+    {
+        var culture1 = GetComponent<CulturalTraits>(parent1);
+        var culture2 = GetComponent<CulturalTraits>(parent2);
+        var villageCulture = GetComponent<AggregateCulturalComposition>(birthVillage);
+
+        // If parents share same culture, offspring inherits it
+        if (culture1.Culture == culture2.Culture)
+            return culture1;
+
+        // If parents have different cultures, offspring is hybrid
+        if (culture1.Culture != culture2.Culture)
+        {
+            // Create or join hybrid culture
+            HybridCulture hybrid = FindOrCreateHybridCulture(culture1.Culture, culture2.Culture);
+            return CreateCulturalTraitsFromHybrid(hybrid);
+        }
+
+        // Fallback: inherit village dominant culture
+        return CreateCulturalTraitsFromCulture(villageCulture.DominantCulture);
+    }
+}
+```
+
+**Cultural Spread & Ambition**:
+
+```csharp
+// Component tracking culture's ambition to spread
+public struct CulturalSpreadAmbition : IComponentData
+{
+    public CultureType Culture;
+    public float SpreadAmbition;                 // 0.0-1.0 (how aggressively culture spreads)
+    public SpreadMethod PreferredMethod;
+    public float ConversionPressure;             // 0.0-1.0 (how much pressure on minorities to convert)
+}
+
+public enum SpreadMethod : byte
+{
+    PassiveAssimilation,        // Gradual conversion through proximity
+    ActiveProselytization,      // Missionaries/agents actively convert
+    ForcedAssimilation,         // Coercive conversion (slavery, oppression)
+    CulturalAttraction,         // Culture spreads because it's attractive (high reputation)
+    Intermarriage,              // Spreads through marriages and family ties
+}
+
+// System calculating cultural spread influence
+public struct CulturalSpreadSystem : ISystem
+{
+    public void UpdateCulturalSpread(Entity aggregate)
+    {
+        var composition = GetComponent<AggregateCulturalComposition>(aggregate);
+        var members = GetBuffer<AggregateMemberEntry>(aggregate);
+
+        // Calculate dominant culture's spread strength
+        float dominantCultureStrength = CalculateCulturalDominance(composition, composition.DominantCulture);
+
+        // Apply conversion pressure to minority members
+        foreach (var member in members)
+        {
+            var memberCulture = GetComponent<CulturalTraits>(member.Entity);
+
+            // Minority members face conversion pressure
+            if (memberCulture.Culture != composition.DominantCulture)
+            {
+                var conversion = GetOrCreateComponent<CulturalConversionState>(member.Entity);
+                conversion.SurroundingCulture = composition.DominantCulture;
+
+                // Conversion pressure depends on cultural dominance
+                conversion.ConversionProgress += dominantCultureStrength * 0.001f; // Base rate modified by dominance
+            }
+        }
+
+        // Strong cultures spread to neighboring aggregates
+        if (dominantCultureStrength > 0.7f) // Strong culture
+        {
+            SpreadCultureToNeighbors(aggregate, composition.DominantCulture, dominantCultureStrength);
+        }
+    }
+
+    private void SpreadCultureToNeighbors(Entity sourceAggregate, CultureType culture, float strength)
+    {
+        // Find neighboring aggregates (villages, ships, etc.)
+        var neighbors = GetNeighboringAggregates(sourceAggregate);
+
+        foreach (var neighbor in neighbors)
+        {
+            // Cultural influence based on trade, proximity, diplomatic relations
+            float influence = CalculateCulturalInfluence(sourceAggregate, neighbor);
+
+            if (influence > 0.3f) // Significant influence
+            {
+                // Neighboring aggregate's minority members may convert
+                ApplyCulturalInfluence(neighbor, culture, strength * influence);
+            }
+        }
+    }
+}
+```
+
+**Cultural Conversion Examples**:
+
+**1. Willing Conversion (Low Patriotism, High Acceptance)**:
+- **Orc mercenary** (PatriotismLevel = 0.2, Xenophilic +0.6) joins human village
+- **Surrounding Culture**: HumanMerchant (70% dominant)
+- **Acceptance**: +0.5 (positive prejudice toward humans)
+- **Conversion Rate**: 0.001 * (1 + 0.5) * (1 - 0.2) * 1.0 * 1.5 = 0.0018 per tick (1.8x baseline)
+- **Time to Convert**: 555 ticks
+- **Result**: Orc fully adopts human culture, renounces orcish heritage
+- **Quote**: "I've found a new home among humans. My old tribe means nothing to me now."
+
+**2. Resisted Conversion (High Patriotism, Xenophobic)**:
+- **Dwarf smith** (PatriotismLevel = 0.9, Xenophobic -0.7) captured by elf village
+- **Surrounding Culture**: ElvenScholar (80% dominant)
+- **Acceptance**: -0.6 (negative prejudice toward elves)
+- **Conversion Rate**: 0.001 * (1 + (-0.6 * 0.5)) * (1 - 0.9) * 1.0 * 0.5 = 0.000035 per tick (0.035x baseline)
+- **Time to Convert**: 28,571 ticks (likely never completes)
+- **Result**: Dwarf maintains dwarven culture despite 100+ years in elf village
+- **Quote**: "I am a dwarf, and I will die a dwarf. No amount of elvish influence will change that."
+
+**3. Cultural Hybridization (Moderate Patriotism, Intermarriage)**:
+- **Human woman** (PatriotismLevel = 0.5, Neutral) marries orc man in mixed village
+- **Offspring born**: Inherits hybrid "Orcish-Human" culture
+- **Hybrid Traits**:
+  - Occupation Bias: Warrior 0.5 (blend of human merchant 0.3 + orc warrior 0.7)
+  - Food Preferences: Meat +0.55 (blend of human varied +0.4 + orc carnivore +0.7)
+  - Aesthetic: Practical +0.5 (blend of human merchant + orc brutal)
+- **Result**: Child grows up with blended culture, neither fully human nor fully orc
+- **Quote**: "I am neither human nor orc. I am both, and I am proud of my heritage."
+
+**4. Forced Assimilation (Cultural Oppression)**:
+- **Elf slave** (PatriotismLevel = 0.8, initially) enslaved by human empire
+- **Surrounding Culture**: HumanImperial (95% dominant, forcedAssimilation)
+- **Conversion Pressure**: 1.0 (maximum coercion)
+- **Initial Acceptance**: -0.8 (hates captors)
+- **After 5000 ticks**: PatriotismLevel decays to 0.4 (oppression breaks spirit)
+- **After 10,000 ticks**: ConversionProgress = 1.0, forced assimilation complete
+- **Result**: Elf adopts human culture under duress, loses elvish identity
+- **Quote**: "I barely remember what it was like to be free. This is all I know now."
+
+**5. Cultural Attraction (High Reputation)**:
+- **Goblin scout** (PatriotismLevel = 0.3, Xenophilic +0.5) encounters dwarf fortress
+- **Dwarven Culture**: High reputation (legendary craftsmanship, impenetrable defenses)
+- **Acceptance**: +0.7 (admires dwarven achievements)
+- **Cultural Dominance**: 0.9 (95% dwarf population, high patriotism)
+- **Conversion Rate**: 0.001 * (1 + 0.7) * (1 - 0.3) * 0.9 * 1.5 = 0.0016 per tick
+- **Time to Convert**: 625 ticks
+- **Result**: Goblin willingly adopts dwarven culture, drawn by their reputation
+- **Quote**: "I've never seen such magnificent craftsmanship. I want to learn their ways."
+
+**6. Patriotism Protects Cultural Identity**:
+- **Elf refugee** (PatriotismLevel = 0.95, CulturalOppression source) flees to human city
+- **Surrounding Culture**: HumanMerchant (60% dominant)
+- **Acceptance**: +0.4 (grateful for refuge)
+- **Conversion Rate**: 0.001 * (1 + 0.4) * (1 - 0.95) * 0.8 * 1.0 = 0.000056 per tick
+- **Time to Convert**: 17,857 ticks (decades, likely never completes)
+- **Result**: Elf maintains elvish culture despite living among humans for 50+ years
+- **Quote**: "My people were destroyed, but I will preserve our culture. I am the last keeper of our traditions."
+
+**7. Cultural Spread to Neighbors (Strong Dominance)**:
+- **Dwarven fortress** (95% dwarf, average PatriotismLevel = 0.85)
+- **Cultural Dominance**: 0.92 (very strong)
+- **Neighboring human village**: 20% of members have positive prejudice toward dwarves
+- **Cultural Influence**: 0.6 (trade, proximity, mutual defense)
+- **Result**: 12% of human village gradually converts to dwarven culture over 2000 ticks
+- **Quote** (Human convert): "I've traded with the dwarves for years. Their way of life makes more sense than our own."
+
+**8. Hybrid Culture Emerges (Intermarriage Over Generations)**:
+- **Mixed village** (40% human, 35% elf, 25% hybrid)
+- **Intermarriage Rate**: 30% (high cross-cultural marriages)
+- **After 50 generations**: Hybrid culture "Sylvan-Human" becomes dominant (55%)
+- **Hybrid Traits**: Combines human merchant pragmatism + elven artistic refinement
+- **Result**: New distinct culture emerges from prolonged intermarriage
+- **Cultural Memory**: Hybrid culture has alliances with both parent cultures
+
+---
+
+### Cultural Animal Relationships & Riding Mechanics
+
+**Core Principle**: Cultures have different relationships with animals - some ride horses, others eat them, some refuse both. Riding is possible when the animal's carry capacity exceeds the rider's weight, modified by riding skill and animal proficiency.
+
+```csharp
+// Component defining cultural relationship with specific animals
+public struct AnimalRelationship : IBufferElementData
+{
+    public AnimalType Animal;
+    public RelationshipType Relationship;        // Sacred, Companion, Livestock, Food, Mount, Pest, Forbidden
+    public float CulturalSignificance;           // 0.0-1.0 (how important this relationship is)
+}
+
+public enum AnimalType : byte
+{
+    // Mounts
+    Horse, Warhorse, Pony, Donkey, Camel, Elephant, Gryphon, Dragon, Wyvern,
+
+    // Livestock
+    Cow, Pig, Sheep, Goat, Chicken,
+
+    // Companions
+    Dog, Cat, Falcon, Raven,
+
+    // Exotic
+    Unicorn, Dire Wolf, Giant Spider, Giant Eagle,
+}
+
+public enum RelationshipType : byte
+{
+    Sacred,             // Culturally/religiously revered (cannot harm or use)
+    Companion,          // Befriended, treated as family member
+    Livestock,          // Raised for resources (milk, eggs, wool), not eaten
+    Food,               // Raised and eaten
+    Mount,              // Ridden as transportation/war mount
+    MountAndFood,       // Can be ridden OR eaten (pragmatic cultures)
+    Pest,               // Actively exterminated
+    Forbidden,          // Culturally taboo to interact with
+    Indifferent,        // No special relationship (neutral)
+}
+```
+
+**Cultural Animal Relationship Examples**:
+
+```csharp
+// Example cultural animal preferences
+
+// Human Roamer Culture (nomadic, pragmatic)
+AnimalRelationships = new[]
+{
+    new AnimalRelationship { Animal = AnimalType.Horse, Relationship = RelationshipType.MountAndFood, Significance = 0.5f }, // Don't care, use as needed
+    new AnimalRelationship { Animal = AnimalType.Dog, Relationship = RelationshipType.Companion, Significance = 0.7f },
+    new AnimalRelationship { Animal = AnimalType.Cow, Relationship = RelationshipType.Food, Significance = 0.4f },
+};
+
+// Elven Forest Culture (nature-worshipping)
+AnimalRelationships = new[]
+{
+    new AnimalRelationship { Animal = AnimalType.Horse, Relationship = RelationshipType.Sacred, Significance = 1.0f }, // Never ride or eat
+    new AnimalRelationship { Animal = AnimalType.Unicorn, Relationship = RelationshipType.Sacred, Significance = 1.0f },
+    new AnimalRelationship { Animal = AnimalType.Deer, Relationship = RelationshipType.Sacred, Significance = 0.9f },
+    new AnimalRelationship { Animal = AnimalType.Dog, Relationship = RelationshipType.Companion, Significance = 0.8f },
+};
+
+// Orcish Raider Culture (brutal, utilitarian)
+AnimalRelationships = new[]
+{
+    new AnimalRelationship { Animal = AnimalType.Warhorse, Relationship = RelationshipType.Mount, Significance = 0.9f }, // Ride for war
+    new AnimalRelationship { Animal = AnimalType.Horse, Relationship = RelationshipType.Food, Significance = 0.6f }, // Eat when convenient
+    new AnimalRelationship { Animal = AnimalType.Dire Wolf, Relationship = RelationshipType.Companion, Significance = 0.8f },
+    new AnimalRelationship { Animal = AnimalType.Pig, Relationship = RelationshipType.Food, Significance = 0.7f },
+};
+
+// Dwarven Mountain Culture (underground, no cavalry)
+AnimalRelationships = new[]
+{
+    new AnimalRelationship { Animal = AnimalType.Horse, Relationship = RelationshipType.Indifferent, Significance = 0.1f }, // Rarely see horses underground
+    new AnimalRelationship { Animal = AnimalType.Goat, Relationship = RelationshipType.Livestock, Significance = 0.8f }, // Mountain goats for milk
+    new AnimalRelationship { Animal = AnimalType.Pig, Relationship = RelationshipType.Food, Significance = 0.7f },
+    new AnimalRelationship { Animal = AnimalType.Raven, Relationship = RelationshipType.Companion, Significance = 0.6f }, // Messengers
+};
+
+// Halfling Pastoral Culture (farming, peaceful)
+AnimalRelationships = new[]
+{
+    new AnimalRelationship { Animal = AnimalType.Pony, Relationship = RelationshipType.Companion, Significance = 0.9f }, // Never eat ponies!
+    new AnimalRelationship { Animal = AnimalType.Cow, Relationship = RelationshipType.Livestock, Significance = 0.9f }, // Milk, not meat
+    new AnimalRelationship { Animal = AnimalType.Chicken, Relationship = RelationshipType.Livestock, Significance = 0.8f }, // Eggs
+    new AnimalRelationship { Animal = AnimalType.Pig, Relationship = RelationshipType.Food, Significance = 0.6f },
+};
+```
+
+**Riding Mechanics**:
+
+```csharp
+// Component tracking mount capabilities
+public struct MountCapabilities : IComponentData
+{
+    public AnimalType AnimalType;
+    public float CarryCapacity;                  // kg (base capacity)
+    public float BaseMovementSpeed;              // m/s when ridden
+    public MountType Type;                       // Ground, Flying, Swimming
+    public bool IsWildUntamed;                   // If true, needs taming
+    public float Stamina;                        // 0.0-1.0 (exhaustion level)
+}
+
+public enum MountType : byte
+{
+    Ground,             // Walks/runs on land
+    Flying,             // Can fly
+    Swimming,           // Aquatic mount
+    Amphibious,         // Both land and water
+}
+
+// Component tracking rider's skill
+public struct RidingSkills : IComponentData
+{
+    public float GeneralRidingSkill;             // 0.0-1.0 (overall proficiency)
+    public DynamicBuffer<AnimalProficiency> AnimalProficiencies; // Per-animal experience
+}
+
+public struct AnimalProficiency : IBufferElementData
+{
+    public AnimalType Animal;
+    public float Proficiency;                    // 0.0-1.0 (how experienced with this animal)
+    public ushort TicksRidden;                   // Experience accumulation
+}
+
+// System calculating if entity can ride mount
+public struct MountRidingSystem : ISystem
+{
+    public bool CanRide(Entity rider, Entity mount)
+    {
+        var riderMass = GetComponent<RacialPhysicalTraits>(rider).Mass;
+        var riderEquipment = GetComponent<Equipment>(rider); // Armor, weapons, etc.
+        float totalWeight = riderMass + CalculateEquipmentWeight(riderEquipment);
+
+        var mountCapabilities = GetComponent<MountCapabilities>(mount);
+        var ridingSkills = GetComponent<RidingSkills>(rider);
+        var riderCulture = GetComponent<CulturalTraits>(rider);
+
+        // Check cultural acceptability
+        if (!IsCulturallyAcceptableToRide(riderCulture, mountCapabilities.AnimalType))
+            return false; // Culture forbids riding this animal
+
+        // Calculate effective carry capacity (modified by riding skill)
+        float effectiveCapacity = CalculateEffectiveCarryCapacity(
+            mountCapabilities.CarryCapacity,
+            ridingSkills.GeneralRidingSkill,
+            GetAnimalProficiency(ridingSkills, mountCapabilities.AnimalType)
+        );
+
+        // Can ride if total weight <= effective capacity
+        return totalWeight <= effectiveCapacity;
+    }
+
+    private bool IsCulturallyAcceptableToRide(CulturalTraits culture, AnimalType animal)
+    {
+        foreach (var relationship in culture.AnimalRelationships)
+        {
+            if (relationship.Animal == animal)
+            {
+                // Can only ride if relationship is Mount or MountAndFood
+                return relationship.Relationship == RelationshipType.Mount ||
+                       relationship.Relationship == RelationshipType.MountAndFood;
+            }
+        }
+
+        return true; // No cultural preference = allowed
+    }
+
+    private float CalculateEffectiveCarryCapacity(float baseCapacity, float ridingSkill, float animalProficiency)
+    {
+        // Base capacity modified by rider skill
+        // Skilled riders distribute weight better, reduce strain on mount
+        float skillModifier = 1.0f + (ridingSkill * 0.3f); // Up to +30% capacity from skill
+        float proficiencyModifier = 1.0f + (animalProficiency * 0.2f); // Up to +20% from animal-specific proficiency
+
+        return baseCapacity * skillModifier * proficiencyModifier;
+    }
+
+    private float GetAnimalProficiency(RidingSkills skills, AnimalType animal)
+    {
+        foreach (var proficiency in skills.AnimalProficiencies)
+        {
+            if (proficiency.Animal == animal)
+                return proficiency.Proficiency;
+        }
+
+        return 0.0f; // No experience with this animal
+    }
+}
+```
+
+**Riding Examples**:
+
+**1. Skilled Human Rider on Horse**:
+- **Rider**: Human (75kg) + Equipment (25kg) = 100kg total
+- **Mount**: Horse (CarryCapacity = 120kg)
+- **Riding Skill**: 0.8 (experienced rider)
+- **Animal Proficiency**: 0.6 (ridden horses for years)
+- **Effective Capacity**: 120 * (1 + 0.8 * 0.3) * (1 + 0.6 * 0.2) = 120 * 1.24 * 1.12 = 166.7kg
+- **Result**: Can ride easily (100kg < 166.7kg)
+
+**2. Novice Dwarf Rider on Pony**:
+- **Rider**: Dwarf (80kg) + Equipment (30kg) = 110kg total
+- **Mount**: Pony (CarryCapacity = 90kg)
+- **Riding Skill**: 0.2 (novice)
+- **Animal Proficiency**: 0.1 (first time on pony)
+- **Effective Capacity**: 90 * (1 + 0.2 * 0.3) * (1 + 0.1 * 0.2) = 90 * 1.06 * 1.02 = 97.3kg
+- **Result**: Cannot ride (110kg > 97.3kg, too heavy for novice on small pony)
+
+**3. Elf Refusing to Ride Horse (Cultural Sacred)**:
+- **Rider**: Elf (60kg) + Equipment (15kg) = 75kg total
+- **Mount**: Horse (CarryCapacity = 120kg)
+- **Cultural Check**: Elven culture considers horses Sacred
+- **Result**: Refuses to ride despite being physically capable (cultural taboo)
+
+**4. Orc Warlord on Warhorse**:
+- **Rider**: Orc (95kg) + Heavy Armor (40kg) = 135kg total
+- **Mount**: Warhorse (CarryCapacity = 180kg)
+- **Riding Skill**: 0.9 (master rider)
+- **Animal Proficiency**: 0.8 (warhorse specialist)
+- **Effective Capacity**: 180 * (1 + 0.9 * 0.3) * (1 + 0.8 * 0.2) = 180 * 1.27 * 1.16 = 265.3kg
+- **Result**: Can ride easily (135kg < 265.3kg)
+
+---
+
+### Inter-Cultural Relations
+
+**Core Principle**: Cultures befriend or earn enmity based on historical events and alignment compatibility. Relations determine whether cultures help each other or ignore pleas.
+
+```csharp
+// Component tracking relations between two cultures
+public struct InterCulturalRelations : IComponentData
+{
+    public CultureType Culture1;
+    public CultureType Culture2;
+    public float RelationScore;                  // -1.0 to +1.0 (enmity to friendship)
+    public RelationStatus Status;
+    public DynamicBuffer<RelationEvent> History; // Events that shaped relations
+}
+
+public enum RelationStatus : byte
+{
+    Allies,             // +0.7 to +1.0 (close friends, mutual defense)
+    Friendly,           // +0.3 to +0.7 (positive relations, trade)
+    Neutral,            // -0.3 to +0.3 (indifferent)
+    Unfriendly,         // -0.7 to -0.3 (distrust, avoid contact)
+    Enemies,            // -1.0 to -0.7 (active hostility, war)
+}
+
+public struct RelationEvent : IBufferElementData
+{
+    public ushort EventTick;
+    public RelationEventType EventType;
+    public float Impact;                         // -1.0 to +1.0 (how much it affected relations)
+    public Entity InvolvedAggregate;             // Which aggregate was involved
+}
+
+public enum RelationEventType : byte
+{
+    // Positive events
+    MutualDefense,              // Fought together against common enemy
+    TradeAgreement,             // Established profitable trade
+    CulturalExchange,           // Shared knowledge, arts, traditions
+    DisasterAid,                // Helped during famine, plague, disaster
+    Liberation,                 // Freed culture from oppression
+    Intermarriage,              // Noble marriage between cultures
+
+    // Negative events
+    Betrayal,                   // Broke alliance, backstabbed
+    Raid,                       // Raided villages, stole resources
+    Enslavement,                // Enslaved members of culture
+    Genocide,                   // Attempted extermination
+    TerritoryDispute,           // Conflict over land/resources
+    CulturalOppression,         // Suppressed culture, banned traditions
+}
+
+// System calculating inter-cultural relation changes
+public struct InterCulturalRelationSystem : ISystem
+{
+    public void OnRelationEvent(CultureType culture1, CultureType culture2, RelationEventType eventType, float severity)
+    {
+        var relations = GetOrCreateRelations(culture1, culture2);
+
+        // Calculate relation impact
+        float impact = CalculateRelationImpact(eventType, severity);
+
+        // Apply impact
+        relations.RelationScore = math.clamp(relations.RelationScore + impact, -1.0f, 1.0f);
+
+        // Record event
+        var relationEvent = new RelationEvent
+        {
+            EventTick = currentTick,
+            EventType = eventType,
+            Impact = impact,
+        };
+        relations.History.Add(relationEvent);
+
+        // Update status
+        relations.Status = DetermineRelationStatus(relations.RelationScore);
+    }
+
+    private float CalculateRelationImpact(RelationEventType eventType, float severity)
+    {
+        switch (eventType)
+        {
+            // Positive events
+            case RelationEventType.MutualDefense:
+                return +0.4f * severity; // Strong positive
+
+            case RelationEventType.TradeAgreement:
+                return +0.2f * severity;
+
+            case RelationEventType.CulturalExchange:
+                return +0.3f * severity;
+
+            case RelationEventType.DisasterAid:
+                return +0.5f * severity; // Very strong (life debt)
+
+            case RelationEventType.Liberation:
+                return +0.8f * severity; // Extreme positive
+
+            case RelationEventType.Intermarriage:
+                return +0.6f * severity;
+
+            // Negative events
+            case RelationEventType.Betrayal:
+                return -0.7f * severity; // Very strong negative
+
+            case RelationEventType.Raid:
+                return -0.3f * severity;
+
+            case RelationEventType.Enslavement:
+                return -0.9f * severity; // Extreme negative
+
+            case RelationEventType.Genocide:
+                return -1.0f * severity; // Maximum negative (unforgivable)
+
+            case RelationEventType.TerritoryDispute:
+                return -0.4f * severity;
+
+            case RelationEventType.CulturalOppression:
+                return -0.6f * severity;
+
+            default:
+                return 0.0f;
+        }
+    }
+
+    private RelationStatus DetermineRelationStatus(float score)
+    {
+        if (score >= 0.7f) return RelationStatus.Allies;
+        if (score >= 0.3f) return RelationStatus.Friendly;
+        if (score >= -0.3f) return RelationStatus.Neutral;
+        if (score >= -0.7f) return RelationStatus.Unfriendly;
+        return RelationStatus.Enemies;
+    }
+}
+```
+
+**AI Decision-Making Based on Relations**:
+
+```csharp
+// System for AI decision-making using relation checks
+public struct RelationBasedDecisionSystem : ISystem
+{
+    public bool WillHelpWithRequest(Entity requester, Entity helper, RequestType requestType)
+    {
+        var requesterCulture = GetComponent<CulturalTraits>(requester).Culture;
+        var helperCulture = GetComponent<CulturalTraits>(helper).Culture;
+        var relations = GetRelations(requesterCulture, helperCulture);
+
+        // Calculate base help probability based on relations
+        float baseChance = CalculateHelpProbability(relations.RelationScore, requestType);
+
+        // Modify by individual alignment
+        var helperAlignment = GetComponent<VillagerAlignment>(helper);
+        float alignmentModifier = CalculateAlignmentModifier(helperAlignment, requestType);
+
+        // Modify by purity/corruption
+        var helperPurity = GetComponent<PurityCorruptionBalance>(helper);
+        float purityModifier = CalculatePurityModifier(helperPurity, requestType);
+
+        // Final probability
+        float finalChance = math.clamp(baseChance + alignmentModifier + purityModifier, 0.0f, 1.0f);
+
+        // Roll for decision
+        float roll = random.NextFloat(0f, 1f);
+        return roll < finalChance;
+    }
+
+    private float CalculateHelpProbability(float relationScore, RequestType requestType)
+    {
+        // Base probability from relation score (-1.0 to +1.0 → 0.0 to 1.0)
+        float baseProbability = (relationScore + 1.0f) / 2.0f; // Normalize to 0.0-1.0
+
+        // Adjust based on request severity
+        switch (requestType)
+        {
+            case RequestType.EmergencyAid:
+                // Emergency aid requires stronger relations
+                return baseProbability * 0.7f; // Reduce by 30%
+
+            case RequestType.Trade:
+                // Trade is easy, even neutrals trade
+                return math.max(baseProbability, 0.4f); // Minimum 40% chance
+
+            case RequestType.MilitaryAlliance:
+                // Military alliance requires very strong relations
+                return baseProbability * 0.5f; // Reduce by 50%
+
+            case RequestType.CulturalExchange:
+                // Cultural exchange needs positive relations
+                return baseProbability * 0.8f;
+
+            case RequestType.RefugeeShelter:
+                // Sheltering refugees is moderate ask
+                return baseProbability * 0.75f;
+
+            default:
+                return baseProbability;
+        }
+    }
+
+    private float CalculateAlignmentModifier(VillagerAlignment alignment, RequestType requestType)
+    {
+        // Good-aligned more likely to help
+        if (alignment.MoralAxis > 0.5f) // Good
+        {
+            if (requestType == RequestType.EmergencyAid || requestType == RequestType.RefugeeShelter)
+                return +0.3f; // Goodaligned help those in need
+        }
+
+        // Evil-aligned less likely to help unless profitable
+        if (alignment.MoralAxis < -0.5f) // Evil
+        {
+            if (requestType != RequestType.Trade)
+                return -0.3f; // Evil doesn't help for free
+        }
+
+        return 0.0f; // Neutral alignment = no modifier
+    }
+
+    private float CalculatePurityModifier(PurityCorruptionBalance purity, RequestType requestType)
+    {
+        // Pure individuals help for collective good
+        if (purity.PurityScore > 0.7f)
+        {
+            if (requestType == RequestType.MutualDefense || requestType == RequestType.CulturalExchange)
+                return +0.2f; // Pure values collective cooperation
+        }
+
+        // Corrupt individuals only help if profitable
+        if (purity.CorruptionScore > 0.7f)
+        {
+            if (requestType == RequestType.Trade)
+                return +0.3f; // Corrupt loves profitable trade
+            else
+                return -0.2f; // Corrupt ignores non-profitable requests
+        }
+
+        return 0.0f;
+    }
+}
+
+public enum RequestType : byte
+{
+    EmergencyAid,           // Famine, plague, disaster relief
+    Trade,                  // Economic exchange
+    MilitaryAlliance,       // Mutual defense pact
+    MutualDefense,          // Help repel invasion
+    CulturalExchange,       // Share knowledge, traditions
+    RefugeeShelter,         // Shelter fleeing population
+    TerritoryAccess,        // Permission to cross lands
+}
+```
+
+**Inter-Cultural Relation Examples**:
+
+**1. Dwarves & Elves (Allies after Liberation)**:
+- **Initial**: Neutral (0.0)
+- **Event**: Dwarves liberate elf city from demon occupation (Liberation, +0.8)
+- **Current**: Allies (+0.8)
+- **Help Probability**:
+  - Emergency Aid: 0.9 * 0.7 = 63% base chance
+  - Military Alliance: 0.9 * 0.5 = 45% base chance
+  - Trade: max(0.9, 0.4) = 90% base chance
+- **Result**: Elves will almost always help dwarves in need
+
+**2. Humans & Orcs (Enemies after Raids)**:
+- **Initial**: Neutral (0.0)
+- **Events**:
+  - Orc raids (Raid, -0.3) → -0.3
+  - Orc enslavement (Enslavement, -0.9) → -1.0 (capped)
+- **Current**: Enemies (-1.0)
+- **Help Probability**:
+  - Emergency Aid: 0.0 * 0.7 = 0% base chance
+  - Trade: max(0.0, 0.4) = 40% base chance (some trade despite enmity)
+  - Military Alliance: 0.0 * 0.5 = 0% base chance
+- **Result**: Humans will NEVER help orcs (except rare trade for profit)
+
+**3. Gnomes & Halflings (Friendly through Trade)**:
+- **Initial**: Neutral (0.0)
+- **Events**:
+  - Trade agreement (TradeAgreement, +0.2) → +0.2
+  - Cultural exchange (CulturalExchange, +0.3) → +0.5
+  - Disaster aid (DisasterAid, +0.5) → +1.0 (capped)
+- **Current**: Allies (+1.0)
+- **Help Probability**:
+  - Emergency Aid: 1.0 * 0.7 = 70% base chance
+  - Refugee Shelter: 1.0 * 0.75 = 75% base chance
+- **Good-aligned Gnome**: +0.3 modifier → 100% will help with emergency aid
+- **Result**: Strong friendship, mutual aid
+
+**4. Individual Decision with Poor Cultural Relations**:
+- **Cultures**: Human (requester) & Orc (helper) = Enemies (-0.8)
+- **Request**: Emergency Aid
+- **Base Probability**: 0.1 * 0.7 = 7%
+- **Helper**: Good-aligned orc (MoralAxis = +0.7) → +0.3 modifier
+- **Final Chance**: 7% + 30% = 37%
+- **Roll**: 0.25 (25%) < 37% → **Orc helps despite cultural enmity**
+- **Quote**: "My people hate yours, but I cannot let innocents starve."
+
+**5. Corrupt Individual Ignores Allied Request**:
+- **Cultures**: Dwarf (requester) & Elf (helper) = Allies (+0.9)
+- **Request**: Refugee Shelter (non-profitable)
+- **Base Probability**: 0.95 * 0.75 = 71.25%
+- **Helper**: Corrupt elf (CorruptionScore = 0.9) → -0.2 modifier
+- **Final Chance**: 71.25% - 20% = 51.25%
+- **Roll**: 0.75 (75%) > 51.25% → **Elf refuses despite alliance**
+- **Quote**: "We are allies, but I gain nothing from sheltering your refugees. Handle it yourself."
+
+**6. Relation Check Frequency**:
+- **Regular Checks**: AI performs relation checks every 50-200 ticks (varies by entity importance)
+- **Event-Driven Checks**: Immediate check when request is made
+- **Aggregate Checks**: Villages/aggregates check relations when deciding policy toward other cultures
+
+---
+
+### Might/Magic Axis System
+
+#### Overview
+
+The **Might/Magic Axis** is a fourth alignment axis that determines an entity's affinity toward physical prowess vs arcane mastery. This axis influences combat style, learning abilities, resistance profiles, and resource pools.
+
+**Axis Range**: -1.0 (Pure Might) to +1.0 (Pure Magic)
+
+#### Core Components
+
+```csharp
+// Might/Magic alignment component
+public struct MightMagicAlignment : IComponentData
+{
+    public float MightMagicAxis;                 // -1.0 (pure might) to +1.0 (pure magic)
+    public float AlignmentStrength;              // 0.0-1.0 (how strongly held)
+
+    // Derived bonuses (calculated by system)
+    public float PhysiqueBonus;                  // Bonus to strength, constitution, carry capacity
+    public float MagicResistanceBonus;           // Resistance to magical effects
+    public float ManaPoolBonus;                  // Bonus to maximum mana
+    public float SpellCooldownReduction;         // Reduction in spell cooldowns
+    public float SpellLearningBonus;             // Faster spell learning
+    public float MagicalDamageBonus;             // Bonus to spell damage
+}
+
+// Might-focused entity benefits
+public struct MightFocusedBonuses : IComponentData
+{
+    public float StrengthMultiplier;             // 1.0-1.5× (max might = 1.5×)
+    public float ConstitutionMultiplier;         // 1.0-1.3× (max might = 1.3×)
+    public float CarryCapacityMultiplier;        // 1.0-1.6× (max might = 1.6×)
+    public float PhysicalDamageMultiplier;       // 1.0-1.4× (max might = 1.4×)
+    public float MagicResistance;                // 0.0-0.6 (max might = 60% magic resist)
+    public float SpellFailureChance;             // 0.0-0.5 (max might = 50% spell failure)
+    public float ManaPoolMultiplier;             // 1.0-0.3× (max might = 30% mana)
+}
+
+// Magic-focused entity benefits
+public struct MagicFocusedBonuses : IComponentData
+{
+    public float ManaPoolMultiplier;             // 1.0-2.0× (max magic = 2.0×)
+    public float ManaRegenerationMultiplier;     // 1.0-1.8× (max magic = 1.8×)
+    public float SpellCooldownMultiplier;        // 1.0-0.5× (max magic = 50% cooldown)
+    public float SpellDamageMultiplier;          // 1.0-1.5× (max magic = 1.5×)
+    public float SpellLearningRateMultiplier;    // 1.0-2.0× (max magic = 2× learning speed)
+    public float MagicalResistance;              // 0.0-0.4 (max magic = 40% magic resist)
+    public float PhysicalDamageMultiplier;       // 1.0-0.6× (max magic = 60% physical damage)
+    public float PhysiqueMultiplier;             // 1.0-0.7× (max magic = 70% physique)
+}
+```
+
+#### Bonus Calculation System
+
+```csharp
+[UpdateInGroup(typeof(SimulationSystemGroup))]
+public partial struct MightMagicBonusCalculationSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (mightMagic, entity) in SystemAPI.Query<RefRW<MightMagicAlignment>>().WithEntityAccess())
+        {
+            float axis = mightMagic.ValueRO.MightMagicAxis; // -1.0 to +1.0
+            float strength = mightMagic.ValueRO.AlignmentStrength; // 0.0-1.0
+
+            // Calculate Might-side bonuses (axis < 0)
+            if (axis < 0.0f)
+            {
+                float mightIntensity = math.abs(axis) * strength; // 0.0-1.0
+
+                mightMagic.ValueRW.PhysiqueBonus = mightIntensity * 0.5f; // Up to +50%
+                mightMagic.ValueRW.MagicResistanceBonus = mightIntensity * 0.6f; // Up to 60%
+                mightMagic.ValueRW.ManaPoolBonus = -mightIntensity * 0.7f; // Down to -70%
+                mightMagic.ValueRW.SpellCooldownReduction = -mightIntensity * 0.3f; // Worse cooldowns
+                mightMagic.ValueRW.SpellLearningBonus = -mightIntensity * 0.6f; // Down to -60%
+                mightMagic.ValueRW.MagicalDamageBonus = -mightIntensity * 0.4f; // Down to -40%
+
+                // Apply might-specific bonuses
+                var mightBonuses = new MightFocusedBonuses
+                {
+                    StrengthMultiplier = 1.0f + (mightIntensity * 0.5f), // 1.0-1.5×
+                    ConstitutionMultiplier = 1.0f + (mightIntensity * 0.3f), // 1.0-1.3×
+                    CarryCapacityMultiplier = 1.0f + (mightIntensity * 0.6f), // 1.0-1.6×
+                    PhysicalDamageMultiplier = 1.0f + (mightIntensity * 0.4f), // 1.0-1.4×
+                    MagicResistance = mightIntensity * 0.6f, // 0-60%
+                    SpellFailureChance = mightIntensity * 0.5f, // 0-50%
+                    ManaPoolMultiplier = 1.0f - (mightIntensity * 0.7f) // 1.0-0.3×
+                };
+
+                state.EntityManager.SetComponentData(entity, mightBonuses);
+            }
+            // Calculate Magic-side bonuses (axis > 0)
+            else if (axis > 0.0f)
+            {
+                float magicIntensity = axis * strength; // 0.0-1.0
+
+                mightMagic.ValueRW.PhysiqueBonus = -magicIntensity * 0.3f; // Down to -30%
+                mightMagic.ValueRW.MagicResistanceBonus = magicIntensity * 0.4f; // Up to 40%
+                mightMagic.ValueRW.ManaPoolBonus = magicIntensity * 1.0f; // Up to +100%
+                mightMagic.ValueRW.SpellCooldownReduction = magicIntensity * 0.5f; // Up to 50% reduction
+                mightMagic.ValueRW.SpellLearningBonus = magicIntensity * 1.0f; // Up to +100%
+                mightMagic.ValueRW.MagicalDamageBonus = magicIntensity * 0.5f; // Up to +50%
+
+                // Apply magic-specific bonuses
+                var magicBonuses = new MagicFocusedBonuses
+                {
+                    ManaPoolMultiplier = 1.0f + (magicIntensity * 1.0f), // 1.0-2.0×
+                    ManaRegenerationMultiplier = 1.0f + (magicIntensity * 0.8f), // 1.0-1.8×
+                    SpellCooldownMultiplier = 1.0f - (magicIntensity * 0.5f), // 1.0-0.5× (faster)
+                    SpellDamageMultiplier = 1.0f + (magicIntensity * 0.5f), // 1.0-1.5×
+                    SpellLearningRateMultiplier = 1.0f + (magicIntensity * 1.0f), // 1.0-2.0×
+                    MagicalResistance = magicIntensity * 0.4f, // 0-40%
+                    PhysicalDamageMultiplier = 1.0f - (magicIntensity * 0.4f), // 1.0-0.6×
+                    PhysiqueMultiplier = 1.0f - (magicIntensity * 0.3f) // 1.0-0.7×
+                };
+
+                state.EntityManager.SetComponentData(entity, magicBonuses);
+            }
+            // Neutral (balanced)
+            else
+            {
+                mightMagic.ValueRW.PhysiqueBonus = 0.0f;
+                mightMagic.ValueRW.MagicResistanceBonus = 0.0f;
+                mightMagic.ValueRW.ManaPoolBonus = 0.0f;
+                mightMagic.ValueRW.SpellCooldownReduction = 0.0f;
+                mightMagic.ValueRW.SpellLearningBonus = 0.0f;
+                mightMagic.ValueRW.MagicalDamageBonus = 0.0f;
+            }
+        }
+    }
+}
+```
+
+#### Stat Integration Examples
+
+```csharp
+// Example 1: Apply Might/Magic bonuses to physical stats
+public static float CalculateEffectiveStrength(float baseStrength, MightMagicAlignment mightMagic)
+{
+    float bonus = 1.0f + mightMagic.PhysiqueBonus;
+    return baseStrength * bonus;
+}
+
+// Example 2: Max Might Barbarian
+// MightMagicAxis = -1.0 (pure might)
+// Base Strength: 18
+// Effective Strength: 18 × 1.5 = 27
+// Base Constitution: 16
+// Effective Constitution: 16 × 1.3 = 20.8
+// Magic Resistance: 60%
+// Mana Pool: 100 × 0.3 = 30 (severely limited)
+// Spell Failure Chance: 50% (trying to cast spells often fails)
+
+// Example 3: Max Magic Archmage
+// MightMagicAxis = +1.0 (pure magic)
+// Base Mana: 200
+// Effective Mana: 200 × 2.0 = 400
+// Mana Regeneration: 5/sec × 1.8 = 9/sec
+// Spell Cooldown: 10 sec × 0.5 = 5 sec
+// Spell Damage: 50 × 1.5 = 75
+// Physical Damage: 20 × 0.6 = 12 (weak melee)
+// Physique: 14 × 0.7 = 9.8 (frail)
+
+// Example 4: Balanced Spellblade
+// MightMagicAxis = 0.0 (neutral)
+// No bonuses or penalties
+// Can use both physical and magical abilities at baseline
+// Flexible combat style, but not exceptional at either
+```
+
+#### Spell Learning Integration
+
+```csharp
+// Spell learning rate affected by Might/Magic axis
+public struct SpellLearningProgress : IComponentData
+{
+    public FixedString64Bytes SpellName;
+    public float LearningProgress;               // 0.0-1.0
+    public float BaseLearningRate;               // 0.001-0.01 per tick
+    public ushort TicksSpentLearning;
+}
+
+public static float CalculateSpellLearningRate(
+    float baseLearningRate,
+    float intelligence,
+    float wisdom,
+    MightMagicAlignment mightMagic,
+    Entity teacher,
+    bool hasTeacher)
+{
+    float learningRate = baseLearningRate;
+
+    // Intelligence bonus
+    learningRate *= (1.0f + (intelligence * 0.5f)); // Up to +50%
+
+    // Wisdom bonus (understanding magical concepts)
+    learningRate *= (1.0f + (wisdom * 0.3f)); // Up to +30%
+
+    // Might/Magic axis modifier
+    learningRate *= (1.0f + mightMagic.SpellLearningBonus);
+    // Max Magic (+1.0): 2× learning speed
+    // Neutral (0.0): 1× baseline
+    // Max Might (-1.0): 0.4× learning speed (60% slower)
+
+    // Teacher effectiveness
+    if (hasTeacher)
+    {
+        float teacherProficiency = GetTeacherProficiency(teacher);
+        learningRate *= (1.0f + teacherProficiency); // Up to 2× with master teacher
+    }
+
+    return math.clamp(learningRate, 0.0001f, 0.05f); // 0.01% to 5% per tick
+}
+
+// Example: Learning Fireball spell
+// Scenario 1: Pure Might Warrior (MightMagicAxis = -1.0)
+// - Base Learning Rate: 0.001
+// - Intelligence: 0.5, Wisdom: 0.4
+// - Might Penalty: × 0.4
+// - Final Rate: 0.001 × 1.25 × 1.12 × 0.4 = 0.00056 per tick
+// - Time to Learn: ~178,000 ticks (49 hours / 6 workdays)
+// - Additional: 50% spell failure chance even after learning
+// - Conclusion: Warriors struggle to learn and cast magic
+
+// Scenario 2: Pure Magic Wizard (MightMagicAxis = +1.0)
+// - Base Learning Rate: 0.001
+// - Intelligence: 0.8, Wisdom: 0.7
+// - Magic Bonus: × 2.0
+// - Final Rate: 0.001 × 1.4 × 1.21 × 2.0 = 0.00339 per tick
+// - Time to Learn: ~29,500 ticks (8 hours / 1 workday)
+// - Additional: 50% cooldown reduction, 50% spell damage bonus
+// - Conclusion: Wizards excel at magic learning and casting
+
+// Scenario 3: Balanced Spellblade (MightMagicAxis = 0.0)
+// - Base Learning Rate: 0.001
+// - Intelligence: 0.6, Wisdom: 0.5
+// - No Axis Modifier: × 1.0
+// - Final Rate: 0.001 × 1.3 × 1.15 × 1.0 = 0.001495 per tick
+// - Time to Learn: ~67,000 ticks (18 hours / 2.5 workdays)
+// - Conclusion: Moderate at both magic and combat
+```
+
+#### Combat Stat Integration
+
+```csharp
+// Damage calculation with Might/Magic modifiers
+public static float CalculateFinalDamage(
+    float baseDamage,
+    DamageType damageType,
+    MightMagicAlignment mightMagic)
+{
+    float multiplier = 1.0f;
+
+    if (damageType == DamageType.Physical)
+    {
+        // Might-focused entities deal more physical damage
+        if (mightMagic.MightMagicAxis < 0.0f)
+        {
+            float mightIntensity = math.abs(mightMagic.MightMagicAxis) * mightMagic.AlignmentStrength;
+            multiplier = 1.0f + (mightIntensity * 0.4f); // Up to 1.4×
+        }
+        // Magic-focused entities deal less physical damage
+        else if (mightMagic.MightMagicAxis > 0.0f)
+        {
+            float magicIntensity = mightMagic.MightMagicAxis * mightMagic.AlignmentStrength;
+            multiplier = 1.0f - (magicIntensity * 0.4f); // Down to 0.6×
+        }
+    }
+    else if (damageType == DamageType.Magical)
+    {
+        // Magic-focused entities deal more magical damage
+        if (mightMagic.MightMagicAxis > 0.0f)
+        {
+            float magicIntensity = mightMagic.MightMagicAxis * mightMagic.AlignmentStrength;
+            multiplier = 1.0f + (magicIntensity * 0.5f); // Up to 1.5×
+        }
+        // Might-focused entities deal less magical damage
+        else if (mightMagic.MightMagicAxis < 0.0f)
+        {
+            float mightIntensity = math.abs(mightMagic.MightMagicAxis) * mightMagic.AlignmentStrength;
+            multiplier = 1.0f - (mightIntensity * 0.4f); // Down to 0.6×
+        }
+    }
+
+    return baseDamage * multiplier;
+}
+
+// Resistance calculation
+public static float CalculateMagicResistance(
+    float baseResistance,
+    MightMagicAlignment mightMagic)
+{
+    return baseResistance + mightMagic.MagicResistanceBonus;
+}
+
+// Example Combat Scenarios
+
+// Scenario 1: Pure Might Barbarian vs Wizard
+// Barbarian Stats:
+// - MightMagicAxis: -1.0 (pure might)
+// - Base Melee Damage: 50
+// - Effective Melee: 50 × 1.4 = 70
+// - Magic Resistance: 60%
+// - Wizard's Fireball: 80 damage
+// - Damage Taken: 80 × (1 - 0.6) = 32 damage (resisted most)
+// - Barbarian wins: High physical damage + magic resistance
+
+// Scenario 2: Pure Magic Wizard vs Barbarian
+// Wizard Stats:
+// - MightMagicAxis: +1.0 (pure magic)
+// - Base Spell Damage: 80
+// - Effective Spell Damage: 80 × 1.5 = 120
+// - Spell Cooldown: 10 sec × 0.5 = 5 sec (cast twice as often)
+// - Base Melee Damage: 20
+// - Effective Melee: 20 × 0.6 = 12 (weak)
+// - Barbarian's Melee: 70 damage
+// - Wizard takes: 70 × (1 - 0.4) = 42 damage (moderate resistance)
+// - Outcome: Wizard must kite, use range advantage
+
+// Scenario 3: Balanced Spellblade vs Both
+// Spellblade Stats:
+// - MightMagicAxis: 0.0 (neutral)
+// - Base Melee: 40 → 40 (no modifier)
+// - Base Spell: 50 → 50 (no modifier)
+// - Vs Barbarian: Use magic (barbarian resists 60%) = 50 × 0.4 = 20 damage
+// - Vs Wizard: Use melee (wizard resists 40%) = 40 × 0.6 = 24 damage
+// - Outcome: Flexible, but less specialized than either extreme
+```
+
+#### Balance Considerations
+
+**Design Principles**:
+1. **Tradeoffs are Meaningful**: Max Might barbarian cannot effectively use magic (50% spell failure, 70% mana reduction)
+2. **No Strictly Superior Choice**: Balanced spellblade is flexible but not exceptional
+3. **Rock-Paper-Scissors**: Might counters Magic (60% resistance), Magic counters Might (range, kiting), Balanced adapts
+4. **Asymmetric Costs**: Magic learning takes longer (endgame materials parallel), but magic has higher damage ceiling
+5. **Hybrid Viability**: Neutral (0.0) is viable for versatile playstyles
+
+**Stat Summary Table**:
+
+| Attribute | Pure Might (-1.0) | Neutral (0.0) | Pure Magic (+1.0) |
+|-----------|------------------|---------------|-------------------|
+| **Physical Damage** | 1.4× | 1.0× | 0.6× |
+| **Magical Damage** | 0.6× | 1.0× | 1.5× |
+| **Strength** | 1.5× | 1.0× | 1.0× |
+| **Constitution** | 1.3× | 1.0× | 0.7× |
+| **Carry Capacity** | 1.6× | 1.0× | 1.0× |
+| **Mana Pool** | 0.3× | 1.0× | 2.0× |
+| **Mana Regen** | 1.0× | 1.0× | 1.8× |
+| **Spell Cooldown** | 1.3× (slower) | 1.0× | 0.5× (faster) |
+| **Spell Learning** | 0.4× (slower) | 1.0× | 2.0× (faster) |
+| **Magic Resistance** | 60% | 0% | 40% |
+| **Spell Failure** | 50% | 0% | 0% |
+
+**Effective HP Comparison** (assuming 100 base HP, 100 base Constitution):
+
+```
+Pure Might Barbarian:
+- Base HP: 100
+- Constitution: 100 × 1.3 = 130
+- Effective HP vs Physical: 130
+- Effective HP vs Magic: 130 / (1 - 0.6) = 325 (magic resistance)
+- Total Survivability: High
+
+Pure Magic Wizard:
+- Base HP: 100
+- Constitution: 100 × 0.7 = 70
+- Effective HP vs Physical: 70
+- Effective HP vs Magic: 70 / (1 - 0.4) = 116 (magic resistance)
+- Total Survivability: Low (glass cannon)
+
+Balanced Spellblade:
+- Base HP: 100
+- Constitution: 100 × 1.0 = 100
+- Effective HP vs Physical: 100
+- Effective HP vs Magic: 100 (no resistance)
+- Total Survivability: Moderate
+```
+
+#### Axis Shift & Alignment Evolution
+
+```csharp
+// Might/Magic axis can shift based on actions and training
+public struct MightMagicAxisShift : IComponentData
+{
+    public float ShiftRate;                      // How quickly axis shifts
+    public uint LastShiftTick;                   // When last shift occurred
+    public DynamicBuffer<AxisShiftEvent> ShiftHistory;
+}
+
+public struct AxisShiftEvent : IBufferElementData
+{
+    public AxisShiftCause Cause;
+    public float ShiftAmount;                    // -0.1 to +0.1 typical
+    public uint OccurredTick;
+}
+
+public enum AxisShiftCause : byte
+{
+    PhysicalTraining,       // Strength training, combat drills
+    MagicStudy,            // Studying spells, meditation
+    CombatExperience,      // Physical combat shifts toward Might
+    SpellcastingPractice,  // Casting spells shifts toward Magic
+    MagicalExposure,       // Living in high-magic environment
+    PhysicalLabor,         // Manual labor, hauling, crafting
+    Enchantment,           // Permanent magical effect
+    Curse                  // Curse forcing axis shift
+}
+
+// Example: Warrior Learning Magic
+// Initial: MightMagicAxis = -0.8 (strong might affinity)
+// Action: Spends 50,000 ticks learning Fireball
+// Shift: +0.05 toward Magic
+// New Axis: -0.75 (slightly less might-focused)
+// Effect: Spell failure reduced 50% → 47.5%
+
+// Example: Wizard Forced into Physical Training
+// Initial: MightMagicAxis = +0.9 (strong magic affinity)
+// Action: 100,000 ticks of combat training (forced conscription)
+// Shift: -0.15 toward Might
+// New Axis: +0.75 (still magic-focused, but less extreme)
+// Effect: Physical damage 0.64× → 0.70×, Mana pool 1.9× → 1.75×
+```
+
+---
+
+### Aggregate & Societal Might/Magic Systems
+
+#### Overview
+
+Societies, villages, and aggregates develop collective **Might/Magic affinity** based on their member composition and cultural values. This affinity combines with alignment (Moral/Purity axes) to create **social policies** around magic regulation, warrior traditions, and power structures.
+
+**Key Concept**: A corrupt authoritarian magic society may implement "Big Brother" surveillance of magic users, while xenophobic might societies ban magic outright. Balanced societies remain neutral between the two.
+
+#### Aggregate Might/Magic Components
+
+```csharp
+// Aggregate's collective Might/Magic affinity
+public struct AggregateMightMagicProfile : IComponentData
+{
+    public float CollectiveMightMagicAxis;       // -1.0 (might-focused) to +1.0 (magic-focused)
+    public float MemberConsensusStrength;        // 0.0-1.0 (how unified members are)
+
+    // Composition tracking
+    public ushort TotalMightFocusedMembers;      // Members with MightMagicAxis < -0.3
+    public ushort TotalMagicFocusedMembers;      // Members with MightMagicAxis > +0.3
+    public ushort TotalNeutralMembers;           // Members with |MightMagicAxis| ≤ 0.3
+
+    // Societal response
+    public MagicRegulationPolicy MagicPolicy;
+    public MightTraditionLevel MightTraditions;
+    public float PowerStructureBias;             // -1.0 (warriors rule) to +1.0 (mages rule)
+}
+
+public enum MagicRegulationPolicy : byte
+{
+    Banned,             // Magic completely outlawed (xenophobic might societies)
+    Sanctioned,         // Magic users must be registered/controlled (authoritarian magic societies)
+    Tranquilized,       // Magic users chemically/magically suppressed (corrupt authoritarian)
+    Restricted,         // Magic allowed only in designated areas/times
+    Licensed,           // Magic requires government license
+    SelfRegulated,      // Magic guilds regulate themselves
+    Unregulated,        // No restrictions on magic use
+    Encouraged,         // Magic actively promoted by society
+    Mandatory           // All citizens required to learn magic (pure magic societies)
+}
+
+public enum MightTraditionLevel : byte
+{
+    Forbidden,          // Physical combat outlawed (extreme magic societies)
+    Discouraged,        // Warriors looked down upon
+    Tolerated,          // Physical training allowed but not valued
+    Neutral,            // No special status
+    Respected,          // Warriors honored
+    Venerated,          // Warrior culture central to society
+    Mandatory,          // All citizens required to train combat (might societies)
+    Sacred              // Physical prowess is religious/cultural identity
+}
+```
+
+#### Example Societies
+
+**Example 1: Xenophobic Might Society (Orc Warrior Clan)**
+```
+Profile:
+- CollectiveMightMagicAxis: -0.85 (strong might focus)
+- PurityAxis: -0.7 (xenophobic)
+- OrderAxis: -0.6 (chaotic)
+- CorruptionScore: 0.3 (low)
+
+Policies:
+- MagicRegulationPolicy: Banned
+  "Magic is the tool of cowards. True strength comes from muscle and steel!"
+  - Magic users are exiled or executed
+  - Possession of magical items is illegal
+  - Shamanic/ancestral magic only exception (cultural tradition)
+
+- MightTraditions: Sacred
+  - Physical prowess is religious identity
+  - Coming-of-age trials require combat
+  - Chieftain selected by combat tournament
+
+- PowerStructureBias: -0.9 (warriors dominate)
+  - Strongest warrior is chief
+  - War council makes all decisions
+```
+
+**Example 2: Corrupt Authoritarian Magic Society (Dystopian Mage City)**
+```
+Profile:
+- CollectiveMightMagicAxis: +0.75 (strong magic focus)
+- PurityAxis: 0.0 (neutral)
+- OrderAxis: +0.8 (lawful authoritarian)
+- CorruptionScore: 0.9 (extremely corrupt)
+
+Policies:
+- MagicRegulationPolicy: Tranquilized (Big Brother Surveillance)
+  "Your magic is a gift from the state. Use it as we command, or lose it."
+  - All magic users must register with Mage Bureau
+  - Unregistered magic use triggers magical tracking
+  - "Anti-magic collar" mandatory for unlicensed mages
+  - State mages monitor all magical activity via scrying orbs
+  - Dissidents have magic permanently suppressed
+  - Thoughtcrime detection via divination
+  - Memory modification of political enemies
+
+- MightTraditions: Discouraged
+  - Physical labor is for "lesser citizens"
+  - Warriors employed only as enforcers (no honor)
+
+- PowerStructureBias: +0.95 (mage oligarchy)
+  - Council of Archmages rules absolutely
+  - Non-mages have no political rights
+  - Mandatory magic aptitude testing at age 10
+```
+
+**Example 3: Balanced Neutral Society (Merchant Republic)**
+```
+Profile:
+- CollectiveMightMagicAxis: +0.1 (slightly magic-leaning)
+- PurityAxis: +0.6 (xenophilic)
+- OrderAxis: +0.4 (moderately lawful)
+- CorruptionScore: 0.4 (moderate)
+
+Policies:
+- MagicRegulationPolicy: Licensed
+  "We value all talents. A sharp mind and strong arm both have their place."
+  - Magic users register with guild
+  - Guild self-regulates ethical standards
+  - No restrictions on private magic use
+  - Public safety regulations only
+
+- MightTraditions: Respected
+  - City guard are honored profession
+  - Martial academies train soldiers
+  - Physical fitness valued but not mandatory
+
+- PowerStructureBias: +0.15 (slight mage advantage)
+  - Elected council (mages and merchants)
+  - Voting rights based on property, not magic
+```
+
+#### Policy Formation Through Individual Consensus
+
+**CRITICAL**: Policies are NOT automatically determined by aggregate Might/Magic axis alone. Instead, **individual entities vote/influence policy** based on their personal alignments, outlooks, and biases.
+
+```csharp
+// Individual's stance on magic regulation
+public struct MagicPolicyStance : IComponentData
+{
+    public MagicRegulationPolicy PreferredPolicy;
+    public float StanceStrength;                 // 0.0-1.0 (how strongly held)
+    public DynamicBuffer<PolicyReasoning> Reasoning;
+}
+
+public struct PolicyReasoning : IBufferElementData
+{
+    public ReasoningType Type;                   // Fear, Pragmatism, Ideology, Experience
+    public float Weight;                         // 0.0-1.0 (how much this influences stance)
+}
+
+public enum ReasoningType : byte
+{
+    Fear,               // "Magic is dangerous"
+    Pragmatism,         // "Magic is useful, regulate it"
+    Ideology,           // "All should be free" or "All must serve state"
+    Experience,         // Personal experience with magic (good or bad)
+    CulturalTradition,  // "Our ancestors did it this way"
+    ReligiousDoctrine,  // "The gods decree..."
+    EconomicInterest    // "I profit from magic regulation"
+}
+
+// System to calculate individual's policy preference
+public static MagicRegulationPolicy CalculateIndividualPolicyPreference(
+    MightMagicAlignment mightMagic,
+    VillagerAlignment alignment,
+    AggregatePurity purity,
+    DynamicBuffer<PersonalExperience> experiences)
+{
+    // NOT deterministic - depends on multiple factors
+
+    // 1. Personal Might/Magic axis (baseline tendency)
+    float mightMagicBias = mightMagic.MightMagicAxis;
+
+    // 2. Moral/Order/Purity alignment modifiers
+    float authoritarianTendency = alignment.OrderAxis; // Lawful = more regulation
+    float xenophobicTendency = alignment.PurityAxis;   // Xenophobic = ban foreign practices
+    float corruptionLevel = purity.CorruptionScore;    // Corrupt = exploit via licensing
+
+    // 3. Personal experiences override default stance
+    float experienceModifier = CalculateExperienceModifier(experiences);
+    // Example: Might-focused person saved by healing magic → supports magic
+    // Example: Magic user sees corruption → supports self-regulation
+
+    // 4. Calculate weighted preference
+    float banScore = 0.0f;
+    float restrictScore = 0.0f;
+    float licenseScore = 0.0f;
+    float selfRegScore = 0.0f;
+    float unreguScore = 0.0f;
+
+    // Might-focused individuals TEND toward restriction, but not always
+    if (mightMagicBias < -0.5f) // Might-focused
+    {
+        if (xenophobicTendency > 0.6f && authoritarianTendency > 0.3f)
+            banScore += 0.4f; // Strong bias toward banning
+        else
+            restrictScore += 0.3f; // Prefer restriction, not ban
+    }
+
+    // Magic-focused individuals TEND toward freedom, but not always
+    if (mightMagicBias > 0.5f) // Magic-focused
+    {
+        if (corruptionLevel > 0.7f && authoritarianTendency > 0.6f)
+            licenseScore += 0.5f; // Corrupt authoritarian: control magic for profit
+        else if (purity.PurityScore > 0.6f)
+            selfRegScore += 0.4f; // Pure magic user: self-regulate responsibly
+        else
+            unreguScore += 0.3f; // Default: prefer freedom
+    }
+
+    // Authoritarian modifier (increases regulation regardless of axis)
+    if (authoritarianTendency > 0.7f)
+    {
+        licenseScore += 0.3f; // Authoritarians prefer licensing
+        selfRegScore -= 0.2f;
+        unreguScore -= 0.3f;
+    }
+
+    // Chaotic modifier (decreases regulation regardless of axis)
+    if (authoritarianTendency < -0.5f)
+    {
+        unreguScore += 0.4f; // Chaotic prefer no rules
+        banScore -= 0.3f;
+        licenseScore -= 0.2f;
+    }
+
+    // Experience modifier (can completely override default stance)
+    banScore += experienceModifier.BanModifier;
+    selfRegScore += experienceModifier.SelfRegModifier;
+    // ... etc
+
+    // Select highest scoring policy
+    float maxScore = math.max(banScore, math.max(restrictScore,
+                     math.max(licenseScore, math.max(selfRegScore, unreguScore))));
+
+    if (maxScore == banScore) return MagicRegulationPolicy.Banned;
+    if (maxScore == restrictScore) return MagicRegulationPolicy.Restricted;
+    if (maxScore == licenseScore) return MagicRegulationPolicy.Licensed;
+    if (maxScore == selfRegScore) return MagicRegulationPolicy.SelfRegulated;
+    return MagicRegulationPolicy.Unregulated;
+}
+```
+
+#### Aggregate Policy Formation System
+
+**CRITICAL**: Governance mechanisms (who decides policy) are NOT rigidly determined by alignment axes. Societies choose their governance structure based on member preferences, historical tradition, and practical considerations.
+
+```csharp
+// Governance structure - WHO decides policy
+public struct AggregateGovernance : IComponentData
+{
+    public GovernanceType Type;
+    public float GovernanceStability;               // 0.0-1.0 (risk of governance change)
+    public Entity PrimaryRuler;                     // For autocracies/monarchies
+    public DynamicBuffer<Entity> CouncilMembers;    // For representative systems
+    public float VotingThreshold;                   // Required % for policy change (0.5-0.9)
+}
+
+public enum GovernanceType : byte
+{
+    // IMPORTANT: These are governance MECHANISMS, not ideological positions
+    // Any society can adopt any mechanism based on practicality and tradition
+
+    DirectDemocracy,        // All members vote directly on all policies
+    RepresentativeDemocracy, // Elected council votes on behalf of members
+    WeightedOligarchy,      // Votes weighted by social status/wealth/power
+    Autocracy,              // Single ruler decides (may consult advisors)
+    Consensus,              // Requires supermajority agreement (75-90%)
+    Meritocracy,            // Votes weighted by expertise/competence
+    Theocracy,              // Religious leaders decide based on doctrine
+    MilitaryJunta,          // Military commanders decide
+    CouncilOfElders,        // Respected elders make decisions
+    Hybrid                  // Mix of multiple mechanisms (e.g., elected autocrat)
+}
+
+// System to determine aggregate policy through voting/consensus
+[UpdateInGroup(typeof(SimulationSystemGroup))]
+public partial struct AggregatePolicyVotingSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (profile, members, governance, entity) in
+                 SystemAPI.Query<RefRW<AggregateMightMagicProfile>,
+                                DynamicBuffer<AggregateMemberEntry>,
+                                RefRW<AggregateGovernance>>()
+                 .WithEntityAccess())
+        {
+            // Count individual policy preferences
+            Dictionary<MagicRegulationPolicy, int> policyVotes = new();
+            Dictionary<MagicRegulationPolicy, float> policyWeights = new();
+
+            // Determine WHO gets to vote based on governance type
+            var eligibleVoters = GetEligibleVoters(members, governance.ValueRO);
+
+            foreach (var voter in eligibleVoters)
+            {
+                var stance = GetComponent<MagicPolicyStance>(voter.Entity);
+                var influence = CalculateVoterInfluence(voter.Entity, governance.ValueRO);
+
+                policyVotes[stance.PreferredPolicy] =
+                    policyVotes.GetValueOrDefault(stance.PreferredPolicy, 0) + 1;
+
+                policyWeights[stance.PreferredPolicy] =
+                    policyWeights.GetValueOrDefault(stance.PreferredPolicy, 0f) +
+                    (influence * stance.StanceStrength);
+            }
+
+            // Determine policy based on governance mechanism
+            MagicRegulationPolicy decidedPolicy = governance.ValueRO.Type switch
+            {
+                GovernanceType.DirectDemocracy =>
+                    GetMajorityPolicy(policyVotes), // Simple majority of all members
+
+                GovernanceType.RepresentativeDemocracy =>
+                    GetCouncilPolicy(governance.ValueRO.CouncilMembers), // Council votes
+
+                GovernanceType.WeightedOligarchy =>
+                    GetWeightedPolicy(policyWeights), // Weighted by social status
+
+                GovernanceType.Autocracy =>
+                    GetRulerPolicy(governance.ValueRO.PrimaryRuler), // Leader decides
+
+                GovernanceType.Consensus =>
+                    GetConsensusPolicy(policyVotes, governance.ValueRO.VotingThreshold),
+
+                GovernanceType.Meritocracy =>
+                    GetMeritPolicy(policyWeights, members), // Experts have more say
+
+                GovernanceType.Theocracy =>
+                    GetTheocraticPolicy(entity, policyVotes), // Religious doctrine + priest votes
+
+                GovernanceType.MilitaryJunta =>
+                    GetMilitaryPolicy(members, policyVotes), // Military commanders decide
+
+                GovernanceType.CouncilOfElders =>
+                    GetElderPolicy(members, policyVotes), // Eldest/wisest decide
+
+                _ => MagicRegulationPolicy.SelfRegulated
+            };
+
+            // Set aggregate policy
+            profile.ValueRW.MagicPolicy = decidedPolicy;
+
+            // Calculate policy support (what % of ALL members support this)
+            int supportCount = policyVotes.GetValueOrDefault(decidedPolicy, 0);
+            float supportPercentage = supportCount / (float)members.Length;
+            profile.ValueRW.PolicySupport = supportPercentage;
+
+            // Low support = potential unrest (even if policy passed via governance rules)
+            if (supportPercentage < 0.4f)
+            {
+                TriggerPolicyUnrest(entity, decidedPolicy, governance.ValueRO.Type);
+            }
+        }
+    }
+}
+
+// Member influence calculation
+private float GetMemberInfluence(Entity member)
+{
+    float baseInfluence = 1.0f;
+
+    // Social class modifier
+    var socialClass = GetComponent<SocialClassComponent>(member);
+    baseInfluence *= socialClass.Class switch
+    {
+        SocialClass.Ruling => 5.0f,  // Rulers have 5× influence
+        SocialClass.Noble => 3.0f,   // Nobles have 3× influence
+        SocialClass.Citizen => 1.0f, // Citizens have baseline
+        SocialClass.CommonFolk => 0.5f, // Limited voice
+        SocialClass.Serf => 0.1f,    // Minimal voice
+        SocialClass.Outcast => 0.0f, // No voice
+        _ => 1.0f
+    };
+
+    // Economic power modifier
+    var wealth = GetComponent<WealthComponent>(member);
+    if (wealth.TotalWealth > 10000f) baseInfluence *= 1.5f;
+
+    // Military power modifier
+    if (HasComponent<MilitaryRank>(member))
+        baseInfluence *= 1.3f;
+
+    // Magical power modifier (in magic societies)
+    var mightMagic = GetComponent<MightMagicAlignment>(member);
+    if (mightMagic.MightMagicAxis > 0.6f) // Strong mage
+        baseInfluence *= 1.4f;
+
+    return baseInfluence;
+}
+```
+
+#### Example 1: Authoritarian Society with Representative Council
+
+**CRITICAL**: Authoritarian alignment does NOT mean autocracy. This authoritarian society uses elected officials for practical efficiency.
+
+```yaml
+Society: Imperial Mining Combine
+- Total Members: 500 (too large for direct voting)
+- Alignment: Order +0.8 (highly authoritarian)
+- MightMagicAxis: -0.3 (slightly might-leaning)
+- Governance: RepresentativeDemocracy (elected council of 20)
+
+Why Representative?:
+- 500 members too large for consensus
+- Authoritarians value EFFICIENCY and ORDER
+- Elected council provides both structure and representation
+- Members trust the process (Order alignment)
+
+Council Election:
+- 15 Might-focused representatives (from mining/engineering districts)
+- 4 Magic-focused representatives (from research district)
+- 1 Neutral representative (merchant guild)
+
+Council Vote on Magic Policy:
+- 8 vote: Licensed (regulate magic, charge fees, track users)
+- 5 vote: Restricted (allow only industrial magic)
+- 4 vote: Self-Regulated (magic users self-police)
+- 2 vote: Banned (traditionalists)
+- 1 vote: Unregulated (libertarian merchant)
+
+Council Winner: Licensed (8 of 20 councilors)
+Member Support: 45% of 500 members support Licensed policy
+
+Result: Magic is Licensed
+- All magic users must register with Imperial Bureau
+- License fees fund oversight
+- Unauthorized magic is criminal offense
+- Policy is efficiently enforced (authoritarian strength)
+- 45% support = moderate unrest, but accepted due to Order values
+
+Quote: "We don't fear magic, we REGULATE it. Order requires documentation."
+```
+
+#### Example 2: Egalitarian Society with Autocratic Leader
+
+**CRITICAL**: Egalitarian alignment does NOT mean democracy. This egalitarian society chose a single leader for strategic coherence.
+
+```yaml
+Society: Free Traders Coalition
+- Total Members: 150
+- Alignment: Order -0.7 (highly egalitarian/chaotic)
+- MightMagicAxis: +0.2 (slightly magic-leaning)
+- Governance: Autocracy (elected Grand Merchant, 5-year term)
+
+Why Autocracy?:
+- Egalitarians value FREEDOM, not necessarily voting
+- Previous direct democracy was inefficient (endless debates)
+- Members chose to elect a trusted leader for speed
+- Leader has term limits (can be voted out)
+- Leader consults advisors (but makes final call)
+
+Grand Merchant Profile:
+- MightMagicAxis: +0.5 (magic-positive)
+- Alignment: Order -0.5 (values freedom)
+- Ideology: Pragmatic profit maximization
+
+Decision Process:
+- Grand Merchant consults advisory council
+- Council is split: 40% Licensed, 35% Unregulated, 25% Self-Regulated
+- Grand Merchant decides: Unregulated
+
+Result: Magic is Unregulated
+- No registration, no fees, no restrictions
+- Free market for magical services
+- Only constraint: no harm to others (basic tort law)
+- Member Support: 62% (high, despite autocratic decision)
+
+Why High Support?:
+- Egalitarians ELECTED this leader knowing their views
+- Policy aligns with freedom values
+- Members can vote out leader in 3 years if unhappy
+- Decision was fast (valued by pragmatic traders)
+
+Quote: "We chose Kara because she's smart and fast. If we don't like it, we'll elect someone else next term."
+```
+
+#### Example 3: Balanced Society with Consensus Governance
+
+```yaml
+Society: Forest Commune
+- Total Members: 80
+- Alignment: Order 0.0 (balanced)
+- MightMagicAxis: 0.0 (balanced)
+- Governance: Consensus (requires 75% agreement)
+
+Why Consensus?:
+- Small enough for direct participation
+- Balanced alignment = no strong preference for authority or chaos
+- Values community harmony over efficiency
+- Historical tradition of discussion circles
+
+Initial Vote:
+- 25 vote: Self-Regulated (trust magic users to police themselves)
+- 20 vote: Licensed (moderate regulation)
+- 20 vote: Restricted (cautious conservatives)
+- 10 vote: Unregulated (libertarians)
+- 5 vote: Banned (small xenophobic minority)
+
+Consensus Requirement: 60 of 80 (75%)
+Result: NO CONSENSUS
+
+Negotiation (3 community meetings):
+1. First Meeting: Extremes debate (Banned vs Unregulated factions)
+2. Second Meeting: Moderates propose compromise
+3. Third Meeting: Final vote on hybrid policy
+
+Compromise: "Licensed Magic with Self-Regulation"
+- Magic users form self-governing guild
+- Guild reports to commune quarterly
+- Minimal registration (just name and specialty)
+- Guild polices dangerous practices internally
+
+Final Vote: 68 of 80 (85%) ✓ Consensus reached
+Member Support: 85% (very high, very stable)
+
+Why Consensus Works Here?:
+- Small community (80 people)
+- Balanced alignment = willingness to compromise
+- Time is not critical (no external pressure)
+- Strong community bonds encourage cooperation
+
+Quote: "We talked it through. Everyone's voice mattered. This is OUR decision."
+```
+
+#### Example 4: Egalitarian Direct Democracy
+
+```yaml
+Society: Artisan Collective
+- Total Members: 120
+- Alignment: Order -0.6 (egalitarian)
+- MightMagicAxis: +0.4 (magic-leaning)
+- Governance: DirectDemocracy (all members vote on all policies)
+
+Why Direct Democracy?:
+- Egalitarians value participation
+- Members distrust representatives ("might accumulate power")
+- Magic users have tools to enable efficient voting (communication spells)
+- Cultural tradition of town halls
+
+Vote on Magic Policy:
+- 50 vote: Self-Regulated (40%)
+- 35 vote: Unregulated (29%)
+- 20 vote: Licensed (17%)
+- 10 vote: Restricted (8%)
+- 5 vote: Banned (6%)
+
+Winner: Self-Regulated (simple majority)
+Member Support: 40% (plurality, not majority)
+
+Unrest Risk:
+- 60% did NOT vote for winning policy
+- Egalitarians value consensus even in democracy
+- Called special "reconciliation vote"
+
+Reconciliation Vote (ranked choice):
+1. Self-Regulated: 70 first-choice or second-choice votes
+2. Unregulated: 65 combined votes
+3. Licensed: 40 combined votes
+
+Final Policy: Self-Regulated
+Final Support: 58% (acceptable in direct democracy)
+
+Quote: "We all voted. Not everyone is happy, but that's democracy. We'll revisit this next year."
+```
+
+#### Migration & Policy Refugees
+
+```csharp
+// Entities flee oppressive policies
+public struct PolicyRefugeeComponent : IComponentData
+{
+    public Entity FleeingFrom;                   // Oppressive aggregate
+    public MagicRegulationPolicy OppressivePolicy;
+    public Entity SeekingAsylumIn;               // Tolerant aggregate
+    public RefugeeStatus Status;
+    public float PersonalDisagreement;           // 0.0-1.0 (how much they oppose policy)
+}
+
+// Example: Mage flees from Banned → Licensed society
+// Only flees if personal disagreement is high (>0.7)
+// Might-focused individual may not flee even if magic is banned (doesn't affect them)
+```
+
+---
 
 #### Individual Prejudice System
 
@@ -2804,6 +4804,1215 @@ public struct SocialKnowledgeSpreadSystem : ISystem
    - Gnome sells automatons at high price, competitors can't replicate
    - **Contract Offer**: Guild offers 1000 gold for blueprint
    - Gnome accepts, creates contract (ExclusiveAccess = true, guild can't resell knowledge)
+
+---
+
+## Ambush, Counter-Ambush & Tactical Deception
+
+**Core Principle**: When armies/bands detect each other, sophisticated aggregates engage in **multi-layered tactical deception**. Intelligence gathering, scouting, ambush preparation, counter-ambush maneuvers, lures, traps, and counter-intelligence create cascading layers of advantage.
+
+### 1. Detection & Initial Response
+
+```csharp
+// When aggregate detects another aggregate
+public struct AggregateDetectionEvent : IComponentData
+{
+    public Entity DetectingAggregate;
+    public Entity DetectedAggregate;
+    public float DetectionConfidence;            // 0.0-1.0 (how sure we are)
+    public float3 DetectedLocation;
+    public float3 DetectedHeading;               // Direction of travel
+    public float EstimatedCombatPower;           // Rough strength estimate
+    public DetectionMethod Method;               // Scout, Sensor, Informant, etc.
+    public ushort TicksUntilContact;             // Estimated time until intercept
+}
+
+public enum DetectionMethod : byte
+{
+    ScoutVisual,                // Scout saw them directly
+    ScoutTracking,              // Scout found tracks/signs
+    Informant,                  // Villager reported sighting
+    Sensor,                     // Space4X sensor ping
+    Intercepted Message,         // Captured/decoded enemy communication
+    SpyReport                   // Embedded spy sent intel
+}
+
+// Aggregate's response to detection
+public enum TacticalResponse : byte
+{
+    Ignore,                     // Continue current mission (peaceful traders)
+    Evade,                      // Change route to avoid contact
+    Monitor,                    // Track but don't engage
+    Ambush,                     // Set ambush along predicted route
+    CounterAmbush,              // Detect their ambush, prepare counter
+    DirectEngage,               // Charge directly (warlike/bold)
+    Lure,                       // Feign weakness to draw into trap
+    Retreat,                    // Fall back to defensible position
+    RequestReinforcements       // Call for backup before engaging
+}
+```
+
+### 2. Tactical Response Decision System
+
+```csharp
+[UpdateInGroup(typeof(SimulationSystemGroup))]
+public partial struct TacticalResponseSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (detection, aggregate, alignment, leaders) in
+                 SystemAPI.Query<RefRO<AggregateDetectionEvent>,
+                                RefRO<AggregateData>,
+                                RefRO<AggregateAlignment>,
+                                DynamicBuffer<AggregateLeaderEntry>>())
+        {
+            // Evaluate multiple factors to decide response
+            var opponentData = GetComponent<AggregateData>(detection.ValueRO.DetectedAggregate);
+            var culturalMemory = GetComponent<CulturalMemory>(aggregate.ValueRO.CultureEntity);
+
+            // Factor 1: Alignment (Peaceful vs Warlike)
+            float aggressionBias = alignment.ValueRO.AggressionAxis; // -1.0 peaceful to +1.0 warlike
+
+            // Factor 2: Combat power comparison
+            float powerRatio = aggregate.ValueRO.CombatPower / math.max(1f, opponentData.CombatPower);
+
+            // Factor 3: Leader competence (affects sophistication of response)
+            float leaderCompetence = CalculateLeaderCompetence(leaders);
+
+            // Factor 4: Tactical lessons from cultural memory
+            TacticalModifier memory = GetTacticalModifier(culturalMemory, opponentData);
+
+            // Decide response
+            TacticalResponse response = DetermineResponse(
+                aggressionBias,
+                powerRatio,
+                leaderCompetence,
+                memory,
+                alignment.ValueRO.OrderAxis); // Chaotic vs Lawful
+
+            ExecuteResponse(aggregate.ValueRO.Entity, detection.ValueRO, response);
+        }
+    }
+
+    private TacticalResponse DetermineResponse(
+        float aggressionBias,
+        float powerRatio,
+        float leaderCompetence,
+        TacticalModifier memory,
+        float orderAxis)
+    {
+        // Peaceful aggregates (aggressionBias < -0.5)
+        if (aggressionBias < -0.5f)
+        {
+            if (memory.AvoidanceDesire > 0.7f)
+                return TacticalResponse.Evade; // Past defeats → avoid
+
+            return TacticalResponse.Monitor; // Watch but don't engage
+        }
+
+        // Warlike aggregates (aggressionBias > 0.5)
+        if (aggressionBias > 0.5f)
+        {
+            // Chaotic warlike (orderAxis < -0.5): Charge directly
+            if (orderAxis < -0.5f)
+                return TacticalResponse.DirectEngage; // CHARGE!
+
+            // Lawful warlike: Sophisticated tactics
+            if (leaderCompetence > 0.7f && powerRatio > 0.6f)
+            {
+                // Competent leaders prepare ambushes
+                return TacticalResponse.Ambush;
+            }
+            else if (powerRatio < 0.4f)
+            {
+                // Weaker force uses lure tactics
+                return TacticalResponse.Lure;
+            }
+
+            return TacticalResponse.DirectEngage;
+        }
+
+        // Neutral aggregates: Defensive
+        if (powerRatio < 0.5f)
+            return TacticalResponse.Retreat; // Weaker → fall back
+        else
+            return TacticalResponse.Monitor; // Stronger → watch
+    }
+}
+```
+
+### 3. Ambush Preparation & Detection
+
+```csharp
+// Aggregate prepares ambush
+public struct AmbushPreparation : IComponentData
+{
+    public Entity TargetAggregate;               // Who we're ambushing
+    public float3 AmbushLocation;                // Where to set up
+    public float3 PredictedTargetRoute;          // Expected path
+    public AmbushType Type;
+    public float AmbushQuality;                  // 0.0-1.0 (how well-prepared)
+    public float Concealment;                    // 0.0-1.0 (how hidden)
+    public float TrapDensity;                    // 0.0-1.0 (number of traps)
+    public bool HasCounterAmbushPrep;            // Prepared for counter-ambush
+    public ushort TicksPrepared;                 // Time spent preparing
+}
+
+public enum AmbushType : byte
+{
+    BasicAmbush,                // Hide in terrain, attack when close
+    PincerMovement,             // Split force, attack from two sides
+    FalseRetreat,               // Feign retreat, lead into trap
+    NarrowPass,                 // Block escape routes, force engagement
+    HighGround,                 // Position on advantageous terrain
+    NightAmbush,                // Attack during low visibility
+    ExplosiveTraps              // Mines, pitfalls, triggered traps
+}
+
+// Scouting system to detect ambushes
+public struct ScoutingMission : IComponentData
+{
+    public Entity ParentAggregate;
+    public Entity Scout;                         // Individual scout entity
+    public float3 ScoutingArea;
+    public ScoutingObjective Objective;
+    public float ScoutPerception;                // Scout's perception skill
+    public float DetectionRadius;
+    public bool IsDetected;                      // Has scout been spotted?
+}
+
+public enum ScoutingObjective : byte
+{
+    PathReconnaissance,         // Check route ahead for dangers
+    EnemyTracking,              // Follow enemy movement
+    AmbushDetection,            // Specifically look for hidden enemies
+    TerrainSurvey,              // Map area features
+    ResourceLocation            // Find resource deposits
+}
+
+// Ambush detection check
+public struct AmbushDetectionSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (scout, finesse, limbStatus) in
+                 SystemAPI.Query<RefRO<ScoutingMission>,
+                                RefRO<FinesseComponent>,
+                                RefRO<LimbStatusModifiers>>())
+        {
+            // Find ambushes in scouting area
+            foreach (var ambush in GetAmbushesInArea(scout.ValueRO.ScoutingArea))
+            {
+                float detectionChance = CalculateAmbushDetectionChance(
+                    scout.ValueRO.ScoutPerception,
+                    finesse.ValueRO.Finesse,
+                    limbStatus.ValueRO,
+                    ambush.Concealment,
+                    ambush.AmbushQuality);
+
+                if (Random.value < detectionChance)
+                {
+                    // Scout detected ambush!
+                    ReportAmbushToAggregate(scout.ValueRO.ParentAggregate, ambush);
+                }
+                else
+                {
+                    // Check if scout was detected by ambushers
+                    if (Random.value < ambush.Concealment * 0.5f)
+                    {
+                        CaptureScout(scout.ValueRO.Scout, ambush.Entity);
+                    }
+                }
+            }
+        }
+    }
+
+    private float CalculateAmbushDetectionChance(
+        float scoutPerception,
+        byte finesse,
+        LimbStatusModifiers limbStatus,
+        float ambushConcealment,
+        float ambushQuality)
+    {
+        // Base detection from perception
+        float baseChance = scoutPerception; // 0.0-1.0
+
+        // Finesse modifier
+        float finesseModifier = (finesse / 100f) * 0.5f; // Up to +50%
+
+        // Vision limb status
+        float visionMultiplier = GetLimbMultiplier(limbStatus.Eyes);
+
+        // Ambush quality reduces detection
+        float ambushPenalty = ambushQuality * 0.6f;
+
+        // Final calculation
+        float chance = (baseChance + finesseModifier) * visionMultiplier - ambushPenalty;
+
+        return math.clamp(chance, 0.05f, 0.95f); // Always 5-95% chance
+    }
+}
+```
+
+### 4. Counter-Ambush & Layered Deception
+
+```csharp
+// When aggregate detects enemy ambush, prepare counter
+public struct CounterAmbushPreparation : IComponentData
+{
+    public Entity EnemyAmbush;                   // The ambush we detected
+    public CounterAmbushStrategy Strategy;
+    public float DeceptionQuality;               // 0.0-1.0 (how convincing)
+    public bool EnemyAware;                      // Do they know we know?
+}
+
+public enum CounterAmbushStrategy : byte
+{
+    AvoidRoute,                 // Simply take different path
+    FeignIgnorance,             // Pretend we don't see it, walk into trap with counter ready
+    FlankingManeuver,           // Circle around, attack ambushers from behind
+    ArtilleryBombardment,       // Bombard ambush position from range
+    SendDecoyForce,             // Send small force as bait, main force flanks
+    NegotiatePassage,           // Diplomatic solution (if possible)
+    CallReinforcements          // Wait for backup before engaging
+}
+
+// Counter-counter-ambush (ambushers prepare for counter-ambush)
+public struct LayeredDeceptionState : IComponentData
+{
+    public byte DeceptionLayer;                  // 0 = basic ambush, 1 = counter-prep, 2 = counter-counter, etc.
+    public DynamicBuffer<DeceptionLayer> Layers;
+    public Entity UltimateTarget;                // Original target
+    public bool MaxLayersReached;                // Prevent infinite recursion
+}
+
+public struct DeceptionLayer : IBufferElementData
+{
+    public byte LayerDepth;                      // 0, 1, 2, 3...
+    public DeceptionType Type;
+    public float SuccessProbability;             // 0.0-1.0
+    public Entity Deceiver;
+    public Entity Target;
+}
+
+public enum DeceptionType : byte
+{
+    BasicAmbush,                // Layer 0: Simple ambush
+    CounterAmbush,              // Layer 1: Detected ambush, counter prepared
+    CounterCounterAmbush,       // Layer 2: Ambushers prepared for counter
+    MutualAwareness,            // Layer 3+: Both sides know, draw
+    FeignedDetection,           // Pretend to detect ambush to test response
+    DoubleAgent                 // Scout is actually enemy spy
+}
+
+// Deception resolution system
+public struct DeceptionResolutionSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (deception, aggregate) in
+                 SystemAPI.Query<RefRW<LayeredDeceptionState>,
+                                RefRO<AggregateData>>())
+        {
+            // Resolve each layer of deception
+            float aggregateAdvantage = 0f;
+            float opponentAdvantage = 0f;
+
+            foreach (var layer in deception.ValueRO.Layers)
+            {
+                var deceiver = GetComponent<AggregateData>(layer.Deceiver);
+                var target = GetComponent<AggregateData>(layer.Target);
+
+                // Compare intelligence/perception
+                float deceiverInt = CalculateAggregateIntelligence(deceiver);
+                float targetInt = CalculateAggregateIntelligence(target);
+
+                if (layer.LayerDepth % 2 == 0)
+                {
+                    // Even layers favor ambusher
+                    aggregateAdvantage += (deceiverInt - targetInt) * layer.SuccessProbability;
+                }
+                else
+                {
+                    // Odd layers favor defender
+                    opponentAdvantage += (targetInt - deceiverInt) * layer.SuccessProbability;
+                }
+            }
+
+            // Determine final advantage
+            float netAdvantage = aggregateAdvantage - opponentAdvantage;
+
+            if (math.abs(netAdvantage) < 0.1f)
+            {
+                // Draw: Both sides are aware, tactical stalemate
+                ResolveMutualAwareness(aggregate.ValueRO.Entity, deception.ValueRO.UltimateTarget);
+            }
+            else if (netAdvantage > 0f)
+            {
+                // Ambusher wins deception game
+                ExecuteSuccessfulAmbush(aggregate.ValueRO.Entity, netAdvantage);
+            }
+            else
+            {
+                // Defender wins deception game
+                ExecuteSuccessfulCounter(deception.ValueRO.UltimateTarget, -netAdvantage);
+            }
+        }
+    }
+}
+```
+
+### 5. Lures, Traps & Bait Tactics
+
+```csharp
+// Lure tactic: Use weak force as bait
+public struct LureTactic : IComponentData
+{
+    public Entity BaitForce;                     // Smaller, weaker force
+    public Entity MainForce;                     // Larger, hidden force
+    public float3 KillZoneLocation;              // Where to spring trap
+    public float3 BaitRoute;                     // Path for bait to follow
+    public LureType Type;
+    public float EnemyDetectionRisk;             // 0.0-1.0 (chance enemy sees through it)
+}
+
+public enum LureType : byte
+{
+    FeignedRetreat,             // Bait force "flees", enemy pursues into trap
+    FakeCamp,                   // Set up fake camp, hide main force nearby
+    ResourceBait,               // Leave valuable resources, ambush looters
+    FakeReinforcements,         // Pretend reinforcements arriving, enemy rushes to intercept
+    WoundedStraggler,           // Use injured soldier as bait (cruel but effective)
+    SupplyConvoy                // Fake supply convoy, ambush attackers
+}
+
+// Trap placement system
+public struct TrapPlacement : IComponentData
+{
+    public float3 TrapLocation;
+    public TrapType Type;
+    public float TriggerRadius;
+    public float Lethality;                      // 0.0-1.0 (damage potential)
+    public float Concealment;                    // 0.0-1.0 (how hidden)
+    public Entity PlacedBy;
+    public bool IsTriggered;
+}
+
+public enum TrapType : byte
+{
+    Pitfall,                    // Covered pit
+    Snare,                      // Rope trap (captures individuals)
+    ExplosiveMine,              // Explosive device
+    PoisonedCaltrops,           // Ground spikes
+    Tripwire,                   // Triggers alarm or weapon
+    CollapseTrigger,            // Causes rockslide/structure collapse
+    MagicalRune,                // Spell trigger
+    BearTrap                    // Large jaw trap
+}
+```
+
+### 6. Scouting Competence & Message Interception
+
+```csharp
+// Scout competence determines detection success
+public struct ScoutCompetence : IComponentData
+{
+    public float PerceptionSkill;                // 0.0-1.0
+    public float StealthSkill;                   // 0.0-1.0 (avoid detection)
+    public float TrackingSkill;                  // 0.0-1.0 (follow trails)
+    public float SurvivalSkill;                  // 0.0-1.0 (navigate terrain)
+    public byte Intelligence;                    // 0-100 (analyze what they see)
+    public bool IsExperienced;                   // Veteran scouts more reliable
+}
+
+// Scout mission outcomes
+public enum ScoutMissionOutcome : byte
+{
+    Success,                    // Gathered intel, returned safely
+    PartialSuccess,             // Got some info but missed details
+    MisidentifiedThreat,        // Saw ambush but misjudged strength
+    MissedThreat,               // Failed to detect ambush
+    Captured,                   // Caught by enemy
+    KilledInAction,             // Died during mission
+    Deserted,                   // Fled due to fear/corruption
+    Compromised                 // Detected, intel is now suspect
+}
+
+// Message interception system
+public struct InterceptedMessage : IComponentData
+{
+    public Entity OriginalSender;                // Scout who sent message
+    public Entity IntendedRecipient;             // Aggregate waiting for intel
+    public Entity Interceptor;                   // Who intercepted it
+    public bool IsFalsified;                     // Has message been altered?
+    public float FalsificationQuality;           // 0.0-1.0 (how convincing)
+    public IntelligenceCheckDifficulty VerifyDC; // Difficulty to detect fake
+}
+
+public enum IntelligenceCheckDifficulty : byte
+{
+    Trivial,            // DC 0.2 - Obvious forgery
+    Easy,               // DC 0.4 - Sloppy fake
+    Moderate,           // DC 0.6 - Decent forgery
+    Hard,               // DC 0.75 - Convincing fake
+    VeryHard,           // DC 0.9 - Expert forgery
+    NearImpossible      // DC 0.95 - Perfect fake
+}
+
+// Message verification system
+public struct MessageVerificationSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (message, aggregate) in
+                 SystemAPI.Query<RefRO<InterceptedMessage>,
+                                RefRO<AggregateData>>())
+        {
+            if (!message.ValueRO.IsFalsified)
+                continue; // Genuine message, no check needed
+
+            // Aggregate leaders check message authenticity
+            float leaderIntelligence = CalculateLeaderIntelligence(aggregate.ValueRO);
+            float perceptionBonus = CalculateAggregatePerception(aggregate.ValueRO);
+
+            float detectionChance = (leaderIntelligence + perceptionBonus) * 0.5f;
+            float requiredRoll = GetDifficultyThreshold(message.ValueRO.VerifyDC);
+
+            if (detectionChance >= requiredRoll)
+            {
+                // Leaders detected falsified intel!
+                RejectFalseIntel(aggregate.ValueRO.Entity, message.ValueRO);
+
+                // May use false intel to deceive enemy (feed them bad info)
+                if (leaderIntelligence > 0.7f)
+                {
+                    PlanDoubleDeception(aggregate.ValueRO.Entity, message.ValueRO.Interceptor);
+                }
+            }
+            else
+            {
+                // Leaders fell for false intel
+                ActOnFalseIntel(aggregate.ValueRO.Entity, message.ValueRO);
+            }
+        }
+    }
+}
+```
+
+### 7. Peacekeepers, Rangers & Patrol Systems
+
+```csharp
+// Village peacekeepers patrol and set defensive ambushes
+public struct PeacekeeperPatrol : IComponentData
+{
+    public Entity ParentVillage;
+    public DynamicBuffer<float3> PatrolRoute;
+    public PatrolObjective Objective;
+    public float TrapPreparationSkill;           // 0.0-1.0
+    public bool IsAuthorizedToAmbush;            // Depends on village outlook
+}
+
+public enum PatrolObjective : byte
+{
+    RouteProtection,            // Protect trade routes
+    BorderDefense,              // Guard village borders
+    BanditHunting,              // Seek out and eliminate bandits
+    MonsterClear,               // Clear dangerous creatures
+    TrapMaintenance,            // Check and reset traps
+    Reconnaissance,             // Gather intel on neighbors
+    ShowOfForce                 // Intimidate potential threats
+}
+
+// Village outlook determines peacekeeper behavior
+public struct VillageSecurity : IComponentData
+{
+    public Entity Village;
+    public SecurityPosture Posture;
+    public float TrapDensity;                    // 0.0-1.0 (how many traps around village)
+    public float PatrolFrequency;                // Patrols per day
+    public bool AllowPreemptiveAmbush;           // Can peacekeepers ambush threats?
+}
+
+public enum SecurityPosture : byte
+{
+    Passive,                    // No patrols, minimal defense
+    Defensive,                  // Patrols borders, reactive
+    Active,                     // Frequent patrols, proactive
+    Aggressive,                 // Hunt threats, preemptive strikes
+    Paranoid                    // Constant patrols, traps everywhere
+}
+```
+
+### 8. Example Scenarios
+
+#### Scenario 1: Basic Ambush Detection
+
+```yaml
+Setup:
+- Orc Warband (50 warriors, AggressionAxis +0.8, OrderAxis +0.3)
+- Human Caravan (20 guards, AggressionAxis -0.6, peaceful traders)
+- Orc leader competence: 0.7 (competent)
+
+Action:
+1. Orcs detect caravan approaching (ScoutVisual, DetectionConfidence 0.9)
+2. TacticalResponseSystem: Orcs decide Ambush (warlike + competent leader)
+3. Orcs prepare BasicAmbush at narrow pass (AmbushQuality 0.65, Concealment 0.7)
+4. Human caravan sends scout ahead (ScoutPerception 0.6, Finesse 65)
+5. AmbushDetectionSystem rolls: 0.6 + 0.325 (finesse) - 0.39 (ambush penalty) = 0.535
+
+Result: Scout detects ambush (53.5% chance succeeded)
+- Human caravan receives report
+- TacticalResponseSystem: Humans decide Evade (peaceful + detected threat)
+- Caravan takes alternate route, avoids ambush entirely
+```
+
+#### Scenario 2: Counter-Ambush Maneuver
+
+```yaml
+Setup:
+- Dwarf Army (200 soldiers, AggressionAxis +0.5, OrderAxis +0.7)
+- Goblin Horde (400 goblins, AggressionAxis +0.6, OrderAxis -0.4)
+- Dwarf leader competence: 0.85 (veteran general)
+- Goblin leader competence: 0.4 (inexperienced)
+
+Action:
+1. Goblins detect dwarves (ScoutTracking, DetectionConfidence 0.6)
+2. Goblins prepare PincerMovement ambush (AmbushQuality 0.4, Concealment 0.5)
+3. Dwarf scouts detect goblin ambush (PerceptionSkill 0.75, veteran scouts)
+4. Detection roll: 0.75 + 0.35 (finesse) - 0.24 (ambush) = 0.86 → Success!
+5. Dwarves prepare CounterAmbush (Strategy: FlankingManeuver, DeceptionQuality 0.8)
+6. Dwarves feign ignorance, walk into goblin trap
+7. Goblins spring ambush, dwarves execute counter-flank
+8. DeceptionResolutionSystem: Dwarf advantage = +0.6 (leader competence gap)
+
+Result: Dwarves win deception game
+- Goblins ambush from sides
+- Dwarves were prepared, minimal losses
+- Dwarf reserves flank goblin ambushers
+- Goblins crushed (caught in their own trap)
+- Cultural memory: Dwarves gain TacticalLesson.CounterAmbushMastery
+```
+
+#### Scenario 3: Layered Deception Draw
+
+```yaml
+Setup:
+- Elf Rangers (80 elves, AggressionAxis 0.0, OrderAxis +0.5)
+- Human Knights (100 knights, AggressionAxis +0.3, OrderAxis +0.8)
+- Elf leader competence: 0.9 (master tactician)
+- Human leader competence: 0.85 (experienced commander)
+
+Action:
+1. Elves detect humans approaching sacred forest
+2. Elves prepare ForestAmbush (Type: HighGround, Concealment 0.85)
+3. Human scouts detect ambush (difficult due to elf concealment)
+4. Humans prepare CounterAmbush (Strategy: ArtilleryBombardment)
+5. Elf scouts detect human counter-preparations
+6. Elves prepare counter-counter (HasCounterAmbushPrep = true, secondary ambush positions)
+7. Human intelligence detects elf preparations for counter-counter
+8. LayeredDeceptionState: 3 layers deep
+   - Layer 0: Elf ambush (advantage +0.3)
+   - Layer 1: Human counter (advantage -0.3)
+   - Layer 2: Elf counter-counter (advantage +0.2)
+   - Layer 3: Human awareness of Layer 2 (advantage -0.2)
+9. DeceptionResolutionSystem: Net advantage = 0.0 (draw)
+
+Result: Mutual Awareness
+- Both sides realize the other is fully aware
+- Tactical stalemate
+- Leaders meet for parley (both competent, recognize futility)
+- Negotiated passage through forest (diplomacy wins)
+```
+
+#### Scenario 4: Falsified Scout Report
+
+```yaml
+Setup:
+- Orc Warband (150 orcs, AggressionAxis +0.9, OrderAxis -0.6)
+- Elf Defenders (60 elves, defending village)
+- Elf spymaster: Intelligence 85, StealthSkill 0.9
+
+Action:
+1. Orcs send scout to reconnoiter elf village
+2. Elf rangers capture orc scout (CaptureScout triggered)
+3. Elf spymaster interrogates scout, learns orc warband composition
+4. Spymaster creates falsified message:
+   - Original: "60 elf defenders, stone walls, ballista towers"
+   - Falsified: "20 elf defenders, wooden palisade, no artillery"
+   - FalsificationQuality: 0.85 (expert forgery)
+   - VerifyDC: Hard (0.75 required to detect)
+5. Spymaster releases scout with false message (scout believes it's genuine)
+6. Scout returns, delivers false intel to orc warband
+7. Orc leader checks message (LeaderIntelligence 0.5, Perception 0.4)
+8. Detection chance: (0.5 + 0.4) * 0.5 = 0.45 < 0.75 → Failed to detect!
+9. Orcs act on false intel, launch assault expecting easy victory
+10. Orcs encounter 60 elves + stone walls + ballistas
+11. Orcs suffer heavy casualties, forced to retreat
+
+Result: Successful intelligence deception
+- Orcs lose 80 warriors (53% casualties)
+- Elves lose 8 defenders (13% casualties)
+- Orc culture records: TacticalLesson.IntelligenceDeception (LessonStrength 0.9)
+- Future orc warbands verify scout reports more carefully
+```
+
+#### Scenario 5: Lure Tactic Success
+
+```yaml
+Setup:
+- Human Army (500 soldiers, leader competence 0.75)
+- Barbarian Horde (800 barbarians, AggressionAxis +0.95, OrderAxis -0.8)
+
+Action:
+1. Humans detect barbarian horde (outnumbered 1.6:1)
+2. Human general decides LureTactic
+3. Creates BaitForce (100 soldiers) + MainForce (400 hidden in valley)
+4. Bait force marches openly, appearing vulnerable
+5. Barbarians detect bait force (ScoutVisual)
+6. Barbarian leader (OrderAxis -0.8, chaotic): DirectEngage (charge!)
+7. Barbarians pursue bait force (FeignedRetreat)
+8. Bait force "flees" into valley (KillZoneLocation)
+9. Barbarians follow (EnemyDetectionRisk = 0.3, but chaotic leader ignored warnings)
+10. Main force springs trap from valley sides
+11. Barbarians caught in killzone, surrounded
+
+Result: Successful lure
+- Barbarians lose 450 warriors (56% casualties, caught in trap)
+- Humans lose 50 soldiers (10% casualties, controlled engagement)
+- Human culture gains CulturalReputation.TacticalGenius (legendary victory)
+- Barbarian culture gains TacticalLesson.LureDanger (LessonStrength 0.85)
+```
+
+---
+
+## Space4X: Fleet Ambush, Interception & Tactical Warfare
+
+**Core Principle**: Space combat extends ambush mechanics with **FTL interception, communication jamming, FTL inhibitors, targeted subsystem damage, and fleet-scale tactical deception**. Capital ships and admirals employ sophisticated counter-tactics including reserve forces, mine deployment, and honeypot traps.
+
+### 1. FTL Communication Interception & Signal Intelligence
+
+```csharp
+// FTL communication interception
+public struct FTLCommunicationInterception : IComponentData
+{
+    public Entity InterceptingFleet;
+    public Entity TargetFleet;
+    public float InterceptionRange;              // How far can intercept signals
+    public float DecryptionQuality;              // 0.0-1.0 (how well decoded)
+    public InterceptionMethod Method;
+    public bool IsDetected;                      // Has target noticed interception?
+}
+
+public enum InterceptionMethod : byte
+{
+    PassiveListening,           // Intercept broadcast signals (undetectable)
+    ActiveProbing,              // Send probes to relay signals (detectable)
+    QuantumEntanglement,        // Advanced tech, very hard to detect
+    RelayStation,               // Pre-positioned listening post
+    InsiderAgent,               // Embedded spy on target ship
+    HackedCommsArray            // Compromised communication system
+}
+
+// Intercepted fleet orders
+public struct InterceptedFleetOrder : IComponentData
+{
+    public Entity TargetFleet;
+    public float3 Destination;
+    public FleetMission Mission;                 // What they're doing
+    public ushort EstimatedArrivalTicks;
+    public float IntelligenceAccuracy;           // 0.0-1.0 (how reliable)
+    public bool OrdersFalsified;                 // Have we modified their orders?
+}
+
+// Signal jamming system
+public struct CommunicationJamming : IComponentData
+{
+    public Entity JammingFleet;
+    public float JammingRadius;                  // Area of effect
+    public float JammingStrength;                // 0.0-1.0 (how effective)
+    public JammingType Type;
+    public float PowerDraw;                      // Energy cost per tick
+}
+
+public enum JammingType : byte
+{
+    BroadbandNoise,             // Jams all frequencies (obvious, brute force)
+    TargetedFrequency,          // Jam specific channel (subtle, efficient)
+    AdaptiveJamming,            // Adjusts to counter anti-jamming (advanced)
+    QuantumDisruption,          // Disrupts quantum entanglement (cutting edge)
+    ECMBurst                    // Electronic countermeasure burst (temporary)
+}
+```
+
+### 2. FTL Inhibitors & Interdiction
+
+```csharp
+// FTL inhibitor prevents enemy escape
+public struct FTLInhibitor : IComponentData
+{
+    public Entity OwnerFleet;
+    public float3 InhibitorLocation;
+    public float InhibitionRadius;               // How large the interdiction field
+    public float InhibitionStrength;             // 0.0-1.0 (1.0 = complete lockdown)
+    public InhibitorType Type;
+    public ushort ActivationTicks;               // Time to spin up
+    public ushort MaxDurationTicks;              // How long can sustain
+    public float PowerCost;                      // Energy drain
+}
+
+public enum InhibitorType : byte
+{
+    GravityWell,                // Creates artificial gravity well
+    QuantumAnchoring,           // Disrupts FTL quantum fields
+    SpaceTimeFold,              // Folds space-time, blocks FTL
+    ResonanceInhibitor,         // Disrupts FTL drive harmonics
+    MineField,                  // Physical FTL denial (one-time use)
+    InterdictionBuoy            // Pre-positioned device
+}
+
+// Escape attempt against inhibitor
+public struct FTLEscapeAttempt : IComponentData
+{
+    public Entity FleetAttempting;
+    public Entity InhibitorSource;
+    public float EscapeChance;                   // 0.0-1.0
+    public EscapeStrategy Strategy;
+    public float EngineDamageRisk;               // 0.0-1.0 (chance of damage)
+}
+
+public enum EscapeStrategy : byte
+{
+    ForceJump,                  // Brute force through inhibition (risky)
+    MicroJumps,                 // Multiple small jumps to escape (slow)
+    CounterResonance,           // Technical counter to inhibitor
+    DistractionDecoy,           // Deploy decoy, jump while inhibitor targets it
+    OverloadDrive,              // Emergency overload (damages engines)
+    WaitForRescue               // Hold position, call for reinforcements
+}
+```
+
+### 3. Targeted Subsystem Damage
+
+```csharp
+// Target specific ship systems
+public struct TargetedSubsystemAttack : IComponentData
+{
+    public Entity AttackingFleet;
+    public Entity TargetShip;
+    public ShipSubsystem TargetSubsystem;
+    public float AttackPrecision;                // 0.0-1.0 (how accurate)
+    public float DamageMultiplier;               // Focused damage bonus
+}
+
+public enum ShipSubsystem : byte
+{
+    Engines,                    // Mobility, FTL capability
+    Communications,             // Signals, coordination, call for help
+    Weapons,                    // Offensive capability
+    Shields,                    // Defensive capability
+    Sensors,                    // Detection, targeting
+    LifeSupport,                // Crew survival
+    PowerCore,                  // Energy generation
+    HullIntegrity               // Structural damage
+}
+
+// Subsystem status tracking
+public struct SubsystemStatus : IComponentData
+{
+    public float EngineEfficiency;               // 0.0-1.0 (1.0 = perfect)
+    public float CommunicationRange;             // Reduced if damaged
+    public float WeaponAccuracy;
+    public float ShieldStrength;
+    public float SensorRange;
+    public bool CanCallReinforcements;           // True if comms functional
+    public bool CanEscape;                       // True if engines functional
+}
+
+// Disable communications to prevent distress calls
+public struct CommunicationDisablement : IComponentData
+{
+    public Entity TargetShip;
+    public DisablementMethod Method;
+    public float DisablementDuration;            // Ticks until restored
+    public bool IsRepairable;
+}
+
+public enum DisablementMethod : byte
+{
+    KineticImpact,              // Physical damage to antenna/array
+    EMPBurst,                   // Electromagnetic pulse (temporary)
+    Hacking,                    // Software intrusion
+    PrecisionStrike,            // Targeted weapon fire
+    Sabotage,                   // Internal saboteur
+    JammingOverload             // Overwhelm system with noise
+}
+```
+
+### 4. Fleet Counter-Ambush & Reserve Tactics
+
+```csharp
+// Fleet counter-ambush preparation
+public struct FleetCounterAmbush : IComponentData
+{
+    public Entity MainFleet;                     // Visible "bait" force
+    public DynamicBuffer<Entity> ReserveFleets;  // Hidden reinforcements
+    public float3 RendezvousLocation;            // Where reserves jump in
+    public CounterAmbushStrategy Strategy;
+    public float CoordinationQuality;            // 0.0-1.0 (how well-timed)
+}
+
+public enum CounterAmbushStrategy : byte
+{
+    LooseFormation,             // Ships spread out, allows reinforcements to jump between
+    ReserveFlank,               // Reserves jump behind enemy
+    PincerResponse,             // Reserves jump on both flanks
+    SurpriseReinforcement,      // Main fleet appears weak, reserves surprise
+    DecoyFleet,                 // Main fleet is decoy, reserves are real force
+    RollingReserves             // Continuous reinforcement waves
+}
+
+// Admiral/Captain competence affects tactics
+public struct FleetCommanderCompetence : IComponentData
+{
+    public Entity Commander;
+    public float TacticalSkill;                  // 0.0-1.0
+    public float CounterIntelligence;            // Resist enemy intel gathering
+    public float AmbushDetection;                // Spot enemy ambushes
+    public DynamicBuffer<TacticalDoctrine> KnownDoctrines;
+    public bool IsVeteran;                       // Experienced commanders more cunning
+}
+
+public struct TacticalDoctrine : IBufferElementData
+{
+    public FixedString64Bytes DoctrineName;     // "Fabian Tactics", "Blitzkrieg", "Defense in Depth"
+    public float Proficiency;                    // 0.0-1.0 (how well they execute)
+    public DynamicBuffer<Entity> DoctrineCounters; // Which doctrines counter this
+}
+```
+
+### 5. Mine Deployment & Spatial Traps
+
+```csharp
+// Pre-positioned mine fields
+public struct SpaceMineField : IComponentData
+{
+    public float3 CenterLocation;
+    public float Radius;
+    public MineType Type;
+    public ushort MineCount;
+    public float Detectability;                  // 0.0-1.0 (how easy to spot)
+    public Entity DeployedBy;
+    public bool IsArmed;
+}
+
+public enum MineType : byte
+{
+    ProximityMine,              // Detonate when ship approaches
+    RemoteDetonated,            // Commander triggers manually
+    SmartMine,                  // Targets specific signatures (IFF)
+    FTLInhibitorMine,           // Creates interdiction field when triggered
+    EMPMine,                    // Disables electronics
+    FragmentationMine,          // Area denial, damages multiple ships
+    StealthMine                 // Very hard to detect (0.1-0.2 detectability)
+}
+
+// Rapid mine deployment during counter-ambush
+public struct RapidMineDeployment : IComponentData
+{
+    public Entity DeployingFleet;
+    public float3 DeploymentLocation;
+    public float DeploymentSpeed;                // Mines per tick
+    public ushort MaxMines;
+    public bool IsStealthDeployment;             // Enemy aware of deployment?
+}
+```
+
+### 6. Honeypot Traps & Lure Tactics
+
+```csharp
+// Distress beacon lure
+public struct DistressBeaconLure : IComponentData
+{
+    public float3 BeaconLocation;
+    public Entity HiddenFleet;                   // Ambushing force
+    public DistressType FakeDistress;
+    public float BeaconAuthenticity;             // 0.0-1.0 (how convincing)
+    public ushort ResponseTime;                  // Expected time for victim to arrive
+}
+
+public enum DistressType : byte
+{
+    MedicalEmergency,           // "Critical life support failure"
+    EngineFailure,              // "Stranded, need assistance"
+    PirateAttack,               // "Under attack, requesting aid"
+    TreasureDiscovery,          // "Found valuable salvage"
+    ScientificDiscovery,        // "Anomaly detected, need support"
+    CivilianRefugees,           // "Refugee ship requesting asylum"
+    FalseIFF                    // Pretend to be ally in distress
+}
+
+// Honeypot resource cache
+public struct HoneypotTrap : IComponentData
+{
+    public float3 TrapLocation;
+    public HoneypotType Type;
+    public float BaitValue;                      // How tempting (resources, tech, intel)
+    public Entity AmbushForce;
+    public float TrapSophistication;             // 0.0-1.0 (how well-disguised)
+}
+
+public enum HoneypotType : byte
+{
+    AbandonedFreighter,         // Cargo ship with "valuable" goods
+    DerelictStation,            // Space station with tech/data
+    ResourceAsteroid,           // Suspiciously rich mining site
+    AlienArtifact,              // Mysterious technology
+    DataCache,                  // Intelligence goldmine
+    SupplyDepot                 // Military supplies
+}
+```
+
+### 7. Fleet Interception & Ambush Detection
+
+```csharp
+// Fleet detects potential ambush
+public struct FleetAmbushDetection : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        foreach (var (fleet, sensors, commander) in
+                 SystemAPI.Query<RefRO<FleetData>,
+                                RefRO<FleetSensors>,
+                                RefRO<FleetCommanderCompetence>>())
+        {
+            // Scan for FTL inhibitors
+            var inhibitors = GetNearbyInhibitors(fleet.ValueRO.Location, sensors.ValueRO.SensorRange);
+
+            foreach (var inhibitor in inhibitors)
+            {
+                float detectionChance = CalculateInhibitorDetection(
+                    sensors.ValueRO,
+                    commander.ValueRO,
+                    inhibitor);
+
+                if (Random.value < detectionChance)
+                {
+                    // Detected ambush preparation!
+                    ReportThreat(fleet.ValueRO.Entity, inhibitor);
+
+                    // Decide response based on commander competence
+                    if (commander.ValueRO.TacticalSkill > 0.7f)
+                    {
+                        PrepareCounterAmbush(fleet.ValueRO.Entity, inhibitor);
+                    }
+                    else if (commander.ValueRO.TacticalSkill > 0.4f)
+                    {
+                        AvoidAmbushZone(fleet.ValueRO.Entity);
+                    }
+                    else
+                    {
+                        // Incompetent commander walks into trap
+                        ContinueRoute(fleet.ValueRO.Entity);
+                    }
+                }
+            }
+
+            // Check for suspicious distress beacons
+            var beacons = GetNearbyDistressBeacons(fleet.ValueRO.Location);
+            foreach (var beacon in beacons)
+            {
+                float authenticityCheck = CalculateBeaconAuthenticity(
+                    beacon,
+                    commander.ValueRO.CounterIntelligence);
+
+                if (authenticityCheck < 0.5f)
+                {
+                    // Suspicious beacon detected
+                    if (commander.ValueRO.TacticalSkill > 0.6f)
+                    {
+                        // Smart commander sees through trap
+                        AvoidBeacon(fleet.ValueRO.Entity, beacon);
+                    }
+                    else
+                    {
+                        // Falls for trap
+                        RespondToDistress(fleet.ValueRO.Entity, beacon);
+                    }
+                }
+            }
+        }
+    }
+}
+
+private float CalculateInhibitorDetection(
+    FleetSensors sensors,
+    FleetCommanderCompetence commander,
+    FTLInhibitor inhibitor)
+{
+    float baseSensorChance = sensors.SensorQuality; // 0.0-1.0
+    float commanderBonus = commander.AmbushDetection * 0.3f;
+    float inhibitorConcealment = 1.0f - inhibitor.Detectability;
+
+    // Advanced sensors detect better
+    if (sensors.HasQuantumSensors)
+        baseSensorChance += 0.2f;
+
+    // Veteran commanders more cautious
+    if (commander.IsVeteran)
+        commanderBonus += 0.15f;
+
+    float detectionChance = (baseSensorChance + commanderBonus) - inhibitorConcealment;
+    return math.clamp(detectionChance, 0.05f, 0.95f);
+}
+```
+
+### 8. Example Scenarios
+
+#### Scenario 1: FTL Inhibitor Ambush
+
+```yaml
+Setup:
+- Pirate Fleet (3 corvettes, 1 frigate with FTL inhibitor)
+- Merchant Convoy (5 freighters, 2 escort destroyers)
+- Pirate captain competence: 0.65 (experienced raider)
+
+Action:
+1. Pirates intercept merchant FTL communication (PassiveListening)
+2. Pirates learn convoy route and arrival time
+3. Pirates deploy FTL inhibitor at expected exit point (InhibitionRadius 50km)
+4. Pirates hide behind asteroid field (Concealment 0.75)
+5. Merchant convoy exits FTL directly into inhibition field
+6. Convoy engines fail to re-engage FTL (InhibitionStrength 0.9)
+7. Escort captain attempts escape (ForceJump strategy)
+8. Escape fails, engine damage: 40% efficiency loss
+9. Pirates emerge, demand cargo surrender
+
+Result: Successful ambush
+- Merchants trapped, cannot call reinforcements (comms jammed)
+- Pirates seize cargo without major engagement
+- Merchants learn: Never use predictable FTL routes (TacticalLesson.RouteVariation)
+```
+
+#### Scenario 2: Counter-Ambush with Hidden Reserves
+
+```yaml
+Setup:
+- Enemy Battle Group (12 cruisers, 4 capital ships)
+- Defender Fleet (8 destroyers visible, 15 cruisers hidden)
+- Defender admiral competence: 0.85 (veteran tactician)
+
+Action:
+1. Enemy intercepts defender patrol schedule (ActiveProbing)
+2. Enemy deploys FTL inhibitor along patrol route
+3. Enemy prepares ambush (16 ships vs expected 8)
+4. Defender admiral detects suspicious FTL inhibitor signature (75% detection chance)
+5. Admiral prepares counter-ambush (Strategy: ReserveFlank)
+6. Visible destroyer group enters kill zone (acting as bait)
+7. Enemy springs ambush, inhibitor activates
+8. Destroyers take damage, appear to retreat
+9. Enemy advances to finish them
+10. Hidden reserve cruisers jump in BEHIND enemy (LooseFormation allowed this)
+11. Reserves target enemy inhibitor ship first (disable escape)
+12. Enemy trapped in their own inhibition field
+
+Result: Devastating counter-ambush
+- Enemy loses 11 ships (68% casualties)
+- Defenders lose 3 ships (10% casualties)
+- Enemy admiral captured, interrogated for intel
+- Defender culture gains: TacticalLesson.CounterAmbushMastery
+```
+
+#### Scenario 3: Distress Beacon Honeypot
+
+```yaml
+Setup:
+- Scavenger Fleet (4 salvage ships, 1 escort)
+- Hidden Raider Fleet (6 frigates in stealth)
+- Fake distress beacon (Type: AbandonedFreighter, Authenticity 0.7)
+
+Action:
+1. Raiders deploy distress beacon near trade route
+2. Beacon broadcasts: "Freighter engine failure, valuable tech cargo"
+3. Scavenger fleet detects beacon
+4. Scavenger captain checks authenticity (CounterIntelligence 0.4)
+5. Roll: 0.35 < 0.5 → Fails to detect trap (beacon seems legit)
+6. Scavengers approach "stranded" freighter
+7. Scavengers begin salvage operations
+8. Raiders decloak, activate FTL inhibitor
+9. Scavengers attempt escape (MicroJumps strategy)
+10. Raiders target scavenger engines first (TargetedSubsystemAttack)
+11. 3 of 4 salvage ships disabled
+
+Result: Successful honeypot
+- Raiders capture 3 salvage ships + crews
+- Scavenger escort escapes (MicroJumps partially successful)
+- Scavenger culture learns: TacticalLesson.DistressBeaconCaution (0.8 strength)
+- Future scavenger fleets verify distress authenticity more carefully
+```
+
+#### Scenario 4: Communication Jamming & Subsystem Targeting
+
+```yaml
+Setup:
+- Assault Fleet (8 heavy cruisers)
+- Target Station Defense (12 patrol ships, 1 station)
+- Assault admiral competence: 0.75 (specialist in rapid strikes)
+
+Action:
+1. Assault fleet approaches at FTL edge
+2. Admiral orders: "Target communications and engines only"
+3. Fleet activates BroadbandNoise jamming (JammingRadius 100km)
+4. Patrol ships cannot coordinate (CommunicationRange reduced 80%)
+5. Assault fleet uses precision strikes on:
+   - Patrol ship engines (EngineEfficiency reduced 60-90%)
+   - Patrol ship comms (CanCallReinforcements = false)
+6. Station attempts to call reinforcements
+7. Station comms jammed, message doesn't get through
+8. Assault fleet disables 10 of 12 patrol ships (engines/comms destroyed)
+9. Assault fleet withdraws before reinforcements arrive on schedule
+10. Disabled patrol ships are captured or scuttled
+
+Result: Surgical strike
+- Station unable to call for help (jamming + targeted subsystem damage)
+- Assault fleet suffers minimal casualties (2 ships damaged)
+- Disabled patrol ships captured for intelligence/salvage
+- Defense learns: Need redundant communication methods (quantum relays, courier ships)
+```
+
+#### Scenario 5: Layered Deception with Mine Deployment
+
+```yaml
+Setup:
+- Defender Fleet (20 destroyers visible, 30 hidden)
+- Attacker Fleet (40 battleships)
+- Defender admiral competence: 0.9 (master strategist)
+- Attacker admiral competence: 0.8 (aggressive but skilled)
+
+Action:
+1. Attacker intercepts defender fleet movement orders (InsiderAgent)
+2. Attacker plans ambush with FTL inhibitor at predicted location
+3. Defender counter-intelligence detects agent leak (80% chance)
+4. Defender admiral realizes orders were compromised
+5. Defender feeds FALSE orders to agent (double deception)
+   - False orders: "Fleet retreating to Station Alpha"
+   - Real plan: Ambush the ambushers
+6. Attacker sets up ambush at Station Alpha route
+7. Defender fleet arrives but via different vector
+8. Defender detects attacker inhibitor (AmbushDetection 0.9)
+9. Defender deploys rapid mine field around attacker position (RemoteDetonated mines)
+10. Attacker realizes they've been deceived
+11. Attacker attempts to disengage
+12. Defender detonates mines (FragmentationMine × 200)
+13. Hidden defender reserves jump in, block escape routes
+14. Attacker trapped in mine field with reserves cutting off retreat
+
+Result: Masterful double deception
+- Attacker loses 25 battleships (62% casualties) in mine field
+- Defender loses 4 ships (6% casualties)
+- Attacker admiral retreats, questions insider agent reliability
+- Defender gains legendary reputation: "Never trust their retreat orders"
+- LayeredDeceptionState: 3 layers deep (false orders → ambush trap → counter trap)
+```
 
 ---
 

@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -26,7 +27,7 @@ namespace PureDOTS.Systems
             // No-op; configuration happens in OnCreate
         }
 
-        private static void ConfigureThreading(ref SystemState state)
+        private void ConfigureThreading(ref SystemState state)
         {
             // Get threading config (if available)
             int workerCount = 0;
@@ -55,8 +56,7 @@ namespace PureDOTS.Systems
             else
             {
                 // Use Unity's default
-                var defaultCount = JobsUtility.JobWorkerCountHint;
-                JobsUtility.JobWorkerCount = defaultCount;
+                var defaultCount = JobsUtility.JobWorkerCount;
                 Debug.Log($"[ThreadingBootstrap] Using Unity default worker count: {defaultCount}");
             }
 

@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Stats;
 using Unity.Burst;
 using Unity.Collections;
@@ -43,12 +44,17 @@ namespace PureDOTS.Systems.Stats
             float xpAmount,
             uint currentTick)
         {
-            if (!SystemAPI.HasComponent<StatXPCommandLogEntry>(targetEntity))
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
             {
                 return;
             }
 
-            var commandLog = SystemAPI.GetBuffer<StatXPCommandLogEntry>(targetEntity);
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
+            {
+                return;
+            }
+
+            var commandLog = state.EntityManager.GetBuffer<StatXPCommandLogEntry>(targetEntity);
             commandLog.Add(new StatXPCommandLogEntry
             {
                 Tick = currentTick,
@@ -72,12 +78,17 @@ namespace PureDOTS.Systems.Stats
             float xpAmount,
             uint currentTick)
         {
-            if (!SystemAPI.HasComponent<StatXPCommandLogEntry>(targetEntity))
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
             {
                 return;
             }
 
-            var commandLog = SystemAPI.GetBuffer<StatXPCommandLogEntry>(targetEntity);
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
+            {
+                return;
+            }
+
+            var commandLog = state.EntityManager.GetBuffer<StatXPCommandLogEntry>(targetEntity);
             commandLog.Add(new StatXPCommandLogEntry
             {
                 Tick = currentTick,
@@ -100,12 +111,17 @@ namespace PureDOTS.Systems.Stats
             StatType statType,
             uint currentTick)
         {
-            if (!SystemAPI.HasComponent<StatXPCommandLogEntry>(targetEntity))
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
             {
                 return;
             }
 
-            var commandLog = SystemAPI.GetBuffer<StatXPCommandLogEntry>(targetEntity);
+            if (!state.EntityManager.HasBuffer<StatXPCommandLogEntry>(targetEntity))
+            {
+                return;
+            }
+
+            var commandLog = state.EntityManager.GetBuffer<StatXPCommandLogEntry>(targetEntity);
             commandLog.Add(new StatXPCommandLogEntry
             {
                 Tick = currentTick,

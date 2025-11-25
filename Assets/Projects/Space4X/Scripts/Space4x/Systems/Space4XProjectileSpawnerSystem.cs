@@ -95,16 +95,24 @@ namespace Space4X.Systems
 
                     // Add projectile component
                     var velocity = request.SpawnDirection * projectileSpec.Speed;
+                    var seed = (uint)(entity.Index ^ (int)CurrentTime ^ request.SourceEntity.Index);
+                    
                     ECB.AddComponent(entityInQueryIndex, projectileEntity, new ProjectileEntity
                     {
                         ProjectileId = request.ProjectileId,
                         SourceEntity = request.SourceEntity,
                         TargetEntity = request.TargetEntity,
                         Velocity = velocity,
+                        PrevPos = request.SpawnPosition,
                         SpawnTime = CurrentTime,
                         DistanceTraveled = 0f,
-                        PierceCount = (byte)math.max(0, (int)projectileSpec.Pierce)
+                        HitsLeft = math.max(0f, projectileSpec.Pierce),
+                        Age = 0f,
+                        Seed = seed
                     });
+
+                    // Add hit results buffer for collision system
+                    ECB.AddBuffer<ProjectileHitResult>(entityInQueryIndex, projectileEntity);
                 }
 
                 // Clear spawn requests

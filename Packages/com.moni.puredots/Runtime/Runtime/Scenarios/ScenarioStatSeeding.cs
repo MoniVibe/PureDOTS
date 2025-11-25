@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Stats;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace PureDOTS.Runtime.Scenarios

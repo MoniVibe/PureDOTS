@@ -32,7 +32,10 @@ namespace PureDOTS.Runtime.Combat
         public float SeekRadius; // Detection radius for homing
         public float AoERadius; // Area of effect radius (0 = no AoE)
         public float Pierce; // Pierce count (0 = no pierce)
+        public float ChainRange; // Chain effect range (0 = none)
+        public uint HitFilter; // Physics collision mask
         public DamageModel Damage; // Damage calculation model
+        public BlobArray<EffectOp> OnHit; // Effect operations on hit
     }
 
     /// <summary>
@@ -67,6 +70,32 @@ namespace PureDOTS.Runtime.Combat
         Ballistic = 0,
         Homing = 1,
         Beam = 2
+    }
+
+    /// <summary>
+    /// Effect operation kind enumeration.
+    /// </summary>
+    public enum EffectOpKind : byte
+    {
+        Damage = 0,
+        AoE = 1,
+        Chain = 2,
+        Pierce = 3,
+        Status = 4,
+        Knockback = 5,
+        SpawnSub = 6
+    }
+
+    /// <summary>
+    /// Effect operation data - defines what happens when a projectile hits.
+    /// </summary>
+    public struct EffectOp
+    {
+        public EffectOpKind Kind; // Type of effect
+        public float Magnitude; // Effect magnitude (damage, force, etc.)
+        public float Duration; // Effect duration in seconds (for status effects)
+        public float Aux; // Auxiliary value (radius for AoE, count for chain, etc.)
+        public uint StatusId; // Status effect ID (for Status kind)
     }
 
     /// <summary>

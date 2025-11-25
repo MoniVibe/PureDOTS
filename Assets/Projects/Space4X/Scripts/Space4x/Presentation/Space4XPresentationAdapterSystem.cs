@@ -16,7 +16,7 @@ namespace Space4X.Presentation
     /// Uses request buffers only; no structural changes except Begin/End ECB playback.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct Space4XPresentationAdapterSystem : ISystem
     {
         [BurstCompile]

@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Stats;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Tests.Runtime.Stats
 {

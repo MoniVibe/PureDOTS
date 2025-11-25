@@ -2,6 +2,9 @@ using System;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
+using PureDOTS.Runtime.Villagers;
+using PureDOTS.Systems;
+using PureDOTS.Systems.Villagers;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -100,15 +103,16 @@ namespace PureDOTS.Authoring
                 FactionId = authoring.factionId
             });
 
-            AddComponent(entity, new VillagerNeeds
+            var needs = new VillagerNeeds
             {
                 Health = authoring.initialHealth,
                 MaxHealth = authoring.maxHealth,
-                Hunger = (ushort)math.clamp(math.round(authoring.initialHunger * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
-                Energy = (ushort)math.clamp(math.round(authoring.initialEnergy * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
-                Morale = (ushort)math.clamp(math.round(authoring.initialMorale * 10f), 0f, 1000f), // 0-100 range, 0.1% precision
-                Temperature = (short)math.clamp(math.round(authoring.preferredTemperature * 10f), -1000f, 1000f)
-            });
+                Temperature = math.clamp(authoring.preferredTemperature, -100f, 100f)
+            };
+            needs.SetHunger(authoring.initialHunger);
+            needs.SetEnergy(authoring.initialEnergy);
+            needs.SetMorale(authoring.initialMorale);
+            AddComponent(entity, needs);
 
             var maxMana = math.max(0f, authoring.maxMana);
             var currentMana = math.clamp(authoring.initialMana, 0f, maxMana > 0f ? maxMana : authoring.initialMana);
@@ -302,10 +306,7 @@ namespace PureDOTS.Authoring
                 {
                     AttackDamage = authoring.attackDamage,
                     AttackSpeed = authoring.attackSpeed,
-                    DefenseRating = authoring.defenseRating,
-                    AttackRange = authoring.attackRange,
-                    CurrentTarget = Entity.Null,
-                    LastAttackTime = 0f
+                    CurrentTarget = Entity.Null
                 });
             }
 

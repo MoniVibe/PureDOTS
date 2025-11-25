@@ -2,6 +2,7 @@ using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Stats;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Tests.Runtime.Stats
 {

@@ -1,8 +1,10 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Stats;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Stats
 {

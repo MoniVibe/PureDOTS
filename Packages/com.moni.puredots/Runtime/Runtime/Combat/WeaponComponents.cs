@@ -28,9 +28,12 @@ namespace PureDOTS.Runtime.Combat
         public Entity SourceEntity; // Entity that fired this projectile
         public Entity TargetEntity; // Target entity (for homing, Entity.Null for ballistic)
         public float3 Velocity; // Current velocity vector
+        public float3 PrevPos; // Previous position for continuous collision detection
         public float SpawnTime; // Time when projectile was created
         public float DistanceTraveled; // Total distance traveled
-        public byte PierceCount; // Remaining pierce count
+        public float HitsLeft; // Remaining pierce count (changed from byte to float)
+        public float Age; // Seconds since spawn
+        public uint Seed; // Deterministic RNG seed for tie-breakers and effect RNG
     }
 
     /// <summary>
@@ -79,6 +82,17 @@ namespace PureDOTS.Runtime.Combat
         public float3 SpawnDirection;
         public Entity SourceEntity;
         public Entity TargetEntity;
+    }
+
+    /// <summary>
+    /// Buffer element for projectile hit results from collision detection.
+    /// </summary>
+    public struct ProjectileHitResult : IBufferElementData
+    {
+        public float3 HitPosition;
+        public float3 HitNormal;
+        public Entity HitEntity;
+        public float TimeOfImpact; // 0-1 along the segment from PrevPos to Pos
     }
 }
 

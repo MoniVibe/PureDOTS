@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Runtime.Skills;
+using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,6 +21,8 @@ namespace PureDOTS.Systems.Ships
         private ComponentLookup<ModuleRepairSettings> _settingsLookup;
         private ComponentLookup<CarrierRefitState> _refitStateLookup;
         private ComponentLookup<SkillSet> _skillLookup;
+        private ComponentLookup<TechLevel> _techLevelLookup;
+        private ComponentLookup<ShipModule> _moduleLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -31,6 +34,8 @@ namespace PureDOTS.Systems.Ships
             _settingsLookup = state.GetComponentLookup<ModuleRepairSettings>(true);
             _refitStateLookup = state.GetComponentLookup<CarrierRefitState>(true);
             _skillLookup = state.GetComponentLookup<SkillSet>(true);
+            _techLevelLookup = state.GetComponentLookup<TechLevel>(true);
+            _moduleLookup = state.GetComponentLookup<ShipModule>(true);
         }
 
         [BurstCompile]
@@ -47,6 +52,21 @@ namespace PureDOTS.Systems.Ships
             _settingsLookup.Update(ref state);
             _refitStateLookup.Update(ref state);
             _skillLookup.Update(ref state);
+            _techLevelLookup.Update(ref state);
+            _moduleLookup.Update(ref state);
+
+            // Get repair rules singleton (if exists)
+            RefitRepairRulesBlob repairRules = new RefitRepairRulesBlob
+            {
+                FieldPenalty = 2f, // Default: field repair is 2x slower
+                BelowTechPenalty = 1.5f, // Default: 1.5x per tier deficit
+                AllowBelowTech = 1 // Default: allow below-tech repairs
+            };
+
+            if (SystemAPI.TryGetSingleton<RefitRepairRulesSingleton>(out var rulesRef) && rulesRef.Rules.IsCreated)
+            {
+                repairRules = rulesRef.Rules.Value;
+            }
 
             var repairQuery = SystemAPI.QueryBuilder()
                 .WithAll<ModuleRepairTicket>()
@@ -113,7 +133,52 @@ namespace PureDOTS.Systems.Ships
                         continue;
                     }
 
+                    // Apply tech tier checks
+                    byte moduleTechTier = 0;
+                    if (_moduleLookup.HasComponent(ticket.Module))
+                    {
+                        // Module tech tier would be stored in ShipModule or ModuleSlot
+                        // For now, use default tier 0
+                        moduleTechTier = 0;
+                    }
+
+                    byte stationTechTier = 0;
+                    if (_techLevelLookup.HasComponent(entity))
+                    {
+                        stationTechTier = _techLevelLookup[entity].Value;
+                    }
+
+                    // Check tech gate
+                    if (ticket.Kind == ModuleRepairKind.Station)
+                    {
+                        if (stationTechTier < moduleTechTier)
+                        {
+                            int tierDeficit = moduleTechTier - stationTechTier;
+                            if (repairRules.AllowBelowTech == 0)
+                            {
+                                // Disallow repair
+                                tickets.RemoveAt(index);
+                                continue;
+                            }
+                            // Apply penalty (will be applied to rate below)
+                        }
+                    }
+
                     var rate = ModuleMaintenanceUtility.CalculateRepairRate(settings, ticket.Kind, skillLevel);
+
+                    // Apply field penalty
+                    if (ticket.Kind == ModuleRepairKind.Field)
+                    {
+                        rate /= repairRules.FieldPenalty;
+                    }
+
+                    // Apply below-tech penalty for station repairs
+                    if (ticket.Kind == ModuleRepairKind.Station && stationTechTier < moduleTechTier)
+                    {
+                        int tierDeficit = moduleTechTier - stationTechTier;
+                        float penalty = math.pow(repairRules.BelowTechPenalty, tierDeficit);
+                        rate /= penalty;
+                    }
                     var repaired = math.min(rate, health.MaxHealth - health.Health);
                     health.Health += repaired;
                     ModuleMaintenanceUtility.ResolveState(ref health);
@@ -135,5 +200,13 @@ namespace PureDOTS.Systems.Ships
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Singleton component holding refit/repair rules blob reference.
+    /// </summary>
+    public struct RefitRepairRulesSingleton : IComponentData
+    {
+        public BlobAssetReference<RefitRepairRulesBlob> Rules;
     }
 }

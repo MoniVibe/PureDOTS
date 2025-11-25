@@ -1,78 +1,161 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Combat
 {
     /// <summary>
-    /// Placeholder combat resolution system.
-    /// STUB: Currently validates combat data and logs warnings. Full implementation will:
-    /// - Calculate hit chance (Attack vs Defense)
-    /// - Roll damage (AttackDamage - Armor reduction)
-    /// - Handle critical hits
-    /// - Process morale checks and yield behavior
-    /// - Apply injuries and death saving throws
+    /// Processes ActiveCombat entities, coordinating combat flow, stance modifiers, morale checks, and combat end conditions.
+    /// HitDetectionSystem handles actual hit/miss rolls and damage event creation.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateBefore(typeof(HitDetectionSystem))]
     public partial struct CombatResolutionSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // TODO: Require TimeState and RewindState
-            // TODO: Query for ActiveCombat entities
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
         }
-        
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // TODO: Query all ActiveCombat entities
-            // TODO: For each combat:
-            //   - Calculate hit chance (attacker Attack vs defender Defense)
-            //   - Roll for hit
-            //   - If hit: calculate damage (AttackDamage - Armor reduction)
-            //   - Check for critical hit
-            //   - Apply damage to CurrentHealth
-            //   - Check morale thresholds (yield/flee)
-            //   - Check for death (HP <= 0)
-            //   - Roll death saving throw if needed
-            //   - Apply permanent injuries if threshold reached
-            //   - Update combat round counter
-            //   - Check combat end conditions (yield, death, first blood)
-            
-            // STUB: Log warning that this is not implemented
-            #if UNITY_EDITOR
-            var combatQuery = SystemAPI.QueryBuilder().WithAll<ActiveCombat>().Build();
-            if (!combatQuery.IsEmptyIgnoreFilter)
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (rewindState.Mode != RewindMode.Record)
             {
-                UnityEngine.Debug.LogWarning("[CombatResolutionSystem] STUB: Combat resolution not yet implemented. ActiveCombat entities exist but are not being processed.");
+                return;
             }
-            #endif
+
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var currentTick = timeState.Tick;
+
+            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+            var entityLookup = state.GetEntityStorageInfoLookup();
+            var healthLookup = state.GetComponentLookup<Health>(true);
+            var combatStatsLookup = state.GetComponentLookup<CombatStats>(true);
+
+            new ProcessCombatJob
+            {
+                CurrentTick = currentTick,
+                Ecb = ecb,
+                EntityLookup = entityLookup,
+                HealthLookup = healthLookup,
+                CombatStatsLookup = combatStatsLookup
+            }.ScheduleParallel();
         }
-        
-        /// <summary>
-        /// Calculates hit chance based on attacker Attack and defender Defense.
-        /// </summary>
+
         [BurstCompile]
-        private static float CalculateHitChance(byte attackerAttack, byte defenderDefense)
+        public partial struct ProcessCombatJob : IJobEntity
         {
-            // TODO: Implement hit chance calculation
-            // Base: (AttackerAttack - DefenderDefense) + modifiers
-            // Clamp to 5-95% range
-            return 0.5f;
-        }
-        
-        /// <summary>
-        /// Calculates damage after armor reduction.
-        /// </summary>
-        [BurstCompile]
-        private static byte CalculateDamage(byte rawDamage, byte armorValue, float armorEffectiveness)
-        {
-            // TODO: Implement damage calculation
-            // FinalDamage = RawDamage - (ArmorValue × ArmorEffectiveness)
-            // Minimum 1 damage
-            return 1;
+            public uint CurrentTick;
+            public EntityCommandBuffer.ParallelWriter Ecb;
+            [ReadOnly] public EntityStorageInfoLookup EntityLookup;
+            [ReadOnly] public ComponentLookup<Health> HealthLookup;
+            [ReadOnly] public ComponentLookup<CombatStats> CombatStatsLookup;
+
+            void Execute(
+                Entity combatEntity,
+                [EntityIndexInQuery] int entityInQueryIndex,
+                ref ActiveCombat combat)
+            {
+                // Validate combatants exist
+                if (!EntityLookup.Exists(combat.Combatant1) || !EntityLookup.Exists(combat.Combatant2))
+                {
+                    // End combat if combatants are invalid
+                    Ecb.RemoveComponent<ActiveCombat>(entityInQueryIndex, combatEntity);
+                    return;
+                }
+
+                // Check if combatants are dead
+                bool combatant1Dead = false;
+                bool combatant2Dead = false;
+
+                if (HealthLookup.HasComponent(combat.Combatant1))
+                {
+                    var health1 = HealthLookup[combat.Combatant1];
+                    combatant1Dead = health1.Current <= 0f;
+                }
+
+                if (HealthLookup.HasComponent(combat.Combatant2))
+                {
+                    var health2 = HealthLookup[combat.Combatant2];
+                    combatant2Dead = health2.Current <= 0f;
+                }
+
+                // End combat if someone died
+                if (combatant1Dead || combatant2Dead)
+                {
+                    Ecb.RemoveComponent<ActiveCombat>(entityInQueryIndex, combatEntity);
+                    return;
+                }
+
+                // Check morale/yield thresholds
+                if (CombatStatsLookup.HasComponent(combat.Combatant1))
+                {
+                    var stats1 = CombatStatsLookup[combat.Combatant1];
+                    if (HealthLookup.HasComponent(combat.Combatant1))
+                    {
+                        var health1 = HealthLookup[combat.Combatant1];
+                        float healthPercent = health1.Current / health1.Max;
+                        if (healthPercent < (stats1.Morale / 100f))
+                        {
+                            // Combatant1 yields
+                            Ecb.RemoveComponent<ActiveCombat>(entityInQueryIndex, combatEntity);
+                            return;
+                        }
+                    }
+                }
+
+                if (CombatStatsLookup.HasComponent(combat.Combatant2))
+                {
+                    var stats2 = CombatStatsLookup[combat.Combatant2];
+                    if (HealthLookup.HasComponent(combat.Combatant2))
+                    {
+                        var health2 = HealthLookup[combat.Combatant2];
+                        float healthPercent = health2.Current / health2.Max;
+                        if (healthPercent < (stats2.Morale / 100f))
+                        {
+                            // Combatant2 yields
+                            Ecb.RemoveComponent<ActiveCombat>(entityInQueryIndex, combatEntity);
+                            return;
+                        }
+                    }
+                }
+
+                // Check first blood condition
+                if (combat.IsDuelToFirstBlood)
+                {
+                    if (combat.Combatant1Damage > 0 || combat.Combatant2Damage > 0)
+                    {
+                        // First blood drawn - end combat
+                        Ecb.RemoveComponent<ActiveCombat>(entityInQueryIndex, combatEntity);
+                        return;
+                    }
+                }
+
+                // Advance combat round (attacks happen via HitDetectionSystem based on AttackSpeed)
+                combat.CurrentRound++;
+
+                // Apply stance modifiers to combat stats (temporary for this round)
+                // Note: Actual damage modifiers are applied in HitDetectionSystem
+                ApplyStanceModifiers(combat.Combatant1, combat.Combatant1Stance);
+                ApplyStanceModifiers(combat.Combatant2, combat.Combatant2Stance);
+            }
+
+            [BurstCompile]
+            private static void ApplyStanceModifiers(Entity combatant, ActiveCombat.CombatStance stance)
+            {
+                // Stance modifiers are applied dynamically during hit/damage calculation
+                // This is a placeholder - actual modifiers applied in HitDetectionSystem/DamageApplicationSystem
+            }
         }
     }
 }

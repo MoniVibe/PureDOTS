@@ -287,7 +287,7 @@ namespace Space4X.CameraSystems
         }
     }
 
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public sealed partial class Space4XCameraRigSyncSystem : SystemBase
     {
         private Camera _camera;

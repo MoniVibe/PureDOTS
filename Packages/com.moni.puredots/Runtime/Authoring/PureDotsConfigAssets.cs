@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Config;
 
 namespace PureDOTS.Authoring
 {

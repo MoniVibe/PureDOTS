@@ -10,7 +10,7 @@ namespace Space4X.Registry
     /// <summary>
     /// Renders simple primitives for carriers, mining vessels, and asteroids so the mining loop is visible in hybrid scenes.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct Space4XMiningDebugRenderSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

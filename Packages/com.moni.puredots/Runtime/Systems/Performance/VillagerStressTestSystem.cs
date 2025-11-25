@@ -69,8 +69,6 @@ namespace PureDOTS.Systems.Performance
                 }
             }
 
-            // Measure performance (using deterministic time)
-            var timeState = SystemAPI.GetSingleton<TimeState>();
             _frameCount++;
 
             // Accumulate frame time (using fixed delta time for deterministic measurement)
@@ -118,11 +116,6 @@ namespace PureDOTS.Systems.Performance
                     Position = position,
                     Rotation = quaternion.identity,
                     Scale = 1f
-                });
-                ecb.AddComponent(entity, new VillagerNeeds
-                {
-                    Health = 100f,
-                    MaxHealth = 100f
                 });
                 var needs = new VillagerNeeds { Health = 100f, MaxHealth = 100f };
                 needs.SetHunger(50f);

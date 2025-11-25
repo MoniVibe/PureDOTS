@@ -24,6 +24,7 @@ namespace PureDOTS.Systems.Villagers
         private ComponentLookup<StorehouseInventory> _storehouseLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<OfferNonce> _nonceLookup;
+        private ComponentLookup<OfferSourceCap> _sourceCapLookup;
         
         [BurstCompile]
         public void OnCreate(ref SystemState state)

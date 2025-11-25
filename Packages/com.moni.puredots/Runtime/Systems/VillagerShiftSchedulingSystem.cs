@@ -67,7 +67,7 @@ namespace PureDOTS.Systems
                 var isDaytime = TimeOfDay >= 0.25f && TimeOfDay < 0.75f;
                 
                 // Check if shift schedule should override default behavior
-                var shouldWork = isDaytime ? shiftState.DayShiftEnabled : shiftState.NightShiftEnabled;
+                var shouldWork = (isDaytime ? shiftState.DayShiftEnabled : shiftState.NightShiftEnabled) != 0;
                 
                 // Update shift state
                 shiftState.IsDaytime = isDaytime ? (byte)1 : (byte)0;

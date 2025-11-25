@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Presentation;
 using PureDOTS.Runtime.Stats;
 using Unity.Burst;

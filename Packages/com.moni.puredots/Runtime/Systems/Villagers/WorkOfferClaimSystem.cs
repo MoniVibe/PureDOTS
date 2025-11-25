@@ -64,9 +64,9 @@ namespace PureDOTS.Systems.Villagers
             var offers = new NativeList<Entity>(Allocator.TempJob);
             var collectJob = new CollectOffersJob
             {
-                Offers = offers.AsParallelWriter()
+                Offers = offers
             };
-            state.Dependency = collectJob.ScheduleParallel(state.Dependency);
+            state.Dependency = collectJob.Schedule(state.Dependency);
             state.Dependency.Complete();
             
             if (offers.Length == 0)
@@ -94,7 +94,7 @@ namespace PureDOTS.Systems.Villagers
         [BurstCompile]
         public partial struct CollectOffersJob : IJobEntity
         {
-            public NativeList<Entity>.ParallelWriter Offers;
+            public NativeList<Entity> Offers;
             
             public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity, in WorkOffer offer)
             {
@@ -178,7 +178,7 @@ namespace PureDOTS.Systems.Villagers
                     }
                     
                     // Get job definition
-                    if (!JobCatalog.Value.Jobs.IsCreated || offer.JobId < 0 || offer.JobId >= JobCatalog.Value.Jobs.Length)
+                    if (!JobCatalog.IsCreated || offer.JobId < 0 || offer.JobId >= JobCatalog.Value.Jobs.Length)
                     {
                         continue;
                     }

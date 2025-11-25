@@ -125,7 +125,7 @@ namespace PureDOTS.Systems.Villagers
                 var actDistanceSq = 9f; // 3 units for gathering/acting
                 
                 // Get job definition
-                if (!JobCatalog.Value.Jobs.IsCreated || offer.JobId < 0 || offer.JobId >= JobCatalog.Value.Jobs.Length)
+                if (!JobCatalog.IsCreated || offer.JobId < 0 || offer.JobId >= JobCatalog.Value.Jobs.Length)
                 {
                     return;
                 }

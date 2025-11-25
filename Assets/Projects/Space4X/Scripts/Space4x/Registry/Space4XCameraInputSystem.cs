@@ -12,7 +12,7 @@ namespace Space4X.Registry
     /// Runs early in PresentationSystemGroup to capture input before camera update.
     /// Non-Burst compatible due to Input System access.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateBefore(typeof(Space4XCameraSystem))]
     public partial struct Space4XCameraInputSystem : ISystem
     {

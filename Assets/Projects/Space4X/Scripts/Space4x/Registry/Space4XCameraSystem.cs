@@ -12,7 +12,7 @@ namespace Space4X.Registry
     /// Runs in PresentationSystemGroup to align with PureDOTS update order.
     /// Non-Burst compatible due to Unity GameObject/Transform access.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct Space4XCameraSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

@@ -12,7 +12,7 @@ namespace Space4X.Systems
     /// Runs in PresentationSystemGroup after camera update, before rendering.
     /// Not Burst-compiled (uses managed GameObject API).
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial class Space4XCameraRenderSyncSystem : SystemBase
     {
         private Camera _unityCamera;

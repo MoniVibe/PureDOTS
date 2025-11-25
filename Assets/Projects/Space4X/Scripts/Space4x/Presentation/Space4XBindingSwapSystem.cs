@@ -10,7 +10,7 @@ namespace Space4X.Presentation
     /// Toggle via command or debug menu.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateBefore(typeof(Space4XPresentationAdapterSystem))]
     public partial struct Space4XBindingSwapSystem : ISystem
     {
