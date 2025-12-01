@@ -15,8 +15,35 @@ using UnityEngineCamera = UnityEngine.Camera;
 namespace PureDOTS.Runtime.Camera
 {
     /// <summary>
-    /// Black & White 2 inspired camera controller: LMB pans across terrain, MMB orbits the scene,
-    /// scroll wheel adjusts zoom radius. Terrain clamps are the only height restriction applied.
+    /// CAMERA RIG CONTRACT - BW2StyleCameraController
+    ///
+    /// A reusable camera controller implementing Black & White 2 style camera behavior.
+    /// Given input + deltaTime + current state, produces a new CameraRigState that behaves
+    /// like a B&W2 orbit/RTS camera with terrain awareness.
+    ///
+    /// CONTRACT GUARANTEES:
+    /// - LMB drag: Pans camera across terrain maintaining height
+    /// - MMB drag: Orbits around pivot point with distance-scaled sensitivity
+    /// - Scroll wheel: Zooms in/out with collision avoidance
+    /// - Terrain clamping: Prevents camera from going through ground
+    /// - Pivot locking: MMB press locks orbit pivot to terrain point
+    /// - Publishes CameraRigState to CameraRigService automatically
+    ///
+    /// CONFIGURATION:
+    /// - Ground layer mask for terrain collision
+    /// - Pan/zoom/orbit sensitivities with distance scaling
+    /// - Terrain clearance and collision buffer settings
+    /// - UI interaction allowances
+    ///
+    /// USAGE PATTERN:
+    /// 1. Attach to GameObject with Camera + CameraRigApplier + BW2CameraInputBridge
+    /// 2. Configure terrain mask and sensitivities
+    /// 3. Controller automatically handles input and publishes CameraRigState
+    /// 4. CameraRigApplier applies the state to Camera.main
+    ///
+    /// Uses frame-time (Time.deltaTime).
+    /// Not part of deterministic simulation / rewind.
+    /// Safe utility for game projects to build cameras on.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(UnityEngineCamera))]

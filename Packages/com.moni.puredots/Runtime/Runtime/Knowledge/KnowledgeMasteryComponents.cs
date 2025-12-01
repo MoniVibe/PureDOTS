@@ -25,6 +25,11 @@ namespace PureDOTS.Runtime.Knowledge
         public float TierProgress;
 
         /// <summary>
+        /// Normalized progress toward the next tier (0-1), used for decay smoothing.
+        /// </summary>
+        public float Progress;
+
+        /// <summary>
         /// Total XP accumulated for this lesson.
         /// </summary>
         public float TotalXp;
@@ -40,6 +45,11 @@ namespace PureDOTS.Runtime.Knowledge
     /// </summary>
     public enum MasteryTier : byte
     {
+        /// <summary>
+        /// No mastery established.
+        /// </summary>
+        None = 255,
+
         /// <summary>
         /// Just started learning (0-20% progress).
         /// </summary>
@@ -118,6 +128,7 @@ namespace PureDOTS.Runtime.Knowledge
         {
             return tier switch
             {
+                MasteryTier.None => "None",
                 MasteryTier.Novice => "Novice",
                 MasteryTier.Apprentice => "Apprentice",
                 MasteryTier.Journeyman => "Journeyman",

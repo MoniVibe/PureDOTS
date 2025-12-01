@@ -12,11 +12,24 @@ namespace PureDOTS.Runtime.Components
         public FixedString64Bytes Value;
     }
 
+    /// <summary>
+    /// Classification for resource nodes (natural deposits, artificial sources, etc.).
+    /// Defaults to <see cref="Default"/> when unspecified.
+    /// </summary>
+    public enum ResourceSourceType : byte
+    {
+        Default = 0,
+        Natural = 1,
+        Constructed = 2,
+        Infinite = 3
+    }
+
     public struct ResourceSourceConfig : IComponentData
     {
         public float GatherRatePerWorker;
         public int MaxSimultaneousWorkers;
         public float RespawnSeconds;
+        public FixedString64Bytes LessonId;
         public byte Flags;
 
         public const byte FlagInfinite = 1 << 0;
@@ -26,6 +39,7 @@ namespace PureDOTS.Runtime.Components
 
     public struct ResourceSourceState : IComponentData
     {
+        public ResourceSourceType SourceType;
         public float UnitsRemaining;
         public ResourceQualityTier QualityTier;
         public ushort BaseQuality;

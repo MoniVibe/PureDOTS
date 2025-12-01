@@ -1,7 +1,9 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -16,7 +18,6 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
-    [UpdateAfter(typeof(Space4X.Systems.Space4XWeaponFireSystem))]
     public partial struct BeamTickSystem : ISystem
     {
         [BurstCompile]
@@ -95,13 +96,15 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 // Find weapon spec
-                if (!TryFindWeaponSpec(WeaponCatalog, weaponMount.WeaponId, out var weaponSpec))
+                ref var weaponSpec = ref FindWeaponSpec(WeaponCatalog, weaponMount.WeaponId);
+                if (Unsafe.IsNullRef(ref weaponSpec))
                 {
                     return;
                 }
 
                 // Find projectile spec
-                if (!TryFindProjectileSpec(ProjectileCatalog, weaponSpec.ProjectileId, out var projectileSpec))
+                ref var projectileSpec = ref FindProjectileSpec(ProjectileCatalog, weaponSpec.ProjectileId);
+                if (Unsafe.IsNullRef(ref projectileSpec))
                 {
                     return;
                 }
@@ -162,52 +165,48 @@ namespace PureDOTS.Systems.Combat
                 }
             }
 
-            private bool TryFindWeaponSpec(
+            private static ref WeaponSpec FindWeaponSpec(
                 BlobAssetReference<WeaponCatalogBlob> catalog,
-                FixedString64Bytes weaponId,
-                out WeaponSpec spec)
+                FixedString64Bytes weaponId)
             {
-                spec = default;
                 if (!catalog.IsCreated)
                 {
-                    return false;
+                    return ref Unsafe.NullRef<WeaponSpec>();
                 }
 
-                var weapons = catalog.Value.Weapons;
+                ref var weapons = ref catalog.Value.Weapons;
                 for (int i = 0; i < weapons.Length; i++)
                 {
-                    if (weapons[i].Id.Equals(weaponId))
+                    ref var spec = ref weapons[i];
+                    if (spec.Id.Equals(weaponId))
                     {
-                        spec = weapons[i];
-                        return true;
+                        return ref spec;
                     }
                 }
 
-                return false;
+                return ref Unsafe.NullRef<WeaponSpec>();
             }
 
-            private bool TryFindProjectileSpec(
+            private static ref ProjectileSpec FindProjectileSpec(
                 BlobAssetReference<ProjectileCatalogBlob> catalog,
-                FixedString32Bytes projectileId,
-                out ProjectileSpec spec)
+                FixedString32Bytes projectileId)
             {
-                spec = default;
                 if (!catalog.IsCreated)
                 {
-                    return false;
+                    return ref Unsafe.NullRef<ProjectileSpec>();
                 }
 
-                var projectiles = catalog.Value.Projectiles;
+                ref var projectiles = ref catalog.Value.Projectiles;
                 for (int i = 0; i < projectiles.Length; i++)
                 {
-                    if (projectiles[i].Id.Equals(projectileId))
+                    ref var spec = ref projectiles[i];
+                    if (spec.Id.Equals(projectileId))
                     {
-                        spec = projectiles[i];
-                        return true;
+                        return ref spec;
                     }
                 }
 
-                return false;
+                return ref Unsafe.NullRef<ProjectileSpec>();
             }
         }
     }

@@ -146,12 +146,12 @@ namespace PureDOTS.Systems.Combat
 
                 // Apply stance modifiers to combat stats (temporary for this round)
                 // Note: Actual damage modifiers are applied in HitDetectionSystem
-                ApplyStanceModifiers(combat.Combatant1, combat.Combatant1Stance);
-                ApplyStanceModifiers(combat.Combatant2, combat.Combatant2Stance);
+                ApplyStanceModifiers(in combat.Combatant1, in combat.Combatant1Stance);
+                ApplyStanceModifiers(in combat.Combatant2, in combat.Combatant2Stance);
             }
 
             [BurstCompile]
-            private static void ApplyStanceModifiers(Entity combatant, ActiveCombat.CombatStance stance)
+            private static void ApplyStanceModifiers(in Entity combatant, in ActiveCombat.CombatStance stance)
             {
                 // Stance modifiers are applied dynamically during hit/damage calculation
                 // This is a placeholder - actual modifiers applied in HitDetectionSystem/DamageApplicationSystem

@@ -5,6 +5,81 @@ using UnityEngine;
 
 namespace Space4X.Presentation
 {
+    // Runtime-safe replicas so loader can deserialize binding JSON without the editor-only generator assembly.
+    public static class Space4XBindingGenerator
+    {
+        [Serializable]
+        public class BindingSet
+        {
+            public string name;
+            public List<WeaponBindingEntry> weapons = new();
+            public List<ProjectileBindingEntry> projectiles = new();
+            public List<HullBindingEntry> hulls = new();
+            public List<StationBindingEntry> stations = new();
+            public List<ResourceBindingEntry> resources = new();
+            public List<ProductBindingEntry> products = new();
+        }
+
+        [Serializable]
+        public class WeaponBindingEntry
+        {
+            public string id;
+            public string muzzleFx;
+            public string muzzleSfx;
+            public Vector3 muzzleOffset;
+        }
+
+        [Serializable]
+        public class ProjectileBindingEntry
+        {
+            public string id;
+            public string tracerFx;
+            public string beamFx;
+            public string impactFx;
+            public string impactSfx;
+        }
+
+        [Serializable]
+        public class HullBindingEntry
+        {
+            public string id;
+            public List<SocketEntry> sockets = new();
+            public string meshStyle;
+        }
+
+        [Serializable]
+        public class StationBindingEntry
+        {
+            public string id;
+            public List<string> facilityTags = new();
+            public List<string> zones = new();
+            public string meshStyle;
+        }
+
+        [Serializable]
+        public class ResourceBindingEntry
+        {
+            public string id;
+            public string hudToken;
+            public string iconStyle;
+        }
+
+        [Serializable]
+        public class ProductBindingEntry
+        {
+            public string id;
+            public string hudToken;
+            public string iconStyle;
+        }
+
+        [Serializable]
+        public class SocketEntry
+        {
+            public string name;
+            public Vector3 position;
+        }
+    }
+
     /// <summary>
     /// Loads and manages Minimal/Fancy binding sets for hot-swapping.
     /// </summary>

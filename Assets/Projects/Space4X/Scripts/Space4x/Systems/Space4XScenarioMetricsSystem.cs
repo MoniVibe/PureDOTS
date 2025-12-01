@@ -2,11 +2,11 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Compliance;
 using PureDOTS.Runtime.Crew;
-using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using LateSimulationSystemGroup = PureDOTS.Systems.LateSimulationSystemGroup;
 
 namespace Space4X.Systems
 {

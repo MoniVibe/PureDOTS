@@ -63,6 +63,20 @@ namespace PureDOTS.Runtime.Skills
             return 0;
         }
 
+        public readonly byte GetMaxLevel()
+        {
+            byte max = 0;
+            for (var i = 0; i < Entries.Length; i++)
+            {
+                if (Entries[i].Level > max)
+                {
+                    max = Entries[i].Level;
+                }
+            }
+
+            return max;
+        }
+
         public void AddSkillXp(SkillId id, float xp)
         {
             if (xp <= 0f)

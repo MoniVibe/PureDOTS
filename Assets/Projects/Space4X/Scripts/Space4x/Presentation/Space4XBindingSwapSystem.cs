@@ -1,16 +1,17 @@
-using PureDOTS.Runtime.Components;
-using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
+using PresentationSystemGroup = PureDOTS.Systems.PresentationSystemGroup;
 
 namespace Space4X.Presentation
 {
     /// <summary>
     /// System that handles hot-swapping between Minimal and Fancy bindings.
     /// Toggle via command or debug menu.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [BurstCompile]
-    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     [UpdateBefore(typeof(Space4XPresentationAdapterSystem))]
     public partial struct Space4XBindingSwapSystem : ISystem
     {

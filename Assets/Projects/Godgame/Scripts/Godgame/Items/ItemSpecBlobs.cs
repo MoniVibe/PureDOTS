@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Shared;
 using Unity.Collections;
+using Unity.Entities;
 
 namespace Godgame.Items
 {

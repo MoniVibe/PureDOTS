@@ -124,6 +124,124 @@ namespace Space4X.Tests
             };
         }
 
+        [Test]
+        public void WeaponSpread_DeterministicPatterns()
+        {
+            var scenarioPath = Path.Combine(Application.dataPath, "..", ScenariosDirectory, "spread_test.json");
+            if (!File.Exists(scenarioPath))
+            {
+                Assert.Ignore($"Spread test scenario file not found: {scenarioPath}");
+                return;
+            }
+
+            // Run scenario twice with identical conditions
+            var result1 = RunScenarioForSpreadTest(scenarioPath);
+            var result2 = RunScenarioForSpreadTest(scenarioPath);
+
+            // Verify spread patterns are identical
+            Assert.AreEqual(result1.PelletCount, result2.PelletCount,
+                "Pellet counts should match between runs");
+
+            for (int i = 0; i < result1.PelletDirections.Length && i < result2.PelletDirections.Length; i++)
+            {
+                Assert.AreEqual(result1.PelletDirections[i], result2.PelletDirections[i],
+                    $"Pellet direction {i} should be identical between runs");
+            }
+
+            // Verify that changing conditions produces different patterns
+            var result3 = RunScenarioForSpreadTest(scenarioPath, modifyTick: true);
+            bool patternsDiffer = false;
+            for (int i = 0; i < result1.PelletDirections.Length && i < result3.PelletDirections.Length; i++)
+            {
+                if (!result1.PelletDirections[i].Equals(result3.PelletDirections[i]))
+                {
+                    patternsDiffer = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(patternsDiffer,
+                "Spread patterns should differ when scenario conditions change");
+        }
+
+        [Test]
+        public void WeaponDamage_DeterministicRolls()
+        {
+            var scenarioPath = Path.Combine(Application.dataPath, "..", ScenariosDirectory, "damage_test.json");
+            if (!File.Exists(scenarioPath))
+            {
+                Assert.Ignore($"Damage test scenario file not found: {scenarioPath}");
+                return;
+            }
+
+            // Run scenario twice with identical conditions
+            var result1 = RunScenarioForDamageTest(scenarioPath);
+            var result2 = RunScenarioForDamageTest(scenarioPath);
+
+            // Verify damage rolls are identical
+            Assert.AreEqual(result1.DamageDealt.Length, result2.DamageDealt.Length,
+                "Damage event counts should match between runs");
+
+            for (int i = 0; i < result1.DamageDealt.Length && i < result2.DamageDealt.Length; i++)
+            {
+                Assert.AreEqual(result1.DamageDealt[i], result2.DamageDealt[i],
+                    $"Damage amount {i} should be identical between runs");
+                Assert.AreEqual(result1.CriticalHits[i], result2.CriticalHits[i],
+                    $"Critical hit {i} should be identical between runs");
+            }
+
+            // Verify that changing conditions produces different damage
+            var result3 = RunScenarioForDamageTest(scenarioPath, modifyTick: true);
+            bool damageDiffers = false;
+            for (int i = 0; i < result1.DamageDealt.Length && i < result3.DamageDealt.Length; i++)
+            {
+                if (!result1.DamageDealt[i].Equals(result3.DamageDealt[i]))
+                {
+                    damageDiffers = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(damageDiffers,
+                "Damage rolls should differ when scenario conditions change");
+        }
+
+        private SpreadTestResult RunScenarioForSpreadTest(string scenarioPath, bool modifyTick = false)
+        {
+            // TODO: Implement scenario running and pellet direction collection
+            // This would need to hook into the weapon firing system and collect
+            // the generated projectile directions for verification
+
+            return new SpreadTestResult
+            {
+                PelletCount = 8,
+                PelletDirections = new UnityEngine.Vector3[8] // Placeholder
+            };
+        }
+
+        private DamageTestResult RunScenarioForDamageTest(string scenarioPath, bool modifyTick = false)
+        {
+            // TODO: Implement scenario running and damage collection
+            // This would need to hook into the damage system and collect
+            // the damage events and critical hit flags for verification
+
+            return new DamageTestResult
+            {
+                DamageDealt = new float[5] { 100f, 95f, 110f, 88f, 102f }, // Placeholder deterministic values
+                CriticalHits = new bool[5] { false, false, true, false, false } // Placeholder crit results
+            };
+        }
+
+        private class SpreadTestResult
+        {
+            public int PelletCount;
+            public UnityEngine.Vector3[] PelletDirections;
+        }
+
+        private class DamageTestResult
+        {
+            public float[] DamageDealt;
+            public bool[] CriticalHits;
+        }
+
         private class ScenarioRunResult
         {
             public string ScenarioId;

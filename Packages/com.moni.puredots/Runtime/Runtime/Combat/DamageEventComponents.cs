@@ -61,10 +61,12 @@ namespace PureDOTS.Runtime.Combat
     {
         None = 0,
         Critical = 1 << 0,      // Critical hit (multiplier applied)
-        Pierce = 1 << 1,       // Ignores armor
-        IgnoreShield = 1 << 2, // Bypasses shields
-        DOT = 1 << 3,          // Damage over time (from buff/debuff)
-        Lethal = 1 << 4        // Cannot be reduced below lethal threshold
+        Pierce = 1 << 1,        // Ignores armor
+        IgnoreShield = 1 << 2,  // Bypasses shields
+        DOT = 1 << 3,           // Damage over time (from buff/debuff)
+        Lethal = 1 << 4,        // Cannot be reduced below lethal threshold
+        AoE = 1 << 5,           // Area of effect damage
+        Chain = 1 << 6          // Chain/splash damage
     }
 
     /// <summary>

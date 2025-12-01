@@ -258,6 +258,7 @@ namespace PureDOTS.Systems
         {
             legacy.Tick = tickTimeState.Tick;
             legacy.FixedDeltaTime = tickTimeState.FixedDeltaTime;
+            legacy.DeltaTime = tickTimeState.FixedDeltaTime;
             legacy.CurrentSpeedMultiplier = tickTimeState.CurrentSpeedMultiplier;
             legacy.IsPaused = tickTimeState.IsPaused;
         }

@@ -1,6 +1,18 @@
 # PureDOTS Project Briefing
 
+> **See also**: `TRI_PROJECT_BRIEFING.md` for the complete tri-project overview covering PureDOTS, Space4X, and Godgame.
+
 Welcome to the PureDOTS migration effort. This repository is a fresh Unity project configured with Entities 1.4 and mirrors the package environment from the legacy `godgame` repo. The long-term goal is to deliver the full GodGame experience using a pure DOTS architecture, guided by existing TruthSource documentation.
+
+## Project Locations
+
+| Project | Path |
+|---------|------|
+| **PureDOTS** | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` |
+| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` |
+| **Godgame** | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` |
+
+⚠️ **Note**: The `projects/` subfolder inside PureDOTS is deprecated and should be ignored.
 
 ## Current State
 
@@ -31,6 +43,9 @@ Welcome to the PureDOTS migration effort. This repository is a fresh Unity proje
 - Determinism & rewind remain central—use existing `TimeState`, `RewindState`, etc. as references.
 - Presentation should be hybrid-friendly but minimal—simulation logic belongs in DOTS.
 - Salvage carefully: port DOTS-ready code; reimplement hybrid logic for the new architecture.
+- Patterns: group/individual “patterns” (e.g., HardworkingVillage, ChaoticBand, OverstressedGroup) live in `Packages/com.moni.puredots/Runtime/Systems/Patterns/PatternSystem.cs` and write `GroupPatternModifiers` + `ActivePatternTag`. IDs are enums (see `Runtime/Patterns/PatternComponents.cs`) to stay Burst-safe—no FixedString construction in static contexts.
+- Burst/static-init rule of thumb: do not construct `FixedStringXXBytes` or other managed-backed data in static fields/ctors for bursted systems. Use enum/int IDs in components; keep human-readable names in non-Burst helpers (debug-only).
+- Input → ECS contract: camera/hand systems read `CameraInputState` + `CameraInputEdge`/`HandInputEdge` from ECS. `InputSnapshotBridge` (fed by `HandCameraInputRouter` or any other input) copies into those components in `CopyInputToEcsSystem`. Games can wire any input source as long as it writes those ECS components.
 
 ## Suggested Starting Checklist
 
@@ -40,6 +55,74 @@ Welcome to the PureDOTS migration effort. This repository is a fresh Unity proje
 - [ ] Create a simple DOTS-only test SubScene to validate the loop.
 
 Coordinate with TruthSources and the legacy repo for reference data and design constraints. The focus is laying a clean foundation—future agents can expand gameplay domains once the base is solid.
+
+## Critical DOTS Patterns (Must Follow)
+
+> **📚 Full Documentation**: See `Docs/FoundationGuidelines.md` for complete P0-P11 patterns with detailed examples.
+
+### Quick Reference - Common Errors to Avoid
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| CS1654 | foreach mutation | Use indexed `for` loop |
+| EA0009 | Blob not by ref | `ref var x = ref blob.Value` |
+| CS0266 | Implicit enum cast | `(byte)enum` or `(MyEnum)byte` |
+| CS1031 | `ref readonly` (C# 12) | Use `ref` or `in` (C# 9) |
+| CS0411 | Bad buffer type | Implement `IBufferElementData` |
+| CS0311 | Bad authoring type | Inherit `MonoBehaviour` |
+| BC1064 | Struct by value in Burst | Use `in` modifier |
+| BC1016 | Managed code in Burst | Pre-define string constants |
+| CS0103 | Missing import | `using Unity.Mathematics;` |
+
+### Essential Patterns (Summary)
+
+**P0: Verify dependencies exist before writing code**
+```bash
+grep -r "struct TypeName" --include="*.cs"
+```
+
+**P1: Buffer mutation - indexed access only**
+```csharp
+for (int i = 0; i < buffer.Length; i++) { var item = buffer[i]; item.Value = 5; buffer[i] = item; }
+```
+
+**P1: Blob access - always use ref**
+```csharp
+ref var catalog = ref blobRef.Value;
+```
+
+**P4: Blob parameters use `ref`, NOT `in`**
+```csharp
+void Process(ref ProjectileSpec spec) { }  // NOT 'in' for blob types
+```
+
+**P8: No managed strings in Burst**
+```csharp
+// Pre-define OUTSIDE Burst:
+private static readonly FixedString64Bytes MyName = "name";
+// Use in Burst:
+var name = MyName;
+```
+
+**P9: Required imports**
+```csharp
+using Unity.Mathematics;                    // For math.*, half, float2
+using Unity.Collections.LowLevel.Unsafe;    // For Unsafe.*
+```
+
+## Pre-Commit Checklist
+
+Before marking any task complete:
+
+- [ ] **Build passes**: Unity domain reload succeeds
+- [ ] **Dependencies verified**: All types confirmed via grep
+- [ ] **No foreach mutation**: Use indexed loops
+- [ ] **Blob access uses ref**: All `blobRef.Value` with `ref`
+- [ ] **Blob params use ref**: Not `in` for blob types
+- [ ] **Buffer elements correct**: Implement `IBufferElementData`
+- [ ] **Authoring inherits MonoBehaviour**: For Baker<T>
+- [ ] **No managed strings in Burst**: Pre-define constants
+- [ ] **Imports present**: `Unity.Mathematics`, etc.
 
 ## How to Adopt This Runtime in a New Game
 

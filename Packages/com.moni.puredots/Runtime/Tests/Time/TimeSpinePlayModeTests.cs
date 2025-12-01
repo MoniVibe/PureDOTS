@@ -6,6 +6,7 @@ using Unity.Core;
 using Unity.Entities;
 using Unity.Collections;
 using UnityEngine.TestTools;
+using EntitiesPresentationSystemGroup = Unity.Entities.PresentationSystemGroup;
 
 namespace PureDOTS.Tests.Time
 {
@@ -17,11 +18,11 @@ namespace PureDOTS.Tests.Time
             public InitializationSystemGroup InitGroup;
             public TimeSystemGroup TimeGroup;
             public SimulationSystemGroup SimulationGroup;
-            public PresentationSystemGroup PresentationGroup;
+            public EntitiesPresentationSystemGroup PresentationGroup;
             public FixedStepSimulationSystemGroup FixedStepGroup;
 
             public TestWorldContext(World world, InitializationSystemGroup initGroup, TimeSystemGroup timeGroup,
-                SimulationSystemGroup simulationGroup, PresentationSystemGroup presentationGroup,
+                SimulationSystemGroup simulationGroup, EntitiesPresentationSystemGroup presentationGroup,
                 FixedStepSimulationSystemGroup fixedStepGroup)
             {
                 World = world;
@@ -198,7 +199,7 @@ namespace PureDOTS.Tests.Time
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
             var timeGroup = world.GetExistingSystemManaged<TimeSystemGroup>();
             var simulationGroup = world.GetExistingSystemManaged<SimulationSystemGroup>();
-            var presentationGroup = world.GetExistingSystemManaged<PresentationSystemGroup>();
+            var presentationGroup = world.GetExistingSystemManaged<EntitiesPresentationSystemGroup>();
             var fixedStepGroup = world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
             fixedStepGroup.Timestep = 1f / 60f;
 

@@ -9,7 +9,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Applies presentation spawn/recycle commands based on GodgamePresentationBinding components.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(TransformSystemGroup))]

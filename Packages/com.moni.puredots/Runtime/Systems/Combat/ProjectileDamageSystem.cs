@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -12,6 +13,7 @@ namespace PureDOTS.Systems.Combat
     /// Processes projectile impacts and creates damage events.
     /// Handles pierce mechanics and projectile destruction.
     /// Runs before DamageApplicationSystem.
+    /// Looks up damage values from ProjectileCatalog for game-agnostic behavior.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
@@ -37,6 +39,12 @@ namespace PureDOTS.Systems.Combat
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var currentTick = timeState.Tick;
 
+            // Get projectile catalog for damage lookups
+            if (!SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog))
+            {
+                return;
+            }
+
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
@@ -52,7 +60,8 @@ namespace PureDOTS.Systems.Combat
                 EntityLookup = entityLookup,
                 HealthLookup = healthLookup,
                 DamageableLookup = damageableLookup,
-                DamageBuffers = damageBufferLookup
+                DamageBuffers = damageBufferLookup,
+                ProjectileCatalog = projectileCatalog.Catalog
             }.ScheduleParallel();
         }
 
@@ -65,6 +74,7 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public ComponentLookup<Health> HealthLookup;
             [ReadOnly] public ComponentLookup<Damageable> DamageableLookup;
             [NativeDisableParallelForRestriction] public BufferLookup<DamageEvent> DamageBuffers;
+            [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
 
             void Execute(
                 Entity projectileEntity,
@@ -89,12 +99,18 @@ namespace PureDOTS.Systems.Combat
                     return;
                 }
 
-                // Get projectile damage from WeaponSpec or default
-                float damage = 10f; // Default damage
+                // Look up projectile damage from catalog (game-agnostic: games define specs)
+                float damage = 10f; // Default fallback
                 DamageType damageType = DamageType.Physical;
+                DamageFlags damageFlags = DamageFlags.None;
 
-                // TODO: Look up projectile damage from WeaponSpec blob if available
-                // For now, use default damage
+                ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                if (!Unsafe.IsNullRef(ref spec))
+                {
+                    damage = spec.Damage.BaseDamage;
+                    damageType = DetermineDamageTypeFromSpec(ref spec);
+                    damageFlags = DetermineDamageFlagsFromSpec(ref spec);
+                }
 
                 // Create damage event
                 var damageEvent = new DamageEvent
@@ -104,7 +120,7 @@ namespace PureDOTS.Systems.Combat
                     RawDamage = damage,
                     Type = damageType,
                     Tick = CurrentTick,
-                    Flags = DamageFlags.Pierce // Projectiles typically pierce armor
+                    Flags = damageFlags
                 };
 
                 // Add damage event to target
@@ -117,24 +133,89 @@ namespace PureDOTS.Systems.Combat
                 {
                     // Create buffer if it doesn't exist
                     Ecb.AddBuffer<DamageEvent>(entityInQueryIndex, projectile.TargetEntity);
-                    // Note: We can't add to the buffer here since it's on another entity
-                    // This will be handled by a separate system or the damage will be queued
                 }
 
                 // Handle pierce mechanics
-                projectile.PierceCount--;
-                if (projectile.PierceCount <= 0)
+                projectile.HitsLeft--;
+                if (projectile.HitsLeft <= 0)
                 {
                     // Projectile exhausted - destroy it
                     Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
                 }
                 else
                 {
-                    // Projectile continues - reset target for next impact
-                    // Note: In a full implementation, we'd need to find the next target
-                    // For now, destroy the projectile after first hit
-                    Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
+                    // Projectile continues - clear target for next impact detection
+                    projectile.TargetEntity = Entity.Null;
                 }
+            }
+
+            private static ref ProjectileSpec FindProjectileSpec(
+                BlobAssetReference<ProjectileCatalogBlob> catalog,
+                FixedString64Bytes projectileId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref Unsafe.NullRef<ProjectileSpec>();
+                }
+
+                ref var catalogRef = ref catalog.Value;
+                for (int i = 0; i < catalogRef.Projectiles.Length; i++)
+                {
+                    ref var projectileSpec = ref catalogRef.Projectiles[i];
+                    if (projectileSpec.Id.Equals(projectileId))
+                    {
+                        return ref projectileSpec;
+                    }
+                }
+
+                return ref Unsafe.NullRef<ProjectileSpec>();
+            }
+
+            /// <summary>
+            /// Determines damage type from projectile spec.
+            /// Games define projectile kinds; PureDOTS maps them to damage types.
+            /// </summary>
+            private static DamageType DetermineDamageTypeFromSpec(ref ProjectileSpec spec)
+            {
+                // Map projectile kind to damage type
+                // Games can extend this by adding DamageType field to DamageModel
+                var kind = (ProjectileKind)spec.Kind;
+                return kind switch
+                {
+                    ProjectileKind.Beam => DamageType.Fire, // Energy weapons
+                    ProjectileKind.Homing => DamageType.Physical, // Missiles
+                    ProjectileKind.Ballistic => DamageType.Physical, // Kinetic
+                    _ => DamageType.Physical
+                };
+            }
+
+            /// <summary>
+            /// Determines damage flags from projectile spec.
+            /// </summary>
+            private static DamageFlags DetermineDamageFlagsFromSpec(ref ProjectileSpec spec)
+            {
+                var flags = DamageFlags.None;
+
+                // Pierce flag if projectile has pierce capability
+                if (spec.Pierce > 0)
+                {
+                    flags |= DamageFlags.Pierce;
+                }
+
+                // Check OnHit effects for special flags
+                if (spec.OnHit.Length > 0)
+                {
+                    for (int i = 0; i < spec.OnHit.Length; i++)
+                    {
+                        var effect = spec.OnHit[i];
+                        if (effect.Kind == EffectOpKind.AoE)
+                        {
+                            flags |= DamageFlags.AoE;
+                        }
+                    }
+                }
+
+                return flags;
             }
         }
     }

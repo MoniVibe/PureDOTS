@@ -8,7 +8,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Emits presentation spawn/recycle commands for Godgame villagers so visuals stay aligned with simulation state.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(VillagerAISystem))]
     public partial struct GodgameVillagerPresentationAdapterSystem : ISystem

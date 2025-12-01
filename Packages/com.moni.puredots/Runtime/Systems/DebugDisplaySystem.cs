@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
@@ -2402,3 +2403,4 @@ namespace PureDOTS.Systems
 #endif
     }
 }
+#endif

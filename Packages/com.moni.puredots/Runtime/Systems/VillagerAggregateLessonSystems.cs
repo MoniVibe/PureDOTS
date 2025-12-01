@@ -60,7 +60,7 @@ namespace PureDOTS.Systems
             _aggregateKnowledgeLookup.Update(ref state);
             _villagerMembershipLookup.Update(ref state);
 
-            var timeState = SystemAPI.TryGetSingleton(out TimeState ts) ? ts : new TimeState { FixedDeltaTime = 1f / 60f };
+            var timeState = SystemAPI.TryGetSingleton(out TimeState ts) ? ts : new TimeState { FixedDeltaTime = 1f / 60f, DeltaTime = 1f / 60f };
             var baseRate = math.max(0.01f, timeState.FixedDeltaTime) * 0.35f;
 
             using var villagerEntities = _villagerLessonQuery.ToEntityArray(Allocator.Temp);

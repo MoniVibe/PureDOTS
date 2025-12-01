@@ -12,8 +12,7 @@ namespace PureDOTS.Authoring.Shared
     /// Authoring ScriptableObject for quality formula configuration.
     /// Used by both Godgame and Space4X for deterministic quality calculation.
     /// </summary>
-    [CreateAssetMenu(fileName = "QualityFormula", menuName = "PureDOTS/Shared/Quality Formula")]
-    public class QualityFormulaAuthoring : ScriptableObject
+    public class QualityFormulaAuthoring : MonoBehaviour
     {
         [Header("Quality Weights")]
         [Range(0f, 1f)]

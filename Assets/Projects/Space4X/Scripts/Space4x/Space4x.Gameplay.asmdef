@@ -18,8 +18,10 @@
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "INCLUDE_SPACE4X_IN_PUREDOTS"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }

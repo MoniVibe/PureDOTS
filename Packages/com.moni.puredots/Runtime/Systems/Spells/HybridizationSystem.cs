@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spells;
 using Unity.Burst;
 using Unity.Collections;
@@ -41,11 +42,15 @@ namespace PureDOTS.Systems.Spells
                 return;
             }
 
-            var spellCatalog = spellCatalogRef.Blob.Value;
+            ref var spellCatalog = ref spellCatalogRef.Blob.Value;
 
             // Get signature catalog
             var signatureCatalogRef = SystemAPI.GetSingleton<SpellSignatureCatalogRef>();
-            var signatureCatalog = signatureCatalogRef.Blob.IsCreated ? signatureCatalogRef.Blob.Value : default;
+            if (!signatureCatalogRef.Blob.IsCreated)
+            {
+                return;
+            }
+            ref var signatureCatalog = ref signatureCatalogRef.Blob.Value;
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
@@ -85,28 +90,28 @@ namespace PureDOTS.Systems.Spells
                     var request = requests[i];
 
                     // Validate both spells exist
-                    SpellEntry spellA = default, spellB = default;
-                    bool foundA = false, foundB = false;
-
+                    int spellAIndex = -1, spellBIndex = -1;
                     for (int j = 0; j < SpellCatalog.Spells.Length; j++)
                     {
-                        if (SpellCatalog.Spells[j].SpellId.Equals(request.SpellA))
+                        ref var spellEntry = ref SpellCatalog.Spells[j];
+                        if (spellEntry.SpellId.Equals(request.SpellA))
                         {
-                            spellA = SpellCatalog.Spells[j];
-                            foundA = true;
+                            spellAIndex = j;
                         }
-                        if (SpellCatalog.Spells[j].SpellId.Equals(request.SpellB))
+                        if (spellEntry.SpellId.Equals(request.SpellB))
                         {
-                            spellB = SpellCatalog.Spells[j];
-                            foundB = true;
+                            spellBIndex = j;
                         }
                     }
 
-                    if (!foundA || !foundB)
+                    if (spellAIndex < 0 || spellBIndex < 0)
                     {
                         requests.RemoveAt(i);
                         continue; // Invalid spells
                     }
+
+                    ref var spellA = ref SpellCatalog.Spells[spellAIndex];
+                    ref var spellB = ref SpellCatalog.Spells[spellBIndex];
 
                     // Validate both spells are at 400% mastery with hybridization signature
                     bool canHybridizeA = false, canHybridizeB = false;
@@ -170,7 +175,14 @@ namespace PureDOTS.Systems.Spells
                     }
 
                     // Generate hybrid spell ID
-                    var hybridId = new FixedString64Bytes($"{request.SpellA}_{request.SpellB}_{entity.Index}_{CurrentTick}");
+                    var hybridId = default(FixedString64Bytes);
+                    hybridId.Append(request.SpellA);
+                    hybridId.Append((FixedString32Bytes)"_");
+                    hybridId.Append(request.SpellB);
+                    hybridId.Append((FixedString32Bytes)"_");
+                    hybridId.Append(entity.Index);
+                    hybridId.Append((FixedString32Bytes)"_");
+                    hybridId.Append(CurrentTick);
 
                     // Determine derived school (combine or inherit)
                     SpellSchool derivedSchool = CombineSchools(spellA.School, spellB.School);
@@ -184,7 +196,7 @@ namespace PureDOTS.Systems.Spells
                         CreatorEntity = entity,
                         CreatedTick = CurrentTick,
                         DerivedSchool = derivedSchool,
-                        DisplayName = new FixedString64Bytes($"{spellA.DisplayName}+{spellB.DisplayName}")
+                        DisplayName = BuildDisplayName(spellA.DisplayName, spellB.DisplayName)
                     });
 
                     // Update mastery entries to mark hybridization
@@ -225,6 +237,15 @@ namespace PureDOTS.Systems.Spells
                 if (schoolA == schoolB) return schoolA;
                 return SpellSchool.Elemental; // Default hybrid school
             }
+        }
+
+        private static FixedString64Bytes BuildDisplayName(FixedString64Bytes a, FixedString64Bytes b)
+        {
+            var name = default(FixedString64Bytes);
+            name.Append(a);
+            name.Append((FixedString32Bytes)"+");
+            name.Append(b);
+            return name;
         }
     }
 }

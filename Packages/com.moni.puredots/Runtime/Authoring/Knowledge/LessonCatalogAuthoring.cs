@@ -12,8 +12,7 @@ namespace PureDOTS.Authoring.Knowledge
     /// <summary>
     /// Authoring ScriptableObject for lesson catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "LessonCatalog", menuName = "PureDOTS/Knowledge/Lesson Catalog")]
-    public class LessonCatalogAuthoring : ScriptableObject
+    public class LessonCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class LessonDefinition

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Camera;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -45,7 +46,7 @@ namespace PureDOTS.Runtime.Camera
             try
             {
                 // Find camera entity matching PlayerId
-                using (var entities = _cameraQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
+                using (var entities = _cameraQuery.ToEntityArray(Allocator.Temp))
                 {
                     cameraEntity = Entity.Null;
                     var entityManager = _world.EntityManager;
@@ -85,7 +86,7 @@ namespace PureDOTS.Runtime.Camera
                     cameraState.TargetUp.z);
 
                 // Apply visual-only smoothing (presentation layer, not gameplay)
-                float deltaTime = Time.deltaTime;
+                float deltaTime = UnityEngine.Time.deltaTime;
                 _smoothedPosition = Vector3.Lerp(_smoothedPosition, targetPos, deltaTime / positionSmoothing);
                 Quaternion targetRotation = Quaternion.LookRotation(targetForward, targetUp);
                 _smoothedRotation = Quaternion.Slerp(_smoothedRotation, targetRotation, deltaTime / rotationSmoothing);
@@ -123,7 +124,7 @@ namespace PureDOTS.Runtime.Camera
 
         void OnDestroy()
         {
-            if (_cameraQuery.IsValid)
+            if (_cameraQuery != default)
             {
                 _cameraQuery.Dispose();
             }

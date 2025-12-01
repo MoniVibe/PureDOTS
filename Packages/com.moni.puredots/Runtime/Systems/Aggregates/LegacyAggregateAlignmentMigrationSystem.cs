@@ -7,7 +7,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
-#pragma warning disable 0618 // Legacy components are intentionally referenced for migration
+#pragma warning disable CS0618 // Legacy components are intentionally referenced for migration
 
 namespace PureDOTS.Systems
 {
@@ -124,4 +124,4 @@ namespace PureDOTS.Systems
         }
     }
 }
-#pragma warning restore 0618
+#pragma warning restore CS0618

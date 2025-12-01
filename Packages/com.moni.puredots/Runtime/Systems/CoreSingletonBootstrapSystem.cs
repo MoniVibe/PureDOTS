@@ -36,6 +36,42 @@ namespace PureDOTS.Systems
             // No-op; this system only seeds singleton entities on create.
         }
 
+        public void OnDestroy(ref SystemState state)
+        {
+            // Dispose ResourceRecipeSet blobs
+            foreach (var recipeSet in SystemAPI.Query<RefRW<ResourceRecipeSet>>())
+            {
+                ref var blob = ref recipeSet.ValueRW.Value;
+                if (blob.IsCreated)
+                {
+                    blob.Dispose();
+                    blob = default;
+                }
+            }
+
+            // Dispose ResourceTypeIndex blobs
+            foreach (var typeIndex in SystemAPI.Query<RefRW<ResourceTypeIndex>>())
+            {
+                ref var blob = ref typeIndex.ValueRW.Catalog;
+                if (blob.IsCreated)
+                {
+                    blob.Dispose();
+                    blob = default;
+                }
+            }
+
+            // Dispose KnowledgeLessonEffectCatalog blobs
+            foreach (var lessonCatalog in SystemAPI.Query<RefRW<KnowledgeLessonEffectCatalog>>())
+            {
+                ref var blob = ref lessonCatalog.ValueRW.Blob;
+                if (blob.IsCreated)
+                {
+                    blob.Dispose();
+                    blob = default;
+                }
+            }
+        }
+
         public static void EnsureSingletons(EntityManager entityManager)
         {
             Entity timeEntity;
@@ -45,6 +81,7 @@ namespace PureDOTS.Systems
                 entityManager.SetComponentData(timeEntity, new TimeState
                 {
                     FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                    DeltaTime = TimeSettingsDefaults.FixedDeltaTime,
                     CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
                     Tick = 0,
                     IsPaused = TimeSettingsDefaults.PauseOnStart

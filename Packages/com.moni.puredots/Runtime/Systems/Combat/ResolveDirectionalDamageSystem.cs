@@ -51,7 +51,8 @@ namespace PureDOTS.Systems.Combat
 
             if (SystemAPI.TryGetSingleton<DamageRulesSingleton>(out var rulesRef) && rulesRef.Rules.IsCreated)
             {
-                damageRules = rulesRef.Rules.Value;
+                ref var rules = ref rulesRef.Rules.Value;
+                damageRules = rules;
             }
 
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
@@ -76,12 +77,12 @@ namespace PureDOTS.Systems.Combat
 
             void Execute(
                 Entity entity,
-                DynamicBuffer<HitEvent> hitEvents,
+                ref DynamicBuffer<HitEvent> hitEvents,
                 ref HullState hull,
                 ref ShieldArcState shields,
                 ref ArmorDegradeState armor,
-                DynamicBuffer<ModuleRuntimeState> modules,
-                DynamicBuffer<ModuleDamageEvent> moduleDamageEvents,
+                ref DynamicBuffer<ModuleRuntimeStateElement> modules,
+                ref DynamicBuffer<ModuleDamageEvent> moduleDamageEvents,
                 in ShipLayoutRef layoutRef,
                 in LocalTransform transform)
             {
@@ -111,7 +112,7 @@ namespace PureDOTS.Systems.Combat
                     // Shield check
                     if (layout.Shields.Length > 0)
                     {
-                        int shieldIndex = FindShieldArc(layout, facing);
+                        int shieldIndex = FindShieldArc(ref layout, facing);
                         if (shieldIndex >= 0)
                         {
                             ref var shieldArc = ref layout.Shields[shieldIndex];
@@ -133,11 +134,11 @@ namespace PureDOTS.Systems.Combat
                     }
 
                     // Armor apply
-                    int armorIndex = FindArmorArc(layout, facing);
+                    int armorIndex = FindArmorArc(ref layout, facing);
                     if (armorIndex >= 0)
                     {
                         ref var armorArc = ref layout.Armor[armorIndex];
-                        float resist = GetResistance(armorArc, hit.Kind);
+                        float resist = GetResistance(in armorArc, hit.Kind);
                         float armorThickness = armorArc.Thickness - armor.GetDegrade(facing);
 
                         // Reduce damage by thickness, then apply resistance
@@ -155,7 +156,7 @@ namespace PureDOTS.Systems.Combat
                     }
 
                     // Module pick via OBB test
-                    int moduleIndex = FindHitModule(layout, localPos, hit.WorldPos, transform);
+                    int moduleIndex = FindHitModule(ref layout, localPos, hit.WorldPos, transform);
 
                     if (moduleIndex >= 0 && moduleIndex < modules.Length)
                     {
@@ -237,7 +238,7 @@ namespace PureDOTS.Systems.Combat
                 }
             }
 
-            private static int FindArmorArc(ShipLayoutBlob layout, Facing8 facing)
+            private static int FindArmorArc(ref ShipLayoutBlob layout, Facing8 facing)
             {
                 for (int i = 0; i < layout.Armor.Length; i++)
                 {
@@ -249,7 +250,7 @@ namespace PureDOTS.Systems.Combat
                 return -1;
             }
 
-            private static int FindShieldArc(ShipLayoutBlob layout, Facing8 facing)
+            private static int FindShieldArc(ref ShipLayoutBlob layout, Facing8 facing)
             {
                 for (int i = 0; i < layout.Shields.Length; i++)
                 {
@@ -261,7 +262,7 @@ namespace PureDOTS.Systems.Combat
                 return -1;
             }
 
-            private static float GetResistance(ArmorArc armor, DamageKind kind)
+            private static float GetResistance(in ArmorArc armor, DamageKind kind)
             {
                 return kind switch
                 {
@@ -272,7 +273,7 @@ namespace PureDOTS.Systems.Combat
                 };
             }
 
-            private static int FindHitModule(ShipLayoutBlob layout, float3 localPos, float3 worldPos, LocalTransform transform)
+            private static int FindHitModule(ref ShipLayoutBlob layout, float3 localPos, float3 worldPos, LocalTransform transform)
             {
                 // Test OBBs for module hit
                 // For now, use simplified point-in-OBB test
@@ -284,7 +285,7 @@ namespace PureDOTS.Systems.Combat
                     for (int volIdx = 0; volIdx < slot.Volumes.Length; volIdx++)
                     {
                         ref var obb = ref slot.Volumes[volIdx];
-                        if (PointInOBB(localPos, obb))
+                        if (PointInOBB(localPos, in obb))
                         {
                             return slotIdx;
                         }
@@ -294,7 +295,7 @@ namespace PureDOTS.Systems.Combat
                 return -1;
             }
 
-            private static bool PointInOBB(float3 point, ModuleHitOBB obb)
+            private static bool PointInOBB(float3 point, in ModuleHitOBB obb)
             {
                 // Transform point to OBB local space
                 float4x4 obbToLocal = math.inverse(new float4x4(obb.Rot, obb.Center));
@@ -314,7 +315,5 @@ namespace PureDOTS.Systems.Combat
     {
         public BlobAssetReference<DamageRulesBlob> Rules;
     }
-}
-
 }
 

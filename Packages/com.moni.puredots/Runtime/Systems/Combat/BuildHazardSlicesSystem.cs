@@ -2,8 +2,10 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -14,6 +16,8 @@ namespace PureDOTS.Systems.Combat
     /// <summary>
     /// Builds HazardSlice entries from projectile states and specs.
     /// Predicts danger envelopes for the next LookaheadSecMax seconds.
+    /// Extracts contagion probability, spray variance, and team mask from specs.
+    /// Games define projectile specs; PureDOTS executes hazard prediction.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
@@ -21,6 +25,8 @@ namespace PureDOTS.Systems.Combat
     public partial struct BuildHazardSlicesSystem : ISystem
     {
         private EntityQuery _hazardSliceBufferQuery;
+        private ComponentLookup<FactionId> _factionLookup;
+        private ComponentLookup<WeaponMount> _weaponMountLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -32,6 +38,9 @@ namespace PureDOTS.Systems.Combat
             _hazardSliceBufferQuery = SystemAPI.QueryBuilder()
                 .WithAll<HazardSlice>()
                 .Build();
+
+            _factionLookup = state.GetComponentLookup<FactionId>(true);
+            _weaponMountLookup = state.GetComponentLookup<WeaponMount>(true);
         }
 
         [BurstCompile]
@@ -46,6 +55,17 @@ namespace PureDOTS.Systems.Combat
             if (!SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog))
             {
                 return;
+            }
+            if (!projectileCatalog.Catalog.IsCreated)
+            {
+                return;
+            }
+
+            // Get weapon catalog for spray variance lookup
+            BlobAssetReference<WeaponCatalogBlob> weaponCatalog = default;
+            if (SystemAPI.TryGetSingleton<WeaponCatalog>(out var wc))
+            {
+                weaponCatalog = wc.Catalog;
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -73,6 +93,10 @@ namespace PureDOTS.Systems.Combat
 
             uint lookaheadTicks = (uint)math.ceil(maxLookaheadSec / deltaTime);
 
+            // Update lookups
+            _factionLookup.Update(ref state);
+            _weaponMountLookup.Update(ref state);
+
             // Use a temporary native list per chunk to collect slices
             // We'll use a single-threaded approach for now to avoid parallel write conflicts
             var tempSlices = new NativeList<HazardSlice>(Allocator.TempJob);
@@ -80,6 +104,9 @@ namespace PureDOTS.Systems.Combat
             var job = new BuildHazardSlicesJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
+                WeaponCatalog = weaponCatalog,
+                FactionLookup = _factionLookup,
+                WeaponMountLookup = _weaponMountLookup,
                 CurrentTick = currentTick,
                 LookaheadTicks = lookaheadTicks,
                 DeltaTime = deltaTime,
@@ -104,6 +131,9 @@ namespace PureDOTS.Systems.Combat
         public partial struct BuildHazardSlicesJob : IJobEntity
         {
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
+            [ReadOnly] public BlobAssetReference<WeaponCatalogBlob> WeaponCatalog;
+            [ReadOnly] public ComponentLookup<FactionId> FactionLookup;
+            [ReadOnly] public ComponentLookup<WeaponMount> WeaponMountLookup;
             public uint CurrentTick;
             public uint LookaheadTicks;
             public float DeltaTime;
@@ -117,7 +147,8 @@ namespace PureDOTS.Systems.Combat
                 in VelocitySample velocity)
             {
                 // Find projectile spec
-                if (!TryFindProjectileSpec(ProjectileCatalog, projectile.ProjectileId, out var spec))
+                ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                if (Unsafe.IsNullRef(ref spec))
                 {
                     return;
                 }
@@ -146,6 +177,26 @@ namespace PureDOTS.Systems.Combat
                     kind |= HazardKind.Homing;
                 }
 
+                // Extract contagion probability from OnHit effects (game-defined in spec)
+                float contagionProb = ExtractContagionProbability(ref spec);
+
+                // Check for plague/spray hazard kinds
+                if (contagionProb > 0f)
+                {
+                    kind |= HazardKind.Plague;
+                }
+
+                // Extract spray variance from weapon spec (game-defined)
+                float sprayVariance = ExtractSprayVariance(projectile.SourceEntity);
+
+                if (sprayVariance > 0f)
+                {
+                    kind |= HazardKind.Spray;
+                }
+
+                // Extract team mask from source entity's faction (game-defined)
+                uint teamMask = ExtractTeamMask(projectile.SourceEntity);
+
                 // Predict trajectory for lookahead period
                 float lifetime = spec.Lifetime;
                 float remainingLifetime = lifetime - projectile.Age;
@@ -167,10 +218,10 @@ namespace PureDOTS.Systems.Combat
                     EndTick = CurrentTick + (uint)math.ceil(predictionTime / DeltaTime),
                     Kind = kind,
                     ChainRadius = spec.ChainRange,
-                    ContagionProb = 0f, // TODO: Extract from EffectOp if Plague
-                    HomingConeCos = (ProjectileKind)spec.Kind == ProjectileKind.Homing ? math.cos(math.radians(45f)) : 0f, // 45 degree cone
-                    SprayVariance = 0f, // TODO: Extract from weapon spread
-                    TeamMask = 0xFFFFFFFF, // TODO: Extract from projectile source team
+                    ContagionProb = contagionProb,
+                    HomingConeCos = (ProjectileKind)spec.Kind == ProjectileKind.Homing ? math.cos(math.radians(45f)) : 0f,
+                    SprayVariance = sprayVariance,
+                    TeamMask = teamMask,
                     Seed = projectile.Seed
                 };
 
@@ -194,10 +245,10 @@ namespace PureDOTS.Systems.Combat
                         EndTick = CurrentTick + (uint)math.ceil((remainingLifetime + 0.5f) / DeltaTime), // 0.5s blast duration
                         Kind = HazardKind.AoE,
                         ChainRadius = 0f,
-                        ContagionProb = 0f,
+                        ContagionProb = contagionProb, // Carry over contagion to impact
                         HomingConeCos = 0f,
                         SprayVariance = 0f,
-                        TeamMask = 0xFFFFFFFF,
+                        TeamMask = teamMask,
                         Seed = projectile.Seed
                     };
 
@@ -206,28 +257,109 @@ namespace PureDOTS.Systems.Combat
                 }
             }
 
-            private static bool TryFindProjectileSpec(
-                BlobAssetReference<ProjectileCatalogBlob> catalog,
-                FixedString64Bytes projectileId,
-                out ProjectileSpec spec)
+            /// <summary>
+            /// Extracts contagion probability from projectile OnHit effects.
+            /// Games define Status effects with contagion in ProjectileSpec.OnHit.
+            /// </summary>
+            private static float ExtractContagionProbability(ref ProjectileSpec spec)
             {
-                spec = default;
+                if (!spec.OnHit.Length.Equals(0))
+                {
+                    for (int i = 0; i < spec.OnHit.Length; i++)
+                    {
+                        var effect = spec.OnHit[i];
+                        // Status effects with non-zero Aux are treated as contagion effects
+                        // Games define contagion probability in EffectOp.Aux for Status effects
+                        if (effect.Kind == EffectOpKind.Status && effect.Aux > 0f)
+                        {
+                            return effect.Aux; // Aux contains contagion probability (0-1)
+                        }
+                    }
+                }
+                return 0f;
+            }
+
+            /// <summary>
+            /// Extracts spray variance from weapon that fired the projectile.
+            /// Games define spread angle in WeaponSpec.SpreadDeg.
+            /// </summary>
+            private float ExtractSprayVariance(Entity sourceEntity)
+            {
+                if (sourceEntity == Entity.Null)
+                {
+                    return 0f;
+                }
+
+                // Look up weapon mount on source entity
+                if (WeaponMountLookup.HasComponent(sourceEntity))
+                {
+                    var weaponMount = WeaponMountLookup[sourceEntity];
+
+                    // Look up weapon spec from catalog
+                    if (WeaponCatalog.IsCreated)
+                    {
+                        ref var catalog = ref WeaponCatalog.Value;
+                        for (int i = 0; i < catalog.Weapons.Length; i++)
+                        {
+                            ref var weaponSpec = ref catalog.Weapons[i];
+                            if (weaponSpec.Id.Equals(weaponMount.WeaponId))
+                            {
+                                // Convert spread degrees to radians
+                                return math.radians(weaponSpec.SpreadDeg);
+                            }
+                        }
+                    }
+                }
+
+                return 0f;
+            }
+
+            /// <summary>
+            /// Extracts team mask from source entity's faction.
+            /// Games define faction relationships; PureDOTS uses mask for friendly fire exclusion.
+            /// </summary>
+            private uint ExtractTeamMask(Entity sourceEntity)
+            {
+                if (sourceEntity == Entity.Null)
+                {
+                    return 0xFFFFFFFF; // No source = hits everyone
+                }
+
+                // Look up faction on source entity
+                if (FactionLookup.HasComponent(sourceEntity))
+                {
+                    var faction = FactionLookup[sourceEntity];
+
+                    // Create mask that excludes same faction
+                    // Bit N is set if faction N is hostile to this faction
+                    // For simplicity: same faction bit is 0 (friendly), all others are 1 (hostile)
+                    uint factionBit = 1u << (faction.Value % 32);
+                    return ~factionBit; // All bits except own faction
+                }
+
+                return 0xFFFFFFFF; // No faction = hits everyone
+            }
+
+            private static ref ProjectileSpec FindProjectileSpec(
+                BlobAssetReference<ProjectileCatalogBlob> catalog,
+                FixedString64Bytes projectileId)
+            {
                 if (!catalog.IsCreated)
                 {
-                    return false;
+                    return ref Unsafe.NullRef<ProjectileSpec>();
                 }
 
                 ref var catalogRef = ref catalog.Value;
                 for (int i = 0; i < catalogRef.Projectiles.Length; i++)
                 {
-                    if (catalogRef.Projectiles[i].Id.Equals(projectileId))
+                    ref var projectileSpec = ref catalogRef.Projectiles[i];
+                    if (projectileSpec.Id.Equals(projectileId))
                     {
-                        spec = catalogRef.Projectiles[i];
-                        return true;
+                        return ref projectileSpec;
                     }
                 }
 
-                return false;
+                return ref Unsafe.NullRef<ProjectileSpec>();
             }
         }
     }

@@ -19,11 +19,12 @@ namespace PureDOTS.Systems.Devtools
     [UpdateAfter(typeof(ValidateSpawnCandidatesSystem))]
     public partial struct InstantiateSpawnSystem : ISystem
     {
-        private static readonly FixedString64Bytes StatNameHealth = "health";
-        private static readonly FixedString64Bytes StatNameSpeed = "speed";
-        private static readonly FixedString64Bytes StatNameMass = "mass";
-        private static readonly FixedString64Bytes StatNameDamage = "damage";
-        private static readonly FixedString64Bytes StatNameRange = "range";
+        // Instance fields for Burst-compatible FixedString patterns (initialized in OnCreate)
+        private FixedString64Bytes _statNameHealth;
+        private FixedString64Bytes _statNameSpeed;
+        private FixedString64Bytes _statNameMass;
+        private FixedString64Bytes _statNameDamage;
+        private FixedString64Bytes _statNameRange;
 
         private EndFixedStepSimulationEntityCommandBufferSystem.Singleton _ecbSingleton;
 
@@ -31,6 +32,13 @@ namespace PureDOTS.Systems.Devtools
         {
             _ecbSingleton = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<SpawnRequest>();
+            
+            // Initialize FixedString patterns (OnCreate is not Burst-compiled)
+            _statNameHealth = new FixedString64Bytes("health");
+            _statNameSpeed = new FixedString64Bytes("speed");
+            _statNameMass = new FixedString64Bytes("mass");
+            _statNameDamage = new FixedString64Bytes("damage");
+            _statNameRange = new FixedString64Bytes("range");
         }
 
         [BurstCompile]
@@ -114,33 +122,33 @@ namespace PureDOTS.Systems.Devtools
             }
         }
 
-        private static bool TryApplyStatOverride(ref PrototypeStatsDefault stats, in StatOverride statOverride)
+        private bool TryApplyStatOverride(ref PrototypeStatsDefault stats, in StatOverride statOverride)
         {
-            if (EqualsStatName(statOverride.Name, StatNameHealth))
+            if (EqualsStatName(statOverride.Name, _statNameHealth))
             {
                 stats.Health = statOverride.Value;
                 return true;
             }
 
-            if (EqualsStatName(statOverride.Name, StatNameSpeed))
+            if (EqualsStatName(statOverride.Name, _statNameSpeed))
             {
                 stats.Speed = statOverride.Value;
                 return true;
             }
 
-            if (EqualsStatName(statOverride.Name, StatNameMass))
+            if (EqualsStatName(statOverride.Name, _statNameMass))
             {
                 stats.Mass = statOverride.Value;
                 return true;
             }
 
-            if (EqualsStatName(statOverride.Name, StatNameDamage))
+            if (EqualsStatName(statOverride.Name, _statNameDamage))
             {
                 stats.Damage = statOverride.Value;
                 return true;
             }
 
-            if (EqualsStatName(statOverride.Name, StatNameRange))
+            if (EqualsStatName(statOverride.Name, _statNameRange))
             {
                 stats.Range = statOverride.Value;
                 return true;

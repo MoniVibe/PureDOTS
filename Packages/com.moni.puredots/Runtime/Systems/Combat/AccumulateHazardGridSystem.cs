@@ -5,6 +5,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Combat
@@ -38,41 +39,41 @@ namespace PureDOTS.Systems.Combat
             var currentTick = timeState.Tick;
             var deltaTime = timeState.DeltaTime;
 
+            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+
             // Find or create hazard grid
-            Entity gridEntity;
             HazardGrid grid;
-            if (!SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out gridEntity) ||
-                !SystemAPI.HasComponent<HazardGrid>(gridEntity))
+            Entity gridEntity;
+            bool gridExists = false;
+            if (SystemAPI.TryGetSingleton(out HazardGridSingleton gridSingleton) &&
+                SystemAPI.HasComponent<HazardGrid>(gridSingleton.GridEntity))
             {
-                // Create default grid (1000x1000x1 cells, 10m per cell, centered at origin)
-                gridEntity = state.EntityManager.CreateEntity();
-                var gridConfig = new HazardGrid
+                gridEntity = gridSingleton.GridEntity;
+                grid = SystemAPI.GetComponent<HazardGrid>(gridEntity);
+                gridExists = true;
+            }
+            else
+            {
+                gridEntity = ecb.CreateEntity();
+                grid = new HazardGrid
                 {
                     Size = new int3(100, 100, 1), // 2D default
                     Cell = 10f,
                     Origin = float3.zero,
                     Risk = default
                 };
-                state.EntityManager.AddComponent<HazardGrid>(gridEntity);
-                state.EntityManager.SetComponent(gridEntity, gridConfig);
-                
-                // Set singleton
-                if (SystemAPI.HasSingleton<HazardGridSingleton>())
+                ecb.AddComponent(gridEntity, grid);
+
+                if (SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out var singletonEntity))
                 {
-                    SystemAPI.SetSingleton(new HazardGridSingleton { GridEntity = gridEntity });
+                    ecb.SetComponent(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
                 }
                 else
                 {
-                    var singletonEntity = state.EntityManager.CreateEntity();
-                    state.EntityManager.AddComponent<HazardGridSingleton>(singletonEntity);
-                    state.EntityManager.SetComponent(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
+                    var newSingletonEntity = ecb.CreateEntity();
+                    ecb.AddComponent(newSingletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
                 }
-                
-                grid = gridConfig;
-            }
-            else
-            {
-                grid = SystemAPI.GetComponent<HazardGrid>(gridEntity);
             }
 
             // Get hazard slices buffer
@@ -86,48 +87,61 @@ namespace PureDOTS.Systems.Combat
 
             // Rebuild risk blob if needed
             int totalCells = grid.Size.x * grid.Size.y * grid.Size.z;
-            if (!grid.Risk.IsCreated || grid.Risk.Value.Length != totalCells)
+            if (!grid.Risk.IsCreated || grid.Risk.Value.Risk.Length != totalCells)
             {
+                if (grid.Risk.IsCreated)
+                {
+                    grid.Risk.Dispose();
+                }
+
                 // Create new risk blob
                 var builder = new BlobBuilder(Allocator.Temp);
-                ref var root = ref builder.ConstructRoot<float>();
-                var riskArray = builder.Allocate(ref root, totalCells);
+                ref var root = ref builder.ConstructRoot<HazardRiskBlob>();
+                var riskArray = builder.Allocate(ref root.Risk, totalCells);
                 for (int i = 0; i < totalCells; i++)
                 {
                     riskArray[i] = 0f;
                 }
-                var newRisk = builder.CreateBlobAssetReference<float>(Allocator.Persistent);
+                var newRisk = builder.CreateBlobAssetReference<HazardRiskBlob>(Allocator.Persistent);
                 builder.Dispose();
 
                 grid.Risk = newRisk;
-                SystemAPI.SetComponent(gridEntity, grid);
+                if (gridExists)
+                {
+                    SystemAPI.SetComponent(gridEntity, grid);
+                }
+                else
+                {
+                    ecb.SetComponent(gridEntity, grid);
+                }
             }
 
             // Clear grid
-            ref var riskData = ref grid.Risk.Value;
-            UnsafeUtility.MemClear(riskData.GetUnsafePtr(), totalCells * sizeof(float));
+            ref var riskData = ref grid.Risk.Value.Risk;
+            unsafe
+            {
+                UnsafeUtility.MemClear(riskData.GetUnsafePtr(), totalCells * sizeof(float));
+            }
 
             // Convert slices to native array for job
             var slicesArray = slices.ToNativeArray(Allocator.TempJob);
 
             // Rasterize slices into grid
-            var job = new AccumulateHazardGridJob
+            state.Dependency = new AccumulateHazardGridJob
             {
                 Grid = grid,
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
                 Slices = slicesArray,
                 RiskData = riskData
-            };
-
-            state.Dependency = job.Schedule(slices.Length, 64, state.Dependency);
+            }.Schedule(slices.Length, 64, state.Dependency);
             state.Dependency.Complete();
 
             slicesArray.Dispose();
         }
 
         [BurstCompile]
-        public struct AccumulateHazardGridJob : IJobFor
+        public struct AccumulateHazardGridJob : IJobParallelFor
         {
             [ReadOnly] public HazardGrid Grid;
             public uint CurrentTick;
@@ -207,7 +221,7 @@ namespace PureDOTS.Systems.Combat
 
             private static float3 CellCenter(int3 cell, HazardGrid grid)
             {
-                return grid.Origin + (cell + 0.5f) * grid.Cell;
+                return grid.Origin + ((float3)cell + 0.5f) * grid.Cell;
             }
 
             private static int Flatten(int3 cell, HazardGrid grid)

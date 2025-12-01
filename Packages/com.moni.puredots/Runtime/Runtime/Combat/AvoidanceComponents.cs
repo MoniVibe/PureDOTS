@@ -36,6 +36,17 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
+    /// Current hazard avoidance steering state for an entity.
+    /// Populated by hazard sensing/avoidance systems and consumed by movement composition.
+    /// </summary>
+    public struct HazardAvoidanceState : IComponentData
+    {
+        public float3 CurrentAdjustment; // Directional steering adjustment away from hazards
+        public Entity AvoidingEntity; // Entity currently being avoided (optional)
+        public float AvoidanceUrgency; // 0-1 urgency scalar used by downstream systems
+    }
+
+    /// <summary>
     /// Formation anchor - defines relative position in a formation.
     /// </summary>
     public struct FormationAnchor : IComponentData
@@ -69,6 +80,46 @@ namespace PureDOTS.Runtime.Combat
         Hold = 0, // Maintain current formation
         Loose = 1, // Widen spacing
         Break = 2 // Break formation, solo avoidance
+    }
+
+    /// <summary>
+    /// Ring buffer entry for delayed avoidance reaction.
+    /// Stores sampled avoidance data for applying ReactionSec delay.
+    /// Games configure ReactionSec via AvoidanceProfile.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct AvoidanceReactionSample : IBufferElementData
+    {
+        /// <summary>
+        /// Computed avoidance adjustment at sample time.
+        /// </summary>
+        public float3 Adjustment;
+
+        /// <summary>
+        /// Urgency level at sample time.
+        /// </summary>
+        public float Urgency;
+
+        /// <summary>
+        /// Tick when this sample was taken.
+        /// </summary>
+        public uint SampleTick;
+    }
+
+    /// <summary>
+    /// State tracking for avoidance reaction delay ring buffer.
+    /// </summary>
+    public struct AvoidanceReactionState : IComponentData
+    {
+        /// <summary>
+        /// Current write index in the ring buffer.
+        /// </summary>
+        public byte WriteIndex;
+
+        /// <summary>
+        /// Number of valid samples in buffer.
+        /// </summary>
+        public byte SampleCount;
     }
 }
 

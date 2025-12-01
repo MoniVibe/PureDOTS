@@ -18,11 +18,16 @@ namespace PureDOTS.Systems.Ships
     [UpdateAfter(typeof(DerelictClassifierSystem))]
     public partial struct LifeBoatEjectorSystem : ISystem
     {
-        [BurstCompile]
+        // Instance field for Burst-compatible FixedString pattern (initialized in OnCreate)
+        private FixedString32Bytes _bridgeIdPattern;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            
+            // Initialize FixedString pattern here (OnCreate is not Burst-compiled)
+            _bridgeIdPattern = new FixedString32Bytes("bridge");
         }
 
         [BurstCompile]
@@ -43,7 +48,8 @@ namespace PureDOTS.Systems.Ships
             var job = new LifeBoatEjectorJob
             {
                 Ecb = ecb,
-                TransformLookup = transformLookup
+                TransformLookup = transformLookup,
+                BridgeIdPattern = _bridgeIdPattern
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -54,6 +60,7 @@ namespace PureDOTS.Systems.Ships
         {
             public EntityCommandBuffer.ParallelWriter Ecb;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public FixedString32Bytes BridgeIdPattern;
 
             void Execute(
                 [ChunkIndexInQuery] int chunkIndex,
@@ -63,7 +70,7 @@ namespace PureDOTS.Systems.Ships
                 in HullState hull,
                 in DerelictState derelict,
                 in LocalTransform transform,
-                DynamicBuffer<ModuleRuntimeState> modules,
+                in DynamicBuffer<ModuleRuntimeStateElement> modules,
                 in ShipLayoutRef layoutRef)
             {
                 // Check if ejection should occur
@@ -82,7 +89,7 @@ namespace PureDOTS.Systems.Ships
                     for (int i = 0; i < layout.Modules.Length && i < modules.Length; i++)
                     {
                         ref var moduleSlot = ref layout.Modules[i];
-                        if (moduleSlot.Id.ToString().Contains("bridge"))
+                        if (moduleSlot.Id.IndexOf(BridgeIdPattern) >= 0)
                         {
                             ref var module = ref modules.ElementAt(i);
                             if (module.Destroyed != 0)

@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Systems;
+using PureDOTS.Systems.Ships;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -20,11 +21,18 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(BuildHazardSlicesSystem))]
     public partial struct HazardEmitFromDamageSystem : ISystem
     {
-        [BurstCompile]
+        // Instance fields for Burst-compatible FixedString patterns (initialized in OnCreate)
+        private FixedString32Bytes _reactorIdPattern;
+        private FixedString32Bytes _engineIdPattern;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            
+            // Initialize FixedString patterns here (OnCreate is not Burst-compiled)
+            _reactorIdPattern = new FixedString32Bytes("reactor");
+            _engineIdPattern = new FixedString32Bytes("engine");
         }
 
         [BurstCompile]
@@ -54,12 +62,18 @@ namespace PureDOTS.Systems.Combat
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             transformLookup.Update(ref state);
 
+            var sliceBufferLookup = state.GetBufferLookup<HazardSlice>();
+            sliceBufferLookup.Update(ref state);
+
             var job = new HazardEmitFromDamageJob
             {
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
-                SliceBuffer = sliceBuffer,
-                TransformLookup = transformLookup
+                SliceBufferEntity = sliceBufferEntity,
+                SliceBufferLookup = sliceBufferLookup,
+                TransformLookup = transformLookup,
+                ReactorIdPattern = _reactorIdPattern,
+                EngineIdPattern = _engineIdPattern
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -71,12 +85,15 @@ namespace PureDOTS.Systems.Combat
         {
             public uint CurrentTick;
             public float DeltaTime;
-            [NativeDisableParallelForRestriction] public DynamicBuffer<HazardSlice> SliceBuffer;
+            public Entity SliceBufferEntity;
+            [NativeDisableParallelForRestriction] public BufferLookup<HazardSlice> SliceBufferLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public FixedString32Bytes ReactorIdPattern;
+            [ReadOnly] public FixedString32Bytes EngineIdPattern;
 
             void Execute(
                 Entity entity,
-                DynamicBuffer<ModuleRuntimeState> modules,
+                ref DynamicBuffer<ModuleRuntimeStateElement> modules,
                 in ShipLayoutRef layoutRef,
                 in LocalTransform transform)
             {
@@ -87,14 +104,15 @@ namespace PureDOTS.Systems.Combat
 
                 ref var layout = ref layoutRef.Blob.Value;
                 float3 shipPos = transform.Position;
+                var sliceBuffer = SliceBufferLookup[SliceBufferEntity];
 
                 // Check for reactor destruction (radiation hazard)
                 for (int i = 0; i < layout.Modules.Length && i < modules.Length; i++)
                 {
                     ref var moduleSlot = ref layout.Modules[i];
-                    ref var module = ref modules.ElementAt(i);
+                    var module = modules[i];
 
-                    if (moduleSlot.Id.ToString().Contains("reactor") && module.Destroyed != 0)
+                    if (moduleSlot.Id.IndexOf(ReactorIdPattern) >= 0 && module.Destroyed != 0)
                     {
                         // Emit radiation hazard
                         var radiationSlice = new HazardSlice
@@ -114,11 +132,11 @@ namespace PureDOTS.Systems.Combat
                             Seed = (uint)entity.Index
                         };
 
-                        SliceBuffer.Add(radiationSlice);
+                        sliceBuffer.Add(radiationSlice);
                     }
 
                     // Check for fire (simplified - would track fire state)
-                    if (moduleSlot.Id.ToString().Contains("engine") && module.Destroyed != 0 && module.HP < module.MaxHP * 0.5f)
+                    if (moduleSlot.Id.IndexOf(EngineIdPattern) >= 0 && module.Destroyed != 0 && module.HP < module.MaxHP * 0.5f)
                     {
                         // Emit fire hazard
                         var fireSlice = new HazardSlice
@@ -138,7 +156,7 @@ namespace PureDOTS.Systems.Combat
                             Seed = (uint)entity.Index + 1000
                         };
 
-                        SliceBuffer.Add(fireSlice);
+                        sliceBuffer.Add(fireSlice);
                     }
                 }
             }

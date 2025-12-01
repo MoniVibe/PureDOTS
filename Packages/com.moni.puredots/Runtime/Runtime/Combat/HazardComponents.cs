@@ -42,6 +42,14 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
+    /// Blob asset root storing risk samples for the hazard grid.
+    /// </summary>
+    public struct HazardRiskBlob
+    {
+        public BlobArray<float> Risk;
+    }
+
+    /// <summary>
     /// Hazard grid - 3D risk accumulation grid.
     /// For 2D battles, set Size.z = 1.
     /// </summary>
@@ -50,7 +58,7 @@ namespace PureDOTS.Runtime.Combat
         public int3 Size; // Grid dimensions in cells (z=1 for 2D)
         public float Cell; // Meters per cell (uniform)
         public float3 Origin; // World origin of grid
-        public BlobAssetReference<float> Risk; // Flattened risk array [z][y][x]
+        public BlobAssetReference<HazardRiskBlob> Risk; // Flattened risk array [z][y][x]
     }
 
     /// <summary>

@@ -6,7 +6,9 @@ namespace PureDOTS.Runtime.Debugging
     internal static class RuntimeDebugConsole
     {
         private static RuntimeConfigConsoleBehaviour? s_console;
+#if PUREDOTS_LEGACY_CAMERA
         private static DiagnosticsOverlayBehaviour? s_overlay;
+#endif
 
         public static void EnsureConsole()
         {
@@ -30,6 +32,7 @@ namespace PureDOTS.Runtime.Debugging
             s_console?.AppendLog(message);
         }
 
+#if PUREDOTS_LEGACY_CAMERA
         public static void EnsureOverlay()
         {
             if (s_overlay != null)
@@ -46,6 +49,12 @@ namespace PureDOTS.Runtime.Debugging
             Object.DontDestroyOnLoad(go);
             s_overlay = go.AddComponent<DiagnosticsOverlayBehaviour>();
         }
+#else
+        public static void EnsureOverlay()
+        {
+            // Overlay only exists when legacy camera bridge is enabled.
+        }
+#endif
     }
 }
 

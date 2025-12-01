@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Knowledge;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -41,7 +42,7 @@ namespace PureDOTS.Systems.Knowledge
                 return;
             }
 
-            var lessonCatalog = lessonCatalogRef.Blob.Value;
+            ref var lessonCatalog = ref lessonCatalogRef.Blob.Value;
 
             new ProcessLessonProgressionJob
             {
@@ -108,6 +109,7 @@ namespace PureDOTS.Systems.Knowledge
                     float totalProgress = CalculateTotalProgress(mastery.TotalXp, xpPerTier);
                     mastery.Tier = MasteryTierUtility.GetTierFromProgress(totalProgress);
                     mastery.TierProgress = MasteryTierUtility.GetProgressWithinTier(totalProgress);
+                    mastery.Progress = mastery.TierProgress;
 
                     // Check for tier up
                     if (mastery.Tier > oldTier)

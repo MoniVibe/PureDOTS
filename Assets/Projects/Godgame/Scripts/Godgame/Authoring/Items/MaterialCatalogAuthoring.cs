@@ -9,10 +9,11 @@ using UnityEngine;
 namespace Godgame.Authoring.Items
 {
     /// <summary>
-    /// Authoring ScriptableObject for material catalog.
+    /// Authoring component for the material catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "MaterialCatalog", menuName = "Godgame/Items/Material Catalog")]
-    public class MaterialCatalogAuthoring : ScriptableObject
+    [DisallowMultipleComponent]
+    [AddComponentMenu("Godgame/Items/Material Catalog")]
+    public sealed class MaterialCatalogAuthoring : MonoBehaviour
     {
         public List<MaterialEntryAuthoring> Materials = new List<MaterialEntryAuthoring>();
     }

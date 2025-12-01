@@ -1,6 +1,8 @@
+using System;
 using NUnit.Framework;
 using PureDOTS.Runtime.Combat;
 using Unity.Collections;
+using Unity.Entities;
 
 namespace PureDOTS.Tests.EditMode
 {
@@ -12,137 +14,155 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_NonNegativeSpeeds()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob(spec =>
             {
-                Id = "test.projectile",
-                Kind = (byte)ProjectileKind.Ballistic,
-                Speed = -10f, // Invalid: negative speed
-                Lifetime = 5f,
-                TurnRateDeg = 0f,
-                SeekRadius = 0f,
-                AoERadius = 0f,
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF,
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
+                spec.Id = "test.projectile";
+                spec.Kind = (byte)ProjectileKind.Ballistic;
+                spec.Speed = -10f;
+                spec.Lifetime = 5f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 0f;
+                spec.AoERadius = 0f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             Assert.GreaterOrEqual(spec.Speed, 0f, "Speed should be non-negative");
         }
-
+        
         [Test]
         public void ProjectileSpec_NonNegativeLifetime()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob(spec =>
             {
-                Id = "test.projectile",
-                Kind = (byte)ProjectileKind.Ballistic,
-                Speed = 100f,
-                Lifetime = -1f, // Invalid: negative lifetime
-                TurnRateDeg = 0f,
-                SeekRadius = 0f,
-                AoERadius = 0f,
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF,
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
+                spec.Id = "test.projectile";
+                spec.Kind = (byte)ProjectileKind.Ballistic;
+                spec.Speed = 100f;
+                spec.Lifetime = -1f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 0f;
+                spec.AoERadius = 0f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             Assert.GreaterOrEqual(spec.Lifetime, 0f, "Lifetime should be non-negative");
         }
-
+        
         [Test]
         public void ProjectileSpec_NonNegativeRadius()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob(spec =>
             {
-                Id = "test.projectile",
-                Kind = (byte)ProjectileKind.Ballistic,
-                Speed = 100f,
-                Lifetime = 5f,
-                TurnRateDeg = 0f,
-                SeekRadius = 0f,
-                AoERadius = -5f, // Invalid: negative radius
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF,
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
+                spec.Id = "test.projectile";
+                spec.Kind = (byte)ProjectileKind.Ballistic;
+                spec.Speed = 100f;
+                spec.Lifetime = 5f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 0f;
+                spec.AoERadius = -5f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             Assert.GreaterOrEqual(spec.AoERadius, 0f, "AoE radius should be non-negative");
         }
-
+        
         [Test]
         public void ProjectileSpec_ValidCollisionFilter()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob(spec =>
             {
-                Id = "test.projectile",
-                Kind = (byte)ProjectileKind.Ballistic,
-                Speed = 100f,
-                Lifetime = 5f,
-                TurnRateDeg = 0f,
-                SeekRadius = 0f,
-                AoERadius = 0f,
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF, // Valid: all layers
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
-            // Filter should be valid (non-zero for collision)
+                spec.Id = "test.projectile";
+                spec.Kind = (byte)ProjectileKind.Ballistic;
+                spec.Speed = 100f;
+                spec.Lifetime = 5f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 0f;
+                spec.AoERadius = 0f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             Assert.IsTrue(spec.HitFilter != 0 || spec.AoERadius > 0f, "HitFilter should be non-zero or AoE radius should be positive");
         }
-
+        
         [Test]
         public void ProjectileSpec_BeamHasZeroSpeed()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob(spec =>
             {
-                Id = "test.beam",
-                Kind = (byte)ProjectileKind.Beam,
-                Speed = 100f, // Beam should have 0 speed (instant hit)
-                Lifetime = 5f,
-                TurnRateDeg = 0f,
-                SeekRadius = 0f,
-                AoERadius = 0f,
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF,
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
-            // Beam projectiles should have speed 0 (handled by BeamTickSystem)
+                spec.Id = "test.beam";
+                spec.Kind = (byte)ProjectileKind.Beam;
+                spec.Speed = 100f;
+                spec.Lifetime = 5f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 0f;
+                spec.AoERadius = 0f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             if ((ProjectileKind)spec.Kind == ProjectileKind.Beam)
             {
                 Assert.AreEqual(0f, spec.Speed, 0.01f, "Beam projectiles should have speed 0");
             }
         }
-
+        
         [Test]
         public void ProjectileSpec_HomingHasTurnRate()
         {
-            var spec = new ProjectileSpec
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
-                Id = "test.homing",
-                Kind = (byte)ProjectileKind.Homing,
-                Speed = 100f,
-                Lifetime = 5f,
-                TurnRateDeg = 0f, // Invalid: homing should have turn rate
-                SeekRadius = 50f,
-                AoERadius = 0f,
-                Pierce = 0f,
-                ChainRange = 0f,
-                HitFilter = 0xFFFFFFFF,
-                Damage = new DamageModel { BaseDamage = 10f }
-            };
-
-            // Homing projectiles should have positive turn rate
+                spec.Id = "test.homing";
+                spec.Kind = (byte)ProjectileKind.Homing;
+                spec.Speed = 100f;
+                spec.Lifetime = 5f;
+                spec.TurnRateDeg = 0f;
+                spec.SeekRadius = 50f;
+                spec.AoERadius = 0f;
+                spec.Pierce = 0f;
+                spec.ChainRange = 0f;
+                spec.HitFilter = 0xFFFFFFFF;
+                spec.Damage = new DamageModel { BaseDamage = 10f };
+            });
+            
+            ref var spec = ref specBlob.Value;
             if ((ProjectileKind)spec.Kind == ProjectileKind.Homing)
             {
                 Assert.Greater(spec.TurnRateDeg, 0f, "Homing projectiles should have positive turn rate");
             }
         }
+        
+        private delegate void RefSpecConfigurator(ref ProjectileSpec spec);
+
+        private static BlobAssetReference<ProjectileSpec> CreateProjectileSpecBlob(RefSpecConfigurator configure)
+        {
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var spec = ref builder.ConstructRoot<ProjectileSpec>();
+            
+            builder.Allocate(ref spec.OnHit, 0);
+
+            configure(ref spec);
+            
+            var blob = builder.CreateBlobAssetReference<ProjectileSpec>(Allocator.Temp);
+            builder.Dispose();
+            return blob;
+        }
     }
 }
-

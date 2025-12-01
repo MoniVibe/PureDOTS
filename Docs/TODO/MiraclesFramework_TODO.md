@@ -2,6 +2,16 @@
 
 > **Generalisation Guideline**: Treat miracle casting as a reusable effect system. Miracle behaviours should be defined through data (profiles, payload configs) rather than game-specific code branches.
 
+## Cross-References
+
+| Contract | Location |
+|----------|----------|
+| Runtime Lifecycle | `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` |
+| System Integration | `Docs/TODO/SystemIntegration_TODO.md` |
+| Environment Grids | `Runtime/Runtime/Environment/EnvironmentGrids.cs` |
+| Spatial Queries | `Runtime/Runtime/Registry/RegistryQueryHelpers.cs` |
+| AI Sensors | `Runtime/Runtime/AI/SensorComponents.cs` (for targeting) |
+
 ## Goal
 - Build a reusable miracles framework matching Black & White 2 behaviour: miracles are throwable (token) or sustained (RMB hold) hand interactions with deterministic area effects.
 - Support many miracle types sharing the same lifecycle template (pickup → aim → release/hold → effect) with configuration-driven payloads.

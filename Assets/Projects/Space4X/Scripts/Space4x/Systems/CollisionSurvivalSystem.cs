@@ -177,6 +177,7 @@ namespace Space4X.Systems
 
                         // Apply wisdom gain (would need to modify WisdomPool, but it's readonly here)
                         // TODO: Create WisdomGainEvent buffer or use ECB to modify WisdomPool
+                        _ = wisdomGain;
                     }
 
                     // TODO: Apply injury/death effects based on outcome

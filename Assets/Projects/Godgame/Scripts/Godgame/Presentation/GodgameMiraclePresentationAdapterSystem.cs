@@ -8,7 +8,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Ensures miracle entities spawn the correct presentation prefab based on type + lifecycle.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(PureDOTS.Systems.MiracleRegistrySystem))]
     public partial struct GodgameMiraclePresentationAdapterSystem : ISystem

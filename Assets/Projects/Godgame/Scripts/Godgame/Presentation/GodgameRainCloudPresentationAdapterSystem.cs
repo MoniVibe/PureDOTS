@@ -9,7 +9,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Applies presentation bindings to rain cloud entities so placeholder VFX can be swapped with authored assets.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(MoistureRainSystem))]
     public partial struct GodgameRainCloudPresentationAdapterSystem : ISystem

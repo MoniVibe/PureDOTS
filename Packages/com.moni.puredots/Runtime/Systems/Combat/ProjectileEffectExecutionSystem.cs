@@ -2,8 +2,10 @@ using PureDOTS.Runtime.Buffs;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spatial;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -107,7 +109,8 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 // Find projectile spec
-                if (!TryFindProjectileSpec(ProjectileCatalog, projectile.ProjectileId, out var spec))
+                ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                if (Unsafe.IsNullRef(ref spec))
                 {
                     return;
                 }
@@ -131,7 +134,7 @@ namespace PureDOTS.Systems.Combat
                             chunkIndex,
                             projectileEntity,
                             ref projectile,
-                            spec,
+                            ref spec,
                             effectOp,
                             hit,
                             chunkIndex);
@@ -155,7 +158,7 @@ namespace PureDOTS.Systems.Combat
                 int chunkIndex,
                 Entity projectileEntity,
                 ref ProjectileEntity projectile,
-                ProjectileSpec spec,
+                ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit,
                 int entityInQueryIndex)
@@ -163,15 +166,15 @@ namespace PureDOTS.Systems.Combat
                 switch (effectOp.Kind)
                 {
                     case EffectOpKind.Damage:
-                        ApplyDamage(chunkIndex, projectile, spec, effectOp, hit);
+                        ApplyDamage(chunkIndex, projectile, ref spec, effectOp, hit);
                         break;
 
                     case EffectOpKind.AoE:
-                        ApplyAoE(chunkIndex, projectile, spec, effectOp, hit);
+                        ApplyAoE(chunkIndex, projectile, ref spec, effectOp, hit);
                         break;
 
                     case EffectOpKind.Chain:
-                        ApplyChain(chunkIndex, projectile, spec, effectOp, hit);
+                        ApplyChain(chunkIndex, projectile, ref spec, effectOp, hit);
                         break;
 
                     case EffectOpKind.Status:
@@ -183,7 +186,7 @@ namespace PureDOTS.Systems.Combat
                         break;
 
                     case EffectOpKind.SpawnSub:
-                        ApplySpawnSub(chunkIndex, projectile, spec, effectOp, hit);
+                        ApplySpawnSub(chunkIndex, projectile, ref spec, effectOp, hit);
                         break;
                 }
             }
@@ -191,12 +194,33 @@ namespace PureDOTS.Systems.Combat
             private void ApplyDamage(
                 int chunkIndex,
                 ProjectileEntity projectile,
-                ProjectileSpec spec,
+                ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit)
             {
-                // Calculate damage from spec and effect magnitude
-                float damage = spec.Damage.BaseDamage * effectOp.Magnitude;
+                // Calculate base damage from spec and effect magnitude
+                float baseDamage = spec.Damage.BaseDamage * effectOp.Magnitude;
+
+                // Apply deterministic damage variation
+                float damageMultiplier = CalculateDamageMultiplier(
+                    projectile.Seed,
+                    projectile.PelletIndex,
+                    hit.HitEntity.Index, // Use entity index as target ID for deterministic rolls
+                    spec.Damage);
+
+                float finalDamage = baseDamage * damageMultiplier;
+
+                // Check for critical hits
+                bool isCritical = CalculateCriticalHit(
+                    projectile.Seed,
+                    projectile.PelletIndex,
+                    hit.HitEntity.Index,
+                    0.1f); // 10% crit chance - could be made configurable
+
+                if (isCritical)
+                {
+                    finalDamage *= 2.0f; // 2x damage on crit - could be made configurable
+                }
 
                 // Add damage event to target's buffer
                 if (DamageBuffers.HasBuffer(hit.HitEntity))
@@ -206,10 +230,10 @@ namespace PureDOTS.Systems.Combat
                     {
                         SourceEntity = projectile.SourceEntity,
                         TargetEntity = hit.HitEntity,
-                        RawDamage = damage,
+                        RawDamage = finalDamage,
                         Type = DamageType.Physical, // Could be extended based on effectOp
                         Tick = CurrentTick,
-                        Flags = DamageFlags.Pierce // Projectiles typically pierce armor
+                        Flags = (isCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Pierce
                     });
                 }
                 else
@@ -222,7 +246,7 @@ namespace PureDOTS.Systems.Combat
             private void ApplyAoE(
                 int chunkIndex,
                 ProjectileEntity projectile,
-                ProjectileSpec spec,
+                ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit)
             {
@@ -238,29 +262,30 @@ namespace PureDOTS.Systems.Combat
                 if (HasPhysicsWorld)
                 {
                     // Use physics overlap sphere
-                    var overlapInput = new OverlapSphereInput
-                    {
-                        Position = hit.HitPosition,
-                        Radius = aoeRadius,
-                        Filter = new CollisionFilter
+                    var hits = new NativeList<DistanceHit>(32, Allocator.Temp);
+                    PhysicsWorld.OverlapSphere(
+                        hit.HitPosition,
+                        aoeRadius,
+                        ref hits,
+                        new CollisionFilter
                         {
                             BelongsTo = 0xFFFFFFFF,
                             CollidesWith = spec.HitFilter,
                             GroupIndex = 0
-                        }
-                    };
+                        });
 
-                    var collector = new AoeCollector(projectile.SourceEntity, hit.HitEntity);
-                    PhysicsWorld.OverlapSphere(overlapInput, ref collector);
-                    aoeTargets = collector.HitEntities;
+                    for (int i = 0; i < hits.Length; i++)
+                    {
+                        var target = hits[i].Entity;
+                        if (target != projectile.SourceEntity && target != hit.HitEntity)
+                        {
+                            aoeTargets.Add(target);
+                        }
+                    }
+
+                    hits.Dispose();
                 }
-                else if (HasSpatialGrid)
-                {
-                    // Use spatial grid query
-                    var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
-                    // Note: We'd need access to ranges/entries buffers here
-                    // For now, skip spatial grid AoE if physics is available
-                }
+                // Spatial grid path omitted in the burst job to avoid SystemAPI access
 
                 // Apply damage to all entities in AoE
                 for (int i = 0; i < aoeTargets.Length; i++)
@@ -285,7 +310,28 @@ namespace PureDOTS.Systems.Combat
                     // Calculate distance-based falloff
                     float distance = math.distance(hit.HitPosition, targetPos);
                     float falloff = math.saturate(1f - (distance / aoeRadius));
-                    float aoeDamage = spec.Damage.BaseDamage * effectOp.Magnitude * falloff;
+                    float baseAoEDamage = spec.Damage.BaseDamage * effectOp.Magnitude * falloff;
+
+                    // Apply deterministic damage variation for AoE
+                    float aoeDamageMultiplier = CalculateDamageMultiplier(
+                        projectile.Seed,
+                        projectile.PelletIndex,
+                        target.Index,
+                        spec.Damage);
+
+                    float finalAoEDamage = baseAoEDamage * aoeDamageMultiplier;
+
+                    // Check for critical hits on AoE targets
+                    bool isAoECritical = CalculateCriticalHit(
+                        projectile.Seed,
+                        projectile.PelletIndex,
+                        target.Index,
+                        0.05f); // Lower crit chance for AoE (5%)
+
+                    if (isAoECritical)
+                    {
+                        finalAoEDamage *= 1.5f; // 1.5x damage on AoE crit
+                    }
 
                     // Add damage event to target's buffer
                     if (DamageBuffers.HasBuffer(target))
@@ -295,10 +341,10 @@ namespace PureDOTS.Systems.Combat
                         {
                             SourceEntity = projectile.SourceEntity,
                             TargetEntity = target,
-                            RawDamage = aoeDamage,
+                            RawDamage = finalAoEDamage,
                             Type = DamageType.Physical,
                             Tick = CurrentTick,
-                            Flags = DamageFlags.Pierce
+                            Flags = (isAoECritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.AoE | DamageFlags.Pierce
                         });
                     }
                     else
@@ -313,7 +359,7 @@ namespace PureDOTS.Systems.Combat
             private void ApplyChain(
                 int chunkIndex,
                 ProjectileEntity projectile,
-                ProjectileSpec spec,
+                ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit)
             {
@@ -352,8 +398,29 @@ namespace PureDOTS.Systems.Combat
                     currentTarget = nextTarget;
 
                     // Apply chain damage (reduced per hop)
-                    float chainDamage = spec.Damage.BaseDamage * effectOp.Magnitude * math.pow(0.7f, chainIndex + 1);
-                    
+                    float baseChainDamage = spec.Damage.BaseDamage * effectOp.Magnitude * math.pow(0.7f, chainIndex + 1);
+
+                    // Apply deterministic damage variation for chain
+                    float chainDamageMultiplier = CalculateDamageMultiplier(
+                        projectile.Seed,
+                        projectile.PelletIndex + chainIndex + 1, // Offset pellet index for chain hops
+                        nextTarget.Index,
+                        spec.Damage);
+
+                    float finalChainDamage = baseChainDamage * chainDamageMultiplier;
+
+                    // Check for critical hits on chain targets
+                    bool isChainCritical = CalculateCriticalHit(
+                        projectile.Seed,
+                        projectile.PelletIndex + chainIndex + 1,
+                        nextTarget.Index,
+                        0.08f); // Moderate crit chance for chain (8%)
+
+                    if (isChainCritical)
+                    {
+                        finalChainDamage *= 1.75f; // 1.75x damage on chain crit
+                    }
+
                     // Add damage event to target's buffer
                     if (DamageBuffers.HasBuffer(nextTarget))
                     {
@@ -362,10 +429,10 @@ namespace PureDOTS.Systems.Combat
                         {
                             SourceEntity = projectile.SourceEntity,
                             TargetEntity = nextTarget,
-                            RawDamage = chainDamage,
+                            RawDamage = finalChainDamage,
                             Type = DamageType.Physical,
                             Tick = CurrentTick,
-                            Flags = DamageFlags.Pierce
+                            Flags = (isChainCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Chain | DamageFlags.Pierce
                         });
                     }
                     else
@@ -388,9 +455,9 @@ namespace PureDOTS.Systems.Combat
                     return; // Invalid status ID
                 }
 
-                // Create buff ID from status ID (would need mapping in practice)
-                // For now, use a placeholder - in practice, StatusId would map to a BuffId
-                var buffId = new FixedString64Bytes($"Status_{effectOp.StatusId}");
+                // Create buff ID from status ID (placeholder numeric ID; map via catalog when available)
+                var buffId = default(FixedString64Bytes);
+                buffId.Append(effectOp.StatusId);
 
                 // Add buff application request to target's buffer
                 if (BuffRequestBuffers.HasBuffer(hit.HitEntity))
@@ -424,7 +491,7 @@ namespace PureDOTS.Systems.Combat
             private void ApplySpawnSub(
                 int chunkIndex,
                 ProjectileEntity projectile,
-                ProjectileSpec spec,
+                ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit)
             {
@@ -452,26 +519,34 @@ namespace PureDOTS.Systems.Combat
                 // Use physics overlap sphere to find candidates
                 if (HasPhysicsWorld)
                 {
-                    var overlapInput = new OverlapSphereInput
-                    {
-                        Position = currentPos,
-                        Radius = range,
-                        Filter = new CollisionFilter
+                    var hits = new NativeList<DistanceHit>(32, Allocator.Temp);
+                    PhysicsWorld.OverlapSphere(
+                        currentPos,
+                        range,
+                        ref hits,
+                        new CollisionFilter
                         {
                             BelongsTo = 0xFFFFFFFF,
                             CollidesWith = hitFilter,
                             GroupIndex = 0
-                        }
-                    };
+                        });
 
-                    var collector = new ChainCollector(excludeList);
-                    PhysicsWorld.OverlapSphere(overlapInput, ref collector);
-
-                    // Find nearest from collected entities
-                    for (int i = 0; i < collector.HitEntities.Length; i++)
+                    for (int i = 0; i < hits.Length; i++)
                     {
-                        var candidate = collector.HitEntities[i];
-                        if (!TransformLookup.HasComponent(candidate))
+                        var candidate = hits[i].Entity;
+
+                        // Exclude already chained targets
+                        bool isExcluded = false;
+                        for (int e = 0; e < excludeList.Length; e++)
+                        {
+                            if (excludeList[e] == candidate)
+                            {
+                                isExcluded = true;
+                                break;
+                            }
+                        }
+
+                        if (isExcluded || !TransformLookup.HasComponent(candidate))
                         {
                             continue;
                         }
@@ -485,99 +560,59 @@ namespace PureDOTS.Systems.Combat
                         }
                     }
 
-                    collector.HitEntities.Dispose();
+                    hits.Dispose();
                 }
 
                 return nearestTarget;
             }
 
-            private bool TryFindProjectileSpec(
+            private static ref ProjectileSpec FindProjectileSpec(
                 BlobAssetReference<ProjectileCatalogBlob> catalog,
-                FixedString64Bytes projectileId,
-                out ProjectileSpec spec)
+                FixedString64Bytes projectileId)
             {
-                spec = default;
                 if (!catalog.IsCreated)
                 {
-                    return false;
+                    return ref Unsafe.NullRef<ProjectileSpec>();
                 }
 
-                var projectiles = catalog.Value.Projectiles;
+                ref var projectiles = ref catalog.Value.Projectiles;
                 for (int i = 0; i < projectiles.Length; i++)
                 {
-                    if (projectiles[i].Id.Equals(projectileId))
+                    ref var projectileSpec = ref projectiles[i];
+                    if (projectileSpec.Id.Equals(projectileId))
                     {
-                        spec = projectiles[i];
-                        return true;
+                        return ref projectileSpec;
                     }
                 }
 
-                return false;
+                return ref Unsafe.NullRef<ProjectileSpec>();
+            }
+
+            /// <summary>
+            /// Calculates deterministic damage multiplier using shot seed.
+            /// </summary>
+            private static float CalculateDamageMultiplier(uint shotSeed, int pelletIndex, int targetId, DamageModel damageModel)
+            {
+                // Use independent hash stream for damage rolls
+                uint h = math.hash(new uint4(shotSeed, (uint)pelletIndex, (uint)targetId, 0xA2C79B3Du));
+                float u = (h * (1.0f / 4294967296.0f)); // Convert uint to [0,1)
+
+                // Apply damage variance (±20% by default)
+                const float variance = 0.2f;
+                return 1.0f + (u - 0.5f) * variance * 2.0f;
+            }
+
+            /// <summary>
+            /// Calculates deterministic critical hit using shot seed.
+            /// </summary>
+            private static bool CalculateCriticalHit(uint shotSeed, int pelletIndex, int targetId, float critChance)
+            {
+                // Use different hash stream for critical hits
+                uint h = math.hash(new uint4(shotSeed, (uint)pelletIndex, (uint)targetId, 0xC3A5C85Cu));
+                float u = (h * (1.0f / 4294967296.0f)); // Convert uint to [0,1)
+                return u < critChance;
             }
         }
 
-        // Collector for AoE overlap queries
-        private struct AoeCollector : ICollector<OverlapColliderHit>
-        {
-            public Entity SourceEntity;
-            public Entity PrimaryHitEntity;
-            public NativeList<Entity> HitEntities;
-
-            public AoeCollector(Entity source, Entity primaryHit)
-            {
-                SourceEntity = source;
-                PrimaryHitEntity = primaryHit;
-                HitEntities = new NativeList<Entity>(32, Allocator.Temp);
-            }
-
-            public bool EarlyOutOnFirstHit => false;
-            public float MaxFraction => 1f;
-
-            public bool AddHit(OverlapColliderHit hit)
-            {
-                if (hit.Entity != SourceEntity && hit.Entity != PrimaryHitEntity)
-                {
-                    HitEntities.Add(hit.Entity);
-                }
-                return true;
-            }
-        }
-
-        // Collector for chain queries
-        private struct ChainCollector : ICollector<OverlapColliderHit>
-        {
-            public NativeList<Entity> HitEntities;
-            public NativeList<Entity> ExcludeList;
-
-            public ChainCollector(NativeList<Entity> excludeList)
-            {
-                HitEntities = new NativeList<Entity>(16, Allocator.Temp);
-                ExcludeList = excludeList;
-            }
-
-            public bool EarlyOutOnFirstHit => false;
-            public float MaxFraction => 1f;
-
-            public bool AddHit(OverlapColliderHit hit)
-            {
-                // Exclude already chained targets
-                bool isExcluded = false;
-                for (int i = 0; i < ExcludeList.Length; i++)
-                {
-                    if (ExcludeList[i] == hit.Entity)
-                    {
-                        isExcluded = true;
-                        break;
-                    }
-                }
-
-                if (!isExcluded)
-                {
-                    HitEntities.Add(hit.Entity);
-                }
-                return true;
-            }
-        }
     }
 }
-

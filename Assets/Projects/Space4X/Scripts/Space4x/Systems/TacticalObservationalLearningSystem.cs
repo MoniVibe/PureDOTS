@@ -48,11 +48,11 @@ namespace Space4X.Systems
 
             // Update lookups
             var tacticalStateLookup = SystemAPI.GetComponentLookup<TacticalState>(true);
-            var translationLookup = SystemAPI.GetComponentLookup<Translation>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             var masteryLookup = SystemAPI.GetBufferLookup<ManeuverMastery>(true);
             var crewExpertiseLookup = SystemAPI.GetComponentLookup<CrewExpertise>(true);
             tacticalStateLookup.Update(ref state);
-            translationLookup.Update(ref state);
+            transformLookup.Update(ref state);
             masteryLookup.Update(ref state);
             crewExpertiseLookup.Update(ref state);
 
@@ -61,7 +61,7 @@ namespace Space4X.Systems
             {
                 ManeuverCatalog = maneuverCatalog,
                 TacticalStateLookup = tacticalStateLookup,
-                TranslationLookup = translationLookup,
+                TransformLookup = transformLookup,
                 MasteryLookup = masteryLookup,
                 CrewExpertiseLookup = crewExpertiseLookup,
                 CurrentTick = currentTick
@@ -84,7 +84,7 @@ namespace Space4X.Systems
             public ComponentLookup<TacticalState> TacticalStateLookup;
 
             [ReadOnly]
-            public ComponentLookup<Translation> TranslationLookup;
+            public ComponentLookup<LocalTransform> TransformLookup;
 
             [ReadOnly]
             public BufferLookup<ManeuverMastery> MasteryLookup;
@@ -97,7 +97,7 @@ namespace Space4X.Systems
             void Execute(
                 Entity observerEntity,
                 in TacticalObserver observer,
-                in Translation observerTranslation,
+                in LocalTransform observerTransform,
                 ref DynamicBuffer<ObservedManeuver> observations,
                 in CrewExpertise expertise)
             {

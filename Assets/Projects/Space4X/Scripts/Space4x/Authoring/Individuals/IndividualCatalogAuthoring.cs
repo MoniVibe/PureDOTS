@@ -8,10 +8,11 @@ using UnityEngine;
 namespace Space4X.Authoring.Individuals
 {
     /// <summary>
-    /// Authoring ScriptableObject for individual catalog.
+    /// Authoring component for individual catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "IndividualCatalog", menuName = "Space4X/Individuals/Individual Catalog")]
-    public class IndividualCatalogAuthoring : ScriptableObject
+    [DisallowMultipleComponent]
+    [AddComponentMenu("Space4X/Individuals/Individual Catalog")]
+    public sealed class IndividualCatalogAuthoring : MonoBehaviour
     {
         public List<IndividualEntryAuthoring> Individuals = new List<IndividualEntryAuthoring>();
     }

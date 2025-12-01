@@ -8,10 +8,11 @@ using UnityEngine;
 namespace Space4X.Knowledge
 {
     /// <summary>
-    /// Authoring ScriptableObject for Space4X tech abilities.
+    /// Authoring component for Space4X tech abilities.
     /// </summary>
-    [CreateAssetMenu(fileName = "TechAbilityCatalog", menuName = "Space4X/Knowledge/Tech Ability Catalog")]
-    public class TechAbilityCatalogAuthoring : ScriptableObject
+    [DisallowMultipleComponent]
+    [AddComponentMenu("Space4X/Knowledge/Tech Ability Catalog")]
+    public sealed class TechAbilityCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class TechAbilityDef
@@ -66,10 +67,11 @@ namespace Space4X.Knowledge
     }
 
     /// <summary>
-    /// Authoring ScriptableObject for Space4X psionic abilities.
+    /// Authoring component for Space4X psionic abilities.
     /// </summary>
-    [CreateAssetMenu(fileName = "PsionicAbilityCatalog", menuName = "Space4X/Knowledge/Psionic Ability Catalog")]
-    public class PsionicAbilityCatalogAuthoring : ScriptableObject
+    [DisallowMultipleComponent]
+    [AddComponentMenu("Space4X/Knowledge/Psionic Ability Catalog")]
+    public sealed class PsionicAbilityCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class PsionicAbilityDef
@@ -126,10 +128,11 @@ namespace Space4X.Knowledge
     }
 
     /// <summary>
-    /// Authoring ScriptableObject for Space4X tactical maneuvers.
+    /// Authoring component for Space4X tactical maneuvers.
     /// </summary>
-    [CreateAssetMenu(fileName = "TacticalManeuverCatalog", menuName = "Space4X/Knowledge/Tactical Maneuver Catalog")]
-    public class TacticalManeuverCatalogAuthoring : ScriptableObject
+    [DisallowMultipleComponent]
+    [AddComponentMenu("Space4X/Knowledge/Tactical Maneuver Catalog")]
+    public sealed class TacticalManeuverCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class TacticalManeuverDef

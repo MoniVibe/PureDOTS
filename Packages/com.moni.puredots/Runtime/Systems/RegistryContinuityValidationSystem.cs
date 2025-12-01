@@ -8,6 +8,7 @@ namespace PureDOTS.Systems
 {
     /// <summary>
     /// Validates registry spatial continuity against the published spatial sync state and raises alerts when drift is detected.
+    /// Also validates custom registry participants registered via <see cref="RegistryContinuityApi"/>.
     /// </summary>
     [UpdateInGroup(typeof(ResourceSystemGroup))]
     [UpdateAfter(typeof(RegistryHealthSystem))]
@@ -16,6 +17,8 @@ namespace PureDOTS.Systems
         private ComponentLookup<RegistryMetadata> _metadataLookup;
         private ComponentLookup<RegistryHealth> _healthLookup;
         private BufferLookup<RegistryDirectoryEntry> _directoryLookup;
+        private BufferLookup<RegistryContinuityParticipant> _participantsLookup;
+        private BufferLookup<ContinuityValidationReport> _reportLookup;
 
         public void OnCreate(ref SystemState state)
         {
@@ -25,6 +28,8 @@ namespace PureDOTS.Systems
             _metadataLookup = state.GetComponentLookup<RegistryMetadata>(isReadOnly: true);
             _healthLookup = state.GetComponentLookup<RegistryHealth>(isReadOnly: true);
             _directoryLookup = state.GetBufferLookup<RegistryDirectoryEntry>(isReadOnly: true);
+            _participantsLookup = state.GetBufferLookup<RegistryContinuityParticipant>(isReadOnly: true);
+            _reportLookup = state.GetBufferLookup<ContinuityValidationReport>(isReadOnly: false);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -35,6 +40,8 @@ namespace PureDOTS.Systems
             _metadataLookup.Update(ref state);
             _healthLookup.Update(ref state);
             _directoryLookup.Update(ref state);
+            _participantsLookup.Update(ref state);
+            _reportLookup.Update(ref state);
 
             var alertsBuffer = state.EntityManager.GetBuffer<RegistryContinuityAlert>(syncEntity);
             var previousAlertCount = alertsBuffer.Length;
@@ -199,15 +206,137 @@ namespace PureDOTS.Systems
                 });
             }
 
-            continuityState.WarningCount = warningCount;
-            continuityState.FailureCount = failureCount;
+            // Validate custom registry participants
+            var customWarnings = 0;
+            var customFailures = 0;
+            ValidateCustomParticipants(
+                ref state,
+                thresholds,
+                publishedSpatialVersion,
+                hasSpatialData,
+                currentTick,
+                ref customWarnings,
+                ref customFailures);
+
+            continuityState.WarningCount = warningCount + customWarnings;
+            continuityState.FailureCount = failureCount + customFailures;
             continuityState.LastCheckTick = currentTick;
 
             if (previousAlertCount != alertsBuffer.Length ||
-                previousWarnings != warningCount ||
-                previousFailures != failureCount)
+                previousWarnings != continuityState.WarningCount ||
+                previousFailures != continuityState.FailureCount)
             {
                 continuityState.Version++;
+            }
+        }
+
+        private void ValidateCustomParticipants(
+            ref SystemState state,
+            in RegistryHealthThresholds thresholds,
+            uint publishedSpatialVersion,
+            bool hasSpatialData,
+            uint currentTick,
+            ref int warningCount,
+            ref int failureCount)
+        {
+            // Find the participants singleton
+            var participantsQuery = state.GetEntityQuery(ComponentType.ReadOnly<RegistryContinuityParticipants>());
+            if (participantsQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var participantsEntity = participantsQuery.GetSingletonEntity();
+            if (!_participantsLookup.HasBuffer(participantsEntity))
+            {
+                return;
+            }
+
+            var participants = _participantsLookup[participantsEntity];
+            for (var i = 0; i < participants.Length; i++)
+            {
+                var participant = participants[i];
+                if (!participant.IsActiveFlag)
+                {
+                    continue;
+                }
+
+                var status = RegistryContinuityStatus.Nominal;
+                var flags = RegistryHealthFlags.None;
+                var delta = 0u;
+                var errors = 0;
+                var warnings = 0;
+
+                // Validate spatial continuity if required
+                if (participant.RequiresSpatialSyncFlag)
+                {
+                    if (!participant.Snapshot.HasSpatialData)
+                    {
+                        status = RegistryContinuityStatus.Failure;
+                        flags |= RegistryHealthFlags.SpatialContinuityMissing;
+                        errors++;
+                    }
+                    else if (!hasSpatialData)
+                    {
+                        status = (RegistryContinuityStatus)math.max((int)status, (int)RegistryContinuityStatus.Warning);
+                        flags |= RegistryHealthFlags.SpatialMismatchWarning;
+                        warnings++;
+                    }
+                    else
+                    {
+                        delta = publishedSpatialVersion >= participant.Snapshot.SpatialVersion
+                            ? publishedSpatialVersion - participant.Snapshot.SpatialVersion
+                            : participant.Snapshot.SpatialVersion - publishedSpatialVersion;
+
+                        if (thresholds.SpatialVersionMismatchCritical > 0u &&
+                            delta >= thresholds.SpatialVersionMismatchCritical)
+                        {
+                            status = RegistryContinuityStatus.Failure;
+                            flags |= RegistryHealthFlags.SpatialMismatchCritical;
+                            errors++;
+                        }
+                        else if (thresholds.SpatialVersionMismatchWarning > 0u &&
+                                 delta >= thresholds.SpatialVersionMismatchWarning)
+                        {
+                            status = (RegistryContinuityStatus)math.max((int)status, (int)RegistryContinuityStatus.Warning);
+                            flags |= RegistryHealthFlags.SpatialMismatchWarning;
+                            warnings++;
+                        }
+                    }
+                }
+
+                // Update report buffer for this participant
+                if (participant.ReportEntity != Entity.Null && _reportLookup.HasBuffer(participant.ReportEntity))
+                {
+                    var reportBuffer = _reportLookup[participant.ReportEntity];
+                    reportBuffer.Clear();
+
+                    if (status != RegistryContinuityStatus.Nominal)
+                    {
+                        reportBuffer.Add(new ContinuityValidationReport
+                        {
+                            RegistryEntity = participant.RegistryEntity,
+                            Label = participant.Label,
+                            Status = status,
+                            Flags = flags,
+                            SpatialVersion = publishedSpatialVersion,
+                            RegistrySpatialVersion = participant.Snapshot.SpatialVersion,
+                            Delta = delta,
+                            Errors = errors,
+                            Warnings = warnings,
+                            ValidationTick = currentTick
+                        });
+                    }
+                }
+
+                if (status == RegistryContinuityStatus.Failure)
+                {
+                    failureCount++;
+                }
+                else if (status == RegistryContinuityStatus.Warning)
+                {
+                    warningCount++;
+                }
             }
         }
     }

@@ -538,6 +538,72 @@ namespace PureDOTS.Runtime.Registry
             metadata.MarkUpdated(buffer.Length, currentTick, continuity);
         }
 
+        /// <summary>
+        /// Applies entries to the buffer and reports to a continuity participant.
+        /// </summary>
+        /// <param name="buffer">Target registry buffer.</param>
+        /// <param name="entityManager">Entity manager for API calls.</param>
+        /// <param name="participantHandle">Handle from RegistryContinuityApi.RegisterCustomRegistry.</param>
+        /// <param name="spatialVersion">Current spatial grid version.</param>
+        /// <param name="currentTick">Current simulation tick.</param>
+        /// <param name="resolvedCount">Number of spatially resolved entries.</param>
+        /// <param name="fallbackCount">Number of fallback entries.</param>
+        /// <param name="unmappedCount">Number of unmapped entries.</param>
+        public void ApplyTo(
+            ref DynamicBuffer<TEntry> buffer,
+            EntityManager entityManager,
+            in RegistryContinuityParticipantHandle participantHandle,
+            uint spatialVersion,
+            uint currentTick,
+            int resolvedCount = 0,
+            int fallbackCount = 0,
+            int unmappedCount = 0)
+        {
+            ApplyTo(ref buffer);
+            
+            if (participantHandle.IsValid)
+            {
+                RegistryContinuityApi.ReportUpdate(
+                    entityManager,
+                    in participantHandle,
+                    resolvedCount,
+                    fallbackCount,
+                    unmappedCount,
+                    spatialVersion,
+                    currentTick);
+            }
+        }
+
+        /// <summary>
+        /// Applies entries to the buffer with accumulator and reports to a continuity participant.
+        /// </summary>
+        public void ApplyTo<TAccumulator>(
+            ref DynamicBuffer<TEntry> buffer,
+            ref TAccumulator accumulator,
+            EntityManager entityManager,
+            in RegistryContinuityParticipantHandle participantHandle,
+            uint spatialVersion,
+            uint currentTick,
+            int resolvedCount = 0,
+            int fallbackCount = 0,
+            int unmappedCount = 0)
+            where TAccumulator : struct, IRegistryAccumulator<TEntry>
+        {
+            ApplyTo(ref buffer, ref accumulator);
+            
+            if (participantHandle.IsValid)
+            {
+                RegistryContinuityApi.ReportUpdate(
+                    entityManager,
+                    in participantHandle,
+                    resolvedCount,
+                    fallbackCount,
+                    unmappedCount,
+                    spatialVersion,
+                    currentTick);
+            }
+        }
+
         public void Dispose()
         {
             if (_entries.IsCreated)

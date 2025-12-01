@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using PureDOTS.Runtime.Buffs;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace PureDOTS.Authoring.Buffs
@@ -11,8 +12,7 @@ namespace PureDOTS.Authoring.Buffs
     /// <summary>
     /// Authoring ScriptableObject for buff catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "BuffCatalog", menuName = "PureDOTS/Buffs/Buff Catalog")]
-    public class BuffCatalogAuthoring : ScriptableObject
+    public class BuffCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class BuffDefinition

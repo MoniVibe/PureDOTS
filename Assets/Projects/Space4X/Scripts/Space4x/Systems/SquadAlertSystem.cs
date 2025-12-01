@@ -1,5 +1,6 @@
 using Space4X.Combat;
 using Space4X.Individuals;
+using Space4X.Knowledge;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -43,12 +44,12 @@ namespace Space4X.Systems
             var dangerPerceptionLookup = SystemAPI.GetComponentLookup<DangerPerception>(true);
             var individualStatsLookup = SystemAPI.GetComponentLookup<IndividualStats>(true);
             var crewExpertiseLookup = SystemAPI.GetComponentLookup<CrewExpertise>(true);
-            var translationLookup = SystemAPI.GetComponentLookup<Translation>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             var detectedDangerLookup = SystemAPI.GetBufferLookup<DetectedDanger>(true);
             dangerPerceptionLookup.Update(ref state);
             individualStatsLookup.Update(ref state);
             crewExpertiseLookup.Update(ref state);
-            translationLookup.Update(ref state);
+            transformLookup.Update(ref state);
             detectedDangerLookup.Update(ref state);
 
             // Propagate alerts from leaders
@@ -57,7 +58,7 @@ namespace Space4X.Systems
                 DangerPerceptionLookup = dangerPerceptionLookup,
                 IndividualStatsLookup = individualStatsLookup,
                 CrewExpertiseLookup = crewExpertiseLookup,
-                TranslationLookup = translationLookup,
+                TransformLookup = transformLookup,
                 DetectedDangerLookup = detectedDangerLookup,
                 CurrentTick = currentTick
             }.ScheduleParallel();
@@ -76,7 +77,7 @@ namespace Space4X.Systems
             public ComponentLookup<CrewExpertise> CrewExpertiseLookup;
 
             [ReadOnly]
-            public ComponentLookup<Translation> TranslationLookup;
+            public ComponentLookup<LocalTransform> TransformLookup;
 
             [ReadOnly]
             public BufferLookup<DetectedDanger> DetectedDangerLookup;
@@ -86,7 +87,7 @@ namespace Space4X.Systems
             void Execute(
                 Entity leaderEntity,
                 in DangerPerception perception,
-                in Translation leaderTranslation,
+                in LocalTransform leaderTransform,
                 in DynamicBuffer<DetectedDanger> detectedDangers,
                 ref DynamicBuffer<DangerAlert> alerts,
                 in IndividualStats stats,

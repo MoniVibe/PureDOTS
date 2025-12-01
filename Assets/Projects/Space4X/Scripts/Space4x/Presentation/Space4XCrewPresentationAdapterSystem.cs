@@ -9,7 +9,9 @@ namespace Space4X.Presentation
 {
     /// <summary>
     /// Spawns and maintains presentation handles for Space4X crew aggregate entities.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(Space4X.Systems.Space4XCrewAggregationSystem))]
     public partial struct Space4XCrewPresentationAdapterSystem : ISystem

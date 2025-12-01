@@ -47,7 +47,7 @@ namespace Space4X.Systems
                 return;
             }
 
-            var currentTime = timeState.ElapsedTime;
+            var currentTime = timeState.Time;
             var deltaTime = timeState.FixedDeltaTime;
 
             // Optional: get spatial grid for homing target acquisition

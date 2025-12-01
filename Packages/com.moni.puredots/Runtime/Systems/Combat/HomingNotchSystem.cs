@@ -1,9 +1,10 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
-using Space4X.Knowledge;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -14,6 +15,7 @@ namespace PureDOTS.Systems.Combat
     /// For missiles in homing cone: computes lateral "notch" maneuver.
     /// V_lat = normalize(cross(vel_missile, up))
     /// Blends into V_avoid with weight = HomingRisk.
+    /// Only applies to projectiles with Kind == Homing (verified via ProjectileCatalog).
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
@@ -36,6 +38,16 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            // Require projectile catalog for homing kind verification
+            if (!SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog))
+            {
+                return;
+            }
+            if (!projectileCatalog.Catalog.IsCreated)
+            {
+                return;
+            }
+
             // Find homing projectiles
             var projectileQuery = SystemAPI.QueryBuilder()
                 .WithAll<ProjectileEntity, LocalTransform>()
@@ -51,7 +63,8 @@ namespace PureDOTS.Systems.Combat
 
             var job = new HomingNotchJob
             {
-                TransformLookup = transformLookup
+                TransformLookup = transformLookup,
+                ProjectileCatalog = projectileCatalog.Catalog
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -61,6 +74,7 @@ namespace PureDOTS.Systems.Combat
         public partial struct HomingNotchJob : IJobEntity
         {
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
 
             void Execute(
                 Entity entity,
@@ -68,8 +82,20 @@ namespace PureDOTS.Systems.Combat
                 in ProjectileEntity projectile,
                 in LocalTransform transform)
             {
-                // Only apply to homing projectiles
-                // TODO: Check ProjectileSpec to confirm homing type
+                // Verify projectile is homing type via catalog lookup (game-agnostic)
+                ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                if (Unsafe.IsNullRef(ref spec))
+                {
+                    return;
+                }
+
+                // Only apply notch maneuver to homing projectiles
+                if ((ProjectileKind)spec.Kind != ProjectileKind.Homing)
+                {
+                    return;
+                }
+
+                // Also require active target
                 if (projectile.TargetEntity == Entity.Null)
                 {
                     return;
@@ -102,8 +128,9 @@ namespace PureDOTS.Systems.Combat
                     lateral = math.normalize(lateral);
 
                     // Blend lateral notch into avoidance vector
-                    // Weight based on homing risk (simplified - would sample from hazard grid)
-                    float homingRisk = avoidanceState.AvoidanceUrgency * 0.5f; // Reduced weight for notch
+                    // Weight based on homing risk and projectile turn rate (from spec)
+                    float turnRateFactor = math.saturate(spec.TurnRateDeg / 180f); // Higher turn rate = harder to notch
+                    float homingRisk = avoidanceState.AvoidanceUrgency * (0.5f + turnRateFactor * 0.3f);
                     float3 notchVector = lateral * homingRisk;
 
                     // Combine with existing avoidance
@@ -115,6 +142,28 @@ namespace PureDOTS.Systems.Combat
                         avoidanceState.CurrentAdjustment = math.normalize(combinedAvoidance) * math.min(combinedLength, 1f);
                     }
                 }
+            }
+
+            private static ref ProjectileSpec FindProjectileSpec(
+                BlobAssetReference<ProjectileCatalogBlob> catalog,
+                FixedString64Bytes projectileId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref Unsafe.NullRef<ProjectileSpec>();
+                }
+
+                ref var catalogRef = ref catalog.Value;
+                for (int i = 0; i < catalogRef.Projectiles.Length; i++)
+                {
+                    ref var projectileSpec = ref catalogRef.Projectiles[i];
+                    if (projectileSpec.Id.Equals(projectileId))
+                    {
+                        return ref projectileSpec;
+                    }
+                }
+
+                return ref Unsafe.NullRef<ProjectileSpec>();
             }
         }
     }

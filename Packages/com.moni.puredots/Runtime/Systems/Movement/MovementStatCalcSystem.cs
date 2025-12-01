@@ -1,10 +1,11 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
+using PureDOTS.Runtime.Stats;
 using PureDOTS.Systems;
-using Space4X.Individuals;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Movement
 {
@@ -25,31 +26,14 @@ namespace PureDOTS.Systems.Movement
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Get movement skill map singleton (if exists)
-            BlobAssetReference<MovementSkillMapBlob> skillMap = default;
-            bool hasSkillMap = SystemAPI.TryGetSingleton<MovementSkillMap>(out var skillMapRef);
-            if (hasSkillMap)
-            {
-                skillMap = skillMapRef.Map;
-            }
-
-            var job = new MovementStatCalcJob
-            {
-                SkillMap = skillMap,
-                HasSkillMap = hasSkillMap
-            };
-
+            var job = new MovementStatCalcJob();
             state.Dependency = job.ScheduleParallel(state.Dependency);
         }
 
         [BurstCompile]
         public partial struct MovementStatCalcJob : IJobEntity
         {
-            [ReadOnly] public BlobAssetReference<MovementSkillMapBlob> SkillMap;
-            public bool HasSkillMap;
-
             void Execute(
-                Entity entity,
                 ref PilotProficiency proficiency,
                 in MovementModelRef modelRef,
                 in DynamicBuffer<ExpertiseEntry> expertise)
@@ -68,29 +52,11 @@ namespace PureDOTS.Systems.Movement
                     return;
                 }
 
-                ref var spec = ref modelRef.Blob.Value;
-                byte expertiseType = 0;
+                // Use highest available expertise tier as a proxy for pilot skill.
                 byte tier = 0;
-
-                // Find matching expertise entry via skill map
-                if (HasSkillMap && SkillMap.IsCreated)
+                for (int i = 0; i < expertise.Length; i++)
                 {
-                    ref var map = ref SkillMap.Value;
-                    byte movementKindIndex = (byte)spec.Kind;
-                    if (movementKindIndex < map.ExpertiseTypesByKind.Length)
-                    {
-                        expertiseType = map.ExpertiseTypesByKind[movementKindIndex];
-
-                        // Find expertise entry with matching type
-                        for (int i = 0; i < expertise.Length; i++)
-                        {
-                            if (expertise[i].Type == (ExpertiseType)expertiseType)
-                            {
-                                tier = expertise[i].Tier;
-                                break;
-                            }
-                        }
-                    }
+                    tier = (byte)math.max((int)tier, (int)expertise[i].Tier);
                 }
 
                 // Compute proficiency multipliers from tier (0-255)

@@ -16,22 +16,31 @@ namespace PureDOTS.Tests.Editmode
     /// </summary>
     public class TicketToOfferAdapter_Idempotent_Conversion_Editmode
     {
-        private World _world;
+        private World _world = null!;
+        private SystemHandle _adapterSystemHandle;
+        private BlobAssetReference<JobDefinitionCatalogBlob> _jobCatalog;
         private EntityManager EntityManager => _world.EntityManager;
         
         [SetUp]
         public void SetUp()
         {
             _world = new World("TestWorld", WorldFlags.Game);
+            _world.DefaultGameObjectInjectionWorld = _world;
             CoreSingletonBootstrapSystem.EnsureSingletons(EntityManager);
             EnsureTimeState();
             EnsureRewindState();
             EnsureJobCatalog();
+            _adapterSystemHandle = _world.GetOrCreateSystem<TicketToOfferAdapterSystem>();
         }
         
         [TearDown]
         public void TearDown()
         {
+            if (_jobCatalog.IsCreated)
+            {
+                _jobCatalog.Dispose();
+            }
+            
             if (_world != null && _world.IsCreated)
             {
                 _world.Dispose();
@@ -41,7 +50,6 @@ namespace PureDOTS.Tests.Editmode
         [Test]
         public void Adapter_ConvertsTicket_ToWorkOffer_Correctly()
         {
-            // Arrange: Create a villager with a ticket
             var villager = EntityManager.CreateEntity();
             var resourceEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(resourceEntity, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
@@ -61,11 +69,8 @@ namespace PureDOTS.Tests.Editmode
                 AssignedTick = 100
             });
             
-            // Act: Run the adapter system
-            var adapterSystem = _world.GetOrCreateSystemManaged<TicketToOfferAdapterSystem>();
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             
-            // Assert: A WorkOffer should be created
             var query = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag));
             Assert.AreEqual(1, query.CalculateEntityCount(), "One WorkOffer should be created from ticket");
             
@@ -81,7 +86,6 @@ namespace PureDOTS.Tests.Editmode
         [Test]
         public void Adapter_IsIdempotent_MultipleRuns()
         {
-            // Arrange: Create a villager with a ticket
             var villager = EntityManager.CreateEntity();
             var resourceEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(resourceEntity, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
@@ -101,19 +105,15 @@ namespace PureDOTS.Tests.Editmode
                 AssignedTick = 200
             });
             
-            var adapterSystem = _world.GetOrCreateSystemManaged<TicketToOfferAdapterSystem>();
-            
-            // Act: Run adapter multiple times
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             var count1 = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag)).CalculateEntityCount();
             
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             var count2 = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag)).CalculateEntityCount();
             
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             var count3 = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag)).CalculateEntityCount();
             
-            // Assert: Should always have exactly one offer (old ones cleaned up, new one created)
             Assert.AreEqual(1, count1, "First run should create one offer");
             Assert.AreEqual(1, count2, "Second run should still have one offer (idempotent)");
             Assert.AreEqual(1, count3, "Third run should still have one offer (idempotent)");
@@ -122,7 +122,6 @@ namespace PureDOTS.Tests.Editmode
         [Test]
         public void Adapter_SkipsTickets_WithNullResourceEntity()
         {
-            // Arrange: Create a villager with a ticket that has null resource entity
             var villager = EntityManager.CreateEntity();
             
             EntityManager.AddComponentData(villager, new VillagerJob
@@ -135,16 +134,13 @@ namespace PureDOTS.Tests.Editmode
             {
                 TicketId = 789,
                 JobType = VillagerJob.JobType.Gatherer,
-                ResourceEntity = Entity.Null, // Invalid
+                ResourceEntity = Entity.Null,
                 Priority = 50,
                 AssignedTick = 300
             });
             
-            // Act: Run the adapter system
-            var adapterSystem = _world.GetOrCreateSystemManaged<TicketToOfferAdapterSystem>();
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             
-            // Assert: No offer should be created
             var query = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag));
             Assert.AreEqual(0, query.CalculateEntityCount(), "No offer should be created for invalid ticket");
         }
@@ -152,14 +148,13 @@ namespace PureDOTS.Tests.Editmode
         [Test]
         public void Adapter_SkipsIdleVillagers()
         {
-            // Arrange: Create a villager with idle job
             var villager = EntityManager.CreateEntity();
             var resourceEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(resourceEntity, LocalTransform.FromPositionRotationScale(float3.zero, quaternion.identity, 1f));
             
             EntityManager.AddComponentData(villager, new VillagerJob
             {
-                Type = VillagerJob.JobType.None, // Idle
+                Type = VillagerJob.JobType.None,
                 Phase = VillagerJob.JobPhase.Idle
             });
             
@@ -172,32 +167,40 @@ namespace PureDOTS.Tests.Editmode
                 AssignedTick = 400
             });
             
-            // Act: Run the adapter system
-            var adapterSystem = _world.GetOrCreateSystemManaged<TicketToOfferAdapterSystem>();
-            adapterSystem.Update(_world.Unmanaged);
+            RunAdapterSystem();
             
-            // Assert: No offer should be created for idle villagers
             var query = EntityManager.CreateEntityQuery(typeof(WorkOffer), typeof(TicketOriginatedOfferTag));
             Assert.AreEqual(0, query.CalculateEntityCount(), "No offer should be created for idle villagers");
         }
         
+        private void RunAdapterSystem()
+        {
+            _adapterSystemHandle.Update(_world.Unmanaged);
+        }
+        
         private void EnsureTimeState()
         {
-            if (!EntityManager.HasComponent<TimeState>(EntityManager.CreateEntityQuery(typeof(TimeState)).GetSingletonEntity()))
+            if (!EntityManager.TryGetSingleton<TimeState>(out var timeState))
             {
                 var entity = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(entity, new TimeState
+                timeState = new TimeState
                 {
                     Tick = 0,
                     FixedDeltaTime = 0.016f,
                     IsPaused = false
-                });
+                };
+                EntityManager.AddComponentData(entity, timeState);
+            }
+            else
+            {
+                timeState.IsPaused = false;
+                EntityManager.SetSingleton(timeState);
             }
         }
         
         private void EnsureRewindState()
         {
-            if (!EntityManager.HasComponent<RewindState>(EntityManager.CreateEntityQuery(typeof(RewindState)).GetSingletonEntity()))
+            if (!EntityManager.TryGetSingleton<RewindState>(out var rewindState))
             {
                 var entity = EntityManager.CreateEntity();
                 EntityManager.AddComponentData(entity, new RewindState
@@ -205,27 +208,47 @@ namespace PureDOTS.Tests.Editmode
                     Mode = RewindMode.Record
                 });
             }
+            else
+            {
+                rewindState.Mode = RewindMode.Record;
+                EntityManager.SetSingleton(rewindState);
+            }
         }
         
         private void EnsureJobCatalog()
         {
-            // Create a minimal job catalog for testing
+            using var query = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<JobDefinitionCatalogComponent>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                if (!_jobCatalog.IsCreated)
+                {
+                    _jobCatalog = EntityManager.GetComponentData<JobDefinitionCatalogComponent>(query.GetSingletonEntity()).Catalog;
+                }
+                return;
+            }
+            
             var blobBuilder = new BlobBuilder(Allocator.Temp);
             ref var root = ref blobBuilder.ConstructRoot<JobDefinitionCatalogBlob>();
             var jobs = blobBuilder.Allocate(ref root.Jobs, 1);
-            jobs[0] = new JobDefinitionData
-            {
-                JobName = new FixedString64Bytes("Gatherer"),
-                JobTypeIndex = (byte)VillagerJob.JobType.Gatherer,
-                BaseDurationSeconds = 5f,
-                BasePriority = 50
-            };
-            var blobRef = blobBuilder.CreateBlobAssetReference<JobDefinitionCatalogBlob>(Allocator.Persistent);
+            ref var job = ref jobs[0];
+            job.JobName = new FixedString64Bytes("Gatherer");
+            job.JobTypeIndex = (byte)VillagerJob.JobType.Gatherer;
+            job.BaseDurationSeconds = 5f;
+            job.MinDurationSeconds = 1f;
+            job.MaxDurationSeconds = 10f;
+            job.SkillMultiplier = 1f;
+            job.NeedsMultiplier = 1f;
+            job.BasePriority = 50;
+            job.CooldownSeconds = 0f;
+            
+            blobBuilder.Allocate(ref job.ResourceCosts, 0);
+            blobBuilder.Allocate(ref job.ResourceRewards, 0);
+            
+            _jobCatalog = blobBuilder.CreateBlobAssetReference<JobDefinitionCatalogBlob>(Allocator.Persistent);
             blobBuilder.Dispose();
             
             var catalogEntity = EntityManager.CreateEntity();
-            EntityManager.AddComponentData(catalogEntity, new JobDefinitionCatalogComponent { Catalog = blobRef });
+            EntityManager.AddComponentData(catalogEntity, new JobDefinitionCatalogComponent { Catalog = _jobCatalog });
         }
     }
 }
-

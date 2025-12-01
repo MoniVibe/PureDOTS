@@ -4,6 +4,7 @@ using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Space4X.Systems
 {
@@ -88,7 +89,7 @@ namespace Space4X.Systems
                     return false;
                 }
 
-                var specs = catalog.Value.CrewSpecs;
+                ref var specs = ref catalog.Value.CrewSpecs;
                 for (int i = 0; i < specs.Length; i++)
                 {
                     if (specs[i].Id.Equals(crewSpecId))

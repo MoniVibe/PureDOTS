@@ -11,7 +11,9 @@ namespace Godgame.Presentation
     /// <summary>
     /// Applies presentation bindings to miracle projectiles/tokens so VFX + meshes can be swapped freely.
     /// Also handles standard ProjectileEntity components for miracle projectiles that use the combat system.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(MiracleReleaseSystem))]
     public partial struct GodgameProjectilePresentationAdapterSystem : ISystem

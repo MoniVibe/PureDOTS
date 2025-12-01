@@ -1,8 +1,31 @@
-Projects Folder Notice
-======================
+⚠️ DEPRECATED FOLDER - DO NOT USE
+==================================
 
-The real game projects live outside this repo:
-- Godgame: C:\Users\shonh\OneDrive\Documents\claudeprojects\Unity\Godgame
-- Space4x: C:\Users\shonh\OneDrive\Documents\claudeprojects\Unity\Space4x
+**This `projects/` folder inside PureDOTS is DEPRECATED and should be IGNORED.**
 
-This `projects/` directory under PureDOTS is not the game worktree. It only contains tooling artifacts (e.g., Coplay binaries); do not treat it as the game source. Open and edit the projects at the paths above. Future agents: avoid wiring scenarios or registries against this folder. Use the real project paths instead.
+It only contains legacy tooling artifacts (Coplay binaries) and serves no purpose for development.
+
+---
+
+## Real Project Locations
+
+The actual game projects are SEPARATE Unity projects at:
+
+| Project | Path |
+|---------|------|
+| **PureDOTS** | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` |
+| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` |
+| **Godgame** | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` |
+
+---
+
+## For Agents
+
+1. **DO NOT** reference paths inside `PureDOTS/projects/`
+2. **DO NOT** wire scenarios or registries against this folder
+3. **DO** use the real project paths listed above
+4. **DO** read `C:\Users\Moni\Documents\claudeprojects\unity\TRI_PROJECT_BRIEFING.md` for full orientation
+
+---
+
+**Master briefing**: `C:\Users\Moni\Documents\claudeprojects\unity\TRI_PROJECT_BRIEFING.md`

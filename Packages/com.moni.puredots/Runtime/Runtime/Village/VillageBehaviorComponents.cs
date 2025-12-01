@@ -1,6 +1,7 @@
 using System;
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Village
 {

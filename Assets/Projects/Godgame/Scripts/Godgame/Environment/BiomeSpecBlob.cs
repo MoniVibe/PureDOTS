@@ -1,5 +1,6 @@
 using PureDOTS.Environment;
 using Unity.Collections;
+using Unity.Entities;
 
 namespace Godgame.Environment
 {

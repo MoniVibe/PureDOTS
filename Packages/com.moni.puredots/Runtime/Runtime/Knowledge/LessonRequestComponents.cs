@@ -41,7 +41,11 @@ namespace PureDOTS.Runtime.Knowledge
         Observation = 3,   // Learned by watching
         Ritual = 4,        // Learned through ritual/ceremony
         Quest = 5,         // Learned as quest reward
-        Inheritance = 6    // Inherited from parent/mentor
+        Inheritance = 6,   // Inherited from parent/mentor
+        Reading = 7,       // Learned from books/scrolls
+        Experimentation = 8, // Learned by trying and iterating
+        Failure = 9,       // Learned from mistakes
+        Practice = 10      // Repetition and drills
     }
 
     /// <summary>

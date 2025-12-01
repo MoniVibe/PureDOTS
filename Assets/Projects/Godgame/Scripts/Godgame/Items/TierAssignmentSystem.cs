@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Shared;
 using PureDOTS.Systems.Shared;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Godgame.Items
@@ -10,7 +11,6 @@ namespace Godgame.Items
     /// Runs in FixedStep simulation group after InstanceQualityCalculationSystem.
     /// Includes temporary legacy rarity mapping behind a feature flag.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(InstanceQualityCalculationSystem))]
     public partial struct TierAssignmentSystem : ISystem
@@ -19,11 +19,6 @@ namespace Godgame.Items
         /// Temporary flag for legacy rarity mapping. Set to false once economy-driven rarity is implemented.
         /// </summary>
         private const bool UseLegacyRarityMapping = true;
-
-        [BurstCompile]
-        public void OnCreate(ref SystemState state)
-        {
-        }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)

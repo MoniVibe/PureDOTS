@@ -5,6 +5,15 @@ using Unity.Mathematics;
 namespace PureDOTS.Runtime.Combat
 {
     /// <summary>
+    /// Stable identifier for entities that need deterministic behavior across rewinds.
+    /// Assigned at spawn and preserved during rewind playback.
+    /// </summary>
+    public struct PersistentId : IComponentData
+    {
+        public uint Value;
+    }
+
+    /// <summary>
     /// Component attached to entities that have weapons installed.
     /// </summary>
     public struct WeaponMount : IComponentData
@@ -17,6 +26,7 @@ namespace PureDOTS.Runtime.Combat
         public float HeatLevel; // Current heat (0-1)
         public float EnergyReserve; // Current energy available
         public bool IsFiring; // Whether weapon is currently firing
+        public int ShotSequence; // Incremental counter for deterministic RNG seeding
     }
 
     /// <summary>
@@ -33,7 +43,9 @@ namespace PureDOTS.Runtime.Combat
         public float DistanceTraveled; // Total distance traveled
         public float HitsLeft; // Remaining pierce count (changed from byte to float)
         public float Age; // Seconds since spawn
-        public uint Seed; // Deterministic RNG seed for tie-breakers and effect RNG
+        public uint Seed; // Deterministic shot seed for damage/crit rolls
+        public int ShotSequence; // Sequence number of the shot that spawned this projectile
+        public int PelletIndex; // Index within spread pattern (0 for single shots)
     }
 
     /// <summary>
@@ -82,6 +94,9 @@ namespace PureDOTS.Runtime.Combat
         public float3 SpawnDirection;
         public Entity SourceEntity;
         public Entity TargetEntity;
+        public uint ShotSeed; // Deterministic seed for damage/crit rolls
+        public int ShotSequence; // Sequence number for this shot
+        public int PelletIndex; // Index within spread pattern (0 for single shots)
     }
 
     /// <summary>

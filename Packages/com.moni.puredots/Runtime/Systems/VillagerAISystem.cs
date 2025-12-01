@@ -12,15 +12,20 @@ namespace PureDOTS.Systems
 {
     /// <summary>
     /// Minimal behaviour layer that evaluates high level villager goals based on needs and job data.
+    /// For villagers with AI pipeline components (AIUtilityState, VillagerAIUtilityBinding),
+    /// goals are set by VillagerAIPipelineBridgeSystem. This system provides fallback logic
+    /// for villagers without AI pipeline components or when the pipeline hasn't made a decision.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup))]
     [UpdateBefore(typeof(VillagerTargetingSystem))]
+    [UpdateAfter(typeof(VillagerAIPipelineBridgeSystem))]
     public partial struct VillagerAISystem : ISystem
     {
         private EntityQuery _villagerQuery;
         private ComponentLookup<VillagerBehavior> _behaviorLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<VillagerAIPipelineBridgeState> _bridgeStateLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -36,6 +41,7 @@ namespace PureDOTS.Systems
 
             _behaviorLookup = state.GetComponentLookup<VillagerBehavior>(true);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _bridgeStateLookup = state.GetComponentLookup<VillagerAIPipelineBridgeState>(true);
         }
 
         [BurstCompile]
@@ -66,6 +72,7 @@ namespace PureDOTS.Systems
 
             _behaviorLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _bridgeStateLookup.Update(ref state);
 
             VillagerArchetypeDefaults.CreateFallback(out var fallbackArchetype);
 
@@ -76,6 +83,7 @@ namespace PureDOTS.Systems
                 BehaviorConfig = config,
                 BehaviorLookup = _behaviorLookup,
                 TransformLookup = _transformLookup,
+                BridgeStateLookup = _bridgeStateLookup,
                 FallbackArchetype = fallbackArchetype
             };
 
@@ -90,6 +98,7 @@ namespace PureDOTS.Systems
             public VillagerBehaviorConfig BehaviorConfig;
             [ReadOnly] public ComponentLookup<VillagerBehavior> BehaviorLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public ComponentLookup<VillagerAIPipelineBridgeState> BridgeStateLookup;
             public VillagerArchetypeData FallbackArchetype;
 
             public void Execute(Entity entity, ref VillagerAIState aiState, ref VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags, in LocalTransform transform, in VillagerArchetypeResolved resolved)
@@ -102,6 +111,19 @@ namespace PureDOTS.Systems
                 
                 aiState.StateTimer += DeltaTime;
 
+                // Check if AI pipeline bridge has already set the goal this tick
+                // If so, skip the fallback need-based logic
+                if (BridgeStateLookup.HasComponent(entity))
+                {
+                    var bridgeState = BridgeStateLookup[entity];
+                    if (bridgeState.LastBridgedTick == CurrentTick)
+                    {
+                        // AI pipeline has already set the goal - just handle state transitions
+                        HandleStateTransitions(ref aiState, in needs, in job, in ticket);
+                        return;
+                    }
+                }
+
                 var behavior = BehaviorLookup.HasComponent(entity)
                     ? BehaviorLookup[entity]
                     : default;
@@ -110,35 +132,28 @@ namespace PureDOTS.Systems
                     ? resolved.Data
                     : FallbackArchetype;
 
-                VillagerUtilityScheduler.SelectBestAction(
-                    ref needs,
-                    archetype,
-                    behavior,
-                    out var needAction,
-                    out var needUtility);
+                // Fallback need-based goal selection for villagers without AI pipeline
+                // or when the pipeline hasn't made a decision this tick.
+                var desiredGoal = VillagerAIState.Goal.None;
 
-                var desiredGoal = MapNeedToGoal(needAction);
-                var selectedUtility = needUtility;
-
-                if (HasActiveJob(job, ticket))
+                // Simple need-based goal selection (will be replaced by AI pipeline bridge)
+                if (needs.HungerFloat < BehaviorConfig.HungerThreshold)
                 {
-                    var preference = VillagerUtilityScheduler.GetJobPreference(job.Type, archetype);
-                    var distance = EstimateJobDistance(transform.Position, ticket.ResourceEntity);
-                    var jobUtility = VillagerUtilityScheduler.CalculateJobUtility(preference, distance, needs.EnergyFloat);
-                    if (jobUtility > selectedUtility)
-                    {
-                        desiredGoal = VillagerAIState.Goal.Work;
-                        selectedUtility = jobUtility;
-                    }
+                    desiredGoal = VillagerAIState.Goal.SurviveHunger;
+                }
+                else if (needs.EnergyFloat < BehaviorConfig.RestEnergyThreshold)
+                {
+                    desiredGoal = VillagerAIState.Goal.Rest;
+                }
+                else if (HasActiveJob(job, ticket))
+                {
+                    // Prefer work if there's an active job and basic needs are met
+                    desiredGoal = VillagerAIState.Goal.Work;
                 }
 
                 if (needs.Health < BehaviorConfig.FleeHealthThreshold)
                 {
                     desiredGoal = VillagerAIState.Goal.Flee;
-                }
-                else if (desiredGoal == VillagerAIState.Goal.None)
-                {
-                    desiredGoal = MapNeedToGoal(needAction);
                 }
 
                 if (desiredGoal != aiState.CurrentGoal)
@@ -189,15 +204,43 @@ namespace PureDOTS.Systems
                 }
             }
 
-            private static VillagerAIState.Goal MapNeedToGoal(VillagerActionType action)
+            private void HandleStateTransitions(ref VillagerAIState aiState, in VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket)
             {
-                return action switch
+                // Handle state transitions even when AI pipeline is controlling
+                switch (aiState.CurrentState)
                 {
-                    VillagerActionType.SatisfyHunger => VillagerAIState.Goal.SurviveHunger,
-                    VillagerActionType.Rest => VillagerAIState.Goal.Rest,
-                    VillagerActionType.ImproveMorale => VillagerAIState.Goal.Rest,
-                    _ => VillagerAIState.Goal.None
-                };
+                    case VillagerAIState.State.Working:
+                        if (ticket.ResourceEntity == Entity.Null)
+                        {
+                            SetIdle(ref aiState);
+                        }
+                        break;
+                    case VillagerAIState.State.Eating:
+                        if (needs.HungerFloat < BehaviorConfig.HungerThreshold * BehaviorConfig.EatingHungerThresholdMultiplier ||
+                            aiState.StateTimer >= BehaviorConfig.EatingDuration)
+                        {
+                            SetIdle(ref aiState);
+                        }
+                        break;
+                    case VillagerAIState.State.Sleeping:
+                        if (needs.EnergyFloat > BehaviorConfig.RestEnergyThreshold)
+                        {
+                            SetIdle(ref aiState);
+                        }
+                        break;
+                    case VillagerAIState.State.Fleeing:
+                        if (aiState.StateTimer >= BehaviorConfig.FleeDuration)
+                        {
+                            SetIdle(ref aiState);
+                        }
+                        break;
+                }
+
+                // Update target for working state
+                if (aiState.CurrentState == VillagerAIState.State.Working && ticket.ResourceEntity != Entity.Null)
+                {
+                    aiState.TargetEntity = ticket.ResourceEntity;
+                }
             }
 
             private static bool HasActiveJob(in VillagerJob job, in VillagerJobTicket ticket)

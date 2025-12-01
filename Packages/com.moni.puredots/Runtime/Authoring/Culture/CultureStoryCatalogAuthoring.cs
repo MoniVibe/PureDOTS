@@ -11,8 +11,7 @@ namespace PureDOTS.Authoring.Culture
     /// <summary>
     /// Authoring ScriptableObject for culture story catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "CultureStoryCatalog", menuName = "PureDOTS/Culture/Story Catalog")]
-    public class CultureStoryCatalogAuthoring : ScriptableObject
+    public class CultureStoryCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class StoryDefinition

@@ -91,7 +91,7 @@ namespace PureDOTS.Systems.Buffs
 
                     // Find buff definition
                     int buffIndex = -1;
-                    for (int j = 0; j < Catalog.Buffs.Length; j++)
+                    for (int j = 0; j < catalog.Buffs.Length; j++)
                     {
                         if (catalog.Buffs[j].BuffId.Equals(request.BuffId))
                         {

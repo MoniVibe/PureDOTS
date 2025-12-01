@@ -8,6 +8,6 @@ namespace Godgame.Presentation
         public static class GodgamePresentationIds
         {
             public const int MiraclePingEffectId = 1001;
-            public static readonly FixedString64Bytes MiraclePingStyle = new FixedString64Bytes("fx.miracle.ping");
+            public static FixedString64Bytes MiraclePingStyle => new FixedString64Bytes("fx.miracle.ping");
         }
 }

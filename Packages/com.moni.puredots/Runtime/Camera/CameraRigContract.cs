@@ -1,0 +1,147 @@
+using UnityEngine;
+
+namespace PureDOTS.Runtime.Camera
+{
+    /// <summary>
+    /// CAMERA RIG CONTRACT - Usage Pattern for Game Projects
+    ///
+    /// This file demonstrates the standard pattern for game projects to implement
+    /// camera controllers using the PureDOTS camera rig service.
+    ///
+    /// KEY PRINCIPLES:
+    /// 1. Game code owns input interpretation and game flavor
+    /// 2. PureDOTS owns the generic math that evolves CameraRigState
+    /// 3. CameraRigService is the single source of truth for rig state
+    /// 4. CameraRigApplier is the single point that mutates Camera.main
+    ///
+    /// Uses frame-time (Time.deltaTime).
+    /// Not part of deterministic simulation / rewind.
+    /// Safe utility for game projects to build cameras on.
+    /// </summary>
+    public static class CameraRigContract
+    {
+        /// <summary>
+        /// EXAMPLE USAGE PATTERN - RTS Camera Controller
+        ///
+        /// This is how Space4X and Godgame should structure their camera controllers.
+        /// </summary>
+        public class ExampleRtsCameraController : MonoBehaviour
+        {
+            // Game-specific input interpretation
+            [Header("Game-Specific Input")]
+            [SerializeField] private float panSpeed = 10f;
+            [SerializeField] private float rotateSpeed = 2f;
+            [SerializeField] private float zoomSpeed = 5f;
+
+            // Current camera state (game-specific)
+            private Vector3 _position = new Vector3(0, 25, -30);
+            private float _yaw;
+            private float _pitch = 40f;
+            private float _distance = 30f;
+
+            private void Update()
+            {
+                // 1. Read game-specific input
+                Vector2 panInput = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+                Vector2 rotateInput = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
+                float zoomInput = Input.GetAxis("Mouse ScrollWheel");
+
+                // 2. Update game-specific camera state
+                _position += transform.right * panInput.x * panSpeed * Time.deltaTime;
+                _position += transform.forward * panInput.y * panSpeed * Time.deltaTime;
+
+                if (Input.GetMouseButton(1)) // Right mouse button held
+                {
+                    _yaw += rotateInput.x * rotateSpeed;
+                    _pitch = Mathf.Clamp(_pitch - rotateInput.y * rotateSpeed, -80f, 80f);
+                }
+
+                _distance = Mathf.Clamp(_distance - zoomInput * zoomSpeed, 5f, 200f);
+
+                // 3. Compute new camera transform (game-specific math)
+                Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
+                Vector3 offset = rotation * Vector3.back * _distance;
+                Vector3 cameraPosition = _position + offset;
+
+                // 4. Create CameraRigState (PureDOTS contract)
+                CameraRigState rigState = new CameraRigState
+                {
+                    Position = cameraPosition,
+                    Rotation = rotation,
+                    Pitch = _pitch,
+                    Yaw = _yaw,
+                    Distance = _distance,
+                    PerspectiveMode = true,
+                    FieldOfView = 60f,
+                    RigType = CameraRigType.Space4X // or Godgame
+                };
+
+                // 5. Publish to CameraRigService (PureDOTS contract)
+                CameraRigService.Publish(rigState);
+
+                // CameraRigApplier will automatically apply this in LateUpdate
+            }
+        }
+
+        /// <summary>
+        /// ALTERNATIVE PATTERN - Using BW2StyleCameraController
+        ///
+        /// For games that want B&W2 style camera behavior out of the box.
+        /// </summary>
+        public static class Bw2CameraSetup
+        {
+            /// <summary>
+            /// In your scene setup code or prefab:
+            /// 1. Create GameObject with Camera component
+            /// 2. Add BW2StyleCameraController
+            /// 3. Add CameraRigApplier
+            /// 4. Add BW2CameraInputBridge
+            /// 5. Configure terrain mask and sensitivities
+            ///
+            /// The BW2StyleCameraController will:
+            /// - Handle LMB pan, MMB orbit, scroll zoom
+            /// - Publish CameraRigState to CameraRigService
+            /// - CameraRigApplier will apply it automatically
+            /// </summary>
+            public static void SetupBw2Camera(GameObject cameraRig)
+            {
+                // Add required components
+                cameraRig.AddComponent<Camera>();
+                var controller = cameraRig.AddComponent<BW2StyleCameraController>();
+                cameraRig.AddComponent<CameraRigApplier>();
+                cameraRig.AddComponent<BW2CameraInputBridge>();
+
+                // Configure for your game
+                controller.groundMask = LayerMask.GetMask("Terrain");
+                controller.panScale = 1.0f;
+                controller.zoomSpeed = 6f;
+                // ... other settings
+
+                // Done! Controller handles input and publishes state automatically
+            }
+        }
+
+        /// <summary>
+        /// CONTRACT SUMMARY
+        ///
+        /// Game Code Responsibilities:
+        /// - Interpret game-specific input (WASD, mouse, gamepad, touch)
+        /// - Implement game-specific camera behaviors (bounds, modes, transitions)
+        /// - Compute camera Position and Rotation based on game rules
+        /// - Fill CameraRigState struct with current camera state
+        /// - Call CameraRigService.Publish(state) when state changes
+        ///
+        /// PureDOTS Responsibilities:
+        /// - Store authoritative CameraRigState (CameraRigService)
+        /// - Apply CameraRigState to Camera.main (CameraRigApplier)
+        /// - Provide reusable camera behaviors (BW2StyleCameraController)
+        /// - Ensure no conflicts between multiple camera rigs
+        ///
+        /// Separation Benefits:
+        /// - Game code stays game-specific and flexible
+        /// - PureDOTS provides stable, reusable camera infrastructure
+        /// - Clear contract prevents accidental coupling
+        /// - Easy to test camera logic in isolation
+        /// </summary>
+    }
+}

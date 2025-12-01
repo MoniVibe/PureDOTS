@@ -11,8 +11,7 @@ namespace PureDOTS.Authoring.Spells
     /// <summary>
     /// Authoring ScriptableObject for spell catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "SpellCatalog", menuName = "PureDOTS/Spells/Spell Catalog")]
-    public class SpellCatalogAuthoring : ScriptableObject
+    public class SpellCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class SpellDefinition

@@ -2,7 +2,6 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
-using Space4X.Knowledge;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

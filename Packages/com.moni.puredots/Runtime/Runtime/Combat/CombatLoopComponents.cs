@@ -27,5 +27,32 @@ namespace PureDOTS.Runtime.Combat
         public float WeaponCooldown;
         public Entity Target;
         public float3 LastKnownTargetPosition;
+
+        /// <summary>
+        /// Currently active combat maneuver (set by CombatManeuverSystem based on pilot XP).
+        /// Games define XP thresholds via VesselManeuverProfile.
+        /// </summary>
+        public CombatManeuver ActiveManeuver;
+
+        /// <summary>
+        /// Time remaining in current maneuver (seconds).
+        /// </summary>
+        public float ManeuverTimer;
+
+        /// <summary>
+        /// Tick when current maneuver was started.
+        /// </summary>
+        public uint ManeuverStartTick;
+    }
+
+    /// <summary>
+    /// Event emitted when a maneuver starts.
+    /// Games can react to this for animations, sound, etc.
+    /// </summary>
+    public struct ManeuverStartEvent : IBufferElementData
+    {
+        public Entity VesselEntity;
+        public CombatManeuver Maneuver;
+        public uint StartTick;
     }
 }

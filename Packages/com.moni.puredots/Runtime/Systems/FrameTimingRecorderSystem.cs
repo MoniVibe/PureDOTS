@@ -13,7 +13,7 @@ namespace PureDOTS.Systems
     /// Executes ahead of presentation systems so overlay consumers read the latest data.
     /// </summary>
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    [UpdateBefore(typeof(DebugDisplaySystem))]
+    // DebugDisplaySystem is legacy and compiled out unless PUREDOTS_LEGACY_CAMERA is defined.
     public sealed partial class FrameTimingRecorderSystem : SystemBase
     {
         private static readonly FrameTimingGroup[] s_OutputOrder =

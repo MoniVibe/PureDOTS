@@ -12,8 +12,7 @@ namespace PureDOTS.Authoring.Spells
     /// <summary>
     /// Authoring ScriptableObject for school complexity catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "SchoolComplexityCatalog", menuName = "PureDOTS/Spells/School Complexity Catalog")]
-    public class SchoolComplexityCatalogAuthoring : ScriptableObject
+    public class SchoolComplexityCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class SchoolComplexityDefinition

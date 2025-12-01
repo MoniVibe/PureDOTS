@@ -23,9 +23,14 @@ namespace PureDOTS.Runtime.Components
     public struct TimeState : IComponentData
     {
         public float FixedDeltaTime;
+        /// <summary>
+        /// Simulation delta time for the current tick (usually the fixed timestep).
+        /// </summary>
+        public float DeltaTime;
         public float CurrentSpeedMultiplier;
         public uint Tick;
         public bool IsPaused;
+        public float Time => Tick * FixedDeltaTime;
     }
 
     /// <summary>

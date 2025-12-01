@@ -1,8 +1,10 @@
 using PureDOTS.Runtime.Items;
+using PureDOTS.Runtime.Shared;
 using PureDOTS.Systems.Items;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -12,8 +14,7 @@ namespace PureDOTS.Authoring.Items
     /// Authoring ScriptableObject for composite item part catalog.
     /// Defines part types and material properties used by composite items.
     /// </summary>
-    [CreateAssetMenu(fileName = "ItemPartCatalog", menuName = "PureDOTS/Items/Item Part Catalog")]
-    public class ItemPartCatalogAuthoring : ScriptableObject
+    public class ItemPartCatalogAuthoring : MonoBehaviour
     {
         [System.Serializable]
         public class PartSpecAuthoring
@@ -162,7 +163,7 @@ namespace PureDOTS.Authoring.Items
             AddComponent(entity, new CompositeItem
             {
                 OwnerEntity = ownerEntity,
-                AggregatedDurability = 0,
+                AggregatedDurability = (half)0f,
                 AggregatedTier = QualityTier.Poor,
                 AggregationHash = 0,
                 Flags = CompositeItemFlags.None

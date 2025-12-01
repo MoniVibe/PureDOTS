@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
+using PureDOTS.Systems.Movement;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

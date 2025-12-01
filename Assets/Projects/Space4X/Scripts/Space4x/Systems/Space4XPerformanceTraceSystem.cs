@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Profiling;
 using UnityEngine;
+using LateSimulationSystemGroup = PureDOTS.Systems.LateSimulationSystemGroup;
 
 namespace Space4X.Systems
 {

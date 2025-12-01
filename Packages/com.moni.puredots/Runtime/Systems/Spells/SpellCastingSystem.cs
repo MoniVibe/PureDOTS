@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Buffs;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Spells;
@@ -37,6 +38,9 @@ namespace PureDOTS.Systems.Spells
             var currentTick = timeState.Tick;
             var deltaTime = timeState.DeltaTime;
 
+            var enlightenmentLookup = SystemAPI.GetComponentLookup<Enlightenment>(true);
+            var extendedMasteryLookup = SystemAPI.GetBufferLookup<ExtendedSpellMastery>(true);
+
             // Get spell catalog
             if (!SystemAPI.TryGetSingleton<SpellCatalogRef>(out var spellCatalogRef) ||
                 !spellCatalogRef.Blob.IsCreated)
@@ -44,11 +48,15 @@ namespace PureDOTS.Systems.Spells
                 return;
             }
 
-            var spellCatalog = spellCatalogRef.Blob.Value;
+            ref var spellCatalog = ref spellCatalogRef.Blob.Value;
 
             // Get lesson catalog for prerequisite checks
             var lessonCatalogRef = SystemAPI.GetSingleton<LessonCatalogRef>();
-            var lessonCatalog = lessonCatalogRef.Blob.IsCreated ? lessonCatalogRef.Blob.Value : default;
+            if (!lessonCatalogRef.Blob.IsCreated)
+            {
+                return;
+            }
+            ref var lessonCatalog = ref lessonCatalogRef.Blob.Value;
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
@@ -60,7 +68,9 @@ namespace PureDOTS.Systems.Spells
                 LessonCatalog = lessonCatalog,
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
-                Ecb = ecb
+                Ecb = ecb,
+                EnlightenmentLookup = enlightenmentLookup,
+                ExtendedMasteryLookup = extendedMasteryLookup
             }.ScheduleParallel();
 
             // Update active casts
@@ -69,7 +79,8 @@ namespace PureDOTS.Systems.Spells
                 SpellCatalog = spellCatalog,
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
-                Ecb = ecb
+                Ecb = ecb,
+                ExtendedMasteryLookup = extendedMasteryLookup
             }.ScheduleParallel();
 
             // Update cooldowns
@@ -91,6 +102,8 @@ namespace PureDOTS.Systems.Spells
             public uint CurrentTick;
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            [ReadOnly] public ComponentLookup<Enlightenment> EnlightenmentLookup;
+            [ReadOnly] public BufferLookup<ExtendedSpellMastery> ExtendedMasteryLookup;
 
             void Execute(
                 Entity entity,
@@ -101,8 +114,7 @@ namespace PureDOTS.Systems.Spells
                 in SpellCaster caster,
                 in DynamicBuffer<LearnedSpell> learnedSpells,
                 in DynamicBuffer<SpellCooldown> cooldowns,
-                in DynamicBuffer<LessonMastery> lessonMastery,
-                in DynamicBuffer<ExtendedSpellMastery> extendedMastery)
+                in DynamicBuffer<LessonMastery> lessonMastery)
             {
                 // Skip if already casting
                 if (castState.Phase != SpellCastPhase.Idle)
@@ -125,19 +137,18 @@ namespace PureDOTS.Systems.Spells
                 }
 
                 // Find spell definition
-                SpellEntry spellEntry = default;
-                bool foundSpell = false;
+                var spellIndex = -1;
                 for (int i = 0; i < SpellCatalog.Spells.Length; i++)
                 {
-                    if (SpellCatalog.Spells[i].SpellId.Equals(request.SpellId))
+                    ref var spellLookup = ref SpellCatalog.Spells[i];
+                    if (spellLookup.SpellId.Equals(request.SpellId))
                     {
-                        spellEntry = SpellCatalog.Spells[i];
-                        foundSpell = true;
+                        spellIndex = i;
                         break;
                     }
                 }
 
-                if (!foundSpell)
+                if (spellIndex == -1)
                 {
                     return; // Invalid spell
                 }
@@ -159,9 +170,9 @@ namespace PureDOTS.Systems.Spells
                 }
 
                 // Check ExtendedSpellMastery (new system)
-                if (SystemAPI.HasBuffer<ExtendedSpellMastery>(entity))
+                if (ExtendedMasteryLookup.HasBuffer(entity))
                 {
-                    var extendedMasteryBuffer = SystemAPI.GetBuffer<ExtendedSpellMastery>(entity);
+                    var extendedMasteryBuffer = ExtendedMasteryLookup[entity];
                     for (int i = 0; i < extendedMasteryBuffer.Length; i++)
                     {
                         if (extendedMasteryBuffer[i].SpellId.Equals(request.SpellId))
@@ -185,7 +196,8 @@ namespace PureDOTS.Systems.Spells
                 }
 
                 // Check prerequisites (lessons, enlightenment, etc.)
-                if (!ValidatePrerequisites(entity, spellEntry, lessonMastery, lessonCatalog))
+                ref var spellEntry = ref SpellCatalog.Spells[spellIndex];
+                if (!ValidatePrerequisites(entity, ref spellEntry, lessonMastery, ref LessonCatalog, learnedSpells))
                 {
                     return; // Prerequisites not met
                 }
@@ -246,14 +258,15 @@ namespace PureDOTS.Systems.Spells
             [BurstCompile]
             private bool ValidatePrerequisites(
                 Entity entity,
-                SpellEntry spell,
+                ref SpellEntry spell,
                 DynamicBuffer<LessonMastery> lessonMastery,
-                LessonDefinitionBlob lessonCatalog)
+                ref LessonDefinitionBlob lessonCatalog,
+                in DynamicBuffer<LearnedSpell> learnedSpells)
             {
                 // Check enlightenment requirement
-                if (SystemAPI.HasComponent<Enlightenment>(entity))
+                if (EnlightenmentLookup.HasComponent(entity))
                 {
-                    var enlightenment = SystemAPI.GetComponent<Enlightenment>(entity);
+                    var enlightenment = EnlightenmentLookup[entity];
                     if (enlightenment.Level < spell.RequiredEnlightenment)
                     {
                         return false;
@@ -264,27 +277,42 @@ namespace PureDOTS.Systems.Spells
                 for (int i = 0; i < spell.Prerequisites.Length; i++)
                 {
                     var prereq = spell.Prerequisites[i];
+                    bool met = false;
                     if (prereq.Type == PrerequisiteType.Lesson)
                     {
                         // Check if lesson is mastered to required tier
-                        bool hasLesson = false;
                         for (int j = 0; j < lessonMastery.Length; j++)
                         {
-                            if (lessonMastery[j].LessonId.Equals(prereq.TargetId))
+                            if (lessonMastery[j].LessonId.Equals(prereq.TargetId) &&
+                                lessonMastery[j].Tier >= (MasteryTier)prereq.RequiredLevel)
                             {
-                                if (lessonMastery[j].Tier >= (MasteryTier)prereq.RequiredLevel)
-                                {
-                                    hasLesson = true;
-                                    break;
-                                }
+                                met = true;
+                                break;
                             }
                         }
-                        if (!hasLesson)
+                    }
+                    else if (prereq.Type == PrerequisiteType.Spell)
+                    {
+                        for (int j = 0; j < learnedSpells.Length; j++)
                         {
-                            return false;
+                            if (learnedSpells[j].SpellId.Equals(prereq.TargetId) &&
+                                learnedSpells[j].MasteryLevel >= prereq.RequiredLevel)
+                            {
+                                met = true;
+                                break;
+                            }
                         }
                     }
-                    // TODO: Check other prerequisite types (spell, skill, attribute)
+                    else
+                    {
+                        // TODO: Check other prerequisite types (skill, attribute)
+                        met = true;
+                    }
+
+                    if (!met)
+                    {
+                        return false;
+                    }
                 }
 
                 return true;
@@ -300,6 +328,7 @@ namespace PureDOTS.Systems.Spells
             public uint CurrentTick;
             public float DeltaTime;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            [ReadOnly] public BufferLookup<ExtendedSpellMastery> ExtendedMasteryLookup;
 
             void Execute(
                 Entity entity,
@@ -307,7 +336,6 @@ namespace PureDOTS.Systems.Spells
                 ref SpellCastState castState,
                 in SpellCaster caster,
                 in DynamicBuffer<LearnedSpell> learnedSpells,
-                in DynamicBuffer<ExtendedSpellMastery> extendedMastery,
                 ref DynamicBuffer<SpellCastEvent> castEvents)
             {
                 if (castState.Phase == SpellCastPhase.Idle)
@@ -316,36 +344,40 @@ namespace PureDOTS.Systems.Spells
                 }
 
                 // Find spell definition
-                SpellEntry spellEntry = default;
-                bool foundSpell = false;
+                var spellIndex = -1;
                 for (int i = 0; i < SpellCatalog.Spells.Length; i++)
                 {
-                    if (SpellCatalog.Spells[i].SpellId.Equals(castState.ActiveSpellId))
+                    ref var spellLookup = ref SpellCatalog.Spells[i];
+                    if (spellLookup.SpellId.Equals(castState.ActiveSpellId))
                     {
-                        spellEntry = SpellCatalog.Spells[i];
-                        foundSpell = true;
+                        spellIndex = i;
                         break;
                     }
                 }
 
-                if (!foundSpell)
+                if (spellIndex == -1)
                 {
                     castState.Phase = SpellCastPhase.Idle;
                     return;
                 }
+                ref var spellEntry = ref SpellCatalog.Spells[spellIndex];
 
                 // Get mastery level (prefer ExtendedSpellMastery, fallback to LearnedSpell)
                 byte masteryLevel = 0;
                 float extendedMastery = 0f;
                 
                 // Check ExtendedSpellMastery first
-                for (int i = 0; i < extendedMastery.Length; i++)
+                if (ExtendedMasteryLookup.HasBuffer(entity))
                 {
-                    if (extendedMastery[i].SpellId.Equals(castState.ActiveSpellId))
+                    var extendedMasteryBuffer = ExtendedMasteryLookup[entity];
+                    for (int i = 0; i < extendedMasteryBuffer.Length; i++)
                     {
-                        extendedMastery = extendedMastery[i].MasteryProgress;
-                        masteryLevel = (byte)math.clamp(extendedMastery * 255f, 0f, 255f); // Convert to legacy format
-                        break;
+                        if (extendedMasteryBuffer[i].SpellId.Equals(castState.ActiveSpellId))
+                        {
+                            extendedMastery = extendedMasteryBuffer[i].MasteryProgress;
+                            masteryLevel = (byte)math.clamp(extendedMastery * 255f, 0f, 255f); // Convert to legacy format
+                            break;
+                        }
                     }
                 }
                 

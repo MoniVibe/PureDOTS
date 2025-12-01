@@ -36,6 +36,8 @@ namespace PureDOTS.Systems.Spells
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var currentTick = timeState.Tick;
 
+            var enlightenmentLookup = SystemAPI.GetComponentLookup<Enlightenment>(true);
+
             // Get spell catalog
             if (!SystemAPI.TryGetSingleton<SpellCatalogRef>(out var spellCatalogRef) ||
                 !spellCatalogRef.Blob.IsCreated)
@@ -43,21 +45,23 @@ namespace PureDOTS.Systems.Spells
                 return;
             }
 
-            var spellCatalog = spellCatalogRef.Blob.Value;
-
             // Get lesson catalog
             var lessonCatalogRef = SystemAPI.GetSingleton<LessonCatalogRef>();
-            var lessonCatalog = lessonCatalogRef.Blob.IsCreated ? lessonCatalogRef.Blob.Value : default;
+            if (!lessonCatalogRef.Blob.IsCreated)
+            {
+                return;
+            }
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             new ProcessSpellLearningJob
             {
-                SpellCatalog = spellCatalog,
-                LessonCatalog = lessonCatalog,
+                SpellCatalog = spellCatalogRef.Blob,
+                LessonCatalog = lessonCatalogRef.Blob,
                 CurrentTick = currentTick,
-                Ecb = ecb
+                Ecb = ecb,
+                EnlightenmentLookup = enlightenmentLookup
             }.ScheduleParallel();
         }
 
@@ -65,13 +69,14 @@ namespace PureDOTS.Systems.Spells
         public partial struct ProcessSpellLearningJob : IJobEntity
         {
             [ReadOnly]
-            public SpellDefinitionBlob SpellCatalog;
+            public BlobAssetReference<SpellDefinitionBlob> SpellCatalog;
 
             [ReadOnly]
-            public LessonDefinitionBlob LessonCatalog;
+            public BlobAssetReference<LessonDefinitionBlob> LessonCatalog;
 
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            [ReadOnly] public ComponentLookup<Enlightenment> EnlightenmentLookup;
 
             void Execute(
                 Entity entity,
@@ -81,25 +86,25 @@ namespace PureDOTS.Systems.Spells
                 in DynamicBuffer<LessonMastery> lessonMastery,
                 ref DynamicBuffer<SpellLearnedEvent> learnedEvents)
             {
+                ref var spellCatalog = ref SpellCatalog.Value;
+                ref var lessonCatalog = ref LessonCatalog.Value;
+
                 for (int i = requests.Length - 1; i >= 0; i--)
                 {
                     var request = requests[i];
-                    bool learned = false;
 
                     // Find spell definition
-                    SpellEntry spellEntry = default;
-                    bool foundSpell = false;
-                    for (int j = 0; j < SpellCatalog.Spells.Length; j++)
+                    var spellIndex = -1;
+                    for (int j = 0; j < spellCatalog.Spells.Length; j++)
                     {
-                        if (SpellCatalog.Spells[j].SpellId.Equals(request.SpellId))
+                        if (spellCatalog.Spells[j].SpellId.Equals(request.SpellId))
                         {
-                            spellEntry = SpellCatalog.Spells[j];
-                            foundSpell = true;
+                            spellIndex = j;
                             break;
                         }
                     }
 
-                    if (!foundSpell)
+                    if (spellIndex == -1)
                     {
                         requests.RemoveAt(i);
                         continue; // Invalid spell
@@ -123,7 +128,8 @@ namespace PureDOTS.Systems.Spells
                     }
 
                     // Validate prerequisites
-                    if (!ValidateSpellPrerequisites(entity, spellEntry, lessonMastery, lessonCatalog))
+                    ref var spellEntry = ref spellCatalog.Spells[spellIndex];
+                    if (!ValidateSpellPrerequisites(entity, ref spellEntry, lessonMastery, ref lessonCatalog, learnedSpells))
                     {
                         requests.RemoveAt(i);
                         continue; // Prerequisites not met
@@ -148,7 +154,6 @@ namespace PureDOTS.Systems.Spells
                         LearnedTick = CurrentTick
                     });
 
-                    learned = true;
                     requests.RemoveAt(i);
                 }
             }
@@ -156,14 +161,15 @@ namespace PureDOTS.Systems.Spells
             [BurstCompile]
             private bool ValidateSpellPrerequisites(
                 Entity entity,
-                SpellEntry spell,
+                ref SpellEntry spell,
                 DynamicBuffer<LessonMastery> lessonMastery,
-                LessonDefinitionBlob lessonCatalog)
+                ref LessonDefinitionBlob lessonCatalog,
+                in DynamicBuffer<LearnedSpell> learnedSpells)
             {
                 // Check enlightenment requirement
-                if (SystemAPI.HasComponent<Enlightenment>(entity))
+                if (EnlightenmentLookup.HasComponent(entity))
                 {
-                    var enlightenment = SystemAPI.GetComponent<Enlightenment>(entity);
+                    var enlightenment = EnlightenmentLookup[entity];
                     if (enlightenment.Level < spell.RequiredEnlightenment)
                     {
                         return false;
@@ -195,9 +201,8 @@ namespace PureDOTS.Systems.Spells
 
                         case PrerequisiteType.Spell:
                             // Check if spell is learned
-                            if (SystemAPI.HasBuffer<LearnedSpell>(entity))
+                            if (learnedSpells.IsCreated && learnedSpells.Length > 0)
                             {
-                                var learnedSpells = SystemAPI.GetBuffer<LearnedSpell>(entity);
                                 for (int j = 0; j < learnedSpells.Length; j++)
                                 {
                                     if (learnedSpells[j].SpellId.Equals(prereq.TargetId))
@@ -223,9 +228,9 @@ namespace PureDOTS.Systems.Spells
                             break;
 
                         case PrerequisiteType.Enlightenment:
-                            if (SystemAPI.HasComponent<Enlightenment>(entity))
+                            if (EnlightenmentLookup.HasComponent(entity))
                             {
-                                var enlightenment = SystemAPI.GetComponent<Enlightenment>(entity);
+                                var enlightenment = EnlightenmentLookup[entity];
                                 if (enlightenment.Level >= prereq.RequiredLevel)
                                 {
                                     met = true;

@@ -34,6 +34,16 @@ namespace PureDOTS.Systems
             {
                 PresentationBindingConfigVars.BindingSample.ValueChanged -= OnConfigChanged;
             }
+
+            foreach (var bindingRef in SystemAPI.Query<RefRW<PresentationBindingReference>>())
+            {
+                ref var blob = ref bindingRef.ValueRW.Binding;
+                if (blob.IsCreated)
+                {
+                    blob.Dispose();
+                    blob = default;
+                }
+            }
         }
 
         public void OnUpdate(ref SystemState state)

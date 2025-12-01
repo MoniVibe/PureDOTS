@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spells;
 using Unity.Burst;
 using Unity.Collections;
@@ -40,7 +41,7 @@ namespace PureDOTS.Systems.Spells
                 return;
             }
 
-            var signatureCatalog = signatureCatalogRef.Blob.Value;
+            ref var signatureCatalog = ref signatureCatalogRef.Blob.Value;
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();

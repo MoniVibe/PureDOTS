@@ -10,7 +10,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Emits presentation commands for band aggregates so the flag/overlay visuals stay aligned with simulation data.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(BandAggregationSystem))]
     public partial struct GodgameBandPresentationAdapterSystem : ISystem

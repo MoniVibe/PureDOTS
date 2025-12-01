@@ -7,8 +7,6 @@
         "PureDOTS.Authoring",
         "PureDOTS.Input",
         "PureDOTS.Tests.Support",
-        "Space4X.Gameplay",
-        "Space4X.Placeholder",
         "Unity.Entities",
         "Unity.Collections",
         "Unity.Mathematics",
@@ -26,7 +24,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": false,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "INCLUDE_PUREDOTS_PLAYMODE_TESTS"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

@@ -68,10 +68,10 @@ namespace PureDOTS.Systems.Combat
                 in HazardAvoidanceState avoidanceState)
             {
                 float risk = avoidanceState.AvoidanceUrgency;
-                byte currentMode = decision.Mode;
+                var currentMode = (AvoidanceMode)decision.Mode;
 
                 // Determine new mode based on risk
-                byte newMode = AvoidanceMode.Hold;
+                var newMode = AvoidanceMode.Hold;
                 if (risk > profile.BreakFormationThresh)
                 {
                     // Check cooldown before breaking
@@ -93,7 +93,7 @@ namespace PureDOTS.Systems.Combat
                 // Update mode if changed
                 if (newMode != currentMode)
                 {
-                    decision.Mode = newMode;
+                    decision.Mode = (byte)newMode;
                     decision.Tick = CurrentTick;
                 }
 

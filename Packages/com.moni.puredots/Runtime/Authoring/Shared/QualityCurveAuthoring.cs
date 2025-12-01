@@ -12,8 +12,7 @@ namespace PureDOTS.Authoring.Shared
     /// Maps quality Score01 to stat multipliers via curves.
     /// Used by both Godgame and Space4X.
     /// </summary>
-    [CreateAssetMenu(fileName = "QualityCurve", menuName = "PureDOTS/Shared/Quality Curve")]
-    public class QualityCurveAuthoring : ScriptableObject
+    public class QualityCurveAuthoring : MonoBehaviour
     {
         [Header("Stat Curves")]
         [Tooltip("Damage multiplier curve (e.g., 0.95 at score 0, 1.10 at score 1)")]

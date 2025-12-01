@@ -4,6 +4,7 @@ using Space4X.Runtime;
 using Space4X.Runtime.Transport;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Transforms;
 
 namespace Space4X.Systems
 {

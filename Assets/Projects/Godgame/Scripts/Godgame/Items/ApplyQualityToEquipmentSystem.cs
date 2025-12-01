@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Shared;
 using PureDOTS.Systems.Shared;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Godgame.Items
@@ -9,16 +10,10 @@ namespace Godgame.Items
     /// Applies quality multipliers to equipment runtime stats via QualityCurveBlob.
     /// Runs in FixedStep simulation group after InstanceQualityCalculationSystem.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(InstanceQualityCalculationSystem))]
     public partial struct ApplyQualityToEquipmentSystem : ISystem
     {
-        [BurstCompile]
-        public void OnCreate(ref SystemState state)
-        {
-        }
-
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {

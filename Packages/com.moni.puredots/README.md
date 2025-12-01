@@ -136,8 +136,55 @@ com.moni.puredots/
 - **Version Lock**: `Docs/Vision/core.md` - Critical version compatibility information
 - **Architecture**: `Docs/Architecture/PureDOTS_As_Framework.md`
 - **Integration Guide**: `Docs/Guides/UsingPureDOTSInAGame.md`
+- **Integration Spec**: `Docs/PUREDOTS_INTEGRATION_SPEC.md` - Canonical integration patterns
 - **Vision**: `Docs/Vision.md` - Design pillars and roadmap
 - **API Reference**: See source code documentation
+
+## Critical Coding Patterns
+
+**These patterns are MANDATORY. Violations cause compile errors.**
+
+### P0: Verify Dependencies First
+
+Before writing code that uses `TimeState`, `RewindState`, or any component:
+```bash
+grep -r "struct TimeState" --include="*.cs"
+```
+If not found: **create it first** or flag as blocker.
+
+### P1: Buffer Mutation - Use Indexed Access
+
+```csharp
+// ❌ WRONG (CS1654)
+foreach (var item in buffer) { item.Value = 5; }
+
+// ✅ CORRECT
+for (int i = 0; i < buffer.Length; i++)
+{
+    var item = buffer[i];
+    item.Value = 5;
+    buffer[i] = item;
+}
+```
+
+### P1: Blob Access - Always Use Ref
+
+```csharp
+// ❌ WRONG (EA0001)
+var catalog = blobRef.Value;
+
+// ✅ CORRECT
+ref var catalog = ref blobRef.Value;
+```
+
+### P2: Rewind Guard
+
+```csharp
+var rewind = SystemAPI.GetSingleton<RewindState>();
+if (rewind.Mode != RewindMode.Record) return;
+```
+
+See `Docs/PUREDOTS_INTEGRATION_SPEC.md` for complete pattern documentation.
 
 ## Versioning
 
@@ -153,6 +200,8 @@ For issues, questions, or contributions, see the main repository documentation.
 ## License
 
 [Your License Here]
+
+
 
 
 

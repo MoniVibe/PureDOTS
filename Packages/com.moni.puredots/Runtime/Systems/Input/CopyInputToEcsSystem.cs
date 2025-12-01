@@ -11,12 +11,24 @@ using UnityEngine;
 namespace PureDOTS.Systems.Input
 {
     /// <summary>
+    /// Tag component marking an ECS camera entity that should receive
+    /// the copied input state. Host games can add this tag to whichever
+    /// camera rig entity should be driven by PureDOTS input.
+    /// </summary>
+    public struct CameraTag : IComponentData
+    {
+        // Marker component – no fields.
+    }
+
+    /// <summary>
     /// Copies input snapshots from Mono bridge to ECS once per DOTS tick.
     /// Runs in CameraInputSystemGroup (before SimulationSystemGroup) to ensure input is processed
     /// with highest priority for instant camera/control response.
     /// Handles multi-tick catch-up by clamping deltas if multiple ticks occur in one frame.
     /// 
     /// Note: This system cannot be Burst-compiled because it accesses managed InputSnapshotBridge.
+    /// Contract: Camera systems read `CameraInputState` + `CameraInputEdge` from ECS; any game-specific input
+    /// pipeline can feed those components (this bridge copies from the Mono HandCameraInputRouter).
     /// ISystem structs must be unmanaged, so we cannot cache the bridge reference as a field.
     /// Using Object.FindFirstObjectByType is acceptable here since the system is non-Burst anyway.
     /// </summary>
@@ -53,9 +65,7 @@ namespace PureDOTS.Systems.Input
             Entity cameraEntity = Entity.Null;
             Entity timeControlEntity = Entity.Null;
 
-            using (var handQuery = SystemAPI.QueryBuilder()
-                .WithAll<DivineHandTag>()
-                .Build())
+            using (var handQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<DivineHandTag>()))
             {
                 if (!handQuery.IsEmptyIgnoreFilter)
                 {
@@ -63,9 +73,7 @@ namespace PureDOTS.Systems.Input
                 }
             }
 
-            using (var cameraQuery = SystemAPI.QueryBuilder()
-                .WithAll<CameraTag>()
-                .Build())
+            using (var cameraQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<CameraTag>()))
             {
                 if (!cameraQuery.IsEmptyIgnoreFilter)
                 {

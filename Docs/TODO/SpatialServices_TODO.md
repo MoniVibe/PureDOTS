@@ -2,6 +2,16 @@
 
 > **Generalisation Guideline**: Spatial indexing and queries must remain data-driven and agnostic to game content (villagers, ships, drones, etc.). Prefer shared descriptors/config blobs rather than entity-type-specific systems.
 
+## Cross-References
+
+| Contract | Location |
+|----------|----------|
+| Runtime Lifecycle | `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` |
+| System Integration | `Docs/TODO/SystemIntegration_TODO.md` |
+| Registry Queries | `Runtime/Runtime/Registry/RegistryQueryHelpers.cs` |
+| Terrain Version | `Runtime/Runtime/Components/TerrainComponents.cs` |
+| Environment Grids | `Runtime/Runtime/Environment/EnvironmentGrids.cs` |
+
 ## Goal
 - Ship a modern, configurable spatial-partition service that stays deterministic and scales from today’s 100k target to **1M+ entities** without re-architecture.
 - Provide Burst-friendly query jobs (`FindWithinRadius`, `kNN`, `OverlapAABB`, etc.) for villagers, miracles, AI steering, combat, and debugging.

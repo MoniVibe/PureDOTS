@@ -2,6 +2,17 @@
 
 > **Generalisation Guideline**: Treat resource flow (chunks, aggregates, storehouses) as a reusable framework for any resource type. Avoid game-specific behaviours; differences should come from `ResourceProfile` data, not code.
 
+## Cross-References
+
+| Contract | Location |
+|----------|----------|
+| Runtime Lifecycle | `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` |
+| System Integration | `Docs/TODO/SystemIntegration_TODO.md` |
+| Resource Registry | `Runtime/Runtime/ResourceComponents.cs` |
+| Registry Queries | `Runtime/Runtime/Registry/RegistryQueryHelpers.cs` |
+| Extraction Framework | `Runtime/Runtime/Extraction/ExtractionComponents.cs` |
+| Harvest Slots | `Runtime/Systems/Extraction/ExtractionQueueSystem.cs` |
+
 ## Goal
 - Recreate Black & White 2 resource behaviour in DOTS: physical resource chunks (wood, ore, animals, food) that become aggregates when delivered, with storehouse and construction integration, player/villager interactions, and deterministic processing.
 - Provide a reusable template so new resource types can be added via configuration without rewriting code.

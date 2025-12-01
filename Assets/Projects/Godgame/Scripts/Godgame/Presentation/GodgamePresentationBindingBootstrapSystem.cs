@@ -7,7 +7,9 @@ namespace Godgame.Presentation
 {
     /// <summary>
     /// Seeds a minimal presentation binding so placeholder effects can play even without authored bindings.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(PureDOTS.Systems.PresentationBootstrapSystem))]
     public partial struct GodgamePresentationBindingBootstrapSystem : ISystem

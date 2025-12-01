@@ -39,15 +39,15 @@ namespace Space4X.Systems
 
             // Update lookups
             var dangerSourceLookup = SystemAPI.GetComponentLookup<DangerSource>(true);
-            var translationLookup = SystemAPI.GetComponentLookup<Translation>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             dangerSourceLookup.Update(ref state);
-            translationLookup.Update(ref state);
+            transformLookup.Update(ref state);
 
             // Detect dangers
             new DetectDangersJob
             {
                 DangerSourceLookup = dangerSourceLookup,
-                TranslationLookup = translationLookup,
+                TransformLookup = transformLookup,
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime
             }.ScheduleParallel();
@@ -60,7 +60,7 @@ namespace Space4X.Systems
             public ComponentLookup<DangerSource> DangerSourceLookup;
 
             [ReadOnly]
-            public ComponentLookup<Translation> TranslationLookup;
+            public ComponentLookup<LocalTransform> TransformLookup;
 
             public uint CurrentTick;
             public float DeltaTime;
@@ -68,7 +68,7 @@ namespace Space4X.Systems
             void Execute(
                 Entity entity,
                 in DangerPerception perception,
-                in Translation translation,
+                in LocalTransform transform,
                 ref DynamicBuffer<DetectedDanger> detectedDangers)
             {
                 // Clear old detections (older than perception reaction time)
@@ -95,4 +95,3 @@ namespace Space4X.Systems
         }
     }
 }
-

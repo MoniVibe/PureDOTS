@@ -124,12 +124,12 @@ namespace PureDOTS.Systems.Movement
 
                 // Sample acceleration curve (simplified: use throttle = 1.0 for now)
                 float throttle = 1.0f;
-                float accelForward = SampleCurve(spec.AccelForward, throttle) * proficiency.ControlMult;
-                float accelStrafe = canStrafe ? SampleCurve(spec.AccelStrafe, throttle) * proficiency.ControlMult : 0f;
-                float accelVertical = canVertical ? SampleCurve(spec.AccelVertical, throttle) * proficiency.ControlMult : 0f;
+                float accelForward = SampleCurve(ref spec.AccelForward, throttle) * proficiency.ControlMult;
+                float accelStrafe = canStrafe ? SampleCurve(ref spec.AccelStrafe, throttle) * proficiency.ControlMult : 0f;
+                float accelVertical = canVertical ? SampleCurve(ref spec.AccelVertical, throttle) * proficiency.ControlMult : 0f;
 
                 // Compute desired velocity magnitude
-                float maxSpeed = SampleCurve(spec.MaxSpeed, throttle);
+                float maxSpeed = SampleCurve(ref spec.MaxSpeed, throttle);
                 float3 desiredVel = vCmd * maxSpeed;
 
                 // Compute acceleration delta
@@ -170,9 +170,9 @@ namespace PureDOTS.Systems.Movement
                 transform.Position += newVel * DeltaTime;
             }
 
-            private static float SampleCurve(Curve1D curve, float t01)
+            private static float SampleCurve(ref Curve1D curve, float t01)
             {
-                if (!curve.Knots.IsCreated || curve.Knots.Length == 0)
+                if (curve.Knots.Length == 0)
                 {
                     return 1f; // Default value
                 }

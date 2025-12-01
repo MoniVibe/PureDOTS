@@ -59,9 +59,9 @@ namespace PureDOTS.Systems.Stats
             {
                 Tick = currentTick,
                 TargetEntity = targetEntity,
-                StatType = (byte)statType,
+                StatType = statType,
                 XPAmount = xpAmount,
-                ChangeType = (byte)StatXPChangeType.Gain
+                ChangeType = StatXPChangeType.Gain
             });
 
             // Apply XP gain immediately
@@ -93,9 +93,9 @@ namespace PureDOTS.Systems.Stats
             {
                 Tick = currentTick,
                 TargetEntity = targetEntity,
-                StatType = (byte)statType,
+                StatType = statType,
                 XPAmount = -xpAmount,
-                ChangeType = (byte)StatXPChangeType.Spend
+                ChangeType = StatXPChangeType.Spend
             });
 
             // Apply XP spend immediately
@@ -126,9 +126,9 @@ namespace PureDOTS.Systems.Stats
             {
                 Tick = currentTick,
                 TargetEntity = targetEntity,
-                StatType = (byte)statType,
+                StatType = statType,
                 XPAmount = 0f,
-                ChangeType = (byte)StatXPChangeType.Reset
+                ChangeType = StatXPChangeType.Reset
             });
 
             // Reset stat to base value (implementation depends on game-specific logic)

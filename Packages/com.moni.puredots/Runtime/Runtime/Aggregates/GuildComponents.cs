@@ -53,6 +53,7 @@ namespace PureDOTS.Runtime.Aggregates
         public Entity VillagerEntity;       // Which villager is a member
         public uint JoinedTick;
         public ushort ExperienceContributed; // XP earned for guild
+        public uint ContributionScore;      // Aggregate contribution weighting
         public byte Rank;                   // 0=Member, 1=Officer, 2=Master
         public bool IsOfficer;
         public bool IsGuildMaster;

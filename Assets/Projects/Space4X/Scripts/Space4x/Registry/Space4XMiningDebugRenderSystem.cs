@@ -4,13 +4,14 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using PresentationSystemGroup = PureDOTS.Systems.PresentationSystemGroup;
 
 namespace Space4X.Registry
 {
     /// <summary>
     /// Renders simple primitives for carriers, mining vessels, and asteroids so the mining loop is visible in hybrid scenes.
     /// </summary>
-    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial struct Space4XMiningDebugRenderSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

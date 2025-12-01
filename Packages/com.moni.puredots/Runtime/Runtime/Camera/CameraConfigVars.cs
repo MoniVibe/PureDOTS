@@ -8,5 +8,3 @@ namespace PureDOTS.Runtime.Camera
         public static RuntimeConfigVar EcsModeEnabled;
     }
 }
-
-

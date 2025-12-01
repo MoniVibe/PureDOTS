@@ -91,6 +91,34 @@ namespace PureDOTS.Runtime.Ships
     }
 
     /// <summary>
+    /// Buffer element version of <see cref="ModuleRuntimeState"/> for per-module data.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct ModuleRuntimeStateElement : IBufferElementData
+    {
+        public float HP;
+        public float MaxHP;
+        public byte Destroyed; // 0 = intact, 1 = destroyed
+        public byte Disabled; // 0 = enabled, 1 = disabled
+
+        public static implicit operator ModuleRuntimeState(ModuleRuntimeStateElement element) => new ModuleRuntimeState
+        {
+            HP = element.HP,
+            MaxHP = element.MaxHP,
+            Destroyed = element.Destroyed,
+            Disabled = element.Disabled
+        };
+
+        public static implicit operator ModuleRuntimeStateElement(ModuleRuntimeState state) => new ModuleRuntimeStateElement
+        {
+            HP = state.HP,
+            MaxHP = state.MaxHP,
+            Destroyed = state.Destroyed,
+            Disabled = state.Disabled
+        };
+    }
+
+    /// <summary>
     /// Module reference - maps to a module slot index in ShipLayoutBlob.
     /// </summary>
     public struct ModuleRef : IComponentData

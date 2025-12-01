@@ -5,6 +5,7 @@
     "PureDOTS.Runtime",
     "PureDOTS.Systems",
     "PureDOTS.Config",
+    "PureDOTS.Authoring",
     "Unity.Burst",
     "Unity.Entities",
     "Unity.Mathematics",
@@ -19,8 +20,10 @@
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "INCLUDE_GODGAME_IN_PUREDOTS"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }

@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Hand;
 using PureDOTS.Input;
@@ -181,3 +182,4 @@ namespace PureDOTS.Systems.Input
         }
     }
 }
+#endif

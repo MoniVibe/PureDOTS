@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Spells;
 using Unity.Burst;
 using Unity.Collections;
@@ -16,11 +17,16 @@ namespace PureDOTS.Systems.Spells
     [UpdateAfter(typeof(HybridizationSystem))]
     public partial struct SchoolFoundingSystem : ISystem
     {
-        [BurstCompile]
+        // Instance field for Burst-compatible FixedString pattern (initialized in OnCreate)
+        private FixedString32Bytes _schoolIdPrefix;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            
+            // Initialize FixedString pattern here (OnCreate is not Burst-compiled)
+            _schoolIdPrefix = new FixedString32Bytes("School_");
         }
 
         [BurstCompile]
@@ -48,7 +54,8 @@ namespace PureDOTS.Systems.Spells
             new ProcessFoundingRequestsJob
             {
                 CurrentTick = currentTick,
-                Ecb = ecb
+                Ecb = ecb,
+                SchoolIdPrefix = _schoolIdPrefix
             }.ScheduleParallel();
         }
 
@@ -68,11 +75,11 @@ namespace PureDOTS.Systems.Spells
                 // Determine primary/secondary schools from hybrids
                 if (hybridSpells.Length > 0)
                 {
-                    // Count school occurrences
-                    var schoolCounts = new NativeHashMap<SpellSchool, int>(16, Allocator.Temp);
+                    // Count school occurrences (use byte keys to satisfy NativeHashMap constraints)
+                    var schoolCounts = new NativeHashMap<byte, int>(16, Allocator.Temp);
                     for (int i = 0; i < hybridSpells.Length; i++)
                     {
-                        var school = hybridSpells[i].DerivedSchool;
+                        var school = (byte)hybridSpells[i].DerivedSchool;
                         if (schoolCounts.ContainsKey(school))
                         {
                             schoolCounts[school] = schoolCounts[school] + 1;
@@ -91,16 +98,17 @@ namespace PureDOTS.Systems.Spells
 
                     foreach (var kvp in schoolCounts)
                     {
+                        var school = (SpellSchool)kvp.Key;
                         if (kvp.Value > primaryCount)
                         {
                             secondary = primary;
                             secondaryCount = primaryCount;
-                            primary = kvp.Key;
+                            primary = school;
                             primaryCount = kvp.Value;
                         }
                         else if (kvp.Value > secondaryCount)
                         {
-                            secondary = kvp.Key;
+                            secondary = school;
                             secondaryCount = kvp.Value;
                         }
                     }
@@ -121,6 +129,7 @@ namespace PureDOTS.Systems.Spells
         {
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            [ReadOnly] public FixedString32Bytes SchoolIdPrefix;
 
             void Execute(
                 Entity entity,
@@ -142,8 +151,12 @@ namespace PureDOTS.Systems.Spells
                         continue; // Not enough hybrids
                     }
 
-                    // Generate school ID
-                    var schoolId = new FixedString64Bytes($"School_{entity.Index}_{CurrentTick}");
+                    // Generate school ID (using Append for Burst compatibility)
+                    var schoolId = new FixedString64Bytes();
+                    schoolId.Append(SchoolIdPrefix);
+                    schoolId.Append(entity.Index);
+                    schoolId.Append('_');
+                    schoolId.Append(CurrentTick);
 
                     // Calculate complexity based on hybrid schools
                     byte complexity = CalculateComplexity(progress.PrimarySchool, progress.SecondarySchool);

@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 #nullable enable
 using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Config;
@@ -128,4 +129,5 @@ namespace PureDOTS.Systems
     }
 }
 
+#endif
 

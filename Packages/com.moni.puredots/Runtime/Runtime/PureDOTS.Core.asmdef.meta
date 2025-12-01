@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 11111111-abcd-1234-5678-123456789abc
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData:
+  versionDefines: []
+  assemblyReferences:
+  - PureDOTS.Input
+  - PureDOTS.Config
+  noEngineReferences: 0

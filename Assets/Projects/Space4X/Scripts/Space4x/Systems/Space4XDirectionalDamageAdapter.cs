@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Systems;
+using PureDOTS.Systems.Combat;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

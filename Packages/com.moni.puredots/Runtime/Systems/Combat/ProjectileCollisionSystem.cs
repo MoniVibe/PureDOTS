@@ -1,7 +1,9 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -15,7 +17,6 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
-    [UpdateAfter(typeof(Space4X.Systems.Space4XProjectileAdvanceSystem))]
     public partial struct ProjectileCollisionSystem : ISystem
     {
         [BurstCompile]
@@ -41,6 +42,10 @@ namespace PureDOTS.Systems.Combat
             }
 
             if (!SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog))
+            {
+                return;
+            }
+            if (!projectileCatalog.Catalog.IsCreated)
             {
                 return;
             }
@@ -80,13 +85,14 @@ namespace PureDOTS.Systems.Combat
                 [ChunkIndexInQuery] int chunkIndex,
                 Entity entity,
                 ref ProjectileEntity projectile,
-                in LocalTransform transform,
+                ref LocalTransform transform,
                 DynamicBuffer<ProjectileHitResult> hitResults)
             {
                 hitResults.Clear();
 
                 // Find projectile spec
-                if (!TryFindProjectileSpec(ProjectileCatalog, projectile.ProjectileId, out var spec))
+                ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                if (Unsafe.IsNullRef(ref spec))
                 {
                     return;
                 }
@@ -127,16 +133,13 @@ namespace PureDOTS.Systems.Combat
 
                     var collider = Unity.Physics.SphereCollider.Create(
                         sphereGeometry,
-                        filter,
-                        CollisionGeometry.Constants.UnityPhysicsConvexHullMassProperties);
+                        filter);
 
-                    var colliderCastInput = new ColliderCastInput
-                    {
-                        Collider = collider,
-                        Start = prevPos,
-                        End = currentPos,
-                        Orientation = quaternion.identity
-                    };
+                    var colliderCastInput = new ColliderCastInput(
+                        collider,
+                        prevPos,
+                        currentPos,
+                        quaternion.identity);
 
                     if (PhysicsWorld.CastCollider(colliderCastInput, out var castHit))
                     {
@@ -204,28 +207,26 @@ namespace PureDOTS.Systems.Combat
                 }
             }
 
-            private bool TryFindProjectileSpec(
+            private static ref ProjectileSpec FindProjectileSpec(
                 BlobAssetReference<ProjectileCatalogBlob> catalog,
-                FixedString64Bytes projectileId,
-                out ProjectileSpec spec)
+                FixedString64Bytes projectileId)
             {
-                spec = default;
                 if (!catalog.IsCreated)
                 {
-                    return false;
+                    return ref Unsafe.NullRef<ProjectileSpec>();
                 }
 
-                var projectiles = catalog.Value.Projectiles;
+                ref var projectiles = ref catalog.Value.Projectiles;
                 for (int i = 0; i < projectiles.Length; i++)
                 {
-                    if (projectiles[i].Id.Equals(projectileId))
+                    ref var projectileSpec = ref projectiles[i];
+                    if (projectileSpec.Id.Equals(projectileId))
                     {
-                        spec = projectiles[i];
-                        return true;
+                        return ref projectileSpec;
                     }
                 }
 
-                return false;
+                return ref Unsafe.NullRef<ProjectileSpec>();
             }
         }
     }

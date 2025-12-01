@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Hand;
 using PureDOTS.Runtime.Components;
@@ -200,3 +201,4 @@ namespace PureDOTS.Systems.Camera
         }
     }
 }
+#endif

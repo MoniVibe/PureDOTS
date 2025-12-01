@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.AI;
 using Unity.Collections;
+using Unity.Entities;
 
 namespace Godgame.Systems
 {

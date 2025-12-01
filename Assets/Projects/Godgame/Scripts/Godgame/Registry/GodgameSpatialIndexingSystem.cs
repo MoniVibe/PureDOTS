@@ -11,14 +11,12 @@ namespace Godgame.Registry
     /// Adds <see cref="SpatialIndexedTag" /> whenever eligible entities are missing it so
     /// PureDOTS spatial systems can track residency automatically.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SpatialSystemGroup), OrderFirst = true)]
     public partial struct GodgameSpatialIndexingSystem : ISystem
     {
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()

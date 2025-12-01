@@ -222,6 +222,7 @@ namespace PureDOTS.Tests.Space
             entityManager.SetComponentData(timeEntity, new TimeState
             {
                 FixedDeltaTime = 1f / 60f,
+                DeltaTime = 1f / 60f,
                 CurrentSpeedMultiplier = 1f,
                 Tick = 1,
                 IsPaused = false

@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Shared;
 using PureDOTS.Runtime.Space;
 using PureDOTS.Systems.Shared;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Space4X.Systems

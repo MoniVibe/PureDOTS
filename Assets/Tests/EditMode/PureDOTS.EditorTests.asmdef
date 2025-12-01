@@ -4,6 +4,7 @@
                        "PureDOTS.Editor.Migrations",
                        "PureDOTS.Authoring",
                        "PureDOTS.Runtime",
+                       "PureDOTS.Config",
                        "Unity.Scenes",
                        "Unity.Entities",
                        "Unity.Mathematics",
@@ -12,6 +13,7 @@
                        "UnityEditor.TestRunner",
                        "UnityEditor",
                        "Unity.Collections",
+                       "Unity.Transforms",
                        "PureDOTS.Editor",
                        "PureDOTS.Systems"
                    ],

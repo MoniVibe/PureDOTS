@@ -2,12 +2,85 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Space
 {
+    [BurstCompile]
+    public partial struct CarrierModuleStatAggregationJob : IJobEntity
+    {
+        [ReadOnly] public ComponentLookup<ModuleStatModifier> ModifierLookup;
+        [ReadOnly] public ComponentLookup<ModuleHealth> HealthLookup;
+        [ReadOnly] public ComponentLookup<ShipModule> ModuleLookup;
+        [NativeDisableParallelForRestriction] public ComponentLookup<CarrierPowerBudget> PowerLookup;
+
+        public void Execute(Entity carrier, ref CarrierModuleStatTotals totals, DynamicBuffer<CarrierModuleSlot> slots)
+        {
+            var aggregated = new CarrierModuleStatTotals();
+            var power = PowerLookup.HasComponent(carrier) ? PowerLookup[carrier] : default;
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var slot = slots[i];
+                if (!ModifierLookup.HasComponent(slot.InstalledModule))
+                {
+                    continue;
+                }
+
+                var modifier = ModifierLookup[slot.InstalledModule];
+                var healthScale = 1f;
+                byte integrity = 100;
+                bool healthBelowThreshold = false;
+
+                if (HealthLookup.HasComponent(slot.InstalledModule))
+                {
+                    var health = HealthLookup[slot.InstalledModule];
+                    integrity = health.Integrity;
+                    healthBelowThreshold = integrity <= health.FailureThreshold;
+                    healthScale = math.clamp(integrity / 100f, 0f, 1f);
+                }
+
+                aggregated.TotalMass += modifier.Mass;
+                aggregated.TotalPowerDraw += modifier.PowerDraw * healthScale;
+                aggregated.TotalPowerGeneration += modifier.PowerGeneration * healthScale;
+                aggregated.TotalCargoCapacity += modifier.CargoCapacity * healthScale;
+                aggregated.TotalMiningRate += modifier.MiningRate * healthScale;
+                aggregated.TotalRepairRateBonus += modifier.RepairRateBonus * healthScale;
+
+                power.CurrentDraw += modifier.PowerDraw * healthScale;
+                power.CurrentGeneration += modifier.PowerGeneration * healthScale;
+
+                if (ModuleLookup.HasComponent(slot.InstalledModule))
+                {
+                    var module = ModuleLookup[slot.InstalledModule];
+                    if (module.State == ModuleState.Destroyed)
+                    {
+                        aggregated.DestroyedModuleCount++;
+                    }
+                    else if (module.State == ModuleState.Damaged || healthBelowThreshold)
+                    {
+                        aggregated.DamagedModuleCount++;
+                    }
+                }
+                else if (integrity == 0)
+                {
+                    aggregated.DestroyedModuleCount++;
+                }
+            }
+
+            totals = aggregated;
+
+            if (PowerLookup.HasComponent(carrier))
+            {
+                power.OverBudget = power.MaxPowerOutput > 0f && power.CurrentDraw > power.MaxPowerOutput;
+                PowerLookup[carrier] = power;
+            }
+        }
+    }
+
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial class CarrierModuleStatAggregationSystem : SystemBase
@@ -43,79 +116,15 @@ namespace PureDOTS.Systems.Space
             _moduleLookup = GetComponentLookup<ShipModule>(true);
             _powerLookup = GetComponentLookup<CarrierPowerBudget>(false);
 
-            var modifierLookup = _modifierLookup;
-            var healthLookup = _healthLookup;
-            var moduleLookup = _moduleLookup;
-            var powerLookup = _powerLookup;
+            var aggregationJob = new CarrierModuleStatAggregationJob
+            {
+                ModifierLookup = _modifierLookup,
+                HealthLookup = _healthLookup,
+                ModuleLookup = _moduleLookup,
+                PowerLookup = _powerLookup
+            };
 
-            Entities
-                .WithName("CarrierModuleStatAggregation")
-                .WithReadOnly(modifierLookup)
-                .WithReadOnly(healthLookup)
-                .WithReadOnly(moduleLookup)
-                .ForEach((Entity carrier, ref CarrierModuleStatTotals totals, in DynamicBuffer<CarrierModuleSlot> slots) =>
-                {
-                    var aggregated = new CarrierModuleStatTotals();
-                    var power = powerLookup.HasComponent(carrier) ? powerLookup[carrier] : default;
-
-                    for (int i = 0; i < slots.Length; i++)
-                    {
-                        var slot = slots[i];
-                        if (!modifierLookup.HasComponent(slot.InstalledModule))
-                        {
-                            continue;
-                        }
-
-                        var modifier = modifierLookup[slot.InstalledModule];
-                        var healthScale = 1f;
-                        byte integrity = 100;
-                        bool healthBelowThreshold = false;
-
-                        if (healthLookup.HasComponent(slot.InstalledModule))
-                        {
-                            var health = healthLookup[slot.InstalledModule];
-                            integrity = health.Integrity;
-                            healthBelowThreshold = integrity <= health.FailureThreshold;
-                            healthScale = math.clamp(integrity / 100f, 0f, 1f);
-                        }
-
-                        aggregated.TotalMass += modifier.Mass;
-                        aggregated.TotalPowerDraw += modifier.PowerDraw * healthScale;
-                        aggregated.TotalPowerGeneration += modifier.PowerGeneration * healthScale;
-                        aggregated.TotalCargoCapacity += modifier.CargoCapacity * healthScale;
-                        aggregated.TotalMiningRate += modifier.MiningRate * healthScale;
-                        aggregated.TotalRepairRateBonus += modifier.RepairRateBonus * healthScale;
-
-                        power.CurrentDraw += modifier.PowerDraw * healthScale;
-                        power.CurrentGeneration += modifier.PowerGeneration * healthScale;
-
-                        if (moduleLookup.HasComponent(slot.InstalledModule))
-                        {
-                            var module = moduleLookup[slot.InstalledModule];
-                            if (module.State == ModuleState.Destroyed)
-                            {
-                                aggregated.DestroyedModuleCount++;
-                            }
-                            else if (module.State == ModuleState.Damaged || healthBelowThreshold)
-                            {
-                                aggregated.DamagedModuleCount++;
-                            }
-                        }
-                        else if (integrity == 0)
-                        {
-                            aggregated.DestroyedModuleCount++;
-                        }
-                    }
-
-                    totals = aggregated;
-
-                    if (powerLookup.HasComponent(carrier))
-                    {
-                        power.OverBudget = power.MaxPowerOutput > 0f && power.CurrentDraw > power.MaxPowerOutput;
-                        powerLookup[carrier] = power;
-                    }
-                }).ScheduleParallel();
-
+            Dependency = aggregationJob.ScheduleParallel(Dependency);
             Dependency.Complete();
         }
     }
@@ -149,60 +158,59 @@ namespace PureDOTS.Systems.Space
 
             var repairQueueLookup = GetBufferLookup<ModuleRepairTicket>();
 
-            Entities
-                .WithName("ModuleDegradation")
-                .WithoutBurst()
-                .ForEach((Entity entity, ref ModuleHealth health, ref ShipModule module,
-                    in ModuleDegradation degradation, in Parent parent) =>
+            foreach (var (health, module, degradation, parent, entity) in SystemAPI
+                         .Query<RefRW<ModuleHealth>, RefRW<ShipModule>, RefRO<ModuleDegradation>, RefRO<Parent>>()
+                         .WithEntityAccess())
             {
-                if (module.State == ModuleState.Destroyed)
+                if (module.ValueRO.State == ModuleState.Destroyed)
                 {
-                    return;
+                    continue;
                 }
 
-                var decay = math.max(0f, degradation.PassivePerSecond);
-                if (module.State == ModuleState.Active)
+                var decay = math.max(0f, degradation.ValueRO.PassivePerSecond);
+                if (module.ValueRO.State == ModuleState.Active)
                 {
-                    decay += math.max(0f, degradation.ActivePerSecond);
+                    decay += math.max(0f, degradation.ValueRO.ActivePerSecond);
                 }
 
-                var newIntegrity = math.max(0f, health.Integrity - decay * scaledDelta);
-                health.Integrity = (byte)newIntegrity;
+                var newIntegrity = math.max(0f, health.ValueRO.Integrity - decay * scaledDelta);
+                var updatedIntegrity = (byte)newIntegrity;
+                health.ValueRW.Integrity = updatedIntegrity;
 
-                if (health.Integrity == 0)
+                if (updatedIntegrity == 0)
                 {
-                    module.State = ModuleState.Destroyed;
+                    module.ValueRW.State = ModuleState.Destroyed;
                 }
 
-                if (health.Integrity <= health.FailureThreshold)
+                if (updatedIntegrity <= health.ValueRO.FailureThreshold)
                 {
-                    module.State = ModuleState.Damaged;
+                    module.ValueRW.State = ModuleState.Damaged;
 
-                    if (!health.NeedsRepair)
+                    if (!health.ValueRO.NeedsRepair)
                     {
-                        health.MarkRepairRequested();
+                        health.ValueRW.MarkRepairRequested();
                     }
 
-                    if (!repairQueueLookup.HasBuffer(parent.Value))
+                    if (!repairQueueLookup.HasBuffer(parent.ValueRO.Value))
                     {
-                        return;
+                        continue;
                     }
 
-                    var buffer = repairQueueLookup[parent.Value];
+                    var buffer = repairQueueLookup[parent.ValueRO.Value];
                     if (ContainsTicket(buffer, entity))
                     {
-                        return;
+                        continue;
                     }
 
                     buffer.Add(new ModuleRepairTicket
                     {
                         Module = entity,
                         Kind = ModuleRepairKind.Field,
-                        Priority = health.RepairPriority,
-                        RemainingWork = math.max(0.1f, (100 - health.Integrity) * 0.1f)
+                        Priority = health.ValueRO.RepairPriority,
+                        RemainingWork = math.max(0.1f, (100 - updatedIntegrity) * 0.1f)
                     });
                 }
-            }).Run();
+            }
         }
 
         private static bool ContainsTicket(DynamicBuffer<ModuleRepairTicket> buffer, Entity module)

@@ -12,8 +12,7 @@ namespace PureDOTS.Authoring.Spells
     /// <summary>
     /// Authoring ScriptableObject for spell signature catalog.
     /// </summary>
-    [CreateAssetMenu(fileName = "SpellSignatureCatalog", menuName = "PureDOTS/Spells/Spell Signature Catalog")]
-    public class SpellSignatureCatalogAuthoring : ScriptableObject
+    public class SpellSignatureCatalogAuthoring : MonoBehaviour
     {
         [Serializable]
         public class SignatureDefinition

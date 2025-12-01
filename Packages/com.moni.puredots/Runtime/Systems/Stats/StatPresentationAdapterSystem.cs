@@ -26,13 +26,12 @@ namespace PureDOTS.Systems.Stats
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out var presentationQueue))
+            if (!SystemAPI.TryGetSingletonEntity<PresentationCommandQueue>(out _))
             {
                 return;
             }
 
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            var presentationBuffer = SystemAPI.GetBuffer<PresentationSpawnRequest>(presentationQueue);
 
             // Process StatDisplayBinding components and generate presentation requests
             // This is a placeholder - actual implementation will:
@@ -66,6 +65,10 @@ namespace PureDOTS.Systems.Stats
         {
             // This system provides functionality to swap binding sets
             // Implementation will be added when binding loader is integrated
+            if (_currentBindingSet > 1)
+            {
+                _currentBindingSet = 1; // Clamp to known binding sets
+            }
         }
 
         /// <summary>

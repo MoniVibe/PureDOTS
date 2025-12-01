@@ -1,6 +1,18 @@
 # Villager Systems Parity & Expansion TODO
 
-> **Generalisation Guideline**: Treat “villagers” as one archetype in a reusable AI framework. AI modules (sensing, decision-making, steering, task assignment) must work for any entity type by swapping archetype data; avoid villager-only code in the meta runtime.
+> **Generalisation Guideline**: Treat "villagers" as one archetype in a reusable AI framework. AI modules (sensing, decision-making, steering, task assignment) must work for any entity type by swapping archetype data; avoid villager-only code in the meta runtime.
+
+## Cross-References
+
+| Contract | Location |
+|----------|----------|
+| Runtime Lifecycle | `Docs/TruthSources/RuntimeLifecycle_TruthSource.md` |
+| System Integration | `Docs/TODO/SystemIntegration_TODO.md` |
+| AI Sensors | `Runtime/Runtime/AI/SensorComponents.cs` |
+| AI Utility Scoring | `Runtime/Runtime/AI/UtilityComponents.cs` |
+| AI Steering | `Runtime/Runtime/AI/SteeringComponents.cs` |
+| Group Membership | `Runtime/Runtime/Groups/GroupComponents.cs` |
+| Environment Grids | `Runtime/Runtime/Environment/EnvironmentGrids.cs` |
 
 ## Goal
 - Rebuild villager simulation to handle 100k–1M agents with BW2-inspired behaviour: needs, jobs, alignment, combat readiness, and creature interactions.

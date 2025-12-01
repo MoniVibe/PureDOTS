@@ -14,7 +14,6 @@ namespace Godgame.Registry
     /// Mirrors PureDOTS villager gameplay data into the Godgame-specific registry component.
     /// Ensures <see cref="GodgameVillager"/> reflects live state prior to bridge execution.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
     public partial struct GodgameVillagerSyncSystem : ISystem
@@ -47,6 +46,7 @@ namespace Godgame.Registry
                 .Build());
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _villagerMirrorLookup.Update(ref state);
@@ -187,7 +187,6 @@ namespace Godgame.Registry
     /// Mirrors PureDOTS storehouse gameplay data into <see cref="GodgameStorehouse"/> components.
     /// Keeps per-resource summaries aligned with inventory and reservations.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
     public partial struct GodgameStorehouseSyncSystem : ISystem
@@ -214,6 +213,7 @@ namespace Godgame.Registry
                 .Build());
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _storehouseMirrorLookup.Update(ref state);
@@ -438,7 +438,6 @@ namespace Godgame.Registry
     /// <summary>
     /// Mirrors resource node gameplay data so the registry bridge can build ResourceRegistry entries.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
     public partial struct GodgameResourceNodeSyncSystem : ISystem
@@ -460,6 +459,7 @@ namespace Godgame.Registry
                 .Build());
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _resourceMirrorLookup.Update(ref state);
@@ -512,18 +512,20 @@ namespace Godgame.Registry
     /// <summary>
     /// Mirrors villager spawner configuration so the registry bridge can export spawner entries.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
     public partial struct GodgameSpawnerSyncSystem : ISystem
     {
-        private static readonly FixedString64Bytes VillagerSpawnerTypeId = new FixedString64Bytes("godgame.villager");
+        private static FixedString64Bytes VillagerSpawnerTypeId;
+        private static bool _spawnerStringsInitialized;
 
         private ComponentLookup<GodgameSpawnerMirror> _spawnerMirrorLookup;
         private ComponentLookup<VillageSpawnerConfig> _spawnerConfigLookup;
 
         public void OnCreate(ref SystemState state)
         {
+            InitializeSpawnerStrings();
+
             state.RequireForUpdate<SpawnerRegistry>();
             state.RequireForUpdate<VillageSpawnerConfig>();
             state.RequireForUpdate<TimeState>();
@@ -537,6 +539,7 @@ namespace Godgame.Registry
                 .Build());
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _spawnerMirrorLookup.Update(ref state);
@@ -590,12 +593,23 @@ namespace Godgame.Registry
                 }
             }
         }
+
+        [BurstDiscard]
+        private static void InitializeSpawnerStrings()
+        {
+            if (_spawnerStringsInitialized)
+            {
+                return;
+            }
+
+            VillagerSpawnerTypeId = new FixedString64Bytes("godgame.villager");
+            _spawnerStringsInitialized = true;
+        }
     }
 
     /// <summary>
     /// Mirrors shared band components into <see cref="GodgameBand"/> summaries so the registry bridge can publish band data.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GodgameRegistryBridgeSystem))]
     public partial struct GodgameBandSyncSystem : ISystem
@@ -614,6 +628,7 @@ namespace Godgame.Registry
                 .Build());
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bandMirrorLookup.Update(ref state);

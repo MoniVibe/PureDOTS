@@ -43,7 +43,7 @@ namespace PureDOTS.Systems.Spells
                 return;
             }
 
-            var spellCatalog = spellCatalogRef.Blob.Value;
+            ref var spellCatalog = ref spellCatalogRef.Blob.Value;
 
             // Update lookups
             var observableCasterLookup = SystemAPI.GetComponentLookup<ObservableCaster>(true);

@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Runtime.Camera;
 using Unity.Entities;
 
@@ -30,5 +31,4 @@ namespace PureDOTS.Systems
         }
     }
 }
-
-
+#endif

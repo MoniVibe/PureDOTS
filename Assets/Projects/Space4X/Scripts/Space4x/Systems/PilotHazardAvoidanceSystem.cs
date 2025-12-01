@@ -1,3 +1,4 @@
+using Space4X.Combat;
 using Space4X.Knowledge;
 using Space4X.Individuals;
 using Unity.Burst;
@@ -43,11 +44,11 @@ namespace Space4X.Systems
             // Update lookups
             var pilotSkillLookup = SystemAPI.GetComponentLookup<PilotSkillModifiers>(true);
             var dangerSourceLookup = SystemAPI.GetComponentLookup<DangerSource>(true);
-            var translationLookup = SystemAPI.GetComponentLookup<Translation>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             var detectedDangerLookup = SystemAPI.GetBufferLookup<DetectedDanger>(true);
             pilotSkillLookup.Update(ref state);
             dangerSourceLookup.Update(ref state);
-            translationLookup.Update(ref state);
+            transformLookup.Update(ref state);
             detectedDangerLookup.Update(ref state);
 
             // Process hazard avoidance
@@ -55,7 +56,7 @@ namespace Space4X.Systems
             {
                 PilotSkillLookup = pilotSkillLookup,
                 DangerSourceLookup = dangerSourceLookup,
-                TranslationLookup = translationLookup,
+                TransformLookup = transformLookup,
                 DetectedDangerLookup = detectedDangerLookup,
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime
@@ -72,7 +73,7 @@ namespace Space4X.Systems
             public ComponentLookup<DangerSource> DangerSourceLookup;
 
             [ReadOnly]
-            public ComponentLookup<Translation> TranslationLookup;
+            public ComponentLookup<LocalTransform> TransformLookup;
 
             [ReadOnly]
             public BufferLookup<DetectedDanger> DetectedDangerLookup;
@@ -83,7 +84,7 @@ namespace Space4X.Systems
             void Execute(
                 Entity entity,
                 ref HazardAvoidanceState avoidanceState,
-                in Translation translation,
+                in LocalTransform transform,
                 in PilotSkillModifiers pilotSkills)
             {
                 // Green pilots (low mastery): no adjustment
@@ -114,7 +115,7 @@ namespace Space4X.Systems
 
                     // Check if danger is within awareness radius
                     float3 dangerPos = danger.PredictedImpactPos;
-                    float3 toDanger = dangerPos - translation.Value;
+                    float3 toDanger = dangerPos - transform.Position;
                     float distance = math.length(toDanger);
 
                     if (distance > pilotSkills.HazardAwarenessRadius)

@@ -235,6 +235,17 @@ namespace PureDOTS.Runtime.Components
         /// Current wellbeing score (0-100) derived from needs.
         /// </summary>
         public float Wellbeing;
+
+        /// <summary>
+        /// Alignment with the divine/player (0-100, where 0 = opposed, 50 = neutral, 100 = aligned).
+        /// Affected by miracles, creature actions, and player interactions.
+        /// </summary>
+        public float Alignment;
+
+        /// <summary>
+        /// Tick when alignment was last influenced by an external source.
+        /// </summary>
+        public uint LastAlignmentInfluenceTick;
     }
 
     /// <summary>
@@ -310,7 +321,10 @@ namespace PureDOTS.Runtime.Components
             Gathering = 2,
             Delivering = 3,
             Completed = 4,
-            Interrupted = 5
+            Interrupted = 5,
+            Building = 6,
+            Crafting = 7,
+            Fighting = 8
         }
 
         public JobType Type;

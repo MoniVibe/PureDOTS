@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Config;
 using PureDOTS.Runtime.Debugging;
@@ -84,5 +85,6 @@ namespace PureDOTS.Runtime.Debugging
         }
     }
 }
+#endif
 
 

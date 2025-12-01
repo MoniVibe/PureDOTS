@@ -114,12 +114,12 @@ namespace PureDOTS.Systems.Combat
 
                             // Roll for permanent injury
                             float injuryRoll = DeterministicRandom(entity.Index + 1000, CurrentTick);
-                            if (injuryRoll < 0.3f) // 30% chance of permanent injury
-                            {
-                                ApplyPermanentInjury(entity, entityInQueryIndex, CurrentTick, Ecb, InjuryBuffers);
-                            }
+                        if (injuryRoll < 0.3f) // 30% chance of permanent injury
+                        {
+                            ApplyPermanentInjury(in entity, entityInQueryIndex, CurrentTick, in Ecb, in InjuryBuffers);
                         }
                     }
+                }
                 }
 
                 // Clear processed death events
@@ -128,11 +128,11 @@ namespace PureDOTS.Systems.Combat
 
             [BurstCompile]
             private static void ApplyPermanentInjury(
-                Entity entity,
+                in Entity entity,
                 int entityInQueryIndex,
                 uint tick,
-                EntityCommandBuffer.ParallelWriter ecb,
-                BufferLookup<Injury> injuryBuffers)
+                in EntityCommandBuffer.ParallelWriter ecb,
+                in BufferLookup<Injury> injuryBuffers)
             {
                 // Add injury buffer if it doesn't exist
                 if (!injuryBuffers.HasBuffer(entity))

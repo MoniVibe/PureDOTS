@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Systems;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -59,7 +60,7 @@ namespace PureDOTS.Systems.Ships
                 ref Salvageable salvageable,
                 in DerelictState derelict,
                 in HullState hull,
-                DynamicBuffer<ModuleRuntimeState> modules,
+                in DynamicBuffer<ModuleRuntimeStateElement> modules,
                 in ClaimIntent claimIntent)
             {
                 // Only process derelicts
@@ -115,7 +116,7 @@ namespace PureDOTS.Systems.Ships
                 }
             }
 
-            private static byte CalculateSalvageGrade(HullState hull, DynamicBuffer<ModuleRuntimeState> modules)
+            private static byte CalculateSalvageGrade(HullState hull, in DynamicBuffer<ModuleRuntimeStateElement> modules)
             {
                 // Grade 0 = none, 1 = scrap, 2 = refit, 3 = claimable
 

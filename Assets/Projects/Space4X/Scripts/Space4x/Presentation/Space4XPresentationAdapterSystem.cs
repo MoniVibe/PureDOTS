@@ -1,22 +1,24 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Presentation;
-using PureDOTS.Systems;
 using Space4X.Presentation;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using PresentationSystemGroup = PureDOTS.Systems.PresentationSystemGroup;
 
 namespace Space4X.Presentation
 {
     /// <summary>
     /// Adapter system that reads binding JSON and emits presentation spawn requests.
     /// Uses request buffers only; no structural changes except Begin/End ECB playback.
+    /// DISABLED: Using Unity default objects for now. Re-enable when custom visuals are ready.
     /// </summary>
+    [DisableAutoCreation]
     [BurstCompile]
-    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial struct Space4XPresentationAdapterSystem : ISystem
     {
         [BurstCompile]

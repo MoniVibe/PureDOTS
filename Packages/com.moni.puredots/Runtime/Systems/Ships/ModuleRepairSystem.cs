@@ -1,7 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Runtime.Skills;
-using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

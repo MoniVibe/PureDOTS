@@ -194,4 +194,10 @@ namespace PureDOTS.Runtime.Mobility
         public uint Tick;
         public byte Type; // 0=rendezvous,1=intercept
     }
+
+    /// <summary>
+    /// Tag for entities that should be treated as transport units (ships, wagons, etc.) by the AI.
+    /// Replaces explicit checks for specific transport components.
+    /// </summary>
+    public struct TransportUnitTag : IComponentData { }
 }

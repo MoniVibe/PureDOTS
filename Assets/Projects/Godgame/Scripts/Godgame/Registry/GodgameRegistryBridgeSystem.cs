@@ -5,6 +5,7 @@ using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
+using PresentationSystemGroup = PureDOTS.Systems.PresentationSystemGroup;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -1025,44 +1026,46 @@ namespace Godgame.Registry
     /// <summary>
     /// Publishes Godgame registry metrics into the shared telemetry stream after debug data is assembled.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     [UpdateAfter(typeof(DebugDisplaySystem))]
     public partial struct GodgameRegistryTelemetrySystem : ISystem
     {
-        private static readonly FixedString64Bytes MetricVillagers = new FixedString64Bytes("godgame.registry.villagers");
-        private static readonly FixedString64Bytes MetricVillagersAvailable = new FixedString64Bytes("godgame.registry.villagers.available");
-        private static readonly FixedString64Bytes MetricVillagersIdle = new FixedString64Bytes("godgame.registry.villagers.idle");
-        private static readonly FixedString64Bytes MetricVillagersReserved = new FixedString64Bytes("godgame.registry.villagers.reserved");
-        private static readonly FixedString64Bytes MetricVillagersCombatReady = new FixedString64Bytes("godgame.registry.villagers.combatready");
-        private static readonly FixedString64Bytes MetricVillagersHealth = new FixedString64Bytes("godgame.registry.villagers.health.avg");
-        private static readonly FixedString64Bytes MetricVillagersMorale = new FixedString64Bytes("godgame.registry.villagers.morale.avg");
-        private static readonly FixedString64Bytes MetricVillagersEnergy = new FixedString64Bytes("godgame.registry.villagers.energy.avg");
-        private static readonly FixedString64Bytes MetricStorehouses = new FixedString64Bytes("godgame.registry.storehouses");
-        private static readonly FixedString64Bytes MetricStorehousesCapacity = new FixedString64Bytes("godgame.registry.storehouses.capacity");
-        private static readonly FixedString64Bytes MetricStorehousesStored = new FixedString64Bytes("godgame.registry.storehouses.stored");
-        private static readonly FixedString64Bytes MetricStorehousesReserved = new FixedString64Bytes("godgame.registry.storehouses.reserved");
-        private static readonly FixedString64Bytes MetricResourceNodes = new FixedString64Bytes("godgame.registry.resources.nodes");
-        private static readonly FixedString64Bytes MetricResourceNodesActive = new FixedString64Bytes("godgame.registry.resources.nodes.active");
-        private static readonly FixedString64Bytes MetricResourceUnits = new FixedString64Bytes("godgame.registry.resources.units");
-        private static readonly FixedString64Bytes MetricSpawners = new FixedString64Bytes("godgame.registry.spawners");
-        private static readonly FixedString64Bytes MetricSpawnersActive = new FixedString64Bytes("godgame.registry.spawners.active");
-        private static readonly FixedString64Bytes MetricSpawnersPending = new FixedString64Bytes("godgame.registry.spawners.pending");
-        private static readonly FixedString64Bytes MetricBands = new FixedString64Bytes("godgame.registry.bands");
-        private static readonly FixedString64Bytes MetricBandMembers = new FixedString64Bytes("godgame.registry.bands.members");
-        private static readonly FixedString64Bytes MetricBandMorale = new FixedString64Bytes("godgame.registry.bands.morale.avg");
-        private static readonly FixedString64Bytes MetricBandCohesion = new FixedString64Bytes("godgame.registry.bands.cohesion.avg");
-        private static readonly FixedString64Bytes MetricBandDiscipline = new FixedString64Bytes("godgame.registry.bands.discipline.avg");
-        private static readonly FixedString64Bytes MetricMiracles = new FixedString64Bytes("godgame.registry.miracles");
-        private static readonly FixedString64Bytes MetricMiraclesActive = new FixedString64Bytes("godgame.registry.miracles.active");
-        private static readonly FixedString64Bytes MetricMiraclesSustained = new FixedString64Bytes("godgame.registry.miracles.sustained");
-        private static readonly FixedString64Bytes MetricMiraclesCooling = new FixedString64Bytes("godgame.registry.miracles.cooling");
-        private static readonly FixedString64Bytes MetricMiracleEnergy = new FixedString64Bytes("godgame.registry.miracles.energy");
-        private static readonly FixedString64Bytes MetricMiracleCooldown = new FixedString64Bytes("godgame.registry.miracles.cooldown");
-        private static readonly FixedString64Bytes MetricTick = new FixedString64Bytes("godgame.registry.tick");
+        private static FixedString64Bytes MetricVillagers;
+        private static FixedString64Bytes MetricVillagersAvailable;
+        private static FixedString64Bytes MetricVillagersIdle;
+        private static FixedString64Bytes MetricVillagersReserved;
+        private static FixedString64Bytes MetricVillagersCombatReady;
+        private static FixedString64Bytes MetricVillagersHealth;
+        private static FixedString64Bytes MetricVillagersMorale;
+        private static FixedString64Bytes MetricVillagersEnergy;
+        private static FixedString64Bytes MetricStorehouses;
+        private static FixedString64Bytes MetricStorehousesCapacity;
+        private static FixedString64Bytes MetricStorehousesStored;
+        private static FixedString64Bytes MetricStorehousesReserved;
+        private static FixedString64Bytes MetricResourceNodes;
+        private static FixedString64Bytes MetricResourceNodesActive;
+        private static FixedString64Bytes MetricResourceUnits;
+        private static FixedString64Bytes MetricSpawners;
+        private static FixedString64Bytes MetricSpawnersActive;
+        private static FixedString64Bytes MetricSpawnersPending;
+        private static FixedString64Bytes MetricBands;
+        private static FixedString64Bytes MetricBandMembers;
+        private static FixedString64Bytes MetricBandMorale;
+        private static FixedString64Bytes MetricBandCohesion;
+        private static FixedString64Bytes MetricBandDiscipline;
+        private static FixedString64Bytes MetricMiracles;
+        private static FixedString64Bytes MetricMiraclesActive;
+        private static FixedString64Bytes MetricMiraclesSustained;
+        private static FixedString64Bytes MetricMiraclesCooling;
+        private static FixedString64Bytes MetricMiracleEnergy;
+        private static FixedString64Bytes MetricMiracleCooldown;
+        private static FixedString64Bytes MetricTick;
+        private static bool _metricsInitialized;
 
         public void OnCreate(ref SystemState state)
         {
+            InitializeMetricLabels();
+
             state.RequireForUpdate<GodgameRegistrySnapshot>();
             state.RequireForUpdate<TelemetryStream>();
         }
@@ -1071,6 +1074,7 @@ namespace Godgame.Registry
         {
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var snapshot = SystemAPI.GetSingleton<GodgameRegistrySnapshot>();
@@ -1106,6 +1110,47 @@ namespace Godgame.Registry
             buffer.Add(new TelemetryMetric { Key = MetricMiracleEnergy, Value = snapshot.TotalMiracleEnergyCost, Unit = TelemetryMetricUnit.Count });
             buffer.Add(new TelemetryMetric { Key = MetricMiracleCooldown, Value = snapshot.TotalMiracleCooldownSeconds * 1000f, Unit = TelemetryMetricUnit.DurationMilliseconds });
             buffer.Add(new TelemetryMetric { Key = MetricTick, Value = snapshot.LastRegistryTick, Unit = TelemetryMetricUnit.Count });
+        }
+
+        [BurstDiscard]
+        private static void InitializeMetricLabels()
+        {
+            if (_metricsInitialized)
+            {
+                return;
+            }
+
+            MetricVillagers = new FixedString64Bytes("godgame.registry.villagers");
+            MetricVillagersAvailable = new FixedString64Bytes("godgame.registry.villagers.available");
+            MetricVillagersIdle = new FixedString64Bytes("godgame.registry.villagers.idle");
+            MetricVillagersReserved = new FixedString64Bytes("godgame.registry.villagers.reserved");
+            MetricVillagersCombatReady = new FixedString64Bytes("godgame.registry.villagers.combatready");
+            MetricVillagersHealth = new FixedString64Bytes("godgame.registry.villagers.health.avg");
+            MetricVillagersMorale = new FixedString64Bytes("godgame.registry.villagers.morale.avg");
+            MetricVillagersEnergy = new FixedString64Bytes("godgame.registry.villagers.energy.avg");
+            MetricStorehouses = new FixedString64Bytes("godgame.registry.storehouses");
+            MetricStorehousesCapacity = new FixedString64Bytes("godgame.registry.storehouses.capacity");
+            MetricStorehousesStored = new FixedString64Bytes("godgame.registry.storehouses.stored");
+            MetricStorehousesReserved = new FixedString64Bytes("godgame.registry.storehouses.reserved");
+            MetricResourceNodes = new FixedString64Bytes("godgame.registry.resources.nodes");
+            MetricResourceNodesActive = new FixedString64Bytes("godgame.registry.resources.nodes.active");
+            MetricResourceUnits = new FixedString64Bytes("godgame.registry.resources.units");
+            MetricSpawners = new FixedString64Bytes("godgame.registry.spawners");
+            MetricSpawnersActive = new FixedString64Bytes("godgame.registry.spawners.active");
+            MetricSpawnersPending = new FixedString64Bytes("godgame.registry.spawners.pending");
+            MetricBands = new FixedString64Bytes("godgame.registry.bands");
+            MetricBandMembers = new FixedString64Bytes("godgame.registry.bands.members");
+            MetricBandMorale = new FixedString64Bytes("godgame.registry.bands.morale.avg");
+            MetricBandCohesion = new FixedString64Bytes("godgame.registry.bands.cohesion.avg");
+            MetricBandDiscipline = new FixedString64Bytes("godgame.registry.bands.discipline.avg");
+            MetricMiracles = new FixedString64Bytes("godgame.registry.miracles");
+            MetricMiraclesActive = new FixedString64Bytes("godgame.registry.miracles.active");
+            MetricMiraclesSustained = new FixedString64Bytes("godgame.registry.miracles.sustained");
+            MetricMiraclesCooling = new FixedString64Bytes("godgame.registry.miracles.cooling");
+            MetricMiracleEnergy = new FixedString64Bytes("godgame.registry.miracles.energy");
+            MetricMiracleCooldown = new FixedString64Bytes("godgame.registry.miracles.cooldown");
+            MetricTick = new FixedString64Bytes("godgame.registry.tick");
+            _metricsInitialized = true;
         }
     }
 }

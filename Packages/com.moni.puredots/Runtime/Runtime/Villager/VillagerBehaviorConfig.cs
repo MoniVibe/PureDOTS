@@ -55,6 +55,13 @@ namespace PureDOTS.Runtime.Villager
         // Health thresholds
         public float AliveHealthThreshold; // Health level below which villager is considered dead
         
+        // Alignment parameters
+        public float AlignmentInfluenceRate; // Rate at which alignment shifts per second
+        public float MiracleAlignmentBonus; // Alignment bonus from witnessing miracles
+        public float CreatureAlignmentBonus; // Alignment bonus from creature interactions
+        public float MiracleInfluenceRange; // Range to detect miracle effects
+        public float AlignmentDecayRate; // Rate at which alignment returns to neutral
+        
         /// <summary>
         /// Creates default configuration matching current hard-coded values.
         /// </summary>
@@ -103,7 +110,14 @@ namespace PureDOTS.Runtime.Villager
                 RestEnergyThreshold = 80f,
                 
                 // Health defaults
-                AliveHealthThreshold = 0.1f
+                AliveHealthThreshold = 0.1f,
+                
+                // Alignment defaults
+                AlignmentInfluenceRate = 0.1f,
+                MiracleAlignmentBonus = 5f,
+                CreatureAlignmentBonus = 2f,
+                MiracleInfluenceRange = 20f,
+                AlignmentDecayRate = 0.01f
             };
         }
     }

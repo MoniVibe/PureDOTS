@@ -11,8 +11,7 @@ namespace PureDOTS.Authoring.Knowledge
     /// <summary>
     /// Authoring ScriptableObject for enlightenment progression profiles.
     /// </summary>
-    [CreateAssetMenu(fileName = "EnlightenmentProfile", menuName = "PureDOTS/Knowledge/Enlightenment Profile")]
-    public class EnlightenmentProfileAuthoring : ScriptableObject
+    public class EnlightenmentProfileAuthoring : MonoBehaviour
     {
         [Header("Level Thresholds")]
         [Tooltip("XP required to reach each level (index 0 = level 1)")]

@@ -46,7 +46,7 @@ namespace Space4X.Systems
                 return;
             }
 
-            var currentTime = timeState.ElapsedTime;
+            var currentTime = timeState.Time;
 
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
             var ecbParallel = ecb.AsParallelWriter();
@@ -95,8 +95,7 @@ namespace Space4X.Systems
 
                     // Add projectile component
                     var velocity = request.SpawnDirection * projectileSpec.Speed;
-                    var seed = (uint)(entity.Index ^ (int)CurrentTime ^ request.SourceEntity.Index);
-                    
+
                     ECB.AddComponent(entityInQueryIndex, projectileEntity, new ProjectileEntity
                     {
                         ProjectileId = request.ProjectileId,
@@ -108,7 +107,9 @@ namespace Space4X.Systems
                         DistanceTraveled = 0f,
                         HitsLeft = math.max(0f, projectileSpec.Pierce),
                         Age = 0f,
-                        Seed = seed
+                        Seed = request.ShotSeed, // Use deterministic shot seed
+                        ShotSequence = request.ShotSequence,
+                        PelletIndex = request.PelletIndex
                     });
 
                     // Add hit results buffer for collision system

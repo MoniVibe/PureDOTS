@@ -19,6 +19,15 @@ namespace PureDOTS.Runtime.Combat
         public float Max;
 
         /// <summary>
+        /// Convenience alias for maximum health to match call sites.
+        /// </summary>
+        public float MaxHealth
+        {
+            get => Max;
+            set => Max = value;
+        }
+
+        /// <summary>
         /// Health regeneration per second (0 = no regen).
         /// </summary>
         public float RegenRate;

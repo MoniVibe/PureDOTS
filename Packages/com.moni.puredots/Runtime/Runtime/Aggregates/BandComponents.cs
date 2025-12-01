@@ -6,6 +6,8 @@ namespace PureDOTS.Runtime.Aggregates
 {
     /// <summary>
     /// Marks an entity as a band (aggregate entity with shared goal).
+    /// Aggregate stats (alignment, mood, energy) are derived from member entities
+    /// and synchronized by AggregateStatsSyncSystem.
     /// </summary>
     public struct Band : IComponentData
     {
@@ -13,7 +15,12 @@ namespace PureDOTS.Runtime.Aggregates
         public BandPurpose Purpose;
         public Entity LeaderEntity;
         public uint FormationTick;
-        public byte MemberCount;
+        public ushort MemberCount;
+
+        // Aggregate stats derived from members (synced by AggregateStatsSyncSystem)
+        public float AverageMorale;
+        public float AverageEnergy;
+        public float AverageStrength;
     }
     
     public enum BandPurpose : byte
