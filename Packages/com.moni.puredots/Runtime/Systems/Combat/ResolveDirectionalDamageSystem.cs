@@ -8,10 +8,13 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+// Alias to disambiguate HitEvent between Combat and Ships namespaces
+using ShipHitEvent = PureDOTS.Runtime.Ships.HitEvent;
+
 namespace PureDOTS.Systems.Combat
 {
     /// <summary>
-    /// Resolves directional damage from HitEvent buffer.
+    /// Resolves directional damage from ShipHitEvent buffer.
     /// Pipeline: World→Local → Facing select → Shield check → Armor apply → Module OBB pick → Module damage → Hull overflow.
     /// Runs in CombatSystemGroup after ProjectileCollisionSystem.
     /// </summary>
@@ -77,7 +80,7 @@ namespace PureDOTS.Systems.Combat
 
             void Execute(
                 Entity entity,
-                ref DynamicBuffer<HitEvent> hitEvents,
+                ref DynamicBuffer<ShipHitEvent> hitEvents,
                 ref HullState hull,
                 ref ShieldArcState shields,
                 ref ArmorDegradeState armor,

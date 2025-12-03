@@ -1,8 +1,8 @@
 # PureDOTS Integration & Extension Specification
 
-**Version**: 1.0  
-**Last Updated**: 2025-01-27  
-**Purpose**: Canonical reference for interfacing with PureDOTS and extending the framework
+**Note**: This document is superseded by `INTEGRATION_GUIDE.md` for day-to-day development. This spec remains for detailed extension procedures.
+
+**Purpose**: Detailed reference for extending PureDOTS framework
 
 This document serves as the single source of truth for:
 - How game projects (Space4X, Godgame, etc.) integrate with PureDOTS systems
@@ -572,15 +572,15 @@ public partial struct MyJob : IJobEntity
 
 **Where to Submit Requests:**
 
-Game teams should submit PureDOTS extension requests by creating a **markdown document** in the `Docs/ExtensionRequests/` directory within the PureDOTS repository.
+Game teams should implement PureDOTS extensions directly when needed. See [Extension Conventions](#extension-conventions) for guidelines.
 
 **Request Process:**
 
-1. **Create a new request file** in `Docs/ExtensionRequests/`
+1. **Implement extension directly** following PureDOTS patterns
    - File name format: `YYYY-MM-DD-{short-description}.md`
    - Example: `2025-01-27-custom-sensor-categories.md`
 
-2. **Copy the template** from `Docs/ExtensionRequests/TEMPLATE.md` and fill it out with:
+2. **Follow extension conventions** (see [Extension Conventions](#extension-conventions)):
    - Use case (what game feature needs this)
    - Proposed solution (specific extension point needed)
    - Impact assessment (files/systems affected)
@@ -602,8 +602,7 @@ Game teams should submit PureDOTS extension requests by creating a **markdown do
 - `[DEFERRED]` - Approved but deferred to future milestone
 
 **See Also:**
-- `Docs/ExtensionRequests/README.md` - Request submission guidelines
-- `Docs/ExtensionRequests/TEMPLATE.md` - Request template
+- `Docs/INTEGRATION_GUIDE.md` - Quick reference for PureDOTS integration
 
 **When to Request:**
 - Before adding game-specific code to PureDOTS
@@ -881,7 +880,7 @@ Before marking any task complete, agents MUST:
 
 - `Docs/ORIENTATION_SUMMARY.md` - PureDOTS architecture overview
 - `Docs/FoundationGuidelines.md` - Foundation development guidelines
-- `Docs/Integration/GAME_INTEGRATION_GUIDE.md` - Legacy integration guide (being absorbed)
+- `Docs/INTEGRATION_GUIDE.md` - Quick reference for PureDOTS integration
 - `Docs/DesignNotes/SystemIntegration.md` - System integration patterns
 - `Docs/Guides/AI_Integration_Guide.md` - Comprehensive AI integration guide
 - `Packages/com.moni.puredots/Runtime/Systems/AI/AISystems.cs` - AI sensor system reference

@@ -16,6 +16,12 @@ namespace PureDOTS.Runtime.Physics
     public struct PhysicsConfig : IComponentData
     {
         /// <summary>
+        /// Physics provider to use (None=0, Entities=1, Havok=2).
+        /// Default: Entities (Unity Physics)
+        /// </summary>
+        public byte ProviderId;
+
+        /// <summary>
         /// Enable physics for Space4X entities (ships, carriers, asteroids, projectiles).
         /// 0 = disabled, 1 = enabled
         /// </summary>
@@ -72,6 +78,7 @@ namespace PureDOTS.Runtime.Physics
         {
             return new PhysicsConfig
             {
+                ProviderId = PhysicsProviderIds.Entities, // Default to Unity Physics
                 EnableSpace4XPhysics = 1,
                 EnableGodgamePhysics = 1,
                 LogCollisions = 0,

@@ -55,6 +55,12 @@ namespace PureDOTS.Systems.Physics
                 return;
             }
 
+            // Skip if provider is None
+            if (config.ProviderId == PhysicsProviderIds.None)
+            {
+                return;
+            }
+
             // Skip if physics is disabled
             if (!config.IsSpace4XPhysicsEnabled && !config.IsGodgamePhysicsEnabled)
             {
@@ -63,6 +69,13 @@ namespace PureDOTS.Systems.Physics
 
             // Skip during post-rewind settle frames
             if (PhysicsConfigHelpers.IsPostRewindSettleFrame(in config, timeState.Tick))
+            {
+                return;
+            }
+
+            // Only process if using Entities provider (Unity Physics)
+            // Other providers (Havok) would need their own event processing systems
+            if (config.ProviderId != PhysicsProviderIds.Entities)
             {
                 return;
             }

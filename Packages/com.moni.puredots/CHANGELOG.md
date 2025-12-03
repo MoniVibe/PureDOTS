@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **New contracts**: PhysicsProvider v1, PhysicsCollisionEvent v1 (see `Docs/Contracts.md`)
+- **Provider architecture**: IPhysicsProvider interface with implementations (None, Entities, Havok stub)
+- **Adapter structure**: Adapters folder organization in game projects
+- **Contract documentation**: `Docs/Contracts.md` for shared system contracts
+
+### Changed
+- **PhysicsConfig**: Added ProviderId field for selecting physics backend
+- **PhysicsEventSystem**: Now respects ProviderId selection (skips if None or non-Entities)
+- **Adapters.md**: Updated with adapter folder structure documentation
+- **INTEGRATION_GUIDE.md**: Added provider and contract patterns section
+
 ### Planned
 - API documentation generation
 - Performance benchmarking suite

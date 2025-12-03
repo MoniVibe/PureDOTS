@@ -1,39 +1,24 @@
 # PureDOTS Documentation Index
 
-**Last Updated**: 2025-12-01
-
----
-
 ## Documentation Organization
 
-**NEW**: Documentation is now organized by responsibility:
-- **Framework Docs**: `Packages/com.moni.puredots/Documentation/` - Game-agnostic systems
-- **Godgame Docs**: `Assets/Projects/Godgame/Docs/` - God-game specific
-- **Space4X Docs**: `Assets/Projects/Space4X/Docs/` - Space4X specific
-- **Root Docs**: `Docs/` - Cross-project architecture and guides
-
-See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) for details.
+Documentation is organized by responsibility:
+- **Framework Docs**: `PureDOTS/Docs/` - PureDOTS framework documentation
+- **Game Docs**: `Godgame/Docs/` and `Space4x/Docs/` - Game-specific documentation
+- **Root**: `TRI_PROJECT_BRIEFING.md` - Project overview
 
 ---
 
 ## Entry Points
-- `Docs/PUREDOTS_INTEGRATION_SPEC.md` – **canonical integration & extension guide** (how to interface with PureDOTS and extend it)
-- `Docs/ORIENTATION_SUMMARY.md` – comprehensive codebase orientation (PureDOTS, Godgame, Space4X)
-- `Docs/BehaviorAlignment_Summary.md` – **comprehensive guide to entity behaviors, alignments, outlooks, and aggregate dynamics**
-- `Packages/com.moni.puredots/Documentation/PatternBible.md` – **catalog of 50+ emergent narrative patterns** (pre-implementation idea capture)
-- `Docs/FOUNDATION_GAPS_QUICK_REFERENCE.md` – quick reference for immediate foundation work priorities
-- `Docs/OUTSTANDING_TODOS_SUMMARY.md` – consolidated outstanding work; start here.
-- `PureDOTS_TODO.md` – main project tracker.
-- `Docs/INDEX.md` (this file) – navigation; see archived notes in `Docs/ScenePrep/Archived/` for retired hybrid guidance.
+- `Docs/INTEGRATION_GUIDE.md` – **quick reference for PureDOTS integration** (how to interface with PureDOTS)
+- `Docs/PUREDOTS_INTEGRATION_SPEC.md` – detailed extension procedures (for extending PureDOTS)
+- `TRI_PROJECT_BRIEFING.md` (root) – project overview and coding patterns
+- `Docs/INDEX.md` (this file) – documentation navigation
 
 ## New Project Setup
-- `Docs/NEW_PROJECT_QUICKSTART.md` – **fast-track guide for starting new game projects**
-- `Docs/CONCEPT_CAPTURE_METHODS.md` – documentation patterns across PureDOTS, Godgame, Space4X
-- `Docs/DOCUMENTATION_ORGANIZATION_GUIDE.md` – **how documentation is organized between framework and games**
-- `Docs/DesignNotes/LastLightVR/` – LastLightVR concept documents
-  - `LASTLIGHTVR_INITIALIZATION_PROPOSAL.md` – detailed example of new project setup
-  - `LASTLIGHTVR_CONCEPT_SUMMARY.md` – concept & action plan
-  - `LastLightVR_ConceptTranscript.md` – raw concept transcript
+- `TRI_PROJECT_BRIEFING.md` (root) – project overview and structure
+- `Docs/INTEGRATION_GUIDE.md` – PureDOTS integration reference
+- `Docs/DesignNotes/LastLightVR/` – LastLightVR concept documents (examples)
 
 ## Truth Sources
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`
@@ -57,23 +42,6 @@ See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) f
 
 See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding standards (P0-P17 patterns)
 
-## TODO Trackers
-- `PureDOTS_TODO.md` - **Current sprint work** (2-3 weeks)
-- `Docs/TODO/BACKLOG.md` - **Consolidated backlog** organized by domain
-- `Docs/TODO/SystemIntegration_TODO.md` - System integration tasks
-- `Docs/TODO/ClimateSystems_TODO.md` - Climate system tasks
-- `Docs/TODO/SpatialServices_TODO.md` - Spatial services tasks
-- `Docs/TODO/VillagerSystems_TODO.md` - Villager system tasks
-- `Docs/TODO/ResourcesFramework_TODO.md` - Resources framework tasks
-- `Docs/TODO/MiraclesFramework_TODO.md` - Miracles framework tasks
-- `Docs/TODO/VegetationSystems_TODO.md` - Vegetation system tasks
-- `Docs/TODO/DivineHandCamera_TODO.md` - Divine hand camera tasks
-- `Docs/TODO/TerraformingPrototype_TODO.md` - Terraforming tasks
-- `Docs/TODO/Utilities_TODO.md` - Utilities and tooling tasks
-- `Docs/TODO/RegistryRewrite_TODO.md` - Registry rewrite tasks
-- `Docs/TODO/SpawnerFramework_TODO.md` - Spawner framework tasks
-- `Docs/TODO/PresentationBridge_TODO.md` - Presentation bridge tasks
-- `Docs/OUTSTANDING_TODOS_SUMMARY.md` - Summary of outstanding work
 
 ## Cross-Game Mechanics
 

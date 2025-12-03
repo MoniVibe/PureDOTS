@@ -84,6 +84,30 @@ namespace PureDOTS.Systems
     public partial class MiracleEffectSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// System group for perception systems.
+    /// Runs after spatial grid, before AI systems.
+    /// </summary>
+    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    public partial class PerceptionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// System group for interrupt handling.
+    /// Runs after perception/combat/group logic, before AI/GOAP systems.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(CombatSystemGroup))]
+    [UpdateBefore(typeof(AISystemGroup))]
+    public partial class InterruptSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// System group for group decision systems.
+    /// Runs after group membership, before interrupt handling.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateBefore(typeof(InterruptSystemGroup))]
+    public partial class GroupDecisionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// System group for combat systems.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
