@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
@@ -38,6 +39,10 @@ namespace PureDOTS.Authoring
         [Range(1, 600)] public int baseQuality = 100;
         [Range(0, 200)] public int qualityVariance = 10;
         public ResourceQualityTier qualityTier = ResourceQualityTier.Common;
+
+        [Header("LOD & Rendering")]
+        public bool enableLOD = true;
+        [Range(50f, 500f)] public float cullDistance = 150f;
 
 #if UNITY_EDITOR
         public int SchemaVersion => _schemaVersion;
@@ -109,6 +114,32 @@ namespace PureDOTS.Authoring
                 OverrideStrideSeconds = 0f
             });
             AddBuffer<ResourceHistorySample>(entity);
+
+            // Add LOD components for performance scaling
+            if (authoring.enableLOD)
+            {
+                AddComponent(entity, new RenderLODData
+                {
+                    CameraDistance = 0f,
+                    ImportanceScore = 0.3f, // Lower importance than villagers
+                    RecommendedLOD = 0,
+                    LastUpdateTick = 0
+                });
+
+                AddComponent(entity, new RenderCullable
+                {
+                    CullDistance = authoring.cullDistance,
+                    Priority = 64 // Lower priority than villagers
+                });
+
+                var sampleIndex = RenderLODHelpers.CalculateSampleIndex(entity.Index, 100);
+                AddComponent(entity, new RenderSampleIndex
+                {
+                    SampleIndex = sampleIndex,
+                    SampleModulus = 100,
+                    ShouldRender = 1
+                });
+            }
 #if UNITY_EDITOR
             Debug.Log($"[ResourceSourceBaker] Completed baking '{authoring.name}' -> Entity {entity.Index}:{entity.Version}", authoring);
 #endif

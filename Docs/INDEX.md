@@ -1,6 +1,6 @@
 # PureDOTS Documentation Index
 
-**Last Updated**: 2025-11-27
+**Last Updated**: 2025-12-01
 
 ---
 
@@ -39,21 +39,41 @@ See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) f
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`
 - `Docs/TruthSources/PlatformPerformance_TruthSource.md`
 
+## Best Practices ⭐ NEW
+
+**Implementation-friendly guides for DOTS 1.4.x, C# 9, Unity Input System, and performance optimization:**
+
+- [BestPractices/README.md](BestPractices/README.md) - Best practices index and navigation
+- [BestPractices/PROJECT_SEPARATION.md](BestPractices/PROJECT_SEPARATION.md) ⚠️ **READ FIRST** - PureDOTS vs Space4X vs Godgame separation
+- [BestPractices/DOTS_1_4_Patterns.md](BestPractices/DOTS_1_4_Patterns.md) - DOTS 1.4.x implementation patterns
+- [BestPractices/CSharp9_Features.md](BestPractices/CSharp9_Features.md) - C# 9 features for DOTS development
+- [BestPractices/UnityInputSystem_ECS.md](BestPractices/UnityInputSystem_ECS.md) - Input System integration with ECS
+- [BestPractices/BurstOptimization.md](BestPractices/BurstOptimization.md) - Burst compilation and optimization
+- [BestPractices/JobSystemPatterns.md](BestPractices/JobSystemPatterns.md) - Job system best practices
+- [BestPractices/MemoryLayoutOptimization.md](BestPractices/MemoryLayoutOptimization.md) - Cache-friendly component design
+- [BestPractices/EntityCommandBuffers.md](BestPractices/EntityCommandBuffers.md) - ECB patterns and timing
+- [BestPractices/ComponentDesignPatterns.md](BestPractices/ComponentDesignPatterns.md) - Component sizing and design
+- [BestPractices/DeterminismChecklist.md](BestPractices/DeterminismChecklist.md) - Deterministic code checklist
+
+See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding standards (P0-P17 patterns)
+
 ## TODO Trackers
-- `PureDOTS_TODO.md`
-- `Docs/TODO/SystemIntegration_TODO.md`
-- `Docs/TODO/ClimateSystems_TODO.md`
-- `Docs/TODO/SpatialServices_TODO.md`
-- `Docs/TODO/VillagerSystems_TODO.md`
-- `Docs/TODO/ResourcesFramework_TODO.md`
-- `Docs/TODO/MiraclesFramework_TODO.md`
-- `Docs/TODO/VegetationSystems_TODO.md`
-- `Docs/TODO/DivineHandCamera_TODO.md`
-- `Docs/TODO/TerraformingPrototype_TODO.md`
-- `Docs/TODO/Utilities_TODO.md`
-- `Docs/TODO/RegistryRewrite_TODO.md`
-- `Docs/TODO/SpawnerFramework_TODO.md`
-- Presentation: `Docs/TODO/PresentationBridge_TODO.md` (see architecture/guidelines below)
+- `PureDOTS_TODO.md` - **Current sprint work** (2-3 weeks)
+- `Docs/TODO/BACKLOG.md` - **Consolidated backlog** organized by domain
+- `Docs/TODO/SystemIntegration_TODO.md` - System integration tasks
+- `Docs/TODO/ClimateSystems_TODO.md` - Climate system tasks
+- `Docs/TODO/SpatialServices_TODO.md` - Spatial services tasks
+- `Docs/TODO/VillagerSystems_TODO.md` - Villager system tasks
+- `Docs/TODO/ResourcesFramework_TODO.md` - Resources framework tasks
+- `Docs/TODO/MiraclesFramework_TODO.md` - Miracles framework tasks
+- `Docs/TODO/VegetationSystems_TODO.md` - Vegetation system tasks
+- `Docs/TODO/DivineHandCamera_TODO.md` - Divine hand camera tasks
+- `Docs/TODO/TerraformingPrototype_TODO.md` - Terraforming tasks
+- `Docs/TODO/Utilities_TODO.md` - Utilities and tooling tasks
+- `Docs/TODO/RegistryRewrite_TODO.md` - Registry rewrite tasks
+- `Docs/TODO/SpawnerFramework_TODO.md` - Spawner framework tasks
+- `Docs/TODO/PresentationBridge_TODO.md` - Presentation bridge tasks
+- `Docs/OUTSTANDING_TODOS_SUMMARY.md` - Summary of outstanding work
 
 ## Cross-Game Mechanics
 
@@ -65,6 +85,12 @@ See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) f
   - [Special Days & Events](Mechanics/SpecialDaysAndEvents.md) - Holidays, blood moons, celestial events
   - [Instance Portals](Mechanics/InstancePortals.md) - Procedural dungeons and challenge zones
   - [Runewords & Synergies](Mechanics/RunewordsAndSynergies.md) - Diablo 2-style itemization combos
+  - [Entertainment & Performers](Mechanics/EntertainmentAndPerformers.md) - Musicians, dancers, bards providing morale
+  - [Wonder Construction](Mechanics/WonderConstruction.md) - Multi-stage monument building with professional workers
+  - [Limb & Organ Grafting](Mechanics/LimbAndOrganGrafting.md) ⚠️ - Body horror grafting system (Mature 17+)
+  - [Memories & Lessons](Mechanics/MemoriesAndLessons.md) - Cultural preservation and context-triggered buffs
+  - [Consciousness Transference](Mechanics/ConsciousnessTransference.md) ⚠️ - Psychic inheritance, possession, neural override (Mature 17+)
+  - [Death Continuity & Undead Origins](Mechanics/DeathContinuityAndUndeadOrigins.md) ⚠️ - Undead from actual corpses, spirit continuity (Mature 17+)
 - See: [Mechanics README](Mechanics/README.md) for overview and integration notes
 
 ## Design Notes
@@ -100,16 +126,20 @@ See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) f
 - `Docs/Architecture/PureDOTS_As_Framework.md` - Framework architecture and contract
 - `Docs/Architecture/Framework_Formalization_Summary.md` - Formalization overview
 - `Docs/Architecture/GameDOTS_Separation.md` - Separation conventions
+- [Architecture/BOUNDARY_CLASSIFICATION.md](Architecture/BOUNDARY_CLASSIFICATION.md) ⚠️ **NEW** - Complete component catalog (PureDOTS vs Game Layer)
+- [Architecture/BOUNDARY_CONTRACT.md](Architecture/BOUNDARY_CONTRACT.md) ⚠️ **NEW** - Boundary rules and decision framework
+- [Architecture/MIGRATION_PLAN.md](Architecture/MIGRATION_PLAN.md) ⚠️ **NEW** - Step-by-step fixes for boundary violations
 
 ## AI Documentation
 - `Docs/Guides/AI_Integration_Guide.md` - Comprehensive guide for integrating entities with AI pipeline (includes advanced behavior recipes)
 - `Docs/AI_Gap_Audit.md` - Gap analysis and catalog of remaining AI work
 - `Docs/AI_Backlog.md` - Prioritized implementation backlog (AI-001 through AI-008)
 - `Docs/AI_Validation_Plan.md` - Testing and metrics framework for AI systems
-- `Docs/AI_Readiness_Implementation_Summary.md` - Summary of completed AI integration work
+- `Docs/Archive/Progress/2025/AI_Readiness_Implementation_Summary.md` - Summary of completed AI integration work (archived)
 
 ## Guides & Authoring
 - `Docs/PUREDOTS_INTEGRATION_SPEC.md` - **Canonical integration & extension specification** (start here for interfacing with PureDOTS)
+- `Docs/FoundationGuidelines.md` - **Core coding standards** (P0-P17 patterns, critical DOTS rules)
 - `Docs/ExtensionRequests/` - **Extension request directory** (game teams submit requests here)
   - `Docs/ExtensionRequests/README.md` - How to submit extension requests
   - `Docs/ExtensionRequests/TEMPLATE.md` - Request template
@@ -132,6 +162,26 @@ See [DOCUMENTATION_ORGANIZATION_GUIDE.md](DOCUMENTATION_ORGANIZATION_GUIDE.md) f
 
 ## CI & Automation
 - `Docs/CI/CI_AutomationPlan.md` - CI pipeline, build automation, coverage, nightly runs
+
+## Tools & Utilities
+
+**Tool-specific documentation:**
+- `Docs/Tools/MCP_VFX_Graph_Tools.md` - MCP VFX Graph tools
+- `Docs/Tools/VFX_HELPER_FIXES.md` - VFX helper fixes
+- `Docs/Tools/WSL_Unity_MCP_Relay.md` - WSL Unity MCP relay
+
+## Archive
+
+**Historical documentation organized by category:**
+
+- `Docs/Archive/Progress/2025/` - Progress reports and implementation summaries
+- `Docs/Archive/Fixes/2025/` - Fixed issues and troubleshooting guides
+- `Docs/Archive/Setup/2025/` - One-off setup guides and migration docs
+- `Docs/Archive/Analysis/2025/` - Analysis documents and design notes
+- `Docs/Archive/AgentPrompts/2025/` - Agent prompt files
+- `Docs/Archive/CompletedWork/2025/` - Completed TODO items
+
+**Archive Policy:** Documents are archived after 6 months or when superseded. Archive headers indicate reason and current reference.
 
 ## Technical Debt
 - `Docs/TECHNICAL_DEBT.md` - Comprehensive catalog of remaining technical debt items

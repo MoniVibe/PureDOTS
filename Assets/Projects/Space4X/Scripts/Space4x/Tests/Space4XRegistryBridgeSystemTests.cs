@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Miracles;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;

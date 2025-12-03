@@ -2,6 +2,28 @@ using Unity.Entities;
 
 namespace PureDOTS.Runtime.Components
 {
+    public enum HandState : byte
+    {
+        Idle = 0,
+        Hovering = 1,
+        Grabbing = 2,
+        Holding = 3,
+        Placing = 4,
+        Casting = 5,
+        Cooldown = 6
+    }
+
+    public enum DivineHandCommandType : byte
+    {
+        None = 0,
+        Grab = 1,
+        Drop = 2,
+        Siphon = 3,
+        Dump = 4,
+        Miracle = 5,
+        Cancel = 6
+    }
+
     /// <summary>
     /// Shared hand interaction state consumed by resource and miracle systems.
     /// Mirrors the authoritative values driven by <see cref="DivineHandSystem"/>.

@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -87,11 +88,15 @@ namespace Space4X.Systems
                         continue;
                     }
 
-                    // Create projectile entity
+                    // Create projectile entity with 3D-aware rotation
                     var projectileEntity = ECB.CreateEntity(entityInQueryIndex);
+                    OrientationHelpers.LookRotationSafe3D(request.SpawnDirection, OrientationHelpers.WorldUp, out quaternion spawnRotation);
                     ECB.AddComponent(entityInQueryIndex, projectileEntity, LocalTransform.FromPositionRotation(
                         request.SpawnPosition,
-                        quaternion.LookRotationSafe(request.SpawnDirection, math.up())));
+                        spawnRotation));
+
+                    // Add SpaceMovementTag for full 6DoF movement
+                    ECB.AddComponent<SpaceMovementTag>(entityInQueryIndex, projectileEntity);
 
                     // Add projectile component
                     var velocity = request.SpawnDirection * projectileSpec.Speed;

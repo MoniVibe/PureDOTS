@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
@@ -193,12 +194,14 @@ namespace PureDOTS.Systems.Combat
                         var fxRequests = ImpactFxBuffers[HubEntity];
                         // Use projectile ID hash as effect ID (would be mapped to actual FX in presentation bindings)
                         int effectId = (int)(projectile.ProjectileId.GetHashCode() & 0x7FFFFFFF);
+                        // Use 3D-aware look rotation for impact FX orientation
+                        OrientationHelpers.LookRotationSafe3D(hitNormal, OrientationHelpers.WorldUp, out var impactRotation);
                         fxRequests.Add(new PlayEffectRequest
                         {
                             EffectId = effectId,
                             Target = Entity.Null,
                             Position = hitPos,
-                            Rotation = quaternion.LookRotationSafe(hitNormal, math.up()),
+                            Rotation = impactRotation,
                             DurationSeconds = 1f,
                             LifetimePolicy = PresentationLifetimePolicy.Timed,
                             AttachRule = PresentationAttachRule.World

@@ -15,7 +15,9 @@
                        "Unity.Collections",
                        "Unity.Transforms",
                        "PureDOTS.Editor",
-                       "PureDOTS.Systems"
+                       "PureDOTS.Systems",
+                       "Godgame.Runtime",
+                       "Space4X.Gameplay"
                    ],
     "includePlatforms":  [
                              "Editor"

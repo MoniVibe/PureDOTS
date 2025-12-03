@@ -65,6 +65,25 @@ As the Space4X project develops, additional system documentation will be added h
 
 Space4X **uses** PureDOTS framework systems and **extends** them with game-specific logic.
 
+### Cross-Game Mechanics
+
+Space4X shares several mechanics with Godgame through the **[Cross-Game Mechanics](../../../Docs/Mechanics/)** system. These mechanics have thematic variations for sci-fi/space (Space4X) vs medieval/divine (Godgame):
+
+- **Miracles & Abilities** - Tactical abilities (orbital strike, shield boost, EMP burst)
+- **Underground Spaces** - Hollow asteroids, station sublevels, hidden pirate bases
+- **Rogue Orbiters** - Rogue planets, extragalactic comets, alien megastructures
+- **Special Days** - Fleet days, solar flares, planetary conjunctions
+- **Instance Portals** - Anomalous rifts to derelict hulks, alien fortresses
+- **Runewords & Synergies** - Core combinations and tech upgrade combos
+- **Entertainment & Performers** - Fleet morale officers, holographic entertainment
+- **Wonder Construction** - Megastructure building (orbital rings, Dyson swarms)
+- **Limb & Organ Grafting** ⚠️ - Cybernetic enhancement, alien organ transplants (Mature)
+- **Memories & Lessons** - Fleet tactical memories and combat protocol lessons
+- **Consciousness Transference** ⚠️ - Neural override, consciousness upload, hive mind assimilation (Mature)
+- **Death Continuity & Undead Origins** ⚠️ - Cyborg reanimation from dead marines, ghost signals in ship systems (Mature)
+
+See [Cross-Game Mechanics Documentation](../../../Docs/Mechanics/README.md) for implementation details.
+
 ### Framework Systems Used
 
 | Framework System | Space4X Usage |

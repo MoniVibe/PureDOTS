@@ -74,7 +74,7 @@ namespace PureDOTS.Systems
     /// Pulses miracle placeholder color/emission to help them stand out.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct MiraclePlaceholderPulseSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -113,7 +113,7 @@ namespace PureDOTS.Systems
     /// Applies simple material overrides to URP material property components.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(MiraclePlaceholderPulseSystem))]
     public partial struct MaterialOverrideSystem : ISystem
     {

@@ -31,7 +31,7 @@ namespace PureDOTS.Systems.Environment
 
             if (!catalogReference.IsCreated)
             {
-                Debug.LogWarning("EnvironmentEffectBootstrapSystem: EnvironmentEffectCatalogData has no blob asset; skipping bootstrap.");
+                UnityEngine.Debug.LogWarning("[EnvironmentEffectBootstrap] EnvironmentEffectCatalogData has no blob asset; skipping bootstrap.");
                 state.Enabled = false;
                 return;
             }

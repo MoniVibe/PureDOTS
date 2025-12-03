@@ -18,6 +18,7 @@ namespace PureDOTS.Systems
         // Use QueryBuilder to avoid managed array allocations (Burst-safe).
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<TimeState>();
             _depotQuery = SystemAPI.QueryBuilder()
                 .WithAll<ArmySupplyDepot, LocalTransform>()
                 .WithAllRW<ArmySupplyRequest>()

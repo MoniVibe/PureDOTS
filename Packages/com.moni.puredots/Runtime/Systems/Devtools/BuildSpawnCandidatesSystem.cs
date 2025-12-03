@@ -120,12 +120,16 @@ namespace PureDOTS.Systems.Devtools
 
         private void GenerateCirclePattern(DynamicBuffer<SpawnCandidate> candidates, in SpawnRequest request, float3 basePosition, quaternion baseRotation, ref Unity.Mathematics.Random random)
         {
+            // Circle pattern in local XZ plane, transformed by baseRotation for 3D-aware spawning
             float angleStep = (2f * math.PI) / request.Count;
             for (int i = 0; i < request.Count; i++)
             {
                 float angle = i * angleStep;
-                float3 offset = new float3(math.cos(angle), 0, math.sin(angle)) * request.RadiusOrSpread;
-                float3 pos = basePosition + offset;
+                // Local offset in XZ plane (Y=0 in local space)
+                float3 localOffset = new float3(math.cos(angle), 0f, math.sin(angle)) * request.RadiusOrSpread;
+                // Transform by base rotation for proper 3D orientation
+                float3 worldOffset = math.mul(baseRotation, localOffset);
+                float3 pos = basePosition + worldOffset;
                 candidates.Add(new SpawnCandidate
                 {
                     Position = pos,
@@ -165,15 +169,18 @@ namespace PureDOTS.Systems.Devtools
 
         private void GenerateScatterPattern(DynamicBuffer<SpawnCandidate> candidates, in SpawnRequest request, float3 basePosition, quaternion baseRotation, ref Unity.Mathematics.Random random)
         {
-            // Blue-noise-ish scatter within radius
+            // Blue-noise-ish scatter within radius, transformed by baseRotation for 3D-aware spawning
             for (int i = 0; i < request.Count; i++)
             {
                 float angle = random.NextFloat() * 2f * math.PI;
                 float distance = random.NextFloat() * request.RadiusOrSpread;
-                float3 offset = new float3(math.cos(angle), 0, math.sin(angle)) * distance;
+                // Local offset in XZ plane (Y=0 in local space)
+                float3 localOffset = new float3(math.cos(angle), 0f, math.sin(angle)) * distance;
+                // Transform by base rotation for proper 3D orientation
+                float3 worldOffset = math.mul(baseRotation, localOffset);
                 candidates.Add(new SpawnCandidate
                 {
-                    Position = basePosition + offset,
+                    Position = basePosition + worldOffset,
                     Rotation = baseRotation,
                     PrototypeId = request.PrototypeId,
                     IsValid = 0
@@ -183,6 +190,7 @@ namespace PureDOTS.Systems.Devtools
     }
 }
 #endif
+
 
 
 

@@ -122,6 +122,29 @@ Guides for how game projects integrate with and extend the PureDOTS framework.
 
 ---
 
+## Cross-Game Mechanics
+
+**[Cross-Game Mechanics Documentation](../../../Docs/Mechanics/README.md)** - Game mechanics that work across multiple projects with thematic variations.
+
+The PureDOTS framework supports **10 cross-game mechanics** that are game-agnostic at their core but have themed implementations in Godgame (medieval/divine) and Space4X (sci-fi/space):
+
+1. **Miracles & Abilities** - Player powers with variable delivery and intensity
+2. **Underground Spaces** - Excavatable layers with hidden settlements
+3. **Floating Islands & Rogue Orbiters** - Temporary mobile exploration zones
+4. **Special Days & Events** - Calendar-based gameplay modifiers
+5. **Instance Portals** - Procedural challenge dungeons
+6. **Runewords & Synergies** - Combinatorial itemization
+7. **Entertainment & Performers** - Morale and cultural expression
+8. **Wonder Construction** - Multi-stage prestige projects
+9. **Limb & Organ Grafting** ⚠️ - Body modification with property inheritance (Mature)
+10. **Memories & Lessons** - Cultural preservation and context-triggered buffs
+11. **Consciousness Transference** ⚠️ - Psychic inheritance, possession, neural override (Mature)
+12. **Death Continuity & Undead Origins** ⚠️ - Undead from actual corpses, spirit continuity (Mature)
+
+These mechanics may require **framework extensions** (terrain multi-layer, mobile locations, calendar system, instance isolation, combo detection, memory system, consciousness transfer system, death registry system). See the [Extension Request Workflow](../../../Docs/Mechanics/README.md#extension-request-workflow) for details.
+
+---
+
 ## For Game Developers
 
 ### Using the Framework

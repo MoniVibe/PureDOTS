@@ -145,6 +145,8 @@ namespace PureDOTS.Systems.Devtools
 
         private float3 CalculateFormationPosition(float3 basePosition, FormationType formationType, float spacing, int index, ref Unity.Mathematics.Random random)
         {
+            // All formation offsets are computed in local XZ plane, preserving basePosition.y
+            // This allows spawning at any Y level (ground, flying, space)
             switch (formationType)
             {
                 case FormationType.Point:
@@ -152,14 +154,17 @@ namespace PureDOTS.Systems.Devtools
                 case FormationType.Circle:
                     float angle = (index * 2f * math.PI) / math.max(1, index + 1);
                     float radius = spacing * math.sqrt(index);
-                    return basePosition + new float3(math.cos(angle), 0, math.sin(angle)) * radius;
+                    // Preserve Y from basePosition for 3D-aware spawning
+                    return basePosition + new float3(math.cos(angle) * radius, 0f, math.sin(angle) * radius);
                 case FormationType.Grid:
                     int cols = (int)math.ceil(math.sqrt(index + 1));
                     int row = index / cols;
                     int col = index % cols;
-                    return basePosition + new float3((col - cols * 0.5f) * spacing, 0, (row - cols * 0.5f) * spacing);
+                    // Preserve Y from basePosition for 3D-aware spawning
+                    return basePosition + new float3((col - cols * 0.5f) * spacing, 0f, (row - cols * 0.5f) * spacing);
                 case FormationType.Line:
-                    return basePosition + new float3((index - (index + 1) * 0.5f) * spacing, 0, 0);
+                    // Preserve Y from basePosition for 3D-aware spawning
+                    return basePosition + new float3((index - (index + 1) * 0.5f) * spacing, 0f, 0f);
                 default:
                     return basePosition;
             }

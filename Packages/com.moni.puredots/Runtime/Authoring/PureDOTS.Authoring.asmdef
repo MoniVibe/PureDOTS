@@ -6,7 +6,6 @@
         "PureDOTS.Input",
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
-        "PureDOTS.Runtime.Demo",
         "Unity.Collections",
         "Unity.Entities",
         "Unity.Entities.Graphics",

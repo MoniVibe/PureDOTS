@@ -136,7 +136,7 @@ namespace PureDOTS.Systems.Spatial
                     {
                         // Custom provider types would be handled here
                         // For now, fall back to hashed provider
-                        Debug.LogWarning($"[SpatialGridBuildSystem] Unsupported factory type {factoryTypeId} for provider {providerId}; falling back to hashed provider.");
+                        UnityEngine.Debug.LogWarning($"[SpatialGridBuildSystem] Unsupported factory type {factoryTypeId} for provider {providerId}; falling back to hashed provider.");
                         var fallbackProvider = new HashedSpatialGridProvider();
                         processed = ProcessProvider(ref fallbackProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
                     }
@@ -144,7 +144,7 @@ namespace PureDOTS.Systems.Spatial
                 else
                 {
                     // Provider not found in registry; fallback to hashed provider
-                    Debug.LogWarning($"[SpatialGridBuildSystem] Provider id {providerId} not found in registry; falling back to hashed provider.");
+                    UnityEngine.Debug.LogWarning($"[SpatialGridBuildSystem] Provider id {providerId} not found in registry; falling back to hashed provider.");
                     var fallbackProvider = new HashedSpatialGridProvider();
                     processed = ProcessProvider(ref fallbackProvider, ref state, in config, in providerContext, in currentState, dirtyCount, ref requiresFullRebuild, ref strategy, ref totalEntries, ref activeEntries, ref activeRanges, ref stagingEntries, ref stagingRanges, ref lookupBuffer, ref dirtyOps, gridEntity, _thresholdsLookup);
                 }
@@ -333,7 +333,7 @@ namespace PureDOTS.Systems.Spatial
 
         private static void LogSpatialProviderValidationError(Unity.Collections.FixedString128Bytes validationError)
         {
-            Debug.LogError("[SpatialGridBuildSystem] Invalid spatial grid config.");
+            UnityEngine.Debug.LogError("[SpatialGridBuildSystem] Invalid spatial grid config.");
         }
 
         public struct SpatialGridEntryCellComparer : IComparer<SpatialGridStagingEntry>

@@ -31,7 +31,7 @@ namespace PureDOTS.Systems.Streaming
             var worldSequence = (uint)state.WorldUnmanaged.SequenceNumber;
             if (coordinator.WorldSequenceNumber != worldSequence)
             {
-                Debug.LogError("[PureDOTS] StreamingGuardrailSystem detected coordinator belonging to a different world. Skipping update.");
+                UnityEngine.Debug.LogError("[PureDOTS] StreamingGuardrailSystem detected coordinator belonging to a different world. Skipping update.");
                 return;
             }
 
@@ -137,7 +137,7 @@ namespace PureDOTS.Systems.Streaming
 
             if (clearedCount > 0)
             {
-                Debug.Log($"[PureDOTS] Cleared {clearedCount} streaming cooldown(s) on request.");
+                UnityEngine.Debug.Log($"[PureDOTS] Cleared {clearedCount} streaming cooldown(s) on request.");
             }
         }
 
@@ -174,19 +174,19 @@ namespace PureDOTS.Systems.Streaming
         private void LogConflict(Entity section, StreamingSectionAction incoming, StreamingSectionAction existing)
         {
             var label = GetSectionLabel(section);
-            Debug.LogWarning($"[PureDOTS] Dropping streaming command {incoming} for '{label}' because {existing} is already pending.");
+            UnityEngine.Debug.LogWarning($"[PureDOTS] Dropping streaming command {incoming} for '{label}' because {existing} is already pending.");
         }
 
         private void LogCooldownDrop(Entity section, uint cooldownUntilTick)
         {
             var label = GetSectionLabel(section);
-            Debug.LogWarning($"[PureDOTS] Dropping load for '{label}' while cooldown active until tick {cooldownUntilTick}.");
+            UnityEngine.Debug.LogWarning($"[PureDOTS] Dropping load for '{label}' while cooldown active until tick {cooldownUntilTick}.");
         }
 
         private void LogPinnedDrop(Entity section, short pinCount)
         {
             var label = GetSectionLabel(section);
-            Debug.LogWarning($"[PureDOTS] Dropping unload for pinned section '{label}' (PinCount={pinCount}).");
+            UnityEngine.Debug.LogWarning($"[PureDOTS] Dropping unload for pinned section '{label}' (PinCount={pinCount}).");
         }
 
         private string GetSectionLabel(Entity section)

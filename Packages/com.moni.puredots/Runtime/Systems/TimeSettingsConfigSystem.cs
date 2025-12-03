@@ -31,7 +31,7 @@ namespace PureDOTS.Systems
             ref var timeState = ref timeHandle.ValueRW;
 
             float fixedDt = config.FixedDeltaTime > 0f ? config.FixedDeltaTime : TimeSettingsDefaults.FixedDeltaTime;
-            float speed = config.DefaultSpeedMultiplier > 0f ? config.DefaultSpeedMultiplier : TimeSettingsDefaults.DefaultSpeedMultiplier;
+            float speed = config.DefaultSpeedMultiplier > 0f ? config.DefaultSpeedMultiplier : TimeSettingsDefaults.DefaultSpeed;
 
             timeState.FixedDeltaTime = fixedDt;
             timeState.CurrentSpeedMultiplier = speed;

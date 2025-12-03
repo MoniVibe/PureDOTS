@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Camera;
 using UnityEngine;
 
 namespace PureDOTS.Input

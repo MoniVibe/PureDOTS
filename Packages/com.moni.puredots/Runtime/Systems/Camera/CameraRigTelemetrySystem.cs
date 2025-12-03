@@ -8,7 +8,7 @@ namespace PureDOTS.Systems.Camera
     /// <summary>
     /// Copies the latest CameraState into a telemetry singleton for HUD/analytics consumption.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateBefore(typeof(PureDOTS.Systems.DebugDisplaySystem))]
     public partial struct CameraRigTelemetrySystem : ISystem
     {

@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Orders;
+using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Signals;
@@ -15,6 +16,7 @@ using PureDOTS.Runtime.Villager;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace PureDOTS.Systems
 {
@@ -28,6 +30,18 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             EnsureSingletons(state.EntityManager);
+            EnsureSingleAudioListener();
+            
+            // Verify critical singletons were created
+            if (!HasSingleton<TimeState>(state.EntityManager))
+            {
+                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TimeState singleton was not created! This will cause system failures.");
+            }
+            if (!HasSingleton<TickTimeState>(state.EntityManager))
+            {
+                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TickTimeState singleton was not created! This will cause system failures.");
+            }
+            
             state.Enabled = false;
         }
 
@@ -82,12 +96,20 @@ namespace PureDOTS.Systems
                 {
                     FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
                     DeltaTime = TimeSettingsDefaults.FixedDeltaTime,
-                    CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                    CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeed,
                     Tick = 0,
-                    IsPaused = TimeSettingsDefaults.PauseOnStart
+                    IsPaused = false
                 });
 
-                entityManager.AddComponentData(timeEntity, TimeSettingsDefaults.CreateTickTimeDefault());
+                entityManager.AddComponentData(timeEntity, new TickTimeState
+                {
+                    FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                    CurrentSpeedMultiplier = TimeSettingsDefaults.DefaultSpeed,
+                    Tick = 0,
+                    TargetTick = 0,
+                    IsPaused = false,
+                    IsPlaying = true
+                });
             }
             else
             {
@@ -192,6 +214,55 @@ namespace PureDOTS.Systems
                 entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
             }
 
+            // Ensure HistorySettingsConfig singleton exists (required for rewind)
+            if (!HasSingleton<HistorySettingsConfig>(entityManager))
+            {
+                var historyEntity = GetSingletonEntity<HistorySettings>(entityManager);
+                if (historyEntity != Entity.Null)
+                {
+                    entityManager.AddComponentData(historyEntity, new HistorySettingsConfig
+                    {
+                        Value = HistorySettingsDefaults.CreateDefault()
+                    });
+                }
+                else
+                {
+                    // Create standalone entity if HistorySettings doesn't exist
+                    var configEntity = entityManager.CreateEntity(typeof(HistorySettingsConfig));
+                    entityManager.SetComponentData(configEntity, new HistorySettingsConfig
+                    {
+                        Value = HistorySettingsDefaults.CreateDefault()
+                    });
+                }
+            }
+
+            // Ensure TimeSettingsConfig singleton exists (required for time system)
+            if (!HasSingleton<TimeSettingsConfig>(entityManager))
+            {
+                if (timeEntity != Entity.Null)
+                {
+                    entityManager.AddComponentData(timeEntity, new TimeSettingsConfig
+                    {
+                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                        MaxDeltaTime = TimeSettingsDefaults.FixedDeltaTime * 4f,
+                        DefaultSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                        PauseOnStart = false
+                    });
+                }
+                else
+                {
+                    // Create standalone entity if TimeState doesn't exist
+                    var configEntity = entityManager.CreateEntity(typeof(TimeSettingsConfig));
+                    entityManager.SetComponentData(configEntity, new TimeSettingsConfig
+                    {
+                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                        MaxDeltaTime = TimeSettingsDefaults.FixedDeltaTime * 4f,
+                        DefaultSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                        PauseOnStart = false
+                    });
+                }
+            }
+
             Entity rewindEntity;
             if (!HasSingleton<RewindState>(entityManager))
             {
@@ -217,12 +288,27 @@ namespace PureDOTS.Systems
                 entityManager.AddBuffer<TimeControlCommand>(rewindEntity);
             }
 
+            // Ensure RewindControlState singleton exists
+            EnsureRewindControlState(entityManager);
+
+            // Ensure TimeScaleSchedule singleton exists
+            EnsureTimeScaleSchedule(entityManager);
+
+            // Ensure WorldSnapshot singleton exists
+            EnsureWorldSnapshotState(entityManager);
+
+            // Ensure TimeSystemFeatureFlags singleton exists
+            EnsureTimeSystemFeatureFlags(entityManager);
+            
+            // Verify configs exist and log
+            VerifyTimeConfigs(entityManager);
+
             EnsureRegistry<ResourceRegistry, ResourceRegistryEntry>(entityManager, RegistryKind.Resource, "ResourceRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureRegistry<StorehouseRegistry, StorehouseRegistryEntry>(entityManager, RegistryKind.Storehouse, "StorehouseRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureRegistry<ProcessingStationRegistry, ProcessingStationRegistryEntry>(entityManager, RegistryKind.ProcessingStation, "ProcessingStationRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
             EnsureRegistry<VillagerRegistry, VillagerRegistryEntry>(entityManager, RegistryKind.Villager, "VillagerRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureVillagerLessonRegistryBuffer(entityManager);
-            EnsureRegistry<MiracleRegistry, MiracleRegistryEntry>(entityManager, RegistryKind.Miracle, "MiracleRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
+            // MiracleRegistry is now created by Godgame.Systems.MiracleRegistrySystem (game-specific)
             // Game-specific transport registries (MinerVessel, Hauler, Freighter, Wagon) are now created by Space4X.Systems.TransportBootstrapSystem
             EnsureRegistry<CreatureRegistry, CreatureRegistryEntry>(entityManager, RegistryKind.Creature, "CreatureRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries | RegistryHandleFlags.SupportsPathfinding);
             EnsureRegistry<ConstructionRegistry, ConstructionRegistryEntry>(entityManager, RegistryKind.Construction, "ConstructionRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
@@ -257,6 +343,7 @@ namespace PureDOTS.Systems
             EnsureTerrainVersion(entityManager);
             EnsureResourceTypeIndex(entityManager);
             EnsureResourceRecipeSet(entityManager);
+            EnsurePhysicsConfig(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
@@ -366,54 +453,36 @@ namespace PureDOTS.Systems
 
         private static void EnsureSpatialGridSingleton(EntityManager entityManager)
         {
-            Entity gridEntity;
-            using (var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>()))
+            // Only augment the singleton if it exists (created by Authoring).
+            // We do NOT create a default one here to avoid duplicates when SubScenes load later.
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>());
+            if (query.IsEmptyIgnoreFilter)
             {
-                if (query.IsEmptyIgnoreFilter)
-                {
-                    gridEntity = entityManager.CreateEntity(typeof(SpatialGridConfig), typeof(SpatialGridState));
-                    entityManager.SetComponentData(gridEntity, CreateDefaultSpatialConfig());
-                    entityManager.SetComponentData(gridEntity, new SpatialGridState
-                    {
-                        ActiveBufferIndex = 0,
-                        TotalEntries = 0,
-                        Version = 0,
-                        LastUpdateTick = 0,
-                        LastDirtyTick = 0,
-                        DirtyVersion = 0,
-                        DirtyAddCount = 0,
-                        DirtyUpdateCount = 0,
-                        DirtyRemoveCount = 0,
-                        LastRebuildMilliseconds = 0f,
-                        LastStrategy = SpatialGridRebuildStrategy.None
-                    });
-                }
-                else
-                {
-                    gridEntity = query.GetSingletonEntity();
-                    if (!entityManager.HasComponent<SpatialGridState>(gridEntity))
-                    {
-                        entityManager.AddComponentData(gridEntity, new SpatialGridState
-                        {
-                            ActiveBufferIndex = 0,
-                            TotalEntries = 0,
-                            Version = 0,
-                            LastUpdateTick = 0,
-                            LastDirtyTick = 0,
-                            DirtyVersion = 0,
-                            DirtyAddCount = 0,
-                            DirtyUpdateCount = 0,
-                            DirtyRemoveCount = 0,
-                            LastRebuildMilliseconds = 0f,
-                            LastStrategy = SpatialGridRebuildStrategy.None
-                        });
-                    }
+                return;
+            }
 
-                    if (!entityManager.HasComponent<SpatialRebuildThresholds>(gridEntity))
-                    {
-                        entityManager.AddComponentData(gridEntity, SpatialRebuildThresholds.CreateDefaults());
-                    }
-                }
+            var gridEntity = query.GetSingletonEntity();
+            if (!entityManager.HasComponent<SpatialGridState>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, new SpatialGridState
+                {
+                    ActiveBufferIndex = 0,
+                    TotalEntries = 0,
+                    Version = 0,
+                    LastUpdateTick = 0,
+                    LastDirtyTick = 0,
+                    DirtyVersion = 0,
+                    DirtyAddCount = 0,
+                    DirtyUpdateCount = 0,
+                    DirtyRemoveCount = 0,
+                    LastRebuildMilliseconds = 0f,
+                    LastStrategy = SpatialGridRebuildStrategy.None
+                });
+            }
+
+            if (!entityManager.HasComponent<SpatialRebuildThresholds>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, SpatialRebuildThresholds.CreateDefaults());
             }
 
             EnsureBuffer<SpatialGridCellRange>(entityManager, gridEntity);
@@ -825,6 +894,240 @@ namespace PureDOTS.Systems
 
             var entity = entityManager.CreateEntity(typeof(ResourceRecipeSet));
             entityManager.SetComponentData(entity, new ResourceRecipeSet { Value = blob });
+        }
+
+        private static void EnsurePhysicsConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PhysicsConfig>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var entity = entityManager.CreateEntity(typeof(PhysicsConfig), typeof(PhysicsConfigTag));
+            entityManager.SetComponentData(entity, PhysicsConfig.CreateDefault());
+            
+            UnityEngine.Debug.Log("[CoreSingletonBootstrapSystem] PhysicsConfig singleton created with default settings");
+        }
+
+        private static void EnsureTimeScaleSchedule(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeScaleScheduleState>());
+            Entity scheduleEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                scheduleEntity = entityManager.CreateEntity(typeof(TimeScaleScheduleState), typeof(TimeScaleScheduleTag));
+                entityManager.SetComponentData(scheduleEntity, new TimeScaleScheduleState
+                {
+                    NextEntryId = 1,
+                    ResolvedScale = 1.0f,
+                    IsPaused = false,
+                    ActiveEntryId = 0,
+                    ActiveSource = TimeScaleSource.Default
+                });
+            }
+            else
+            {
+                scheduleEntity = query.GetSingletonEntity();
+            }
+
+            // Ensure the buffer exists
+            if (!entityManager.HasBuffer<TimeScaleEntry>(scheduleEntity))
+            {
+                entityManager.AddBuffer<TimeScaleEntry>(scheduleEntity);
+            }
+
+            // Ensure config singleton exists
+            using var configQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeScaleConfig>());
+            if (configQuery.IsEmptyIgnoreFilter)
+            {
+                entityManager.AddComponentData(scheduleEntity, TimeScaleConfig.CreateDefault());
+            }
+        }
+
+        private static void EnsureWorldSnapshotState(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldSnapshotState>());
+            Entity snapshotEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                snapshotEntity = entityManager.CreateEntity(typeof(WorldSnapshotState), typeof(WorldSnapshotTag));
+                entityManager.SetComponentData(snapshotEntity, WorldSnapshotState.CreateDefault());
+            }
+            else
+            {
+                snapshotEntity = query.GetSingletonEntity();
+            }
+
+            // Ensure buffers exist
+            if (!entityManager.HasBuffer<WorldSnapshotMeta>(snapshotEntity))
+            {
+                entityManager.AddBuffer<WorldSnapshotMeta>(snapshotEntity);
+            }
+            if (!entityManager.HasBuffer<WorldSnapshotData>(snapshotEntity))
+            {
+                entityManager.AddBuffer<WorldSnapshotData>(snapshotEntity);
+            }
+
+            // Ensure TimeHistoryState singleton exists
+            using var historyQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeHistoryState>());
+            if (historyQuery.IsEmptyIgnoreFilter)
+            {
+                var historyEntity = entityManager.CreateEntity(typeof(TimeHistoryState));
+                entityManager.SetComponentData(historyEntity, new TimeHistoryState
+                {
+                    ActiveEntityCount = 0,
+                    EstimatedMemoryBytes = 0,
+                    LastCleanupTick = 0,
+                    LastCleanupPrunedCount = 0,
+                    IsUnderMemoryPressure = false
+                });
+            }
+        }
+
+        private static void EnsureTimeSystemFeatureFlags(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<TimeSystemFeatureFlags>());
+            Entity flagsEntity;
+            TimeSystemFeatureFlags flags;
+            
+            if (query.IsEmptyIgnoreFilter)
+            {
+                flagsEntity = entityManager.CreateEntity(typeof(TimeSystemFeatureFlags), typeof(TimeSystemFeaturesConfiguredTag));
+                flags = TimeSystemFeatureFlags.CreateDefault();
+                // Explicitly set mode semantics for single-player
+                flags.SimulationMode = TimeSimulationMode.SinglePlayer;
+                flags.IsMultiplayerSession = false;
+                flags.MultiplayerMode = TimeMultiplayerMode.SinglePlayerOnly;
+                entityManager.SetComponentData(flagsEntity, flags);
+            }
+            else
+            {
+                flagsEntity = query.GetSingletonEntity();
+                flags = entityManager.GetComponentData<TimeSystemFeatureFlags>(flagsEntity);
+                
+                // Always explicitly set mode semantics (ensures consistency even if flags were created before)
+                flags.SimulationMode = TimeSimulationMode.SinglePlayer;
+                flags.IsMultiplayerSession = false;
+                flags.MultiplayerMode = TimeMultiplayerMode.SinglePlayerOnly;
+                entityManager.SetComponentData(flagsEntity, flags);
+            }
+            
+            // Add debug log after flags are set (reuse flags variable from outer scope)
+            var tickState = HasSingleton<TickTimeState>(entityManager) 
+                ? entityManager.GetComponentData<TickTimeState>(GetSingletonEntity<TickTimeState>(entityManager))
+                : default;
+            var timeScaleConfig = HasSingleton<TimeScaleConfig>(entityManager)
+                ? entityManager.GetComponentData<TimeScaleConfig>(GetSingletonEntity<TimeScaleConfig>(entityManager))
+                : TimeScaleConfig.CreateDefault();
+            
+            UnityEngine.Debug.Log($"[Time] tick={tickState.Tick} baseScale={timeScaleConfig.DefaultScale} mode={flags.SimulationMode} mp={flags.IsMultiplayerSession}");
+        }
+        
+        private static void EnsureRewindControlState(EntityManager entityManager)
+        {
+            if (!HasSingleton<RewindControlState>(entityManager))
+            {
+                var controlEntity = entityManager.CreateEntity(typeof(RewindControlState));
+                entityManager.SetComponentData(controlEntity, new RewindControlState
+                {
+                    Phase = RewindPhase.Inactive,
+                    PresentTickAtStart = 0,
+                    PreviewTick = 0,
+                    ScrubSpeed = 1.0f
+                });
+                
+                // Add command buffer to RewindControlState entity as well (for convenience)
+                if (!entityManager.HasBuffer<TimeControlCommand>(controlEntity))
+                {
+                    entityManager.AddBuffer<TimeControlCommand>(controlEntity);
+                }
+            }
+        }
+
+        private static void VerifyTimeConfigs(EntityManager entityManager)
+        {
+            bool hasTimeScaleConfig = HasSingleton<TimeScaleConfig>(entityManager);
+            bool hasHistoryConfig = HasSingleton<HistorySettingsConfig>(entityManager);
+            bool hasTimeSettingsConfig = HasSingleton<TimeSettingsConfig>(entityManager);
+            
+            if (hasTimeScaleConfig && hasHistoryConfig && hasTimeSettingsConfig)
+            {
+                var timeScaleConfig = entityManager.GetComponentData<TimeScaleConfig>(GetSingletonEntity<TimeScaleConfig>(entityManager));
+                var historyConfig = entityManager.GetComponentData<HistorySettingsConfig>(GetSingletonEntity<HistorySettingsConfig>(entityManager));
+                var timeSettingsConfig = entityManager.GetComponentData<TimeSettingsConfig>(GetSingletonEntity<TimeSettingsConfig>(entityManager));
+                
+                UnityEngine.Debug.Log($"[Time] Configs loaded: TimeScaleConfig (min={timeScaleConfig.MinScale}, max={timeScaleConfig.MaxScale}, default={timeScaleConfig.DefaultScale}), " +
+                    $"HistoryConfig (horizon={historyConfig.Value.DefaultHorizonSeconds}s), " +
+                    $"TimeSettingsConfig (fixedDt={timeSettingsConfig.FixedDeltaTime}, defaultSpeed={timeSettingsConfig.DefaultSpeedMultiplier})");
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning($"[Time] Missing configs: TimeScaleConfig={hasTimeScaleConfig}, HistoryConfig={hasHistoryConfig}, TimeSettingsConfig={hasTimeSettingsConfig}");
+            }
+        }
+
+        /// <summary>
+        /// Ensures exactly one AudioListener is enabled in the scene.
+        /// Unity requires exactly one active AudioListener for audio to work correctly.
+        /// </summary>
+        private static void EnsureSingleAudioListener()
+        {
+            var audioListeners = Object.FindObjectsOfType<AudioListener>();
+            
+            if (audioListeners.Length == 0)
+            {
+                UnityEngine.Debug.LogWarning("[Bootstrap] No AudioListener found in scene. Audio will not work.");
+                return;
+            }
+
+            if (audioListeners.Length == 1)
+            {
+                // Perfect - exactly one listener
+                if (!audioListeners[0].enabled)
+                {
+                    audioListeners[0].enabled = true;
+                    UnityEngine.Debug.Log($"[Bootstrap] Enabled AudioListener on {audioListeners[0].gameObject.name}");
+                }
+                return;
+            }
+
+            // Multiple listeners found - disable all except the first one
+            UnityEngine.Debug.LogWarning($"[Bootstrap] Found {audioListeners.Length} AudioListeners in scene. Unity requires exactly one. Disabling extras.");
+            
+            // Keep the first one enabled (or prefer MainCamera if available)
+            AudioListener activeListener = null;
+            foreach (var listener in audioListeners)
+            {
+                if (listener.gameObject.CompareTag("MainCamera"))
+                {
+                    activeListener = listener;
+                    break;
+                }
+            }
+            
+            // If no MainCamera listener, use the first one
+            if (activeListener == null)
+            {
+                activeListener = audioListeners[0];
+            }
+
+            // Disable all others
+            foreach (var listener in audioListeners)
+            {
+                if (listener == activeListener)
+                {
+                    listener.enabled = true;
+                    UnityEngine.Debug.Log($"[Bootstrap] Keeping AudioListener enabled on {listener.gameObject.name}");
+                }
+                else
+                {
+                    listener.enabled = false;
+                    UnityEngine.Debug.Log($"[Bootstrap] Disabled AudioListener on {listener.gameObject.name}");
+                }
+            }
         }
     }
 }

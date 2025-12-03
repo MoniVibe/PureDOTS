@@ -2,7 +2,6 @@ using Unity.Entities;
 using Unity.Burst;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Initiative;
-using PureDOTS.Runtime.Time;
 
 namespace PureDOTS.Runtime.Systems.Initiative
 {
@@ -28,7 +27,7 @@ namespace PureDOTS.Runtime.Systems.Initiative
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            float currentTime = timeState.Time;
+            float currentTime = timeState.ElapsedTime;
             uint currentTick = timeState.Tick;
 
             InitiativeConfig config = InitiativeHelpers.DefaultConfig;
@@ -94,7 +93,7 @@ namespace PureDOTS.Runtime.Systems.Initiative
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            float currentTime = timeState.Time;
+            float currentTime = timeState.ElapsedTime;
 
             InitiativeConfig config = InitiativeHelpers.DefaultConfig;
             if (SystemAPI.TryGetSingleton<InitiativeConfig>(out var existingConfig))

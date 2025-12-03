@@ -245,19 +245,19 @@ namespace PureDOTS.Systems
         [BurstDiscard]
         private static void LogMissingSpeciesLookup()
         {
-            Debug.LogWarning("[VegetationReproductionSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
+            UnityEngine.Debug.LogWarning("[VegetationReproductionSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
         }
 
         [BurstDiscard]
         private static void LogCatalogNotCreated()
         {
-            Debug.LogWarning("[VegetationReproductionSystem] Species catalog blob not created. Skipping update.");
+            UnityEngine.Debug.LogWarning("[VegetationReproductionSystem] Species catalog blob not created. Skipping update.");
         }
 
         [BurstDiscard]
         private static void LogUpdateSummary(EntityQuery query, uint tick)
         {
-            Debug.Log($"[VegetationReproductionSystem] Updated {query.CalculateEntityCount()} vegetation entities at tick {tick}");
+            UnityEngine.Debug.Log($"[VegetationReproductionSystem] Updated {query.CalculateEntityCount()} vegetation entities at tick {tick}");
         }
 #endif
     }

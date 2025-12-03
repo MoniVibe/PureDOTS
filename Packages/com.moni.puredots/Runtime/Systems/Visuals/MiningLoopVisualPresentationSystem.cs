@@ -9,7 +9,7 @@ using Unity.Transforms;
 namespace PureDOTS.Systems.Visuals
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct MiningLoopVisualPresentationSystem : ISystem
     {
         private EntityQuery _prefabQuery;

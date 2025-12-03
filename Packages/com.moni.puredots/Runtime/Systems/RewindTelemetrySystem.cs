@@ -43,7 +43,7 @@ namespace PureDOTS.Systems
             else if (rewindState.Mode == RewindMode.CatchUp)
             {
                 // During catch-up, Presentation should be disabled
-                CheckGroupViolation(ref state, typeof(PresentationSystemGroup), "Presentation", ref violationCount, ref violationText);
+                CheckGroupViolation(ref state, typeof(Unity.Entities.PresentationSystemGroup), "Presentation", ref violationCount, ref violationText);
             }
 
             debugData.ValueRW.RewindGuardViolationCount = violationCount;

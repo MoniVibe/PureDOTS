@@ -243,7 +243,7 @@ namespace PureDOTS.Systems
                 if (monitoring.ValueRO.LogWarnings && healthLevel > previousLevel)
                 {
                     var label = metadata.Label;
-                    Debug.LogWarning($"[RegistryHealth] {label.ToString()} degraded to {healthLevel} (flags: {flags}).");
+                    UnityEngine.Debug.LogWarning($"[RegistryHealth] {label.ToString()} degraded to {healthLevel} (flags: {flags}).");
                 }
             }
 

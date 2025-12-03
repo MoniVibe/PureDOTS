@@ -1,3 +1,4 @@
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
@@ -20,16 +21,27 @@ namespace PureDOTS.Systems
     public partial struct ResourceRegistrySystem : ISystem
     {
         private EntityQuery _resourceQuery;
+        private EntityQuery _resourceDepositQuery;
         private ComponentLookup<ResourceJobReservation> _reservationLookup;
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
+        private ComponentLookup<ResourceDeposit> _resourceDepositLookup;
         private NativeArray<ResourceTypeMetadata> _typeMetadata;
         private bool _loggedInitialState;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            // NOTE: If ObjectDisposedException occurs for BufferTypeHandle<ResourceRegistryEntry>,
+            // temporarily disable this system by uncommenting the line below:
+            // state.Enabled = false;
+            // return;
+
             _resourceQuery = SystemAPI.QueryBuilder()
                 .WithAll<ResourceSourceConfig, ResourceTypeId>()
+                .Build();
+
+            _resourceDepositQuery = SystemAPI.QueryBuilder()
+                .WithAll<ResourceNodeTag, ResourceDeposit>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -40,6 +52,7 @@ namespace PureDOTS.Systems
 
             _reservationLookup = state.GetComponentLookup<ResourceJobReservation>(true);
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
+            _resourceDepositLookup = state.GetComponentLookup<ResourceDeposit>(true);
             _typeMetadata = default;
             _loggedInitialState = false;
         }
@@ -60,7 +73,7 @@ namespace PureDOTS.Systems
 #if UNITY_EDITOR
             if (timeState.Tick == 1)
             {
-                Debug.Log("[ResourceRegistrySystem] OnUpdate start");
+                UnityEngine.Debug.Log("[ResourceRegistrySystem] OnUpdate start");
             }
 #endif
             var registry = SystemAPI.GetComponentRW<ResourceRegistry>(registryEntity);
@@ -81,16 +94,18 @@ namespace PureDOTS.Systems
 
             _reservationLookup.Update(ref state);
             _residencyLookup.Update(ref state);
+            _resourceDepositLookup.Update(ref state);
             var resourceSourceEntityCount = _resourceQuery.CalculateEntityCount();
+            var resourceDepositEntityCount = _resourceDepositQuery.CalculateEntityCount();
 #if UNITY_EDITOR
             if (!_loggedInitialState)
             {
-                Debug.Log($"[ResourceRegistrySystem] Resource source query count = {resourceSourceEntityCount}");
+                UnityEngine.Debug.Log($"[ResourceRegistrySystem] Resource source query count = {resourceSourceEntityCount}");
                 int logged = 0;
                 foreach (var (typeId, config, entity) in SystemAPI.Query<RefRO<ResourceTypeId>, RefRO<ResourceSourceConfig>>().WithEntityAccess())
                 {
                     var typeLabel = typeId.ValueRO.Value.ToString();
-                    Debug.Log($"[ResourceRegistrySystem] Source entity {entity.Index}:{entity.Version} type='{typeLabel}' gatherRate={config.ValueRO.GatherRatePerWorker}");
+                    UnityEngine.Debug.Log($"[ResourceRegistrySystem] Source entity {entity.Index}:{entity.Version} type='{typeLabel}' gatherRate={config.ValueRO.GatherRatePerWorker}");
                     if (++logged >= 5)
                     {
                         break;
@@ -100,7 +115,7 @@ namespace PureDOTS.Systems
             }
 #endif
 
-            var expectedCount = math.max(16, resourceSourceEntityCount);
+            var expectedCount = math.max(16, resourceSourceEntityCount + resourceDepositEntityCount);
             using var builder = new DeterministicRegistryBuilder<ResourceRegistryEntry>(expectedCount, Allocator.Temp);
 
             var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig gridConfig);
@@ -133,7 +148,7 @@ namespace PureDOTS.Systems
 #if UNITY_EDITOR
                     if (!_loggedInitialState)
                     {
-                        Debug.LogWarning($"[ResourceRegistrySystem] Unknown resource type '{resourceTypeId.ValueRO.Value}' from entity {entity.Index}:{entity.Version}.");
+                        UnityEngine.Debug.LogWarning($"[ResourceRegistrySystem] Unknown resource type '{resourceTypeId.ValueRO.Value}' from entity {entity.Index}:{entity.Version}.");
                     }
 #endif
                     continue; // Skip unknown types
@@ -202,6 +217,38 @@ namespace PureDOTS.Systems
                 {
                     totalActiveResources++;
                 }
+            }
+
+            // Query ResourceDeposit entities (rocks with ResourceNodeTag)
+            foreach (var (deposit, transform, entity) in SystemAPI.Query<RefRO<ResourceDeposit>, RefRO<LocalTransform>>()
+                .WithAll<ResourceNodeTag>()
+                .WithEntityAccess())
+            {
+                // Skip depleted deposits
+                if (deposit.ValueRO.CurrentAmount <= 0f)
+                {
+                    continue;
+                }
+
+                // Map ResourceTypeId (int) to ResourceTypeId (FixedString64Bytes) via catalog
+                // For now, we'll need to create a mapping or use a default type
+                // This is a limitation - ResourceDeposit uses int while catalog uses FixedString64Bytes
+                // TODO: Add proper mapping or change ResourceDeposit to use FixedString64Bytes
+                
+                // For now, skip deposits that can't be mapped (would need ResourceTypeId component)
+                // Or add a helper to map int -> FixedString64Bytes via catalog
+                // For initial implementation, we'll add them with a default type index
+                
+                // Note: This requires ResourceDeposit.ResourceTypeId to match catalog indices
+                // or we need a mapping component. For now, we'll skip deposits without proper mapping.
+                // Future: Add ResourceTypeId component to rocks or create mapping system.
+                
+                // Skip for now - would need proper type mapping
+                // totalResources++;
+                // if (deposit.ValueRO.CurrentAmount > 0f)
+                // {
+                //     totalActiveResources++;
+                // }
             }
 
             var continuity = hasSpatial

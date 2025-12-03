@@ -1,5 +1,8 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Time;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -42,11 +45,14 @@ namespace PureDOTS.Systems
                      SystemAPI.Query<RefRW<RainCloudState>, RefRO<RainCloudConfig>, RefRW<LocalTransform>>()
                          .WithEntityAccess())
             {
+#if GODGAME
+                // Skip held entities (game-specific: Divine Hand)
                 if (SystemAPI.HasComponent<HandHeldTag>(entity))
                 {
                     cloudState.ValueRW.Velocity = float3.zero;
                     continue;
                 }
+#endif
 
                 var stateRef = cloudState.ValueRO;
                 var config = cloudConfig.ValueRO;
@@ -146,9 +152,15 @@ namespace PureDOTS.Systems
 
             foreach (var (cloudState, cloudConfig, transform, entity) in
                      SystemAPI.Query<RefRW<RainCloudState>, RefRO<RainCloudConfig>, RefRO<LocalTransform>>()
-                         .WithEntityAccess()
-                         .WithNone<HandHeldTag>())
+                         .WithEntityAccess())
             {
+#if GODGAME
+                // Skip held entities (game-specific: Divine Hand)
+                if (SystemAPI.HasComponent<HandHeldTag>(entity))
+                {
+                    continue;
+                }
+#endif
                 var stateRef = cloudState.ValueRO;
                 var config = cloudConfig.ValueRO;
                 var position = transform.ValueRO.Position;

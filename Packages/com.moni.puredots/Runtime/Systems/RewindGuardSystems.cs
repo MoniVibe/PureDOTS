@@ -173,7 +173,7 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            var targetGroup = state.World.GetExistingSystemManaged<PresentationSystemGroup>();
+            var targetGroup = state.World.GetExistingSystemManaged<Unity.Entities.PresentationSystemGroup>();
             if (targetGroup == null)
             {
                 return;

@@ -5,12 +5,15 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 #endif
-using PureDOTS.Input;
+// Note: PureDOTS.Input dependency removed to break cycle - Runtime should not depend on Input
+// Input functionality is available in the Camera assembly version of this controller
 using Unity.Entities;
 using Unity.Mathematics;
-using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Hybrid;
 using UnityEngineCamera = UnityEngine.Camera;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 
 namespace PureDOTS.Runtime.Camera
 {
@@ -56,7 +59,9 @@ namespace PureDOTS.Runtime.Camera
         [SerializeField] Transform pivotTransform;
 
         [Header("Input")]
-        [SerializeField] HandCameraInputRouter inputRouter;
+        // Note: HandCameraInputRouter removed - Runtime assembly cannot reference Input assembly
+        // Use the Camera assembly version of this controller if input routing is needed
+        // [SerializeField] HandCameraInputRouter inputRouter;
 
         [Header("Ground")]
         [SerializeField] LayerMask groundMask = ~0;
@@ -251,15 +256,9 @@ namespace PureDOTS.Runtime.Camera
         void UpdateInputSources()
         {
             _hasSnapshot = BW2CameraInputBridge.TryGetSnapshot(out _inputSnapshot);
-            if (inputRouter != null)
-            {
-                _routerContext = inputRouter.CurrentContext;
-                _hasRouterContext = true;
-            }
-            else
-            {
-                _hasRouterContext = false;
-            }
+            // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+            // Code falls back to Unity InputSystem directly
+            _hasRouterContext = false;
         }
 
         bool TryGetPointerWorld(out Vector3 world)
@@ -274,7 +273,7 @@ namespace PureDOTS.Runtime.Camera
             {
                 var pointer = GetPointerPosition();
                 var ray = targetCamera.ScreenPointToRay(pointer);
-                if (groundMask.value != 0 && Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+                if (groundMask.value != 0 && UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
                 {
                     world = hit.point;
                     return true;
@@ -498,7 +497,7 @@ namespace PureDOTS.Runtime.Camera
             Vector3 pivot = Pivot;
             float probeHeight = Mathf.Max(clearanceProbeHeight, 50f);
             Vector3 origin = pivot + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 pivot.y = hit.point.y;
                 Pivot = pivot;
@@ -561,7 +560,7 @@ namespace PureDOTS.Runtime.Camera
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 25f);
             Vector3 origin = desired + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 float minY = hit.point.y + terrainClearance;
                 if (desired.y < minY) desired.y = minY;
@@ -585,7 +584,7 @@ namespace PureDOTS.Runtime.Camera
             }
 
             Vector3 direction = toCamera / maxDistance;
-            if (Physics.SphereCast(pivot, collisionProbeRadius, direction, out var hit, maxDistance, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.SphereCast(pivot, collisionProbeRadius, direction, out var hit, maxDistance, groundMask, QueryTriggerInteraction.Ignore))
             {
                 float adjusted = Mathf.Max(collisionBuffer, hit.distance - collisionBuffer);
                 return pivot + direction * adjusted;
@@ -600,7 +599,7 @@ namespace PureDOTS.Runtime.Camera
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 50f);
             Vector3 origin = lockedPivot + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 lockedPivot.y = hit.point.y;
             }
@@ -616,7 +615,7 @@ namespace PureDOTS.Runtime.Camera
             }
 
             Ray ray = targetCamera.ScreenPointToRay(screenPosition);
-            if (groundMask.value != 0 && Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+            if (groundMask.value != 0 && UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
             {
                 world = hit.point;
                 normal = hit.normal;
@@ -648,7 +647,7 @@ namespace PureDOTS.Runtime.Camera
             if (groundMask.value == 0) return false;
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 25f);
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 groundY = hit.point.y;
                 return true;
@@ -669,10 +668,8 @@ namespace PureDOTS.Runtime.Camera
                 return _inputSnapshot.PointerPosition;
             }
 #if ENABLE_INPUT_SYSTEM
-            if (inputRouter != null)
-            {
-                return inputRouter.PointerPosition;
-            }
+            // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+            // if (inputRouter != null) { return inputRouter.PointerPosition; }
             var mouse = Mouse.current;
             if (mouse != null) return mouse.position.ReadValue();
             var pointer = Pointer.current;
@@ -691,9 +688,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null && inputRouter.LeftClickAction != null
-                    ? inputRouter.LeftClickAction.WasPressedThisFrame()
-                    : (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
 #else
                 Input.GetMouseButtonDown(0);
 #endif
@@ -707,9 +703,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null && inputRouter.LeftClickAction != null
-                    ? inputRouter.LeftClickAction.IsPressed()
-                    : (Mouse.current != null && Mouse.current.leftButton.isPressed);
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null && Mouse.current.leftButton.isPressed);
 #else
                 Input.GetMouseButton(0);
 #endif
@@ -723,9 +718,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null && inputRouter.MiddleClickAction != null
-                    ? inputRouter.MiddleClickAction.IsPressed()
-                    : (Mouse.current != null && Mouse.current.middleButton.isPressed);
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null && Mouse.current.middleButton.isPressed);
 #else
                 Input.GetMouseButton(2);
 #endif
@@ -739,9 +733,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null && inputRouter.MiddleClickAction != null
-                    ? inputRouter.MiddleClickAction.WasPressedThisFrame()
-                    : (Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame);
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame);
 #else
                 Input.GetMouseButtonDown(2);
 #endif
@@ -755,9 +748,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null && inputRouter.MiddleClickAction != null
-                    ? inputRouter.MiddleClickAction.WasReleasedThisFrame()
-                    : (Mouse.current != null && Mouse.current.middleButton.wasReleasedThisFrame);
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null && Mouse.current.middleButton.wasReleasedThisFrame);
 #else
                 Input.GetMouseButtonUp(2);
 #endif
@@ -771,9 +763,8 @@ namespace PureDOTS.Runtime.Camera
             }
             return
 #if ENABLE_INPUT_SYSTEM
-                inputRouter != null
-                    ? inputRouter.PointerDelta
-                    : (Mouse.current != null ? Mouse.current.delta.ReadValue() :
+                // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+                (Mouse.current != null ? Mouse.current.delta.ReadValue() :
                         (Pointer.current != null ? Pointer.current.delta.ReadValue() : Vector2.zero));
 #else
                 new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
@@ -787,10 +778,8 @@ namespace PureDOTS.Runtime.Camera
                 return _inputSnapshot.Scroll;
             }
 #if ENABLE_INPUT_SYSTEM
-            if (inputRouter != null)
-            {
-                return inputRouter.ScrollValue.y;
-            }
+            // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+            // if (inputRouter != null) { return inputRouter.ScrollValue.y; }
 
             if (Mouse.current != null)
             {
@@ -833,6 +822,7 @@ namespace PureDOTS.Runtime.Camera
         bool TryGetHandCursor(out Vector3 cursor)
         {
             cursor = default;
+#if GODGAME
             var world = World.DefaultGameObjectInjectionWorld;
             if (world == null || !world.IsCreated)
             {
@@ -869,7 +859,7 @@ namespace PureDOTS.Runtime.Camera
                 cursor = new Vector3(c.x, c.y, c.z);
                 return true;
             }
-
+#endif
             return false;
         }
 
@@ -898,16 +888,8 @@ namespace PureDOTS.Runtime.Camera
 
         void EnsureInputRouter()
         {
-#if ENABLE_INPUT_SYSTEM
-            if (inputRouter == null)
-            {
-                inputRouter = GetComponent<HandCameraInputRouter>();
-            }
-            if (inputRouter == null)
-            {
-                inputRouter = FindFirstObjectByType<HandCameraInputRouter>();
-            }
-#endif
+            // Note: inputRouter removed - Runtime assembly cannot reference Input assembly
+            // Use the Camera assembly version of this controller if input routing is needed
         }
     }
 }

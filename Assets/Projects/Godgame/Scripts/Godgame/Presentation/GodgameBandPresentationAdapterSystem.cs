@@ -1,6 +1,7 @@
 using Godgame.Registry;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -96,7 +97,8 @@ namespace Godgame.Presentation
                     ? math.normalizesafe(bandData.Facing, new float3(0f, 0f, 1f))
                     : math.mul(transform.ValueRO.Rotation, new float3(0f, 0f, 1f));
 
-                var rotation = quaternion.LookRotationSafe(facing, math.up());
+                // Use 3D-aware rotation for band presentation
+                OrientationHelpers.LookRotationSafe3D(facing, OrientationHelpers.WorldUp, out quaternion rotation);
                 var position = anchor + math.mul(rotation, new float3(0f, GodgameBandPresentationDescriptors.FlagHeight, 0f));
 
                 spawnBuffer.Add(new PresentationSpawnRequest

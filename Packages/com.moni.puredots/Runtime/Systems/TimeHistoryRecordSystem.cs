@@ -1,0 +1,179 @@
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using PureDOTS.Runtime.Components;
+
+namespace PureDOTS.Systems
+{
+    /// <summary>
+    /// Records history samples for entities with HistoryProfile during Record mode.
+    /// Runs in HistorySystemGroup after simulation to capture final state.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(HistorySystemGroup))]
+    public partial struct TimeHistoryRecordSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<HistorySettings>();
+        }
+
+        [BurstDiscard]
+        public void OnUpdate(ref SystemState state)
+        {
+            // Guard: Do not mutate history/snapshots in multiplayer modes
+            if (SystemAPI.TryGetSingleton<TimeSystemFeatureFlags>(out var flags) &&
+                flags.IsMultiplayerSession)
+            {
+                // For now, do not mutate history or snapshots in multiplayer modes.
+                // When we implement MP, we can selectively allow modes like MP_SnapshotsOnly.
+                return;
+            }
+
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var historySettings = SystemAPI.GetSingleton<HistorySettings>();
+
+            // Only record during Record mode
+            if (rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
+            uint currentTick = timeState.Tick;
+
+            // Update HistoryActiveTag based on HistoryProfile.IsEnabled
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            // Add HistoryActiveTag to enabled profiles without it
+            foreach (var (profile, entity) in SystemAPI.Query<RefRO<HistoryProfile>>()
+                .WithNone<HistoryActiveTag>()
+                .WithAll<RewindableTag>()
+                .WithEntityAccess())
+            {
+                if (profile.ValueRO.IsEnabled)
+                {
+                    ecb.AddComponent<HistoryActiveTag>(entity);
+                }
+            }
+
+            // Remove HistoryActiveTag from disabled profiles
+            foreach (var (profile, entity) in SystemAPI.Query<RefRO<HistoryProfile>>()
+                .WithAll<HistoryActiveTag>()
+                .WithEntityAccess())
+            {
+                if (!profile.ValueRO.IsEnabled)
+                {
+                    ecb.RemoveComponent<HistoryActiveTag>(entity);
+                }
+            }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
+            // Record transform history for entities with transform and history profile
+            RecordTransformHistory(ref state, currentTick);
+
+            // Update history state singleton
+            UpdateHistoryState(ref state);
+        }
+
+        [BurstCompile]
+        private void RecordTransformHistory(ref SystemState state, uint currentTick)
+        {
+            foreach (var (profile, transform, historyBuffer) in SystemAPI
+                .Query<RefRW<HistoryProfile>, RefRO<LocalTransform>, DynamicBuffer<ComponentHistory<LocalTransform>>>()
+                .WithAll<HistoryActiveTag, RewindableTag>())
+            {
+                // Check if transform recording is enabled
+                if ((profile.ValueRO.RecordFlags & HistoryRecordFlags.Transform) == 0)
+                {
+                    continue;
+                }
+
+                // Check sampling frequency
+                if (profile.ValueRO.LastSampleTick != 0 && 
+                    currentTick - profile.ValueRO.LastSampleTick < profile.ValueRO.SamplingFrequencyTicks)
+                {
+                    continue;
+                }
+
+                // Record the sample
+                var sample = new ComponentHistory<LocalTransform>
+                {
+                    Tick = currentTick,
+                    Value = transform.ValueRO
+                };
+
+                historyBuffer.Add(sample);
+                profile.ValueRW.LastSampleTick = currentTick;
+
+                // Prune old samples based on horizon
+                PruneHistory(historyBuffer, currentTick, profile.ValueRO.HorizonTicks);
+            }
+        }
+
+        [BurstCompile]
+        private static void PruneHistory<T>(DynamicBuffer<ComponentHistory<T>> buffer, uint currentTick, uint horizonTicks)
+            where T : unmanaged
+        {
+            if (buffer.Length == 0)
+            {
+                return;
+            }
+
+            uint cutoffTick = currentTick > horizonTicks ? currentTick - horizonTicks : 0;
+
+            // Find first valid entry
+            int firstValidIndex = 0;
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (buffer[i].Tick >= cutoffTick)
+                {
+                    firstValidIndex = i;
+                    break;
+                }
+                firstValidIndex = i + 1;
+            }
+
+            // Remove old entries
+            if (firstValidIndex > 0 && firstValidIndex < buffer.Length)
+            {
+                buffer.RemoveRange(0, firstValidIndex);
+            }
+            else if (firstValidIndex >= buffer.Length)
+            {
+                // All entries are too old
+                buffer.Clear();
+            }
+        }
+
+        private void UpdateHistoryState(ref SystemState state)
+        {
+            // Count active entities
+            int activeCount = 0;
+            foreach (var _ in SystemAPI.Query<RefRO<HistoryProfile>>().WithAll<HistoryActiveTag>())
+            {
+                activeCount++;
+            }
+
+            // Get or create history state singleton
+            Entity stateEntity;
+            if (!SystemAPI.TryGetSingletonEntity<TimeHistoryState>(out stateEntity))
+            {
+                stateEntity = state.EntityManager.CreateEntity(typeof(TimeHistoryState));
+            }
+
+            var historyState = state.EntityManager.GetComponentData<TimeHistoryState>(stateEntity);
+            historyState.ActiveEntityCount = activeCount;
+            // Note: Memory estimation would require iterating all buffers - do this less frequently
+            state.EntityManager.SetComponentData(stateEntity, historyState);
+        }
+    }
+}
+

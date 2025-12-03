@@ -127,11 +127,23 @@ namespace PureDOTS.Systems
     public partial class LateSimulationSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
-    /// Presentation system group for rendering/UI bridge systems.
+    /// PureDOTS presentation system group for rendering/UI bridge systems.
+    /// Runs under Unity's PresentationSystemGroup for proper frame-time execution.
     /// Consumes simulation data for visualization. Guarded by PresentationRewindGuardSystem.
     /// </summary>
-    /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
-    [UpdateAfter(typeof(LateSimulationSystemGroup))]
+    /// <remarks>
+    /// This group provides logical organization for PureDOTS presentation systems.
+    /// All systems in this group ultimately run in Unity's PresentationSystemGroup.
+    /// See Docs/FoundationGuidelines.md for presentation system group policy.
+    /// </remarks>
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    public partial class PureDotsPresentationSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// [DEPRECATED] Old PresentationSystemGroup - use Unity.Entities.PresentationSystemGroup or PureDotsPresentationSystemGroup instead.
+    /// This type is kept for compatibility but should not be used in new code.
+    /// </summary>
+    [System.Obsolete("Use Unity.Entities.PresentationSystemGroup or PureDOTS.Systems.PureDotsPresentationSystemGroup instead. See Docs/FoundationGuidelines.md for policy.")]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial class PresentationSystemGroup : ComponentSystemGroup { }
 }

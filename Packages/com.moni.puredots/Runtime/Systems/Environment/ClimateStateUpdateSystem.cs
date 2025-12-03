@@ -1,5 +1,6 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -18,6 +19,7 @@ namespace PureDOTS.Systems.Environment
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<EnvironmentGridConfigData>();
             state.RequireForUpdate<ClimateState>();
@@ -27,13 +29,19 @@ namespace PureDOTS.Systems.Environment
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused)
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+            
+            // Use TimeHelpers to check if we should update (handles pause, rewind, stasis)
+            // Climate is global, so use default membership (no bubble)
+            var defaultMembership = default(TimeBubbleMembership);
+            if (!TimeHelpers.ShouldUpdate(timeState, rewindState, defaultMembership))
             {
                 return;
             }
-
-            var rewind = SystemAPI.GetSingleton<RewindState>();
-            if (rewind.Mode != RewindMode.Record && rewind.Mode != RewindMode.CatchUp)
+            
+            // Also check for catch-up mode (climate should update during catch-up)
+            if (rewindState.Mode != RewindMode.Record && rewindState.Mode != RewindMode.CatchUp)
             {
                 return;
             }
@@ -70,7 +78,9 @@ namespace PureDOTS.Systems.Environment
                 }
             }
 
-            var deltaSeconds = timeState.FixedDeltaTime * tickDelta;
+            // Use TimeHelpers to get effective delta time
+            var effectiveDelta = TimeHelpers.GetGlobalDelta(tickTimeState, timeState);
+            var deltaSeconds = effectiveDelta * tickDelta;
             if (deltaSeconds <= 0f)
             {
                 climate.LastUpdateTick = currentTick;

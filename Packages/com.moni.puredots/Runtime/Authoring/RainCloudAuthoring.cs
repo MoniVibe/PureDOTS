@@ -4,6 +4,9 @@ using PureDOTS.Runtime.Spatial;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 
 namespace PureDOTS.Authoring
 {
@@ -63,6 +66,7 @@ namespace PureDOTS.Authoring
                 Flags = 0
             });
 
+#if GODGAME
             AddComponent(entity, new HandPickable
             {
                 Mass = math.max(0.01f, authoring.pickableMass),
@@ -70,6 +74,7 @@ namespace PureDOTS.Authoring
                 ThrowImpulseMultiplier = math.max(0.1f, authoring.pickableThrowMultiplier),
                 FollowLerp = math.clamp(authoring.pickableFollowLerp, 0.01f, 1f)
             });
+#endif
 
             AddBuffer<RainCloudMoistureHistory>(entity);
         }

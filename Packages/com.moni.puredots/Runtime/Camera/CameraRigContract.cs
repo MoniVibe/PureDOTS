@@ -42,15 +42,15 @@ namespace PureDOTS.Runtime.Camera
             private void Update()
             {
                 // 1. Read game-specific input
-                Vector2 panInput = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-                Vector2 rotateInput = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
-                float zoomInput = Input.GetAxis("Mouse ScrollWheel");
+                Vector2 panInput = new Vector2(UnityEngine.Input.GetAxis("Horizontal"), UnityEngine.Input.GetAxis("Vertical"));
+                Vector2 rotateInput = new Vector2(UnityEngine.Input.GetAxis("Mouse X"), UnityEngine.Input.GetAxis("Mouse Y"));
+                float zoomInput = UnityEngine.Input.GetAxis("Mouse ScrollWheel");
 
                 // 2. Update game-specific camera state
-                _position += transform.right * panInput.x * panSpeed * Time.deltaTime;
-                _position += transform.forward * panInput.y * panSpeed * Time.deltaTime;
+                _position += transform.right * panInput.x * panSpeed * UnityEngine.Time.deltaTime;
+                _position += transform.forward * panInput.y * panSpeed * UnityEngine.Time.deltaTime;
 
-                if (Input.GetMouseButton(1)) // Right mouse button held
+                if (UnityEngine.Input.GetMouseButton(1)) // Right mouse button held
                 {
                     _yaw += rotateInput.x * rotateSpeed;
                     _pitch = Mathf.Clamp(_pitch - rotateInput.y * rotateSpeed, -80f, 80f);
@@ -106,15 +106,15 @@ namespace PureDOTS.Runtime.Camera
             public static void SetupBw2Camera(GameObject cameraRig)
             {
                 // Add required components
-                cameraRig.AddComponent<Camera>();
+                cameraRig.AddComponent<UnityEngine.Camera>();
                 var controller = cameraRig.AddComponent<BW2StyleCameraController>();
                 cameraRig.AddComponent<CameraRigApplier>();
                 cameraRig.AddComponent<BW2CameraInputBridge>();
 
                 // Configure for your game
-                controller.groundMask = LayerMask.GetMask("Terrain");
-                controller.panScale = 1.0f;
-                controller.zoomSpeed = 6f;
+                controller.GroundMask = LayerMask.GetMask("Terrain");
+                controller.PanScale = 1.0f;
+                controller.ZoomSpeed = 6f;
                 // ... other settings
 
                 // Done! Controller handles input and publishes state automatically

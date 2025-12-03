@@ -70,7 +70,7 @@ namespace PureDOTS.Systems
 
                 ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);
 
-                Debug.Log($"[PureDotsWorldBootstrap] DOTS world initialized with profile '{profile.DisplayName}' ({profile.Id}).");
+                UnityEngine.Debug.Log($"[PureDotsWorldBootstrap] DOTS world initialized with profile '{profile.DisplayName}' ({profile.Id}).");
             }
 
             return true;
@@ -91,7 +91,7 @@ namespace PureDOTS.Systems
                 var simulationGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();
                 simulationGroup.SortSystems();
 
-                if (world.GetExistingSystemManaged<PresentationSystemGroup>() is { } presentationGroup)
+                if (world.GetExistingSystemManaged<Unity.Entities.PresentationSystemGroup>() is { } presentationGroup)
                 {
                     world.GetOrCreateSystemManaged<BeginPresentationECBSystem>();
                     world.GetOrCreateSystemManaged<EndPresentationECBSystem>();

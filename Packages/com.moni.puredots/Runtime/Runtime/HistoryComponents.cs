@@ -49,6 +49,35 @@ namespace PureDOTS.Runtime.Components
         public float MaxTicksPerSecond;
         public float StrideScale;
         public bool EnableInputRecording;
+        
+        // Extended horizon configuration
+        /// <summary>Global horizon in ticks (calculated from DefaultHorizonSeconds * DefaultTicksPerSecond).</summary>
+        public uint GlobalHorizonTicks;
+        /// <summary>Memory budget in bytes (calculated from MemoryBudgetMegabytes).</summary>
+        public long MemoryBudgetBytes;
+        /// <summary>Maximum memory per entity in bytes before pruning.</summary>
+        public int MaxMemoryPerEntityBytes;
+        /// <summary>Whether to enforce strict memory limits (prune aggressively).</summary>
+        public bool EnforceStrictMemoryLimits;
+        /// <summary>Snapshot interval in ticks for global world snapshots.</summary>
+        public uint SnapshotIntervalTicks;
+        /// <summary>Maximum number of global snapshots to retain.</summary>
+        public int MaxGlobalSnapshots;
+    }
+
+    /// <summary>
+    /// Per-archetype horizon configuration for fine-grained control.
+    /// </summary>
+    public struct ArchetypeHistoryHorizon : IBufferElementData
+    {
+        /// <summary>Archetype identifier (e.g., hash of component types).</summary>
+        public FixedString32Bytes ArchetypeId;
+        /// <summary>Custom horizon in ticks for this archetype.</summary>
+        public uint HorizonTicks;
+        /// <summary>Custom sampling frequency in ticks.</summary>
+        public uint SamplingFrequencyTicks;
+        /// <summary>Priority for memory allocation (higher = retained longer).</summary>
+        public byte Priority;
     }
 
     /// <summary>
@@ -73,6 +102,10 @@ namespace PureDOTS.Runtime.Components
         public const float DefaultTicksPerSecond = 90f;
         public const float MinTicksPerSecond = 60f;
         public const float MaxTicksPerSecond = 120f;
+        public const uint DefaultGlobalHorizonTicks = 5400; // 60 seconds * 90 TPS
+        public const int DefaultMaxMemoryPerEntityBytes = 1024 * 1024; // 1 MB per entity max
+        public const uint DefaultSnapshotIntervalTicks = 30;
+        public const int DefaultMaxGlobalSnapshots = 100;
 
         public static HistorySettings CreateDefault() => new HistorySettings
         {
@@ -89,8 +122,30 @@ namespace PureDOTS.Runtime.Components
             MinTicksPerSecond = MinTicksPerSecond,
             MaxTicksPerSecond = MaxTicksPerSecond,
             StrideScale = 1f,
-            EnableInputRecording = true
+            EnableInputRecording = true,
+            GlobalHorizonTicks = DefaultGlobalHorizonTicks,
+            MemoryBudgetBytes = (long)(MemoryBudgetMegabytes * 1024 * 1024),
+            MaxMemoryPerEntityBytes = DefaultMaxMemoryPerEntityBytes,
+            EnforceStrictMemoryLimits = false,
+            SnapshotIntervalTicks = DefaultSnapshotIntervalTicks,
+            MaxGlobalSnapshots = DefaultMaxGlobalSnapshots
         };
+
+        /// <summary>
+        /// Calculates horizon ticks from seconds and TPS.
+        /// </summary>
+        public static uint CalculateHorizonTicks(float horizonSeconds, float ticksPerSecond)
+        {
+            return (uint)(horizonSeconds * ticksPerSecond);
+        }
+
+        /// <summary>
+        /// Calculates memory budget bytes from megabytes.
+        /// </summary>
+        public static long CalculateMemoryBudgetBytes(float megabytes)
+        {
+            return (long)(megabytes * 1024 * 1024);
+        }
     }
 
     /// <summary>

@@ -50,7 +50,7 @@ namespace PureDOTS.Systems.Space
             logState.LastTicketCount = telemetry.RepairTicketCount;
             logState.LastOverBudget = telemetry.AnyOverBudget;
 
-            Debug.Log($"[ModuleTelemetry] carriers={telemetry.CarrierCount} modules: damaged={telemetry.DamagedModules} destroyed={telemetry.DestroyedModules} tickets={telemetry.RepairTicketCount} power(draw/gen/net)=({telemetry.TotalPowerDraw:F1}/{telemetry.TotalPowerGeneration:F1}/{telemetry.NetPower:F1}) overBudget={telemetry.AnyOverBudget}");
+            UnityEngine.Debug.Log($"[ModuleTelemetry] carriers={telemetry.CarrierCount} modules: damaged={telemetry.DamagedModules} destroyed={telemetry.DestroyedModules} tickets={telemetry.RepairTicketCount} power(draw/gen/net)=({telemetry.TotalPowerDraw:F1}/{telemetry.TotalPowerGeneration:F1}/{telemetry.NetPower:F1}) overBudget={telemetry.AnyOverBudget}");
         }
     }
 }

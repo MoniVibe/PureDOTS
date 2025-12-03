@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
@@ -111,17 +112,10 @@ namespace PureDOTS.Systems.Combat
 
                 float3 missileDir = math.normalize(missileVel);
 
-                // Compute lateral vector (perpendicular to velocity in horizontal plane)
-                float3 up = math.up();
-                float3 lateral = math.cross(missileDir, up);
+                // Compute lateral vector (perpendicular to velocity) using 3D-aware orthonormal basis
+                // This works correctly regardless of missile orientation in 3D space
+                OrientationHelpers.ComputeOrthonormalBasis(missileDir, OrientationHelpers.WorldUp, out float3 lateral, out _);
                 float lateralLength = math.length(lateral);
-
-                if (lateralLength < 1e-6f)
-                {
-                    // Velocity is vertical, use right vector instead
-                    lateral = math.cross(missileDir, math.right());
-                    lateralLength = math.length(lateral);
-                }
 
                 if (lateralLength > 1e-6f)
                 {

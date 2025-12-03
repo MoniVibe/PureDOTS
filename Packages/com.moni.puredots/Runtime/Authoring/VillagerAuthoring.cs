@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Villagers;
@@ -8,6 +9,7 @@ using PureDOTS.Systems.Villagers;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace PureDOTS.Authoring
@@ -83,6 +85,11 @@ namespace PureDOTS.Authoring
         [Range(0.1f, 5f)] public float attackSpeed = 1f;
         [Range(0f, 100f)] public float defenseRating = 10f;
         [Range(0f, 10f)] public float attackRange = 2f;
+
+        [Header("LOD & Rendering")]
+        public bool enableLOD = true;
+        [Range(50f, 500f)] public float cullDistance = 200f;
+        [Range(0f, 1f)] public float importanceScore = 0.5f;
 
         [Header("Knowledge & Lessons")]
         public bool knowsLegendaryHarvest;
@@ -362,10 +369,65 @@ namespace PureDOTS.Authoring
             AddComponent(entity, new SpatialLayerTag { LayerId = 0 });
 
             AddComponent<RewindableTag>(entity);
+            
+            // Add HistoryProfile for rewind proof-of-concept
+            // Configured for LocalTransform + Health with TickInterval = 2-3, HorizonTicks = ~300 (5 seconds at 60fps)
+            AddComponent(entity, new HistoryProfile
+            {
+                ProfileId = new FixedString32Bytes("villager_rewind_poc"),
+                SamplingFrequencyTicks = 2, // Sample every 2 ticks
+                HorizonTicks = 300, // ~5 seconds at 60fps
+                RecordFlags = HistoryRecordFlags.Transform | HistoryRecordFlags.Health,
+                Priority = 150,
+                IsEnabled = true,
+                LastSampleTick = 0
+            });
+            
+            // Ensure ComponentHistory buffer exists for LocalTransform
+            // The TimeHistoryRecordSystem will populate this buffer
+            AddBuffer<ComponentHistory<LocalTransform>>(entity);
             AddComponent(entity, new HistoryTier
             {
                 Tier = HistoryTier.TierType.Critical,
                 OverrideStrideSeconds = 0f
+            });
+
+            // Add LOD components for performance scaling
+            if (authoring.enableLOD)
+            {
+                AddComponent(entity, new RenderLODData
+                {
+                    CameraDistance = 0f,
+                    ImportanceScore = authoring.importanceScore,
+                    RecommendedLOD = 0,
+                    LastUpdateTick = 0
+                });
+
+                AddComponent(entity, new RenderCullable
+                {
+                    CullDistance = authoring.cullDistance,
+                    Priority = 128 // Medium priority for villagers
+                });
+
+                // Sample index for density control
+                var sampleIndex = RenderLODHelpers.CalculateSampleIndex(entity.Index, 100);
+                AddComponent(entity, new RenderSampleIndex
+                {
+                    SampleIndex = sampleIndex,
+                    SampleModulus = 100,
+                    ShouldRender = 1
+                });
+            }
+
+            // Add optimized belief component alongside legacy one
+            var deityIndex = (byte)(deityId.GetHashCode() % 256);
+            AddComponent(entity, new VillagerBeliefOptimized
+            {
+                PrimaryDeityIndex = deityIndex,
+                Faith = (byte)(authoring.faith * 255f),
+                WorshipProgress = (byte)(authoring.worshipProgress * 255f),
+                Flags = VillagerBeliefFlags.None,
+                LastUpdateTick = 0
             });
         }
 

@@ -10,7 +10,6 @@
         "Unity.Collections",
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
-        "PureDOTS.Runtime.Demo",
         "PureDOTS.Input",
         "PureDOTS.Config"
     ],

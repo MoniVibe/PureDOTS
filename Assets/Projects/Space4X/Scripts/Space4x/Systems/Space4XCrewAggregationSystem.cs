@@ -38,6 +38,20 @@ namespace Space4X.Systems
             var allocator = state.WorldUpdateAllocator;
             var crewCount = math.max(1, _crewAggregateQuery.CalculateEntityCount());
 
+            // Ensure AggregateMember buffers exist for crew aggregates (using ECB to avoid structural changes during iteration)
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (aggregateRef, entity) in SystemAPI.Query<RefRO<AggregateEntity>>()
+                         .WithNone<AggregateMember>()
+                         .WithEntityAccess())
+            {
+                if (aggregateRef.ValueRO.Category == AggregateCategory.Crew)
+                {
+                    ecb.AddBuffer<AggregateMember>(entity);
+                }
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
             var accumulators = new NativeParallelHashMap<Entity, CrewAccumulator>(crewCount, allocator);
             var membership = new NativeParallelMultiHashMap<Entity, AggregateMember>(crewCount * 4, allocator);
 

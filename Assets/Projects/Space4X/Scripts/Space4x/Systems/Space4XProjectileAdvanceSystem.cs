@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -75,6 +76,7 @@ namespace Space4X.Systems
         }
 
         [BurstCompile]
+        [WithAll(typeof(SpaceMovementTag))]
         public partial struct ProjectileAdvanceJob : IJobEntity
         {
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
@@ -131,9 +133,13 @@ namespace Space4X.Systems
                             // Check if target is within seek radius
                             if (distanceToTarget <= projectileSpec.SeekRadius)
                             {
-                                // Calculate desired direction
-                                float3 desiredDirection = math.normalizesafe(toTarget, math.forward());
-                                float3 currentDirection = math.normalizesafe(projectile.Velocity, math.forward());
+                                // Calculate desired direction using 3D-aware normalization
+                            // Use current velocity direction as fallback instead of hardcoded forward
+                            float3 fallbackDir = math.lengthsq(projectile.Velocity) > 1e-6f 
+                                ? math.normalize(projectile.Velocity) 
+                                : OrientationHelpers.WorldForward;
+                            float3 desiredDirection = math.normalizesafe(toTarget, fallbackDir);
+                            float3 currentDirection = math.normalizesafe(projectile.Velocity, fallbackDir);
 
                                 // Calculate angle between current and desired direction
                                 float angleRad = math.acos(math.clamp(math.dot(currentDirection, desiredDirection), -1f, 1f));
@@ -167,9 +173,13 @@ namespace Space4X.Systems
                             }
 
                             // Ensure velocity is not NaN or zero
+                            // Use projectile's current direction as fallback instead of hardcoded forward
                             if (math.any(math.isnan(newVelocity)) || math.lengthsq(newVelocity) < 1e-6f)
                             {
-                                newVelocity = math.forward() * projectileSpec.Speed;
+                                float3 safeFallback = math.lengthsq(projectile.Velocity) > 1e-6f
+                                    ? math.normalize(projectile.Velocity)
+                                    : OrientationHelpers.WorldForward;
+                                newVelocity = safeFallback * projectileSpec.Speed;
                             }
 
                             newPosition += newVelocity * DeltaTime;

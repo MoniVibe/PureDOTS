@@ -1,6 +1,9 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Time;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -68,9 +71,15 @@ namespace PureDOTS.Systems.Environment
             foreach (var (cloudState, cloudConfig, transform, entity) in
                      SystemAPI.Query<RefRO<RainCloudState>, RefRO<RainCloudConfig>, RefRO<LocalTransform>>()
                          .WithEntityAccess()
-                         .WithAll<RainCloudTag>()
-                         .WithNone<HandHeldTag>())
+                         .WithAll<RainCloudTag>())
             {
+#if GODGAME
+                // Skip held entities (game-specific: Divine Hand)
+                if (SystemAPI.HasComponent<HandHeldTag>(entity))
+                {
+                    continue;
+                }
+#endif
                 var position = transform.ValueRO.Position;
                 var radius = math.max(cloudConfig.ValueRO.MinRadius,
                     cloudConfig.ValueRO.BaseRadius + position.y * cloudConfig.ValueRO.RadiusPerHeight);

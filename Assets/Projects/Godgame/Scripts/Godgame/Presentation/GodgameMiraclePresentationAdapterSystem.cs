@@ -1,3 +1,5 @@
+using Godgame.Runtime;
+using Godgame.Systems;
 using PureDOTS.Runtime.Components;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,7 +14,7 @@ namespace Godgame.Presentation
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(PureDOTS.Systems.MiracleRegistrySystem))]
+    [UpdateAfter(typeof(MiracleRegistrySystem))]
     public partial struct GodgameMiraclePresentationAdapterSystem : ISystem
     {
         private ComponentLookup<GodgamePresentationBinding> _bindingLookup;

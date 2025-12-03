@@ -130,7 +130,7 @@ namespace PureDOTS.Systems
                 BuiltinProfiles.HeadlessId,
                 "Headless Simulation",
                 defaultFilter,
-                exclusions: new[] { typeof(PresentationSystemGroup) }));
+                exclusions: new[] { typeof(Unity.Entities.PresentationSystemGroup) }));
 
             RegisterProfile(new BootstrapWorldProfile(
                 BuiltinProfiles.ReplayId,

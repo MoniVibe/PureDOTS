@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using PureDOTS.Runtime.Camera;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;

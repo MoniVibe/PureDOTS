@@ -27,8 +27,10 @@ namespace PureDOTS.Authoring
         [SerializeField] private float _cellSize = 8f;
         [SerializeField] private float _minCellSize = 1f;
         [SerializeField] private bool _overrideCellCounts;
-        [SerializeField] private Vector3Int _manualCellCounts = new Vector3Int(64, 1, 64);
-        [SerializeField] private bool _lockYAxisToOne = true;
+        [SerializeField, Tooltip("Manual cell counts for X, Y, Z dimensions. Y dimension enables 3D spatial queries.")]
+        private Vector3Int _manualCellCounts = new Vector3Int(64, 16, 64);
+        [SerializeField, Tooltip("Legacy option for 2D games. Set to false for full 3D spatial partitioning (recommended for Space4X).")]
+        private bool _lockYAxisToOne = false;
 
         [Header("Providers")]
         [SerializeField, Tooltip("Provider type name (e.g., 'HashedGrid', 'UniformGrid'). Uses enum for backward compatibility, auto-migrates to string.")]
@@ -337,44 +339,10 @@ namespace PureDOTS.Authoring
                 MinEntryCountForPartialRebuild = authoring.profile.MinEntryCountForPartialRebuild
             };
 
-            if (World.DefaultGameObjectInjectionWorld != null)
-            {
-                var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-                if (entityManager.World.IsCreated)
-                {
-                    using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SpatialGridConfig>());
-                    if (!query.IsEmptyIgnoreFilter)
-                    {
-                        var existingEntity = query.GetSingletonEntity();
-                        entityManager.SetComponentData(existingEntity, config);
-                        if (entityManager.HasComponent<SpatialGridState>(existingEntity))
-                        {
-                            entityManager.SetComponentData(existingEntity, state);
-                        }
-                        else
-                        {
-                            entityManager.AddComponentData(existingEntity, state);
-                        }
-
-                        EnsureBuffer<SpatialGridCellRange>(entityManager, existingEntity);
-                        EnsureBuffer<SpatialGridEntry>(entityManager, existingEntity);
-                        EnsureBuffer<SpatialGridStagingEntry>(entityManager, existingEntity);
-                        EnsureBuffer<SpatialGridStagingCellRange>(entityManager, existingEntity);
-                        EnsureBuffer<SpatialGridEntryLookup>(entityManager, existingEntity);
-                        EnsureBuffer<SpatialGridDirtyOp>(entityManager, existingEntity);
-
-                        if (entityManager.HasComponent<SpatialRebuildThresholds>(existingEntity))
-                        {
-                            entityManager.SetComponentData(existingEntity, thresholds);
-                        }
-                        else
-                        {
-                            entityManager.AddComponentData(existingEntity, thresholds);
-                        }
-                        return;
-                    }
-                }
-            }
+            // Removed runtime injection logic to prevent duplicate singleton creation.
+            // The CoreSingletonBootstrapSystem handles the default creation if no authoring exists.
+            // If authoring exists, this baker will create the entity in the baking world, which is then moved to the main world.
+            // The previous logic was trying to modify the main world directly from a baker, which is generally unsafe and can lead to race conditions or duplicates.
 
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, config);

@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Stats
     /// Uses request buffers only; no structural changes except ECB playback.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct StatPresentationAdapterSystem : ISystem
     {
         [BurstCompile]
@@ -49,7 +49,7 @@ namespace PureDOTS.Systems.Stats
     /// System for hot-swapping between Minimal and Fancy stat binding sets.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct StatBindingSwapSystem : ISystem
     {
         private byte _currentBindingSet; // 0 = Minimal, 1 = Fancy

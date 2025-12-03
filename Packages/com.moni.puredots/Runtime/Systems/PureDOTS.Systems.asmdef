@@ -16,7 +16,8 @@
         "Unity.Rendering.Entities",
         "Unity.Rendering.Universal",
         "Unity.Scenes",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Physics.Hybrid"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -54,13 +54,13 @@ namespace PureDOTS.Systems
 #if UNITY_EDITOR
             if (warnings.Length == 0)
             {
-                Debug.Log("[BootstrapDiagnostics] Core DOTS bootstrap validated.");
+                UnityEngine.Debug.Log("[BootstrapDiagnostics] Core DOTS bootstrap validated.");
             }
             else
             {
                 for (int i = 0; i < warnings.Length; i++)
                 {
-                    Debug.LogWarning($"[BootstrapDiagnostics] {warnings[i]}");
+                    UnityEngine.Debug.LogWarning($"[BootstrapDiagnostics] {warnings[i]}");
                 }
             }
 #endif

@@ -1,11 +1,16 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Runtime.Time;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Systems.Navigation;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace PureDOTS.Systems
 {
@@ -23,6 +28,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
         }
 
@@ -30,13 +36,12 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused)
-            {
-                return;
-            }
-
             var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+            
+            // Use TimeHelpers to check if we should update (handles pause, rewind, stasis)
+            var defaultMembership = default(TimeBubbleMembership);
+            if (!TimeHelpers.ShouldUpdate(timeState, rewindState, defaultMembership))
             {
                 return;
             }
@@ -45,7 +50,7 @@ namespace PureDOTS.Systems
             var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
                 ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
                 : VillagerBehaviorConfig.CreateDefaults();
-
+            
             var job = new UpdateVillagerMovementJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
@@ -55,10 +60,20 @@ namespace PureDOTS.Systems
                 LowEnergySpeedMultiplier = config.LowEnergySpeedMultiplier,
                 LowEnergyThreshold = config.LowEnergyThreshold,
                 VelocityThreshold = config.VelocityThreshold,
-                RotationSpeed = config.RotationSpeed
+                RotationSpeed = config.RotationSpeed,
+                TickTimeState = tickTimeState,
+                TimeState = timeState,
+                RewindState = rewindState,
+                BubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(true),
+                MovementSuppressedLookup = state.GetComponentLookup<MovementSuppressed>(true)
             };
-
+            
             state.Dependency = job.ScheduleParallel(state.Dependency);
+            
+            // Count frozen entities for debug log (outside Burst)
+#if UNITY_EDITOR
+            LogFrozenEntities(ref state);
+#endif
         }
 
         [BurstCompile]
@@ -72,14 +87,59 @@ namespace PureDOTS.Systems
             public float LowEnergyThreshold;
             public float VelocityThreshold;
             public float RotationSpeed;
+            public TickTimeState TickTimeState;
+            public TimeState TimeState;
+            public RewindState RewindState;
+            [ReadOnly] public ComponentLookup<TimeBubbleMembership> BubbleMembershipLookup;
+            [ReadOnly] public ComponentLookup<MovementSuppressed> MovementSuppressedLookup;
 
+            [Unity.Burst.CompilerServices.SkipLocalsInit]
             public void Execute(
                 ref VillagerMovement movement,
                 ref LocalTransform transform,
                 in VillagerAIState aiState,
                 in VillagerNeeds needs,
+                in Entity entity,
                 [ChunkIndexInQuery] int chunkIndex)
             {
+                // Skip if movement is suppressed (e.g., being held by player)
+                if (MovementSuppressedLookup.HasComponent(entity))
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = 0;
+                    return;
+                }
+                
+                // Get bubble membership for this entity (if any)
+                var membership = BubbleMembershipLookup.HasComponent(entity)
+                    ? BubbleMembershipLookup[entity]
+                    : default(TimeBubbleMembership);
+                
+                // Gate movement by stasis - if entity is in stasis, don't move
+                if (TimeHelpers.IsInStasis(membership))
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = 0;
+                    return;
+                }
+                
+                // Use TimeHelpers to check if we should update
+                if (!TimeHelpers.ShouldUpdate(TimeState, RewindState, membership))
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = 0;
+                    return;
+                }
+                
+                // Get effective delta time (handles bubbles, pause, etc.)
+                var effectiveDelta = TimeHelpers.GetEffectiveDelta(TickTimeState, TimeState, membership);
+                if (effectiveDelta <= 0f)
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = 0;
+                    return;
+                }
+                
                 // Check if flow field navigation is available
                 float3 direction = float3.zero;
                 bool useFlowField = false;
@@ -142,14 +202,18 @@ namespace PureDOTS.Systems
                     }
                 }
 
-                // Apply movement
+                // Apply movement using effective delta time
                 if (math.lengthsq(movement.Velocity) > 0.01f)
                 {
-                    transform.Position += movement.Velocity * DeltaTime;
+                    transform.Position += movement.Velocity * effectiveDelta;
 
                     var moveDirection = math.normalize(movement.Velocity);
-                    movement.DesiredRotation = quaternion.LookRotationSafe(moveDirection, math.up());
-                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, DeltaTime * RotationSpeed);
+                    // Use current rotation's up vector for 3D-aware rotation
+                    // For ground units, this preserves upright orientation
+                    // For flying/space units, this maintains consistent roll
+                    OrientationHelpers.DeriveUpFromRotation(transform.Rotation, OrientationHelpers.WorldUp, out var currentUp);
+                    OrientationHelpers.LookRotationSafe3D(moveDirection, currentUp, out movement.DesiredRotation);
+                    transform.Rotation = math.slerp(transform.Rotation, movement.DesiredRotation, effectiveDelta * RotationSpeed);
                     movement.IsMoving = 1;
                 }
                 else
@@ -160,5 +224,24 @@ namespace PureDOTS.Systems
                 movement.LastMoveTick = CurrentTick;
             }
         }
+        
+#if UNITY_EDITOR
+        [BurstDiscard]
+        private void LogFrozenEntities(ref SystemState state)
+        {
+            var frozenCount = 0;
+            foreach (var (membership, _) in SystemAPI.Query<RefRO<TimeBubbleMembership>>().WithEntityAccess())
+            {
+                if (TimeHelpers.IsInStasis(membership.ValueRO))
+                {
+                    frozenCount++;
+                }
+            }
+            if (frozenCount > 0)
+            {
+                UnityEngine.Debug.Log($"[Stasis] {frozenCount} entities frozen");
+            }
+        }
+#endif
     }
 }

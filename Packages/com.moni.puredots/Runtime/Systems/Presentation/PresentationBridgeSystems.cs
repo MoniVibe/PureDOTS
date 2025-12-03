@@ -7,18 +7,18 @@ using UnityEngine;
 
 namespace PureDOTS.Systems
 {
-    [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup), OrderFirst = true)]
     public partial class BeginPresentationECBSystem : EntityCommandBufferSystem
     {
     }
 
-    [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup), OrderLast = true)]
     [UpdateAfter(typeof(PresentationCleanupSystem))]
     public partial class EndPresentationECBSystem : EntityCommandBufferSystem
     {
     }
 
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(BeginPresentationECBSystem))]
     public partial struct PresentationBridgePlaybackSystem : ISystem
     {
@@ -226,7 +226,7 @@ namespace PureDOTS.Systems
         }
     }
 
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(PresentationBridgePlaybackSystem))]
     [UpdateBefore(typeof(EndPresentationECBSystem))]
     public partial struct PresentationCleanupSystem : ISystem

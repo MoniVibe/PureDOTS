@@ -76,9 +76,30 @@ namespace PureDOTS.Systems
             var logState = SystemAPI.GetSingletonRW<InputCommandLogState>();
             var logBuffer = SystemAPI.GetSingletonBuffer<InputCommandLogEntry>();
 
+            // Get simulation mode for validation
+            TimeSimulationMode simulationMode = TimeSimulationMode.SinglePlayer;
+            if (SystemAPI.TryGetSingleton<TimeSystemFeatureFlags>(out var flags))
+            {
+                simulationMode = flags.SimulationMode;
+            }
+
             for (int i = 0; i < commands.Length; i++)
             {
                 var cmd = commands[i];
+                
+                // Validate command scope for current simulation mode
+                // In single-player, Player scope should be treated as Global
+                if (cmd.Scope == TimeControlScope.Player && simulationMode == TimeSimulationMode.SinglePlayer)
+                {
+                    // Log warning and treat as Global for now
+                    // TODO: In MP, server will validate PlayerId and apply only to player's entities
+                    cmd.Scope = TimeControlScope.Global;
+                }
+                
+                // TODO: In multiplayer, server will:
+                // - Validate PlayerId matches command issuer
+                // - Apply commands only to entities that belong to that player's authority
+                // - Reject commands with invalid PlayerId
                 var logEntry = new InputCommandLogEntry
                 {
                     Tick = tickTimeState.Tick,
@@ -90,21 +111,22 @@ namespace PureDOTS.Systems
 
                 switch (cmd.Type)
                 {
-                    case TimeControlCommand.CommandType.Pause:
+                    case TimeControlCommandType.Pause:
                         tickTimeState.IsPaused = true;
                         tickTimeState.IsPlaying = false;
                         break;
 
-                    case TimeControlCommand.CommandType.Resume:
+                    case TimeControlCommandType.Resume:
                         tickTimeState.IsPaused = false;
                         tickTimeState.IsPlaying = true;
                         break;
 
-                    case TimeControlCommand.CommandType.SetSpeed:
-                        tickTimeState.CurrentSpeedMultiplier = math.clamp(cmd.FloatParam, 0.1f, 5f);
+                    case TimeControlCommandType.SetSpeed:
+                        tickTimeState.CurrentSpeedMultiplier = math.clamp(cmd.FloatParam, 
+                            TimeControlLimits.DefaultMinSpeed, TimeControlLimits.DefaultMaxSpeed);
                         break;
 
-                    case TimeControlCommand.CommandType.StartRewind:
+                    case TimeControlCommandType.StartRewind:
                         if (rewindState.Mode == RewindMode.Record)
                         {
                             var maxDepth = ResolveRewindHorizonTicks(tickTimeState);
@@ -114,21 +136,21 @@ namespace PureDOTS.Systems
                         }
                         break;
 
-                    case TimeControlCommand.CommandType.StopRewind:
+                    case TimeControlCommandType.StopRewind:
                         if (rewindState.Mode == RewindMode.Playback)
                         {
                             StopRewind(ref rewindState, ref tickTimeState);
                         }
                         break;
 
-                    case TimeControlCommand.CommandType.ScrubTo:
+                    case TimeControlCommandType.ScrubTo:
                         if (rewindState.Mode == RewindMode.Playback)
                         {
                             rewindState.TargetTick = cmd.UintParam;
                         }
                         break;
 
-                    case TimeControlCommand.CommandType.StepTicks:
+                    case TimeControlCommandType.StepTicks:
                         // Allow single/multi tick advance while paused.
                         uint stepCount = math.max(1u, cmd.UintParam == 0 ? 1u : cmd.UintParam);
                         tickTimeState.TargetTick = math.max(tickTimeState.TargetTick, tickTimeState.Tick + stepCount);

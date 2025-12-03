@@ -39,7 +39,7 @@ namespace PureDOTS.Systems.AI
         [ReadOnly] public ComponentLookup<VillagerId> VillagerLookup;
         [ReadOnly] public ComponentLookup<ResourceSourceConfig> ResourceLookup;
         [ReadOnly] public ComponentLookup<StorehouseConfig> StorehouseLookup;
-        [ReadOnly] public ComponentLookup<MiracleDefinition> MiracleLookup;
+        // Miracle category is game-specific (Godgame) - games can extend this filter if needed
         [ReadOnly] public ComponentLookup<TransportUnitTag> TransportLookup;
 
         public bool Accept(int descriptorIndex, in SpatialQueryDescriptor descriptor, in SpatialGridEntry entry)
@@ -85,10 +85,8 @@ namespace PureDOTS.Systems.AI
                         }
                         break;
                     case AISensorCategory.Miracle:
-                        if (MiracleLookup.HasComponent(entry.Entity))
-                        {
-                            return true;
-                        }
+                        // Miracle category is game-specific - games can extend this filter if needed
+                        // For now, skip miracle filtering in generic PureDOTS AI
                         break;
                     default:
                         return true;
@@ -107,7 +105,7 @@ namespace PureDOTS.Systems.AI
         private ComponentLookup<VillagerId> _villagerLookup;
         private ComponentLookup<ResourceSourceConfig> _resourceLookup;
         private ComponentLookup<StorehouseConfig> _storehouseLookup;
-        private ComponentLookup<MiracleDefinition> _miracleLookup;
+        // Miracle lookup removed - Miracle category is game-specific (Godgame)
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
         private ComponentLookup<TransportUnitTag> _transportLookup;
 
@@ -126,7 +124,7 @@ namespace PureDOTS.Systems.AI
             _villagerLookup = state.GetComponentLookup<VillagerId>(true);
             _resourceLookup = state.GetComponentLookup<ResourceSourceConfig>(true);
             _storehouseLookup = state.GetComponentLookup<StorehouseConfig>(true);
-            _miracleLookup = state.GetComponentLookup<MiracleDefinition>(true);
+            // Miracle lookup removed - Miracle category is game-specific (Godgame)
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
             _transportLookup = state.GetComponentLookup<TransportUnitTag>(true);
         }
@@ -153,7 +151,7 @@ namespace PureDOTS.Systems.AI
             _villagerLookup.Update(ref state);
             _resourceLookup.Update(ref state);
             _storehouseLookup.Update(ref state);
-            _miracleLookup.Update(ref state);
+            // Miracle lookup removed - Miracle category is game-specific (Godgame)
             _residencyLookup.Update(ref state);
             _transportLookup.Update(ref state);
 
@@ -233,7 +231,7 @@ namespace PureDOTS.Systems.AI
                     VillagerLookup = _villagerLookup,
                     ResourceLookup = _resourceLookup,
                     StorehouseLookup = _storehouseLookup,
-                    MiracleLookup = _miracleLookup,
+                    // MiracleLookup removed - Miracle category is game-specific (Godgame)
                     TransportLookup = _transportLookup
                 }
             };
@@ -266,7 +264,7 @@ namespace PureDOTS.Systems.AI
                 for (var r = 0; r < slice.Length; r++)
                 {
                     var nearest = slice[r];
-                    var category = ResolveCategory(nearest.Entity, mask, _villagerLookup, _resourceLookup, _storehouseLookup, _miracleLookup, _transportLookup);
+                    var category = ResolveCategory(nearest.Entity, mask, _villagerLookup, _resourceLookup, _storehouseLookup, _transportLookup);
                     var normalized = ComputeSensorScore(nearest.DistanceSq, sensorConfig.Range);
                     var cellId = -1;
                     uint spatialVersion = 0;
@@ -327,7 +325,6 @@ namespace PureDOTS.Systems.AI
             ComponentLookup<VillagerId> villagerLookup,
             ComponentLookup<ResourceSourceConfig> resourceLookup,
             ComponentLookup<StorehouseConfig> storehouseLookup,
-            ComponentLookup<MiracleDefinition> miracleLookup,
             ComponentLookup<TransportUnitTag> transportLookup
         )
         {
@@ -342,7 +339,7 @@ namespace PureDOTS.Systems.AI
                 for (var i = 0; i < categories.Length; i++)
                 {
                     var category = categories[i];
-                    if (MatchesCategory(entity, category, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
+                    if (MatchesCategory(entity, category, villagerLookup, resourceLookup, storehouseLookup, transportLookup))
                     {
                         return category;
                     }
@@ -350,27 +347,25 @@ namespace PureDOTS.Systems.AI
             }
             else
             {
-                if (MatchesCategory(entity, AISensorCategory.Villager, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
+                if (MatchesCategory(entity, AISensorCategory.Villager, villagerLookup, resourceLookup, storehouseLookup, transportLookup))
                 {
                     return AISensorCategory.Villager;
                 }
 
-                if (MatchesCategory(entity, AISensorCategory.ResourceNode, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
+                if (MatchesCategory(entity, AISensorCategory.ResourceNode, villagerLookup, resourceLookup, storehouseLookup, transportLookup))
                 {
                     return AISensorCategory.ResourceNode;
                 }
 
-                if (MatchesCategory(entity, AISensorCategory.Storehouse, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
+                if (MatchesCategory(entity, AISensorCategory.Storehouse, villagerLookup, resourceLookup, storehouseLookup, transportLookup))
                 {
                     return AISensorCategory.Storehouse;
                 }
 
-                if (MatchesCategory(entity, AISensorCategory.Miracle, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
-                {
-                    return AISensorCategory.Miracle;
-                }
+                // Miracle category is game-specific - skip in generic PureDOTS AI
+                // Games can extend this system if they need miracle sensing
 
-                if (MatchesCategory(entity, AISensorCategory.TransportUnit, villagerLookup, resourceLookup, storehouseLookup, miracleLookup, transportLookup))
+                if (MatchesCategory(entity, AISensorCategory.TransportUnit, villagerLookup, resourceLookup, storehouseLookup, transportLookup))
                 {
                     return AISensorCategory.TransportUnit;
                 }
@@ -385,7 +380,6 @@ namespace PureDOTS.Systems.AI
             ComponentLookup<VillagerId> villagerLookup,
             ComponentLookup<ResourceSourceConfig> resourceLookup,
             ComponentLookup<StorehouseConfig> storehouseLookup,
-            ComponentLookup<MiracleDefinition> miracleLookup,
             ComponentLookup<TransportUnitTag> transportLookup
         )
         {
@@ -394,7 +388,7 @@ namespace PureDOTS.Systems.AI
                 AISensorCategory.Villager => villagerLookup.HasComponent(entity),
                 AISensorCategory.ResourceNode => resourceLookup.HasComponent(entity),
                 AISensorCategory.Storehouse => storehouseLookup.HasComponent(entity),
-                AISensorCategory.Miracle => miracleLookup.HasComponent(entity),
+                AISensorCategory.Miracle => false, // Miracle category is game-specific - games can extend this if needed
                 AISensorCategory.TransportUnit => transportLookup.HasComponent(entity),
                 _ => true
             };

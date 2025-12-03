@@ -91,7 +91,7 @@ namespace PureDOTS.Systems.Streaming
                 {
                     if (existingAction != command.Action)
                     {
-                        Debug.LogError($"[PureDOTS] Conflicting streaming commands detected for entity {command.SectionEntity.Index}. Skipping duplicate.");
+                        UnityEngine.Debug.LogError($"[PureDOTS] Conflicting streaming commands detected for entity {command.SectionEntity.Index}. Skipping duplicate.");
                     }
 
                     continue;
@@ -126,7 +126,7 @@ namespace PureDOTS.Systems.Streaming
                         {
                             if (descriptor.SceneGuid == default)
                             {
-                                Debug.LogWarning($"[PureDOTS] Streaming section '{descriptor.Identifier}' is missing a Scene GUID. Marking as Error.");
+                                UnityEngine.Debug.LogWarning($"[PureDOTS] Streaming section '{descriptor.Identifier}' is missing a Scene GUID. Marking as Error.");
                                 sectionState.Status = StreamingSectionStatus.Error;
                                 sectionState.CooldownUntilTick = currentTick + coordinator.CooldownTicks;
                                 entityManager.SetComponentData(command.SectionEntity, sectionState);
@@ -138,7 +138,7 @@ namespace PureDOTS.Systems.Streaming
                                 runtime.SceneEntity = SceneSystem.LoadSceneAsync(worldUnmanaged, descriptor.SceneGuid);
                                 if (runtime.SceneEntity == Entity.Null)
                                 {
-                                    Debug.LogError($"[PureDOTS] Failed to start loading scene '{descriptor.Identifier}' ({descriptor.SceneGuid}).");
+                                    UnityEngine.Debug.LogError($"[PureDOTS] Failed to start loading scene '{descriptor.Identifier}' ({descriptor.SceneGuid}).");
                                     sectionState.Status = StreamingSectionStatus.Error;
                                     sectionState.CooldownUntilTick = currentTick + coordinator.CooldownTicks;
                                     entityManager.SetComponentData(command.SectionEntity, sectionState);

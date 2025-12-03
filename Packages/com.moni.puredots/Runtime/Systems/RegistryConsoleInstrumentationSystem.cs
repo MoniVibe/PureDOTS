@@ -158,7 +158,7 @@ namespace PureDOTS.Systems
             }
 
 #if UNITY_EDITOR
-            Debug.Log(text);
+            UnityEngine.Debug.Log(text);
 #endif
         }
 

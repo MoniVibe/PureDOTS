@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
 using PureDOTS.Systems.Movement;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -11,8 +12,10 @@ namespace Godgame.Systems
 {
     /// <summary>
     /// Bridges MovementState.Vel to Godgame terrain movement.
-    /// Zeroes vertical forces, respects MaxSlopeDeg and GroundFriction.
-    /// 2D gradient sampling (XY plane).
+    /// Implements ground movement policy: constrains to terrain surface,
+    /// zeroes vertical velocity, keeps units upright (yaw-only rotation).
+    /// 
+    /// For flying units (with FlyingMovementTag), uses 2.5D movement with altitude control.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
@@ -38,16 +41,28 @@ namespace Godgame.Systems
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var deltaTime = timeState.DeltaTime;
 
-            var job = new GodgameMovementAdapterJob
+            // Process ground units (default behavior for Godgame)
+            var groundJob = new GodgameGroundMovementJob
             {
                 DeltaTime = deltaTime
             };
+            state.Dependency = groundJob.ScheduleParallel(state.Dependency);
 
-            state.Dependency = job.ScheduleParallel(state.Dependency);
+            // Process flying units (with FlyingMovementTag)
+            var flyingJob = new GodgameFlyingMovementJob
+            {
+                DeltaTime = deltaTime
+            };
+            state.Dependency = flyingJob.ScheduleParallel(state.Dependency);
         }
 
+        /// <summary>
+        /// Ground movement job: constrains units to terrain surface with yaw-only rotation.
+        /// Uses GroundMovementTag or defaults to ground behavior if no movement tag present.
+        /// </summary>
         [BurstCompile]
-        public partial struct GodgameMovementAdapterJob : IJobEntity
+        [WithNone(typeof(FlyingMovementTag), typeof(SpaceMovementTag))]
+        public partial struct GodgameGroundMovementJob : IJobEntity
         {
             public float DeltaTime;
 
@@ -64,7 +79,7 @@ namespace Godgame.Systems
 
                 ref var spec = ref modelRef.Blob.Value;
 
-                // Ensure 2D movement (zero vertical component)
+                // Ground movement: zero vertical velocity component
                 float3 vel = movementState.Vel;
                 vel.y = 0f;
                 movementState.Vel = vel;
@@ -78,24 +93,95 @@ namespace Godgame.Systems
                     movementState.Vel = vel;
                 }
 
-                // TODO: Apply slope clamping
-                // This would require terrain height/slope queries
-                // For now, just ensure Y position stays at terrain height
+                // TODO: Sample terrain height at current XZ position
+                // transform.Position.y = TerrainHeight(transform.Position.x, transform.Position.z);
 
-                // Update transform rotation to face velocity direction (if moving)
+                // Update rotation to face velocity direction (yaw-only for ground units)
                 float velLength = math.length(vel);
                 if (velLength > 1e-6f)
                 {
                     float3 forward = math.normalize(vel);
-                    forward.y = 0f; // Keep rotation in horizontal plane
+                    // Project forward onto XZ plane for yaw-only rotation
+                    forward.y = 0f;
                     if (math.lengthsq(forward) > 1e-6f)
                     {
-                        transform.Rotation = quaternion.LookRotationSafe(forward, math.up());
+                        forward = math.normalize(forward);
+                        // Use yaw-only rotation to keep ground units upright
+                        // This extracts yaw and creates a rotation around world Y
+                        OrientationHelpers.LookRotationSafe3D(forward, OrientationHelpers.WorldUp, out quaternion lookRot);
+                        OrientationHelpers.ConstrainToYawOnly(lookRot, out quaternion yawOnlyRot);
+                        transform.Rotation = yawOnlyRot;
                     }
                 }
+            }
+        }
 
-                // Position is already updated by MovementIntegrateSystem
-                // This adapter can add Godgame-specific effects (footprints, dust, etc.)
+        /// <summary>
+        /// Flying movement job: 2.5D movement with altitude control.
+        /// Maintains heading but allows pitch for visuals.
+        /// </summary>
+        [BurstCompile]
+        [WithAll(typeof(FlyingMovementTag))]
+        public partial struct GodgameFlyingMovementJob : IJobEntity
+        {
+            public float DeltaTime;
+
+            void Execute(
+                Entity entity,
+                ref MovementState movementState,
+                ref LocalTransform transform,
+                in MovementModelRef modelRef,
+                in FlyingMovementConfig flyingConfig)
+            {
+                if (!modelRef.Blob.IsCreated)
+                {
+                    return;
+                }
+
+                ref var spec = ref modelRef.Blob.Value;
+
+                // Flying movement: allow vertical velocity but constrain altitude
+                float3 vel = movementState.Vel;
+                
+                // TODO: Sample terrain height at current XZ position
+                // float terrainHeight = TerrainHeight(transform.Position.x, transform.Position.z);
+                float terrainHeight = 0f; // Placeholder until terrain system is integrated
+                
+                float currentAltitude = transform.Position.y - terrainHeight;
+                
+                // Clamp altitude to configured range
+                if (currentAltitude < flyingConfig.MinAltitude)
+                {
+                    vel.y = math.max(vel.y, flyingConfig.AltitudeChangeRate);
+                }
+                else if (currentAltitude > flyingConfig.MaxAltitude)
+                {
+                    vel.y = math.min(vel.y, -flyingConfig.AltitudeChangeRate);
+                }
+                
+                movementState.Vel = vel;
+
+                // Apply air friction (less than ground friction)
+                float airFriction = spec.GroundFriction * 0.3f; // Flying units have less friction
+                if (airFriction > 0f)
+                {
+                    float frictionFactor = 1f - (airFriction * DeltaTime);
+                    frictionFactor = math.max(0f, frictionFactor);
+                    vel *= frictionFactor;
+                    movementState.Vel = vel;
+                }
+
+                // Update rotation to face velocity direction
+                // For flying units, we allow pitch but constrain roll
+                float velLength = math.length(vel);
+                if (velLength > 1e-6f)
+                {
+                    float3 forward = math.normalize(vel);
+                    // Use current up vector to preserve some orientation continuity
+                    OrientationHelpers.DeriveUpFromRotation(transform.Rotation, OrientationHelpers.WorldUp, out float3 currentUp);
+                    OrientationHelpers.LookRotationSafe3D(forward, currentUp, out quaternion newRotation);
+                    transform.Rotation = newRotation;
+                }
             }
         }
     }

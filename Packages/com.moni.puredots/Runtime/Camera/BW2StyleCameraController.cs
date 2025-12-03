@@ -8,9 +8,11 @@ using UnityEngine.InputSystem.Controls;
 using PureDOTS.Input;
 using Unity.Entities;
 using Unity.Mathematics;
-using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Hybrid;
 using UnityEngineCamera = UnityEngine.Camera;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 
 namespace PureDOTS.Runtime.Camera
 {
@@ -35,8 +37,20 @@ namespace PureDOTS.Runtime.Camera
         [SerializeField] LayerMask groundMask = ~0;
         [SerializeField] float groundProbeDistance = 600f;
 
+        public LayerMask GroundMask
+        {
+            get => groundMask;
+            set => groundMask = value;
+        }
+
         [Header("Pan")]
         [SerializeField] float panScale = 1f;
+
+        public float PanScale
+        {
+            get => panScale;
+            set => panScale = value;
+        }
         [SerializeField] float panDeadzoneMeters = 0.01f;
         [SerializeField] bool allowPanOverUI;
 
@@ -51,6 +65,12 @@ namespace PureDOTS.Runtime.Camera
 
         [Header("Zoom")]
         [SerializeField] float zoomSpeed = 6f;
+
+        public float ZoomSpeed
+        {
+            get => zoomSpeed;
+            set => zoomSpeed = value;
+        }
         [SerializeField] float minDistance = 6f;
         [SerializeField] float maxDistance = 220f;
         [SerializeField] bool invertZoom;
@@ -247,7 +267,7 @@ namespace PureDOTS.Runtime.Camera
             {
                 var pointer = GetPointerPosition();
                 var ray = targetCamera.ScreenPointToRay(pointer);
-                if (groundMask.value != 0 && Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+                if (groundMask.value != 0 && UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
                 {
                     world = hit.point;
                     return true;
@@ -471,7 +491,7 @@ namespace PureDOTS.Runtime.Camera
             Vector3 pivot = Pivot;
             float probeHeight = Mathf.Max(clearanceProbeHeight, 50f);
             Vector3 origin = pivot + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 pivot.y = hit.point.y;
                 Pivot = pivot;
@@ -534,7 +554,7 @@ namespace PureDOTS.Runtime.Camera
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 25f);
             Vector3 origin = desired + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 float minY = hit.point.y + terrainClearance;
                 if (desired.y < minY) desired.y = minY;
@@ -558,7 +578,7 @@ namespace PureDOTS.Runtime.Camera
             }
 
             Vector3 direction = toCamera / maxDistance;
-            if (Physics.SphereCast(pivot, collisionProbeRadius, direction, out var hit, maxDistance, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.SphereCast(pivot, collisionProbeRadius, direction, out var hit, maxDistance, groundMask, QueryTriggerInteraction.Ignore))
             {
                 float adjusted = Mathf.Max(collisionBuffer, hit.distance - collisionBuffer);
                 return pivot + direction * adjusted;
@@ -573,7 +593,7 @@ namespace PureDOTS.Runtime.Camera
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 50f);
             Vector3 origin = lockedPivot + Vector3.up * probeHeight;
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 lockedPivot.y = hit.point.y;
             }
@@ -589,7 +609,7 @@ namespace PureDOTS.Runtime.Camera
             }
 
             Ray ray = targetCamera.ScreenPointToRay(screenPosition);
-            if (groundMask.value != 0 && Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+            if (groundMask.value != 0 && UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
             {
                 world = hit.point;
                 normal = hit.normal;
@@ -621,7 +641,7 @@ namespace PureDOTS.Runtime.Camera
             if (groundMask.value == 0) return false;
 
             float probeHeight = Mathf.Max(clearanceProbeHeight, 25f);
-            if (Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, probeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
             {
                 groundY = hit.point.y;
                 return true;
@@ -806,6 +826,7 @@ namespace PureDOTS.Runtime.Camera
         bool TryGetHandCursor(out Vector3 cursor)
         {
             cursor = default;
+#if GODGAME
             var world = World.DefaultGameObjectInjectionWorld;
             if (world == null || !world.IsCreated)
             {
@@ -842,7 +863,7 @@ namespace PureDOTS.Runtime.Camera
                 cursor = new Vector3(c.x, c.y, c.z);
                 return true;
             }
-
+#endif
             return false;
         }
 

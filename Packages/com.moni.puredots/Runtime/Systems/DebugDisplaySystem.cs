@@ -30,7 +30,7 @@ namespace PureDOTS.Systems
     /// Runs in presentation group to provide data for UI layers.
     /// Deterministic and Burst-safe.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct DebugDisplaySystem : ISystem
     {
         private EntityQuery _villagerQuery;

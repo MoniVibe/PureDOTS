@@ -48,6 +48,49 @@ namespace Space4X.Registry
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
 
+            // Pre-create ComplianceBreach buffers and SuspicionScore components for entities that need them (using ECB to avoid structural changes during iteration)
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (alignment, affiliations, entity) in SystemAPI.Query<RefRO<AlignmentTriplet>, DynamicBuffer<AffiliationTag>>().WithEntityAccess())
+            {
+                if (!SystemAPI.HasBuffer<ComplianceBreach>(entity))
+                {
+                    // Check if this entity will need a breach buffer (has affiliations with doctrines)
+                    bool needsBuffer = false;
+                    for (int i = 0; i < affiliations.Length; i++)
+                    {
+                        if (_doctrineLookup.HasComponent(affiliations[i].Target))
+                        {
+                            needsBuffer = true;
+                            break;
+                        }
+                    }
+                    if (needsBuffer)
+                    {
+                        ecb.AddBuffer<ComplianceBreach>(entity);
+                    }
+                }
+
+                // Pre-create SuspicionScore component if entity might need it (has affiliations and is not a spy)
+                if (!SystemAPI.HasComponent<SuspicionScore>(entity) && !SystemAPI.HasComponent<SpyRole>(entity))
+                {
+                    bool hasDoctrines = false;
+                    for (int i = 0; i < affiliations.Length; i++)
+                    {
+                        if (_doctrineLookup.HasComponent(affiliations[i].Target))
+                        {
+                            hasDoctrines = true;
+                            break;
+                        }
+                    }
+                    if (hasDoctrines)
+                    {
+                        ecb.AddComponent(entity, new SuspicionScore { Value = (half)0f });
+                    }
+                }
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
             foreach (var (alignment, affiliations, entity) in SystemAPI.Query<RefRO<AlignmentTriplet>, DynamicBuffer<AffiliationTag>>().WithEntityAccess())
             {
                 var alignmentValues = alignment.ValueRO.AsFloat3();
@@ -89,6 +132,10 @@ namespace Space4X.Registry
                     var affiliation = affiliations[i];
                     if (!_doctrineLookup.HasComponent(affiliation.Target))
                     {
+#if UNITY_EDITOR
+                        UnityEngine.Debug.LogWarning(
+                            $"[AffiliationCompliance] Target {affiliation.Target.Index} missing DoctrineProfile for entity {entity.Index}");
+#endif
                         continue;
                     }
 
@@ -121,10 +168,19 @@ namespace Space4X.Registry
                     var warAxisValue = hasAxisBuffer ? GetAxisValue(EthicAxisId.War, axisBuffer) : 0f;
                     var breachType = DetermineBreachType(chaosScore, lawfulnessScore, warAxisValue, (float)doctrine.ChaosMutinyThreshold, (float)doctrine.LawfulContractFloor);
 
+                    // Buffer should already exist from pre-creation phase, but ensure it's available
                     if (!hasBreachBuffer)
                     {
-                        breachBuffer = state.EntityManager.AddBuffer<ComplianceBreach>(entity);
-                        hasBreachBuffer = true;
+                        if (SystemAPI.HasBuffer<ComplianceBreach>(entity))
+                        {
+                            breachBuffer = SystemAPI.GetBuffer<ComplianceBreach>(entity);
+                            hasBreachBuffer = true;
+                        }
+                        else
+                        {
+                            // Should not happen if pre-creation worked, but handle gracefully
+                            continue;
+                        }
                     }
 
                     breachBuffer.Add(new ComplianceBreach
@@ -244,7 +300,13 @@ namespace Space4X.Registry
 
         private void ApplySuspicion(ref SystemState state, Entity entity, float delta)
         {
-            var suspicion = EnsureSuspicion(ref state, entity);
+            // SuspicionScore should already exist from pre-creation phase
+            if (!SystemAPI.HasComponent<SuspicionScore>(entity))
+            {
+                return; // Skip if component doesn't exist (shouldn't happen, but handle gracefully)
+            }
+
+            var suspicion = SystemAPI.GetComponentRW<SuspicionScore>(entity);
             var value = math.saturate((float)suspicion.ValueRO.Value + delta);
             suspicion.ValueRW.Value = (half)value;
         }
@@ -261,15 +323,7 @@ namespace Space4X.Registry
             suspicion.ValueRW.Value = (half)value;
         }
 
-        private RefRW<SuspicionScore> EnsureSuspicion(ref SystemState state, Entity entity)
-        {
-            if (!SystemAPI.HasComponent<SuspicionScore>(entity))
-            {
-                state.EntityManager.AddComponentData(entity, new SuspicionScore { Value = (half)0f });
-            }
-
-            return SystemAPI.GetComponentRW<SuspicionScore>(entity);
-        }
+        // Removed EnsureSuspicion - SuspicionScore components are now pre-created via ECB to avoid structural changes
 
         private struct OutlookSample
         {

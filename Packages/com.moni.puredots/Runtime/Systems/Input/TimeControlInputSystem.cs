@@ -40,7 +40,7 @@ namespace PureDOTS.Systems.Input
                     bool currentlyPaused = timeStateRO.IsPaused;
                     commandBuffer.Add(new TimeControlCommand
                     {
-                        Type = currentlyPaused ? TimeControlCommand.CommandType.Resume : TimeControlCommand.CommandType.Pause
+                        Type = currentlyPaused ? TimeControlCommandType.Resume : TimeControlCommandType.Pause
                     });
                 }
 
@@ -50,8 +50,8 @@ namespace PureDOTS.Systems.Input
                     commandBuffer.Add(new TimeControlCommand
                     {
                         Type = timeStateRO.IsPaused
-                            ? TimeControlCommand.CommandType.StepTicks
-                            : TimeControlCommand.CommandType.SetSpeed,
+                            ? TimeControlCommandType.StepTicks
+                            : TimeControlCommandType.SetSpeed,
                         FloatParam = math.max(0.1f, config.SlowMotionSpeed),
                         UintParam = 1
                     });
@@ -62,8 +62,8 @@ namespace PureDOTS.Systems.Input
                     commandBuffer.Add(new TimeControlCommand
                     {
                         Type = timeStateRO.IsPaused
-                            ? TimeControlCommand.CommandType.StepTicks
-                            : TimeControlCommand.CommandType.SetSpeed,
+                            ? TimeControlCommandType.StepTicks
+                            : TimeControlCommandType.SetSpeed,
                         FloatParam = math.max(0.1f, config.FastForwardSpeed),
                         UintParam = 1
                     });
@@ -77,7 +77,7 @@ namespace PureDOTS.Systems.Input
 
                     commandBuffer.Add(new TimeControlCommand
                     {
-                        Type = TimeControlCommand.CommandType.StartRewind,
+                        Type = TimeControlCommandType.StartRewind,
                         UintParam = targetTick
                     });
                 }
@@ -86,7 +86,7 @@ namespace PureDOTS.Systems.Input
                 {
                     commandBuffer.Add(new TimeControlCommand
                     {
-                        Type = TimeControlCommand.CommandType.StopRewind
+                        Type = TimeControlCommandType.StopRewind
                     });
                 }
 

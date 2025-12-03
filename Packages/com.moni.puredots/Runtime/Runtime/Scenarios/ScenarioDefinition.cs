@@ -77,6 +77,15 @@ namespace PureDOTS.Runtime.Scenarios
     public static class ScenarioRunner
     {
         /// <summary>
+        /// Stub type alias for ScenarioDefinitionData.
+        /// Use ScenarioDefinitionData directly instead.
+        /// </summary>
+        [Obsolete("Use ScenarioDefinitionData instead")]
+        public class ScenarioData : ScenarioDefinitionData
+        {
+        }
+
+        /// <summary>
         /// Parse JSON text into the serializable scenario data.
         /// </summary>
         public static bool TryParse(string json, out ScenarioDefinitionData data, out FixedString128Bytes error)

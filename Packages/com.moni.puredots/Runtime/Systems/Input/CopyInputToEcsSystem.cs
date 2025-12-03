@@ -1,6 +1,9 @@
 using PureDOTS.Input;
 using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Components;
+#if GODGAME
+using Godgame.Runtime;
+#endif
 #if DEVTOOLS_ENABLED
 using PureDOTS.Runtime.Devtools;
 #endif
@@ -65,6 +68,8 @@ namespace PureDOTS.Systems.Input
             Entity cameraEntity = Entity.Null;
             Entity timeControlEntity = Entity.Null;
 
+#if GODGAME
+            // DivineHandTag is game-specific (Godgame) - only query if available
             using (var handQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<DivineHandTag>()))
             {
                 if (!handQuery.IsEmptyIgnoreFilter)
@@ -72,6 +77,7 @@ namespace PureDOTS.Systems.Input
                     handEntity = handQuery.GetSingletonEntity();
                 }
             }
+#endif
 
             using (var cameraQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<CameraTag>()))
             {

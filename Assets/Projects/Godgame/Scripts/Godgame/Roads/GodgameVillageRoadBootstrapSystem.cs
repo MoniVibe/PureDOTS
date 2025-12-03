@@ -1,6 +1,7 @@
 using Godgame.Presentation;
 using Godgame.Roads;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -113,7 +114,9 @@ namespace Godgame.Systems
             float length = math.max(0.1f, math.length(delta));
             float3 direction = math.normalizesafe(delta, new float3(0, 0, 1));
             float3 midpoint = (segment.Start + segment.End) * 0.5f;
-            var rotation = quaternion.LookRotationSafe(direction, math.up());
+            // Use 3D-aware rotation for road segments
+            // TODO: Use terrain surface normal for proper alignment on slopes
+            OrientationHelpers.LookRotationSafe3D(direction, OrientationHelpers.WorldUp, out quaternion rotation);
 
             return LocalTransform.FromPositionRotationScale(midpoint, rotation, length);
         }

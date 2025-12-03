@@ -87,6 +87,25 @@ Located in: `Systems/`
 
 Godgame **uses** PureDOTS framework systems and **extends** them with game-specific logic.
 
+### Cross-Game Mechanics
+
+Godgame shares several mechanics with Space4X through the **[Cross-Game Mechanics](../../../Docs/Mechanics/)** system. These mechanics have thematic variations for medieval/divine (Godgame) vs sci-fi/space (Space4X):
+
+- **Miracles & Abilities** - Divine miracles (heal, rain, blessings)
+- **Underground Spaces** - Caverns, undercities, thieves guild hideouts
+- **Floating Islands** - Temporary treasure/dungeon islands
+- **Special Days** - Harvest festivals, blood moons, eclipses
+- **Instance Portals** - Magical portals to combat/treasure/boss realms
+- **Runewords & Synergies** - Rune combinations and enchantment combos
+- **Entertainment & Performers** - Musicians, dancers, bards, jesters
+- **Wonder Construction** - Multi-stage monument building (temples, colossi)
+- **Limb & Organ Grafting** ⚠️ - Necromantic grafting, chimeric warriors (Mature)
+- **Memories & Lessons** - Cultural folklore and personal lessons providing context-triggered buffs
+- **Consciousness Transference** ⚠️ - Demonic possession, necromantic hijacking, ancestral rebirth (Mature)
+- **Death Continuity & Undead Origins** ⚠️ - Undead from actual corpses, forsaken knights, vengeful wraiths (Mature)
+
+See [Cross-Game Mechanics Documentation](../../../Docs/Mechanics/README.md) for implementation details.
+
 ### Framework Systems Used
 
 | Framework System | Godgame Usage |

@@ -1,367 +1,295 @@
-# Foundation Guidelines
+# PureDOTS Foundation Guidelines
 
-When extending this template for future projects:
+**Last Updated**: 2025-01-27
 
-1. **Keep configuration data asset-driven.** Prefer updating `PureDotsRuntimeConfig.asset` and `ResourceTypeCatalog.asset` over hardcoding values in scenes or systems. If new domains require configuration, create additional ScriptableObjects under `Assets/PureDOTS/Config` and bake them through authoring components.
-2. **Use reusable prefabs as starting points.** Duplicate prefabs in `Assets/PureDOTS/Prefabs` instead of editing them directly; keep the originals as pristine references.
-3. **Avoid scene-specific logic in core systems.** Systems within `PureDOTS.Systems` should only rely on components/buffers, not scene names or MonoBehaviours. Authoring scripts should remain thin and conversion-focused.
-4. **Validate authoring data.** Follow the pattern established in `ResourceSourceAuthoring` and `PureDotsConfigAssets` by adding `OnValidate` hooks to catch misconfigurations early.
-5. **Extend tests alongside features.** Add playmode or editmode tests to `Assets/Tests/` whenever new deterministic systems are introduced. Headless tests allow CI pipelines to catch regressions without loading sample scenes.
-6. **Document new tooling.** Update `Docs/EnvironmentSetup.md`, `Docs/SystemOrdering/SystemSchedule.md`, and `Docs/TestingGuidelines.md` whenever new workflows or scripts are added so future teams remain aligned.
+This document defines core coding patterns, architectural principles, and best practices for PureDOTS development.
 
 ---
 
-## Critical DOTS Coding Patterns (Priority Ordered)
+## System Group Policy
 
-These patterns are **mandatory** for all agents working on PureDOTS. Violations cause compile errors that block parallel work.
+### Simulation vs Presentation Separation
 
-### P0: Verify Dependencies Before Writing Code
+PureDOTS follows a strict separation between deterministic simulation and non-deterministic presentation:
 
-**Before writing any system that references a type or property:**
+**Simulation Groups** (`SimulationSystemGroup`, `FixedStepSimulationSystemGroup`, custom sim groups):
+- All deterministic game logic runs here
+- Time-based, rewind-safe systems
+- Physics, AI, gameplay mechanics
+- **Never** mutate presentation-only data
+- **Never** depend on Unity rendering/visual systems
 
-```bash
-# Check if type exists
-grep -r "struct TimeState" --include="*.cs"
-grep -r "struct RewindState" --include="*.cs"
+**Presentation Groups** (`Unity.Entities.PresentationSystemGroup`):
+- All visual/rendering systems run here
+- Frame-time, non-deterministic systems
+- Debug drawing, aggregate render summaries, view helpers
+- **Only** read from simulation data
+- **Never** mutate simulation state in ways that affect determinism
 
-# Check if property exists
-grep -r "ContributionScore" --include="*.cs" | head -5
-```
+### Presentation System Group Rules
 
-**If not found:** Create the type/property FIRST, or flag as a blocker. Never assume types exist based on design documents alone.
+**Policy**: PureDOTS presentation systems must run in `Unity.Entities.PresentationSystemGroup` (either directly or via a PureDOTS child group).
 
-### P1: Buffer Mutation - Use Indexed Access
+**Rules for Future Systems**:
 
+1. **If a system touches rendering, view models, camera glue, or other visual-only data, it belongs in the presentation group** (`Unity.Entities.PresentationSystemGroup` or a PureDOTS child group under it).
+
+2. **Simulation data and deterministic logic never live in the presentation group.**
+
+3. **Presentation systems are read-only with respect to simulation state** - they may write to presentation/metrics components but must not affect deterministic simulation.
+
+4. **PureDOTS provides a child group** (`PureDOTS.Systems.PureDotsPresentationSystemGroup`) for logical organization, but it ultimately runs under Unity's `PresentationSystemGroup`.
+
+**Example**:
 ```csharp
-// ❌ COMPILE ERROR (CS1654/CS1657)
-foreach (var item in buffer)
-    item.Value = 5;
-
-// ✅ CORRECT
-for (int i = 0; i < buffer.Length; i++)
+// PureDOTS presentation system
+[UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+public partial struct AggregateRenderSummarySystem : ISystem
 {
-    var item = buffer[i];
-    item.Value = 5;
-    buffer[i] = item;
+    // read-only sim data, write-only presentation/metrics data
+}
+
+// Or use PureDOTS child group for organization
+[UpdateInGroup(typeof(PureDOTS.Systems.PureDotsPresentationSystemGroup))]
+public partial struct RenderDensitySystem : ISystem
+{
+    // PureDotsPresentationSystemGroup is itself under Unity's PresentationSystemGroup
 }
 ```
 
-### P1: Blob Access - Always Use Ref
+### Multi-World Usage
+
+In game worlds (Godgame, Space4X), PureDOTS presentation helpers run in Unity's default world presentation group.
+
+In headless/test harness worlds:
+- Worlds may have a `PresentationSystemGroup` even without real rendering (for metrics/debug)
+- Or provide alternative setup that respects sim/presentation separation
+- PureDOTS presentation systems gracefully handle missing presentation infrastructure
+
+---
+
+## Component Size Guidelines
+
+### Hot-Path Components (< 128 bytes)
+
+Components accessed every tick in hot simulation loops should be small for cache efficiency:
+
+- **Target**: < 128 bytes per component
+- **Examples**: `VillagerNeedsHot` (16 bytes), `LocalTransform` (32 bytes), `VillagerBeliefOptimized` (6 bytes)
+- **Optimization**: Use byte/short instead of int/float where precision allows
+- **Avoid**: FixedString in hot paths (use byte index + lookup table instead)
+
+### Medium-Path Components (< 256 bytes)
+
+Components accessed frequently but not every tick:
+
+- **Target**: < 256 bytes per component
+- **Examples**: `VillagerAIState` (~64 bytes), `ResourceChunkState` (~48 bytes)
+- **Consider**: Moving to companion entity if accessed infrequently
+
+### Cold-Path Components (No strict limit)
+
+Components accessed rarely or only on events:
+
+- **No strict size limit**, but prefer companion entities for > 64 bytes
+- **Examples**: `VillagerKnowledge` (large buffers), `VillagerColdData` (companion entity)
+- **Pattern**: Use `CompanionRef` component to link main entity to cold data entity
+
+### Companion Entity Pattern
+
+For components > 64 bytes that are accessed infrequently:
 
 ```csharp
-// ❌ COMPILE ERROR (EA0001/EA0009)
-var catalog = blobRef.Value;
+// Main entity (hot)
+public struct VillagerId : IComponentData { ... }
+public struct VillagerNeedsHot : IComponentData { ... } // < 64 bytes
 
-// ✅ CORRECT
-ref var catalog = ref blobRef.Value;
-```
+// Companion entity (cold)
+public struct VillagerColdDataRef : IComponentData 
+{ 
+    public Entity CompanionEntity; 
+}
 
-### P2: Enum Storage - Explicit Casts
-
-```csharp
-// Component stores byte, code uses enum
-// ❌ COMPILE ERROR (CS0266)
-component.ModeRaw = AvoidanceMode.Flee;
-
-// ✅ CORRECT
-component.ModeRaw = (byte)AvoidanceMode.Flee;
-```
-
-### P2: Rewind Guard - Check Before Mutation
-
-```csharp
-public void OnUpdate(ref SystemState state)
-{
-    var rewind = SystemAPI.GetSingleton<RewindState>();
-    if (rewind.Mode != RewindMode.Record) return;
-    // ... safe to mutate ...
+// Companion entity has:
+public struct VillagerColdData : IComponentData 
+{ 
+    // Large data, updated on events only
 }
 ```
 
-### P3: C# Version - Unity Uses C# 9, NOT C# 12
+---
+
+## Burst Compatibility
+
+### Required for Hot Paths
+
+All systems in simulation groups must be Burst-compatible:
+
+- Use `[BurstCompile]` attribute
+- Avoid managed types (`string`, `List<T>`, etc.)
+- Use `NativeArray`, `NativeList`, `FixedString` instead
+- No `SystemAPI.GetSingletonRW<T>()` in Burst jobs (use `RefRW` in queries)
+
+### FixedString Usage
+
+- **Hot paths**: Avoid `FixedString` - use byte index + lookup table
+- **Cold paths**: `FixedString64Bytes` or `FixedString128Bytes` acceptable
+- **Blob assets**: Prefer `BlobString` for large string data
+
+### Job Safety
+
+- Use `[ReadOnly]` for components that aren't modified
+- Use `EntityCommandBuffer` for structural changes in jobs
+- Use `EntityCommandBuffer.ParallelWriter` for parallel jobs
+
+---
+
+## Determinism Requirements
+
+### Fixed-Step Simulation
+
+- All simulation runs at fixed time steps (`TimeState.FixedDeltaTime`)
+- No frame-rate dependent logic in simulation
+- Use `TimeState.CurrentTick` for time-based logic, not `Time.DeltaTime`
+
+### Rewind Safety
+
+- Systems must check `RewindState.Mode` before mutating state
+- Use `[UpdateBefore(typeof(RewindGuardSystem))]` or `[UpdateAfter(typeof(RewindGuardSystem))]` for ordering
+- Presentation systems are automatically guarded (run only during playback, not recording)
+
+### No Randomness in Simulation
+
+- Use deterministic RNG seeded from scenario seed
+- No `UnityEngine.Random` in simulation systems
+- Use `Unity.Mathematics.Random` with explicit seed
+
+---
+
+## Entity Creation Patterns
+
+### Authoring → Runtime Conversion
+
+- Use `Baker<T>` for MonoBehaviour → ECS conversion
+- Bakers run in editor, create entities at authoring time
+- Use `IBaker<T>` for custom baking logic
+
+### Runtime Spawning
+
+- Use `EntityCommandBuffer` for structural changes
+- Prefer `EntityCommandBuffer.ParallelWriter` in parallel jobs
+- Use `EntityManager` only in single-threaded contexts
+
+### Companion Entity Creation
 
 ```csharp
-// ❌ COMPILE ERROR (CS1031, CS1001) - C# 12 syntax not supported
-ref readonly var spec = ref FindSpec(...);
-private static ref readonly ProjectileSpec FindSpec(...) { }
+// In baker or spawner
+var mainEntity = entityManager.CreateEntity();
+entityManager.AddComponentData(mainEntity, new VillagerId { ... });
 
-// ✅ CORRECT - Use C# 9 patterns
-ref var spec = ref FindSpec(...);                    // For local variables
-private static ref ProjectileSpec FindSpec(...) { }  // For return types
-
-// For read-only parameters, use 'in' not 'ref readonly':
-void Process(in ProjectileSpec spec) { }  // ✅ C# 9 compatible
+var companionEntity = entityManager.CreateEntity();
+entityManager.AddComponentData(companionEntity, new VillagerColdData { ... });
+entityManager.AddComponentData(mainEntity, new VillagerColdDataRef 
+{ 
+    CompanionEntity = companionEntity 
+});
 ```
 
-### P4: Blob Parameters - Must Use `ref`, NOT `in`
+---
 
-Unity Entities Analyzer (EA0009) requires blob-stored types to use `ref` parameters:
+## Performance Optimization Patterns
+
+### Chunk Utilization
+
+- Keep archetypes small (fewer components = better chunk utilization)
+- Use `[ChunkIndexInQuery]` for chunk-level operations
+- Consider AOSOA (Array of Structs of Arrays) for extreme performance
+
+### Query Optimization
+
+- Use `WithAll<T>()`, `WithAny<T>()`, `WithNone<T>()` to narrow queries
+- Use `[ReadOnly]` for components that aren't modified
+- Avoid `SystemAPI.Query` in hot loops - cache queries in `OnCreate`
+
+### Memory Management
+
+- Use `Allocator.Temp` for temporary allocations in jobs
+- Use `Allocator.TempJob` for allocations that span multiple frames
+- Dispose native collections explicitly or use `using` statements
+
+---
+
+## Documentation Standards
+
+### XML Documentation
+
+All public APIs must have XML documentation:
 
 ```csharp
-// ❌ COMPILE ERROR (EA0009) - 'in' not allowed for blob types
-void Process(in ProjectileSpec spec) { }
-int FindArc(in ShipLayoutBlob layout) { }
-
-// ✅ CORRECT - Use 'ref' for all blob types
-void Process(ref ProjectileSpec spec) { }
-int FindArc(ref ShipLayoutBlob layout) { }
-
-// Common blob types requiring 'ref':
-// - ProjectileSpec, WeaponSpec (from catalogs)
-// - ShipLayoutBlob, Curve1D
-// - SpellEntry, LessonDefinitionBlob
-// - Any type stored in BlobAssetReference<T>
-```
-
-### P5: Buffer Elements - Must Implement IBufferElementData
-
-`DynamicBuffer<T>` can ONLY contain types implementing `IBufferElementData`:
-
-```csharp
-// ❌ COMPILE ERROR (CS0411 in generated code)
-public struct ModuleState : IComponentData { }       // Wrong interface!
-DynamicBuffer<ModuleState> modules;                  // Fails!
-
-// ✅ CORRECT
-[InternalBufferCapacity(8)]
-public struct ModuleStateElement : IBufferElementData
+/// <summary>
+/// Brief description of what this component/system does.
+/// </summary>
+/// <remarks>
+/// Additional details, usage examples, performance notes.
+/// </remarks>
+public struct MyComponent : IComponentData
 {
-    public float HP;
-    public byte Destroyed;
-}
-DynamicBuffer<ModuleStateElement> modules;           // Works!
-```
-
-**Symptom**: CS0411 errors in `*__JobEntity_*.g.cs` generated files indicate wrong buffer element type.
-
-### P6: Authoring Classes - Must Inherit MonoBehaviour
-
-Unity DOTS `Baker<TAuthoringType>` requires the authoring type to inherit from `Component`:
-
-```csharp
-// ❌ COMPILE ERROR (CS0311)
-public class MyCatalogAuthoring  // Missing inheritance!
-{
-    public class Baker : Baker<MyCatalogAuthoring> { }  // CS0311!
-}
-
-// ✅ CORRECT
-public class MyCatalogAuthoring : MonoBehaviour
-{
-    public class Baker : Baker<MyCatalogAuthoring> { }  // Works!
+    /// <summary>
+    /// Description of this field.
+    /// </summary>
+    public float Value;
 }
 ```
 
-### P7: Burst Parameters - Use `in` for Struct Parameters
+### Code Comments
 
-When Burst calls helper methods, struct parameters should use `in`:
-
-```csharp
-// ❌ BURST ERROR (BC1064) - Structs by value in external calls
-void ApplyModifiers(Entity entity, CombatStance stance) { }
-
-// ✅ CORRECT - Use 'in' modifier
-void ApplyModifiers(in Entity entity, in CombatStance stance) { }
-
-// Primitives (int, float, uint) are fine by value
-void Helper(in Entity e, int index, float value) { }  // OK
-```
-
-### P8: No Managed Code in Burst - String Operations Forbidden
-
-**CRITICAL**: `String` operations are managed and CANNOT be used in Burst-compiled code:
-
-```csharp
-// ❌ BURST ERROR (BC1016) - All of these fail in Burst:
-new FixedString64Bytes("literal");           // Managed constructor!
-fixedString.ToString();                       // Managed method!
-fixedString.Append("string");                // Managed overload!
-someValue.ToString();                        // Managed!
-
-// ✅ CORRECT - Pre-define constants outside Burst:
-private static readonly FixedString64Bytes MyConstant = "my_value";
-private static readonly FixedString32Bytes ReactorId = "reactor";
-
-// Then use in Burst:
-var name = MyConstant;                       // Just reference
-if (moduleId.Equals(ReactorId)) { }          // Compare with constant
-```
-
-### P9: Building FixedStrings in Burst
-
-When building dynamic strings in Burst, use ONLY Burst-compatible operations:
-
-```csharp
-// ✅ CORRECT - Burst-safe string building
-FixedString64Bytes id = default;
-id.Append((FixedString32Bytes)"prefix_");    // FixedString cast, not string
-id.Append(tick);                              // Numbers work directly
-id.Append('_');                               // Single chars work
-
-// ❌ WRONG - All managed:
-id.Append("string");                          // Managed!
-id = new FixedString64Bytes("literal");       // Managed constructor!
-```
-
-### P10: Unity.Mathematics Import Required
-
-When using `math.*`, `half`, `float2`, `float3`, etc.:
-
-```csharp
-// ❌ COMPILE ERROR (CS0103, CS0246)
-var min = math.min(a, b);    // 'math' does not exist
-half value = 0.5f;           // 'half' not found
-
-// ✅ CORRECT - Add import at top of file:
-using Unity.Mathematics;
-
-// Now works:
-var min = math.min(a, b);
-half value = (half)0.5f;     // Note: explicit cast for half
-```
-
-### P11: Unsafe Operations - Require Import
-
-When using `Unsafe.IsNullRef<T>()`, `Unsafe.NullRef<T>()`:
-
-```csharp
-// ❌ COMPILE ERROR (CS0103)
-if (Unsafe.IsNullRef(ref spec)) { }  // 'Unsafe' does not exist
-
-// ✅ CORRECT - Add import at top of file (OUTSIDE namespace):
-using Unity.Collections.LowLevel.Unsafe;
-
-// Now works:
-if (Unsafe.IsNullRef(ref spec)) { }
-return ref Unsafe.NullRef<ProjectileSpec>();
-```
+- Use `//` for inline explanations
+- Use `///` for XML documentation
+- Explain **why**, not **what** (code should be self-documenting)
 
 ---
 
-## Presentation / Camera Rules
+## Testing Requirements
 
-### Simulation vs Presentation
+### Unit Tests
 
-Deterministic tick + rewind-safe sim lives in PureDOTS (Entities systems, TimeState, RewindState, registries, etc.).
+- Test all public APIs
+- Use `Unity.Entities.Testing` for ECS testing
+- Test deterministic behavior with fixed seeds
 
-Cameras, HUD, debug overlays, and tools live in game projects as non-deterministic presentation code.
+### Integration Tests
 
-### Access Pattern
+- Use `ScenarioRunner` for integration tests
+- Test with realistic entity counts (100s-1000s)
+- Verify determinism with rewind/playback
 
-Presentation can read from PureDOTS state via SystemAPI/queries or dedicated read-only components.
+### Performance Tests
 
-Presentation does not write directly to the sim; it issues commands or sets high-level intent in well-defined components if needed.
-
-### Rewind & Time
-
-Camera/HUD are not rewound; they follow the current sim state but are not recorded in time-travel history.
-
-Any camera smoothing/lerping/easing uses Unity's Time.deltaTime or a presentation time source, not the fixed sim tick.
-
-### Ownership
-
-Camera rigs and HUDs belong to Space4X / Godgame repos, not to com.moni.puredots.
-
-That's enough to prevent someone sneaking "GodHandSystem" into PureDOTS later.
-
-### Shared Input Concepts
-
-For tighter cross-game feel, PureDOTS defines an input "vocabulary", not specific implementations:
-
-- **CameraMove** - 2D vector (X/Z plane movement)
-- **CameraElevate** - float (up/down elevation)
-- **CameraRotate** - 2D vector (yaw/pitch rotation)
-- **CameraZoom** - float (zoom in/out)
-
-Each game implements these using the new Input System in their own assets, mapping to whatever controls they want (WASD/QE/mouse in Space4X; drag/edge pan in Godgame).
+- Use scale test scenarios (`scale_baseline_10k.json`, etc.)
+- Measure tick time, memory usage
+- Validate against performance budgets
 
 ---
 
-## Pre-Commit Checklist
+## Versioning and Compatibility
 
-Before completing any task:
+### Breaking Changes
 
-### Core Patterns
-- [ ] **Build passes**: `dotnet build` or Unity domain reload succeeds
-- [ ] **Dependencies exist**: All referenced types/properties verified via grep
-- [ ] **No foreach mutation**: Buffer elements modified via indexed access only
-- [ ] **Blob access uses ref**: All `blobRef.Value` accessed with `ref`
-- [ ] **Explicit casts present**: Enum↔byte conversions have explicit casts
-- [ ] **Rewind guards present**: Mutating systems check `RewindState.Mode`
+- Avoid breaking changes to public APIs
+- Use `[Obsolete]` attribute with migration path
+- Document breaking changes in release notes
 
-### C# / Unity Compatibility
-- [ ] **No `ref readonly`**: Use `ref` for returns, `in` for parameters (C# 9)
-- [ ] **Blob params use `ref`**: Not `in` - EA0009 requires `ref` for blob types
-- [ ] **Buffer elements correct**: Types in `DynamicBuffer<T>` implement `IBufferElementData`
-- [ ] **Authoring inherits MonoBehaviour**: All Baker<T> authoring classes
+### API Stability
 
-### Burst Compliance
-- [ ] **No managed strings in Burst**: No `new FixedString("literal")` or `.ToString()`
-- [ ] **String constants pre-defined**: `static readonly FixedString64Bytes` outside Burst
-- [ ] **Struct params use `in`**: Helper method parameters use `in Entity`, `in MyStruct`
-- [ ] **Imports present**: `using Unity.Mathematics;`, `using Unity.Collections.LowLevel.Unsafe;`
-
-### Presentation & Time
-- [ ] **Presentation uses frame-time**: Camera & HUD code uses `Time.deltaTime`, not tick-time, unless deliberately aligned with deterministic tick (e.g., playback scrubbers)
+- Public APIs in `Runtime/` are considered stable
+- Internal APIs may change without notice
+- Use `#if UNITY_EDITOR` for editor-only code
 
 ---
 
-## Common Error Quick Reference
+## References
 
-| Error Code | Cause | Fix |
-|------------|-------|-----|
-| CS1654/CS1657 | Modifying foreach variable | Use indexed `for` loop |
-| EA0001/EA0009 | Blob not accessed by ref | Use `ref var x = ref blob.Value` |
-| CS0266 | Implicit enum↔byte | Add explicit cast `(byte)enum` |
-| CS1031/CS1001 | `ref readonly` (C# 12) | Use `ref` or `in` (C# 9) |
-| CS0411 | Buffer type inference | Check `IBufferElementData` interface |
-| CS0311 | Baker authoring type | Inherit from `MonoBehaviour` |
-| BC1064 | Struct by value in Burst | Use `in` modifier |
-| BC1016 | Managed code in Burst | Pre-define string constants |
-| CS0103 | `math`/`Unsafe` not found | Add using directive |
-| CS0246 | `half` not found | `using Unity.Mathematics;` |
-
----
-
-## Parallel Work Coordination
-
-When multiple agents work in parallel:
-
-1. **Shared types first**: Create components, enums, and structs before consumer systems
-2. **Integration verification**: After parallel merges, run full build to catch dependency mismatches
-3. **Communication**: Flag blockers immediately if dependencies are missing
-
----
-
-## Documentation Sync Requirements
-
-### Tri-Project Briefing
-
-The `TRI_PROJECT_BRIEFING.md` file exists in **4 locations** and must stay synchronized:
-
-- `C:\Users\Moni\Documents\claudeprojects\unity\TRI_PROJECT_BRIEFING.md` (Unity root)
-- `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS\TRI_PROJECT_BRIEFING.md` (canonical)
-- `C:\Users\Moni\Documents\claudeprojects\unity\Space4x\TRI_PROJECT_BRIEFING.md`
-- `C:\Users\Moni\Documents\claudeprojects\unity\Godgame\TRI_PROJECT_BRIEFING.md`
-
-**Sync command (run from unity folder):**
-```bash
-cp PureDOTS/TRI_PROJECT_BRIEFING.md . && cp PureDOTS/TRI_PROJECT_BRIEFING.md Space4x/ && cp PureDOTS/TRI_PROJECT_BRIEFING.md Godgame/
-```
-
-### When Adding New Error Patterns
-
-1. Document pattern in this file (`Docs/FoundationGuidelines.md`)
-2. Add to error table in `TRI_PROJECT_BRIEFING.md`
-3. Sync briefing to all 4 locations
-4. Update `README_BRIEFING.md` quick reference if needed
-
-### Error Ownership by Project
-
-| Project | Scope |
-|---------|-------|
-| **PureDOTS** | Core framework in `Packages/com.moni.puredots/` |
-| **Space4X** | `C:\...\unity\Space4x\` - carrier, fleet, module systems |
-| **Godgame** | `C:\...\unity\Godgame\` - villager, miracle, biome systems |
-
-Game-specific errors should be fixed by the respective game team. Cross-project patterns should be documented here and synced.
+- `TRI_PROJECT_BRIEFING.md` - Project overview and architecture
+- `Docs/PERFORMANCE_PLAN.md` - Performance optimization guide
+- `Docs/Guides/ComponentMigrationGuide.md` - Component migration patterns
+- `Docs/Guides/GameIntegrationGuide.md` - Integration guide for game projects

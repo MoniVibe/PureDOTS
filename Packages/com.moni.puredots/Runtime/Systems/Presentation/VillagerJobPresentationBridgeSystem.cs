@@ -11,7 +11,7 @@ namespace PureDOTS.Systems.Presentation
     /// All spawns via Begin/End Presentation ECB - no structural changes.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(BeginPresentationECBSystem))]
     public partial struct VillagerJobPresentationBridgeSystem : ISystem
     {

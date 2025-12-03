@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Space;
 using Unity.Collections;
 using Unity.Entities;
@@ -32,6 +33,10 @@ namespace PureDOTS.Authoring.Space
 
         [Header("Parent Carrier (optional)")]
         public GameObject parentCarrier;
+
+        [Header("LOD & Rendering")]
+        public bool enableLOD = true;
+        [Range(100f, 1000f)] public float cullDistance = 300f;
     }
 
     public sealed class HarvesterBaker : Baker<HarvesterAuthoring>
@@ -83,6 +88,32 @@ namespace PureDOTS.Authoring.Space
                     MaxStack = math.max(1f, authoring.dropMaxStack),
                     DropIntervalSeconds = math.max(0.1f, authoring.dropIntervalSeconds),
                     TimeSinceLastDrop = 0f
+                });
+            }
+
+            // Add LOD components for performance scaling
+            if (authoring.enableLOD)
+            {
+                AddComponent(entity, new RenderLODData
+                {
+                    CameraDistance = 0f,
+                    ImportanceScore = 0.5f,
+                    RecommendedLOD = 0,
+                    LastUpdateTick = 0
+                });
+
+                AddComponent(entity, new RenderCullable
+                {
+                    CullDistance = authoring.cullDistance,
+                    Priority = 128
+                });
+
+                var sampleIndex = RenderLODHelpers.CalculateSampleIndex(entity.Index, 100);
+                AddComponent(entity, new RenderSampleIndex
+                {
+                    SampleIndex = sampleIndex,
+                    SampleModulus = 100,
+                    ShouldRender = 1
                 });
             }
         }

@@ -85,7 +85,7 @@ namespace PureDOTS.Systems.Performance
                     .CalculateEntityCount();
 
 #if UNITY_EDITOR
-                Debug.Log($"[StressTest] Tick={currentTick} Villagers={villagerCount} AvgFrameTime={avgFrameTime * 1000f:F2}ms Frames={_frameCount}");
+                UnityEngine.Debug.Log($"[StressTest] Tick={currentTick} Villagers={villagerCount} AvgFrameTime={avgFrameTime * 1000f:F2}ms Frames={_frameCount}");
 #endif
 
                 _accumulatedFrameTime = 0f;

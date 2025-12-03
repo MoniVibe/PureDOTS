@@ -58,7 +58,7 @@ namespace PureDOTS.Systems
                 if (!SystemAPI.HasSingleton<VegetationSpeciesLookup>())
                 {
 #if UNITY_EDITOR
-                    Debug.LogWarning("[VegetationHealthSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
+                    UnityEngine.Debug.LogWarning("[VegetationHealthSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
 #endif
                     return;
                 }
@@ -68,7 +68,7 @@ namespace PureDOTS.Systems
                 if (!speciesLookup.CatalogBlob.IsCreated)
                 {
 #if UNITY_EDITOR
-                    Debug.LogWarning("[VegetationHealthSystem] Species catalog blob not created. Skipping update.");
+                    UnityEngine.Debug.LogWarning("[VegetationHealthSystem] Species catalog blob not created. Skipping update.");
 #endif
                     return;
                 }
@@ -87,7 +87,7 @@ namespace PureDOTS.Systems
                 state.Dependency = job.ScheduleParallel(state.Dependency);
 
 #if UNITY_EDITOR
-                Debug.Log($"[VegetationHealthSystem] Updated {_vegetationQuery.CalculateEntityCount()} vegetation entities at tick {timeState.Tick}");
+                UnityEngine.Debug.Log($"[VegetationHealthSystem] Updated {_vegetationQuery.CalculateEntityCount()} vegetation entities at tick {timeState.Tick}");
 #endif
             }
         }

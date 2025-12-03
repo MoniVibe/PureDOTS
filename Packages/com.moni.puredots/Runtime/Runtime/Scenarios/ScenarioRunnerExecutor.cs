@@ -205,26 +205,26 @@ namespace PureDOTS.Runtime.Scenarios
             switch (id)
             {
                 case "time.pause":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.Pause };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.Pause };
                     return true;
                 case "time.play":
                 case "time.resume":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.Resume };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.Resume };
                     return true;
                 case "time.step":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.StepTicks, UintParam = ParseUInt(command.Payload, 1) };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.StepTicks, UintParam = ParseUInt(command.Payload, 1) };
                     return true;
                 case "time.setspeed":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.SetSpeed, FloatParam = ParseFloat(command.Payload, 1f) };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.SetSpeed, FloatParam = ParseFloat(command.Payload, 1f) };
                     return true;
                 case "time.rewind":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.StartRewind, UintParam = ParseUInt(command.Payload, 0) };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.StartRewind, UintParam = ParseUInt(command.Payload, 0) };
                     return true;
                 case "time.stoprewind":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.StopRewind };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.StopRewind };
                     return true;
                 case "time.scrub":
-                    timeCommand = new TimeControlCommand { Type = TimeControlCommand.CommandType.ScrubTo, UintParam = ParseUInt(command.Payload, 0) };
+                    timeCommand = new TimeControlCommand { Type = TimeControlCommandType.ScrubTo, UintParam = ParseUInt(command.Payload, 0) };
                     return true;
                 default:
                     Debug.LogWarning($"ScenarioRunner: unknown command id {id}");
@@ -335,7 +335,7 @@ namespace PureDOTS.Runtime.Scenarios
 
             return DefaultWorldInitialization
                 .GetAllSystems(HeadlessFilterFlags)
-                .Where(t => t != typeof(PresentationSystemGroup))
+                .Where(t => t != typeof(Unity.Entities.PresentationSystemGroup))
                 .ToArray();
         }
 

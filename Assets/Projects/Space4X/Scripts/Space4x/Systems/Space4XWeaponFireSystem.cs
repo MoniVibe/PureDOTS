@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
 using Space4X.Runtime;
 using Unity.Burst;
@@ -256,15 +257,10 @@ namespace Space4X.Systems
         {
             var rng = new Random(math.max(1u, shotSeed));
 
-            // Create orthonormal basis for spread plane
-            var up = math.up();
-            var right = math.normalize(math.cross(up, baseDirection));
-            if (math.all(math.isnan(right)) || math.lengthsq(right) < 1e-6f)
-            {
-                // Base direction is aligned with up, use forward as alternative
-                right = math.normalize(math.cross(math.forward(), baseDirection));
-            }
-            var forward = math.normalize(math.cross(right, baseDirection));
+            // Create orthonormal basis for spread plane using 3D-aware helper
+            // This works correctly regardless of weapon orientation in 3D space
+            OrientationHelpers.ComputeOrthonormalBasis(baseDirection, OrientationHelpers.WorldUp, out var right, out var up);
+            var forward = baseDirection;
 
             // Convert spread angle to radians and create spread scale
             var spreadRad = math.radians(spreadDeg);

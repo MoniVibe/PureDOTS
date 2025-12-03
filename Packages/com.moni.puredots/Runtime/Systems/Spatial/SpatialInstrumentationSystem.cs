@@ -78,7 +78,7 @@ namespace PureDOTS.Systems.Spatial
                     break;
             }
 
-            Debug.Log("[PureDOTS][Spatial] Cells=" + cellCount +
+            UnityEngine.Debug.Log("[PureDOTS][Spatial] Cells=" + cellCount +
                       " Entries=" + gridState.TotalEntries +
                       " Version=" + gridState.Version +
                       " Tick=" + gridState.LastUpdateTick +

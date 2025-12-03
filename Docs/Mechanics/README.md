@@ -125,6 +125,134 @@ This directory contains mechanic specifications that are **game-agnostic at thei
 
 ---
 
+### 7. [Entertainment & Performance System](EntertainmentAndPerformers.md)
+
+**One-Line**: Conservatories, pavilions, and street performers employing dancers, musicians, bards, and jesters to provide morale and cultural expression.
+
+**Core Mechanic**:
+- Entertainment venues (conservatories, dance schools, pavilions, booths, bandstands)
+- Entertainer professions (dancers, musicians, bards, jesters, poets, actors)
+- Performance scheduling and audience gathering
+- Cultural variation by faction outlook/alignment
+- Employment for unemployed and undisciplined entities
+
+**Godgame Theme**: Traditional performers, village entertainment, band entertainers
+**Space4X Theme**: Fleet morale officers, holographic entertainment, zero-G performances
+
+**Status**: Concept - needs performance scheduling and cultural style systems
+
+---
+
+### 8. [Wonder Construction System](WonderConstruction.md)
+
+**One-Line**: Multi-stage monument construction requiring professional workers and manufactured resources, built gradually over months to years.
+
+**Core Mechanic**:
+- Large-scale prestige projects (temples, colossi, megastructures)
+- Professional workers (carpenters, stonemasons, carvers, sculptors)
+- Multi-stage progression (foundation → structure → decoration → completion)
+- Visible construction progress over time
+- Player cannot build directly, must rely on entity workforce
+- Massive resource investment, prestigious rewards
+
+**Godgame Theme**: Monuments, temples, wonders of the ancient world
+**Space4X Theme**: Megastructures (orbital rings, Dyson swarms, research citadels)
+
+**Status**: Concept - needs staged construction system and professional workforce mechanics
+
+---
+
+### 9. [Limb & Organ Grafting System](LimbAndOrganGrafting.md) ⚠️ **Mature Content**
+
+**One-Line**: Surgical grafting of limbs and organs from other entities to gain their physical properties, with body horror elements and social stigma.
+
+**Core Mechanic**:
+- Graft limbs/organs from other races, species, or augments
+- Inherit donor properties (orc arm = strength, elf arm = accuracy, wyrm wing = flight)
+- Surgical procedures with success/failure, rejection risk
+- Social consequences (purists view grafted as abominations)
+- Dark scenarios (necromantic grafting, celestial harvesting, limb-stealing horrors)
+- Cybernetic/bionic augmentation (Space4X)
+
+**Godgame Theme**: Mad necromancers, celestial harvesting, chimeric warriors, multi-armed assassins
+**Space4X Theme**: Cybernetic enhancement, alien organ transplants, transhumanist ascension
+
+**Content Warning**: Body horror, non-consensual modification, anatomical violence (Mature 17+)
+
+**Status**: Concept - needs surgical system, compatibility mechanics, and social reaction framework
+
+---
+
+### 10. [Memories & Lessons System](MemoriesAndLessons.md)
+
+**One-Line**: Historic events and personal experiences stored as memories that provide context-triggered buffs, with cultural preservation and memory trading mechanics.
+
+**Core Mechanic**:
+- Memory types: Cultural (shared folklore), Personal (individual experiences), Hybrid (mixed heritage)
+- Passive memories: Auto-activate learned behaviors (rolling in sand to extinguish fire)
+- Active memories: Focus-activated buffs with context triggers (morale boosts in battle)
+- Focus cost based on loyalty and preservation bonuses
+- Memory preservation through monuments, statues, newspapers, and oral tradition
+- Memory trading during crises to find optimal buffs with morale boost
+- Memory fading over time (Fresh → Fading → Dim → Forgotten)
+- Memory erasure as cultural warfare (destroying statues, burning newspapers)
+- Aggregate memory banks for villages and bands
+
+**Godgame Theme**: Village elders teaching fire safety, dwarf slayer memories, human last stands
+**Space4X Theme**: Fleet tactical memories, combat protocols, historical battle data
+
+**Status**: Concept - needs memory activation system, preservation mechanics, and aggregate memory framework
+
+---
+
+### 11. [Consciousness Transference & Psychic Inheritance](ConsciousnessTransference.md) ⚠️ **Mature Content**
+
+**One-Line**: Transfer consciousness, memories, and identity between entities through psychic inheritance, magical possession, or cybernetic override.
+
+**Core Mechanic**:
+- Psychic inheritance (natural racial ability) or tech-gated neural override
+- Willful or forced transfer of consciousness, memories, cultures, ethics, behaviors
+- Memory wipes, overrides, and behavioral molding
+- Temporary possession can be resisted and shaken off with strong will
+- Eventually takes permanent root over time (staged integration)
+- Social identity transfer (titles, renown, reputation migrate with consciousness)
+- Option to lay low and hide the transfer or craft new identity
+- Demonic/otherworldly exploitation (portal invasions, collective consciousness infestations)
+- Collective hive mind spread mechanics
+
+**Godgame Theme**: Demonic possession, necromantic hijacking, ancestral rebirth, soul transfer
+**Space4X Theme**: Neural override, consciousness upload, hive mind assimilation, corporate espionage
+
+**Content Warning**: Mind control, identity erasure, non-consensual modification (Mature 17+)
+
+**Status**: Concept - needs consciousness data model, transfer mechanics, resistance system, and collective spread simulation
+
+---
+
+### 12. [Death Continuity & Undead Origins](DeathContinuityAndUndeadOrigins.md) ⚠️ **Mature Content**
+
+**One-Line**: Every undead entity and spirit originates from actual entities that lived and died in the simulation, ensuring narrative continuity and recognition.
+
+**Core Mechanic**:
+- Death registry tracks all entity deaths with corpse and spirit persistence
+- Undead creation requires actual corpse materials (no conjuring from nothing)
+- Every skeleton, zombie, patchwork abomination traced to specific deceased entities
+- Spirits manifest from entities who died with unfinished business
+- Recognition system: living entities recognize reanimated loved ones
+- Forsaken undead: entities who bound soul to corpse, retain consciousness
+- Spirit moving on: resolve unfinished business to release spirits
+- Corpse harvesting: necromancers gather body parts from actual deaths
+- Emotional responses: horror, grief, anger at seeing undead loved ones
+
+**Godgame Theme**: Necromancy desecration, vengeful wraiths, forsaken knights, consecrated burials
+**Space4X Theme**: Cyborg reanimation, ghost signals, digital echoes, patchwork combatants
+
+**Content Warning**: Death, necromancy, body horror, grief, desecration (Mature 17+)
+
+**Status**: Concept - needs death registry system, corpse persistence, source traceability, and recognition mechanics
+
+---
+
 ## Common Patterns Across Mechanics
 
 ### 1. **Thematic Duality**
@@ -196,6 +324,27 @@ These mechanics may require **new framework capabilities**:
    - Pattern matching (runeword sequences)
    - Synergy detection (enchantment pairs)
    - Set bonus tracking
+
+6. **Memory & Preservation System** (Memories & Lessons)
+   - Memory storage with cultural restrictions
+   - Context-triggered activation
+   - Preservation through monuments/oral tradition
+   - Memory fading and renewal mechanics
+   - Aggregate memory banks
+
+7. **Consciousness Transfer System** (Consciousness Transference)
+   - Consciousness data model (personality, memories, ethics)
+   - Identity transfer mechanics (social stats migration)
+   - Resistance and willpower checks
+   - Staged integration (reversible → permanent)
+   - Epidemic mechanics (collective consciousness spread)
+
+8. **Death Registry & Corpse Persistence** (Death Continuity & Undead Origins)
+   - Death record tracking (cause, location, time, relationships)
+   - Corpse entity system with decay mechanics
+   - Source traceability (link undead to original deceased entities)
+   - Recognition system (entities identify reanimated loved ones)
+   - Spirit manifestation (unfinished business tracking)
 
 ### Extension Request Workflow
 

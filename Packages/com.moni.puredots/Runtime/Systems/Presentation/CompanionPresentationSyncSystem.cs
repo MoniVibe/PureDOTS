@@ -10,7 +10,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Copies authoritative transforms into presentation companions so bridge visuals follow targets.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(PresentationBridgePlaybackSystem))]
     public partial struct CompanionPresentationSyncSystem : ISystem
     {

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -30,6 +31,7 @@ namespace PureDOTS.Systems
                 .Build();
 
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<VegetationSpeciesLookup>();
             state.RequireForUpdate(_vegetationQuery);
@@ -41,13 +43,12 @@ namespace PureDOTS.Systems
             using (s_UpdateVegetationGrowthMarker.Auto())
             {
                 var timeState = SystemAPI.GetSingleton<TimeState>();
-                if (timeState.IsPaused)
-                {
-                    return;
-                }
-
                 var rewindState = SystemAPI.GetSingleton<RewindState>();
-                if (rewindState.Mode != RewindMode.Record)
+                var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+                
+                // Use TimeHelpers to check if we should update (handles pause, rewind, stasis)
+                var defaultMembership = default(TimeBubbleMembership);
+                if (!TimeHelpers.ShouldUpdate(timeState, rewindState, defaultMembership))
                 {
                     return;
                 }
@@ -73,13 +74,16 @@ namespace PureDOTS.Systems
 
                 var job = new UpdateVegetationGrowthJob
                 {
-                    DeltaTime = timeState.FixedDeltaTime,
+                    DeltaTime = TimeHelpers.GetGlobalDelta(tickTimeState, timeState),
                     CurrentTick = timeState.Tick,
                     SpeciesCatalogBlob = speciesLookup.CatalogBlob,
                     MatureTagLookup = state.GetComponentLookup<VegetationMatureTag>(false),
                     ReadyToHarvestTagLookup = state.GetComponentLookup<VegetationReadyToHarvestTag>(false),
                     DyingTagLookup = state.GetComponentLookup<VegetationDyingTag>(false),
-                    DeadTagLookup = state.GetComponentLookup<VegetationDeadTag>(false)
+                    DeadTagLookup = state.GetComponentLookup<VegetationDeadTag>(false),
+                    TickTimeState = tickTimeState,
+                    TimeState = timeState,
+                    BubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(true)
                 };
 
                 state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -99,6 +103,9 @@ namespace PureDOTS.Systems
             [NativeDisableParallelForRestriction] public ComponentLookup<VegetationReadyToHarvestTag> ReadyToHarvestTagLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<VegetationDyingTag> DyingTagLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<VegetationDeadTag> DeadTagLookup;
+            public TickTimeState TickTimeState;
+            public TimeState TimeState;
+            [ReadOnly] public ComponentLookup<TimeBubbleMembership> BubbleMembershipLookup;
 
             public void Execute(
                 ref VegetationLifecycle lifecycle,
@@ -113,11 +120,25 @@ namespace PureDOTS.Systems
                     return; // Invalid species index
                 }
                 
+                // Get bubble membership for this entity (if any)
+                var membership = BubbleMembershipLookup.HasComponent(entity)
+                    ? BubbleMembershipLookup[entity]
+                    : default(TimeBubbleMembership);
+                
+                // Use TimeHelpers to get effective delta time (handles bubbles, pause, etc.)
+                var effectiveDelta = TimeHelpers.GetEffectiveDelta(TickTimeState, TimeState, membership);
+                
+                // Skip if entity is in stasis or paused
+                if (effectiveDelta <= 0f)
+                {
+                    return;
+                }
+                
                 ref var speciesData = ref SpeciesCatalogBlob.Value.Species[speciesIndex.Value];
                 
-                // Advance timers
-                lifecycle.StageTimer += DeltaTime;
-                lifecycle.TotalAge += DeltaTime;
+                // Advance timers using effective delta
+                lifecycle.StageTimer += effectiveDelta;
+                lifecycle.TotalAge += effectiveDelta;
 
                 var previousStage = lifecycle.CurrentStage;
                 var stageChanged = false;
@@ -235,19 +256,19 @@ namespace PureDOTS.Systems
         [BurstDiscard]
         private static void LogMissingSpeciesLookup()
         {
-            Debug.LogWarning("[VegetationGrowthSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
+            UnityEngine.Debug.LogWarning("[VegetationGrowthSystem] VegetationSpeciesLookup singleton not found. Skipping update.");
         }
 
         [BurstDiscard]
         private static void LogCatalogNotCreated()
         {
-            Debug.LogWarning("[VegetationGrowthSystem] Species catalog blob not created. Skipping update.");
+            UnityEngine.Debug.LogWarning("[VegetationGrowthSystem] Species catalog blob not created. Skipping update.");
         }
 
         [BurstDiscard]
         private static void LogUpdateSummary(EntityQuery query, uint tick)
         {
-            Debug.Log($"[VegetationGrowthSystem] Updated {query.CalculateEntityCount()} vegetation entities at tick {tick}");
+            UnityEngine.Debug.Log($"[VegetationGrowthSystem] Updated {query.CalculateEntityCount()} vegetation entities at tick {tick}");
         }
 #endif
     }
