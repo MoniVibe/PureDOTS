@@ -85,7 +85,7 @@ namespace PureDOTS.Systems.Interrupts
                 // If found valid interrupt, convert to intent
                 if (bestIndex >= 0)
                 {
-                    var newIntent = ConvertInterruptToIntent(bestInterrupt, timeState.Tick);
+                    ConvertInterruptToIntent(bestInterrupt, timeState.Tick, out var newIntent);
 
                     // Update intent
                     intent.ValueRW = newIntent;
@@ -111,9 +111,9 @@ namespace PureDOTS.Systems.Interrupts
         /// Phase 2: More sophisticated intent generation based on context.
         /// </summary>
         [BurstCompile]
-        private static EntityIntent ConvertInterruptToIntent(Interrupt interrupt, uint currentTick)
+        private static void ConvertInterruptToIntent(in Interrupt interrupt, uint currentTick, out EntityIntent intent)
         {
-            var intent = new EntityIntent
+            intent = new EntityIntent
             {
                 TriggeringInterrupt = interrupt.Type,
                 Priority = interrupt.Priority,
@@ -143,8 +143,6 @@ namespace PureDOTS.Systems.Interrupts
                 InterruptType.AbilityReady => IntentMode.UseAbility,
                 _ => IntentMode.Idle
             };
-
-            return intent;
         }
 
         /// <summary>

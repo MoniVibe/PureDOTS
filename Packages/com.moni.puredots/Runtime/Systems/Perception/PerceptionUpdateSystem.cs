@@ -2,6 +2,7 @@ using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Spatial;
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -306,9 +307,9 @@ namespace PureDOTS.Systems.Perception
         [BurstCompile]
         private static float EvaluateChannelDetection(
             PerceptionChannel channel,
-            DetectableData target,
-            float3 sensorForward,
-            float3 direction,
+            in DetectableData target,
+            in float3 sensorForward,
+            in float3 direction,
             float distance,
             float maxRange,
             float fovCos,
@@ -353,6 +354,7 @@ namespace PureDOTS.Systems.Perception
             public SensorSignature Signature;
             public byte ThreatLevel;
             public DetectableCategory Category;
+            [MarshalAs(UnmanagedType.U1)]
             public bool HasSignature;
         }
     }

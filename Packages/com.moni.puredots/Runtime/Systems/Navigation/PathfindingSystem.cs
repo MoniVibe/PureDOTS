@@ -64,8 +64,8 @@ namespace PureDOTS.Systems.Navigation
                 }
 
                 // Find nearest nodes to start and goal
-                var startNode = FindNearestNode(nodes, request.ValueRO.StartPosition);
-                var goalNode = FindNearestNode(nodes, request.ValueRO.GoalPosition);
+                var startNode = FindNearestNode(ref nodes, request.ValueRO.StartPosition);
+                var goalNode = FindNearestNode(ref nodes, request.ValueRO.GoalPosition);
 
                 if (startNode < 0 || goalNode < 0)
                 {
@@ -75,13 +75,14 @@ namespace PureDOTS.Systems.Navigation
                 }
 
                 // Compute path using A*
-                var path = ComputePath(
-                    nodes,
-                    edges,
+                ComputePath(
+                    ref nodes,
+                    ref edges,
                     startNode,
                     goalNode,
                     request.ValueRO.LocomotionMode,
-                    Allocator.Temp);
+                    Allocator.Temp,
+                    out var path);
 
                 // Update path result
                 pathResult.Clear();
@@ -123,7 +124,7 @@ namespace PureDOTS.Systems.Navigation
         /// Finds nearest node to a position.
         /// </summary>
         [BurstCompile]
-        private static int FindNearestNode(DynamicBuffer<NavNode> nodes, float3 position)
+        private static int FindNearestNode(ref DynamicBuffer<NavNode> nodes, in float3 position)
         {
             if (nodes.Length == 0)
             {
@@ -152,20 +153,21 @@ namespace PureDOTS.Systems.Navigation
         /// Phase 2: Optimizations, hierarchical pathfinding, etc.
         /// </summary>
         [BurstCompile]
-        private static NativeList<int> ComputePath(
-            DynamicBuffer<NavNode> nodes,
-            DynamicBuffer<NavEdge> edges,
+        private static void ComputePath(
+            ref DynamicBuffer<NavNode> nodes,
+            ref DynamicBuffer<NavEdge> edges,
             int startNode,
             int goalNode,
             LocomotionMode locomotionMode,
-            Allocator allocator)
+            Allocator allocator,
+            out NativeList<int> path)
         {
-            var path = new NativeList<int>(32, allocator);
+            path = new NativeList<int>(32, allocator);
 
             if (startNode == goalNode)
             {
                 path.Add(startNode);
-                return path;
+                return;
             }
 
             // A* data structures
@@ -295,15 +297,13 @@ namespace PureDOTS.Systems.Navigation
             gScore.Dispose();
             fScore.Dispose();
             openSet.Dispose();
-
-            return path;
         }
 
         /// <summary>
         /// Heuristic function for A* (Euclidean distance).
         /// </summary>
         [BurstCompile]
-        private static float Heuristic(float3 a, float3 b)
+        private static float Heuristic(in float3 a, in float3 b)
         {
             return math.length(a - b);
         }
