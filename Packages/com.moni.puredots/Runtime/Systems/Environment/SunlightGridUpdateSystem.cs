@@ -128,7 +128,7 @@ namespace PureDOTS.Systems.Environment
             SystemAPI.SetComponent(sunlightEntity, sunlightGrid);
         }
 
-        private static void CalculateSunlight(in ClimateState climate, out float3 direction, out float direct, out float ambient, out float scalar)
+        private static void CalculateSunlight(in PureDOTS.Environment.ClimateState climate, out float3 direction, out float direct, out float ambient, out float scalar)
         {
             var hours = math.clamp(climate.TimeOfDayHours, 0f, 24f);
             var dayProgress = hours / 24f;

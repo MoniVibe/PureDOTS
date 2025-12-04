@@ -275,7 +275,7 @@ namespace PureDOTS.Systems.Environment
             return grid.SampleNearest(worldPosition, defaultValue);
         }
 
-        public bool TryGetClimateState(out ClimateState climateState)
+        public bool TryGetClimateState(out PureDOTS.Environment.ClimateState climateState)
         {
             if (!TryGetSingletonEntity(_climateQuery, out var climateEntity))
             {
@@ -287,7 +287,7 @@ namespace PureDOTS.Systems.Environment
             return true;
         }
 
-        public ClimateState GetClimateStateOrDefault()
+        public PureDOTS.Environment.ClimateState GetClimateStateOrDefault()
         {
             return TryGetClimateState(out var climate) ? climate : default;
         }

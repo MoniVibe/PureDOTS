@@ -35,15 +35,9 @@ namespace PureDOTS.Systems
                 PresentationBindingConfigVars.BindingSample.ValueChanged -= OnConfigChanged;
             }
 
-            foreach (var bindingRef in SystemAPI.Query<RefRW<PresentationBindingReference>>())
-            {
-                ref var blob = ref bindingRef.ValueRW.Binding;
-                if (blob.IsCreated)
-                {
-                    blob.Dispose();
-                    blob = default;
-                }
-            }
+            // Don't dispose blob assets in OnDestroy - they're owned by components and will be cleaned up by EntityManager
+            // Disposing them here can cause "already disposed" errors during world shutdown
+            // The EntityManager will handle cleanup of component data including blob references
         }
 
         public void OnUpdate(ref SystemState state)

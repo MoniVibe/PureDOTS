@@ -147,7 +147,7 @@ namespace PureDOTS.Systems.Environment
             _configEntity = Entity.Null;
         }
 
-        private static ClimateState CreateDefaultClimateState()
+        private static PureDOTS.Environment.ClimateState CreateDefaultClimateState()
         {
             return new ClimateState
             {

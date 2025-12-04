@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Miracles;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -63,6 +64,7 @@ namespace PureDOTS.Runtime.Components
 
     /// <summary>
     /// Runtime state of an active miracle instance.
+    /// Legacy structure - kept for backward compatibility.
     /// </summary>
     public struct MiracleRuntimeState : IComponentData
     {
@@ -73,6 +75,22 @@ namespace PureDOTS.Runtime.Components
         public float CooldownSecondsRemaining;
         public uint LastCastTick;
         public byte AlignmentDelta;
+    }
+    
+    /// <summary>
+    /// New runtime state for per-player/hand miracle tracking.
+    /// Replaces/extends MiracleRuntimeState with catalog-based system.
+    /// </summary>
+    public struct MiracleRuntimeStateNew : IComponentData
+    {
+        /// <summary>Currently selected miracle ID.</summary>
+        public MiracleId SelectedId;
+        
+        /// <summary>Whether a miracle is currently being activated (0/1).</summary>
+        public byte IsActivating;
+        
+        /// <summary>Whether current activation is sustained mode (0/1).</summary>
+        public byte IsSustained;
     }
 
     /// <summary>
@@ -98,6 +116,7 @@ namespace PureDOTS.Runtime.Components
 
     /// <summary>
     /// Effect component applied by a miracle to a target entity.
+    /// Legacy structure - kept for backward compatibility.
     /// </summary>
     public struct MiracleEffect : IComponentData
     {
@@ -105,6 +124,28 @@ namespace PureDOTS.Runtime.Components
         public float Magnitude;
         public float Duration;
         public float RemainingDuration;
+    }
+    
+    /// <summary>
+    /// New generic miracle effect component for catalog-based system.
+    /// Applied to effect entities spawned by miracles.
+    /// </summary>
+    public struct MiracleEffectNew : IComponentData
+    {
+        /// <summary>Miracle ID that created this effect.</summary>
+        public MiracleId Id;
+        
+        /// <summary>Remaining lifetime in seconds.</summary>
+        public float RemainingSeconds;
+        
+        /// <summary>Intensity multiplier (0-1 or more).</summary>
+        public float Intensity;
+        
+        /// <summary>Origin position of the effect.</summary>
+        public float3 Origin;
+        
+        /// <summary>Radius of the effect.</summary>
+        public float Radius;
     }
 
     /// <summary>
@@ -173,6 +214,46 @@ namespace PureDOTS.Runtime.Components
         public Entity ProfileEntity;
         public MiracleType Type;
         public float3 Offset;
+    }
+    
+    /// <summary>
+    /// Per-miracle cooldown state for a given player/hand.
+    /// Tracks cooldown timers and available charges.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct MiracleCooldown : IBufferElementData
+    {
+        /// <summary>Miracle ID.</summary>
+        public MiracleId Id;
+        
+        /// <summary>Remaining cooldown time in seconds.</summary>
+        public float RemainingSeconds;
+        
+        /// <summary>Available charges (1 for MVP, future multi-charge miracles).</summary>
+        public byte ChargesAvailable;
+    }
+    
+    /// <summary>
+    /// Activation request from UI/gesture systems into ECS.
+    /// Consumed by MiracleActivationSystem.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct MiracleActivationRequest : IBufferElementData
+    {
+        /// <summary>Miracle ID to activate.</summary>
+        public MiracleId Id;
+        
+        /// <summary>Target point in world space.</summary>
+        public float3 TargetPoint;
+        
+        /// <summary>Target radius around the point.</summary>
+        public float TargetRadius;
+        
+        /// <summary>Dispensation mode (Sustained vs Throw).</summary>
+        public byte DispenseMode;
+        
+        /// <summary>Player/hand index (which god/hand).</summary>
+        public byte PlayerIndex;
     }
 }
 

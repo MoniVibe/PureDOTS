@@ -201,7 +201,7 @@ namespace PureDOTS.Systems.Aggregates
 
                 // Create the guild
                 var guildEntity = ecb.CreateEntity();
-                ecb.AddComponent(guildEntity, new Guild
+                ecb.AddComponent(guildEntity, new PureDOTS.Runtime.Aggregates.Guild
                 {
                     Type = guildType,
                     GuildName = GenerateGuildName(guildType, _guildNameHeroes, _guildNameMerchants, _guildNameScholars, 
@@ -427,49 +427,49 @@ namespace PureDOTS.Systems.Aggregates
             return score;
         }
 
-        private static Guild.GuildType DetermineGuildTypeFromMemberAlignment(VillagerAlignment alignment)
+        private static PureDOTS.Runtime.Aggregates.Guild.GuildType DetermineGuildTypeFromMemberAlignment(VillagerAlignment alignment)
         {
             // Determine guild type based on aggregate member alignment
             if (alignment.MoralAxis > 50 && alignment.OrderAxis > 30)
             {
-                return Guild.GuildType.Heroes;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Heroes;
             }
             if (alignment.MoralAxis > 50 && alignment.PurityAxis > 50)
             {
-                return Guild.GuildType.HolyOrder;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.HolyOrder;
             }
             if (alignment.MoralAxis < -50 && alignment.OrderAxis < -30)
             {
-                return Guild.GuildType.Assassins;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Assassins;
             }
             if (alignment.MoralAxis < -30 && alignment.OrderAxis < -50)
             {
-                return Guild.GuildType.Rogues;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Rogues;
             }
             if (alignment.OrderAxis > 50 && math.abs(alignment.MoralAxis) < 30)
             {
-                return Guild.GuildType.Scholars;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Scholars;
             }
             if (alignment.OrderAxis < -50 && alignment.MoralAxis > 30)
             {
-                return Guild.GuildType.Rebels;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Rebels;
             }
             if (alignment.PurityAxis > 40)
             {
-                return Guild.GuildType.Mystics;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Mystics;
             }
             if (alignment.PurityAxis < -40)
             {
-                return Guild.GuildType.Mages;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Mages;
             }
 
             // Default based on order axis
             if (alignment.OrderAxis > 0)
             {
-                return Guild.GuildType.Artisans;
+                return PureDOTS.Runtime.Aggregates.Guild.GuildType.Artisans;
             }
 
-            return Guild.GuildType.Merchants;
+            return PureDOTS.Runtime.Aggregates.Guild.GuildType.Merchants;
         }
 
         private static GuildLeadership.GovernanceType DetermineGovernanceFromAlignment(VillagerAlignment alignment)
@@ -491,7 +491,7 @@ namespace PureDOTS.Systems.Aggregates
         }
 
         private static FixedString64Bytes GenerateGuildName(
-            Guild.GuildType type,
+            PureDOTS.Runtime.Aggregates.Guild.GuildType type,
             in FixedString64Bytes nameHeroes,
             in FixedString64Bytes nameMerchants,
             in FixedString64Bytes nameScholars,
@@ -507,17 +507,17 @@ namespace PureDOTS.Systems.Aggregates
         {
             return type switch
             {
-                Guild.GuildType.Heroes => nameHeroes,
-                Guild.GuildType.Merchants => nameMerchants,
-                Guild.GuildType.Scholars => nameScholars,
-                Guild.GuildType.Assassins => nameAssassins,
-                Guild.GuildType.Artisans => nameArtisans,
-                Guild.GuildType.Farmers => nameFarmers,
-                Guild.GuildType.Mystics => nameMystics,
-                Guild.GuildType.Mages => nameMages,
-                Guild.GuildType.HolyOrder => nameHolyOrder,
-                Guild.GuildType.Rogues => nameRogues,
-                Guild.GuildType.Rebels => nameRebels,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Heroes => nameHeroes,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Merchants => nameMerchants,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Scholars => nameScholars,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Assassins => nameAssassins,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Artisans => nameArtisans,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Farmers => nameFarmers,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Mystics => nameMystics,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Mages => nameMages,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.HolyOrder => nameHolyOrder,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Rogues => nameRogues,
+                PureDOTS.Runtime.Aggregates.Guild.GuildType.Rebels => nameRebels,
                 _ => nameDefault
             };
         }
@@ -604,7 +604,7 @@ namespace PureDOTS.Systems.Aggregates
 
             // Process guilds that need members
             foreach (var (guild, leadership, members, guildEntity) in
-                SystemAPI.Query<RefRW<Guild>, RefRW<GuildLeadership>, DynamicBuffer<GuildMember>>()
+                SystemAPI.Query<RefRW<PureDOTS.Runtime.Aggregates.Guild>, RefRW<GuildLeadership>, DynamicBuffer<GuildMember>>()
                     .WithEntityAccess())
             {
                 // Skip if guild has enough members
@@ -628,7 +628,7 @@ namespace PureDOTS.Systems.Aggregates
                         .WithEntityAccess())
                 {
                     // Check if villager is willing to join (based on alignment match)
-                    if (villagerMood.ValueRO.Alignment < 40f && guild.ValueRO.Type == Guild.GuildType.Heroes)
+                    if (villagerMood.ValueRO.Alignment < 40f && guild.ValueRO.Type == PureDOTS.Runtime.Aggregates.Guild.GuildType.Heroes)
                     {
                         continue;
                     }

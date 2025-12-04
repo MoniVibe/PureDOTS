@@ -98,7 +98,7 @@ namespace PureDOTS.Systems.Environment
             SystemAPI.SetComponent(climateEntity, climate);
         }
 
-        static void AdvanceTimeOfDay(ref ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
+        static void AdvanceTimeOfDay(ref PureDOTS.Environment.ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
         {
             var hoursPerSecond = math.max(0.001f, profile.HoursPerSecond);
             var hoursDelta = deltaSeconds * hoursPerSecond;
@@ -107,7 +107,7 @@ namespace PureDOTS.Systems.Environment
             climate.DayNightProgress = math.saturate(nextHours / 24f);
         }
 
-        static void AdvanceSeason(ref ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
+        static void AdvanceSeason(ref PureDOTS.Environment.ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
         {
             var daysPerSeason = math.max(1f, profile.DaysPerSeason);
             var daysDelta = deltaSeconds * profile.HoursPerSecond / 24f;
@@ -126,7 +126,7 @@ namespace PureDOTS.Systems.Environment
             climate.SeasonProgress = math.clamp(newProgress, 0f, 0.999f);
         }
 
-        static void UpdateTemperature(ref ClimateState climate, in ClimateProfileData profile)
+        static void UpdateTemperature(ref PureDOTS.Environment.ClimateState climate, in ClimateProfileData profile)
         {
             var currentSeasonIndex = (int)climate.CurrentSeason;
             var nextSeasonIndex = (currentSeasonIndex + 1) % 4;
@@ -151,7 +151,7 @@ namespace PureDOTS.Systems.Environment
             climate.GlobalTemperature = baseTemperature + dayNightOffset;
         }
 
-        static void UpdateWind(ref ClimateState climate, in ClimateProfileData profile, uint currentTick, float simulationSeconds)
+        static void UpdateWind(ref PureDOTS.Environment.ClimateState climate, in ClimateProfileData profile, uint currentTick, float simulationSeconds)
         {
             var amplitude = math.clamp(profile.WindVariationAmplitude, 0f, 1f);
             var frequency = math.max(0f, profile.WindVariationFrequency);
@@ -181,7 +181,7 @@ namespace PureDOTS.Systems.Environment
             climate.GlobalWindStrength = math.max(0f, strength);
         }
 
-        static void UpdateMoistureAndClouds(ref ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
+        static void UpdateMoistureAndClouds(ref PureDOTS.Environment.ClimateState climate, in ClimateProfileData profile, float deltaSeconds)
         {
             var seasonIndex = (int)climate.CurrentSeason;
             var seasonProgress = climate.SeasonProgress;

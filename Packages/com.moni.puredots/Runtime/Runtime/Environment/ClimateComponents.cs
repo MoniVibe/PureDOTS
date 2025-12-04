@@ -1,192 +1,92 @@
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Environment
 {
     /// <summary>
-    /// Consolidated climate and environment components for shared use by both Godgame and Space4X.
-    /// These components provide the foundation for climate simulation, moisture tracking, and weather systems.
-    /// </summary>
-    
-    /// <summary>
-    /// Global climate state singleton used to coordinate seasonal and atmospheric state.
-    /// Temperature, humidity, wind, and seasonal progression.
+    /// Global climate state for a world/planet.
+    /// Singleton component tracking temperature, humidity, and optional seasons.
     /// </summary>
     public struct ClimateState : IComponentData
     {
-        /// <summary>
-        /// Current season (Spring, Summer, Autumn, Winter).
-        /// </summary>
-        public Season CurrentSeason;
+        /// <summary>Current temperature (abstract units or °C).</summary>
+        public float Temperature;
 
-        /// <summary>
-        /// Progress through current season (0-1).
-        /// </summary>
-        public float SeasonProgress;
+        /// <summary>Current humidity (0-1, where 1 = 100%).</summary>
+        public float Humidity;
 
-        /// <summary>
-        /// Time of day in hours (0-24).
-        /// </summary>
-        public float TimeOfDayHours;
+        /// <summary>Current season index (0=Spring, 1=Summer, 2=Fall, 3=Winter).</summary>
+        public byte SeasonIndex;
 
-        /// <summary>
-        /// Day-night cycle progress (0-1).
-        /// </summary>
-        public float DayNightProgress;
+        /// <summary>Current tick within the current season.</summary>
+        public uint SeasonTick;
 
-        /// <summary>
-        /// Global temperature in degrees Celsius.
-        /// </summary>
-        public float GlobalTemperature;
+        /// <summary>Length of each season in ticks.</summary>
+        public uint SeasonLength;
 
-        /// <summary>
-        /// Global wind direction (normalized XZ vector).
-        /// </summary>
-        public float2 GlobalWindDirection;
-
-        /// <summary>
-        /// Global wind strength in m/s.
-        /// </summary>
-        public float GlobalWindStrength;
-
-        /// <summary>
-        /// Atmospheric moisture/humidity (0-100).
-        /// </summary>
-        public float AtmosphericMoisture;
-
-        /// <summary>
-        /// Cloud cover percentage (0-100).
-        /// </summary>
-        public float CloudCover;
-
-        /// <summary>
-        /// Tick when climate state was last updated.
-        /// </summary>
+        /// <summary>Last update tick for climate oscillation.</summary>
         public uint LastUpdateTick;
     }
 
     /// <summary>
-    /// Seasons for climate simulation.
+    /// Configuration for climate oscillation and seasonal behavior.
+    /// Singleton component defining how climate changes over time.
     /// </summary>
-    public enum Season : byte
+    public struct ClimateConfig : IComponentData
     {
-        Spring = 0,
-        Summer = 1,
-        Autumn = 2,
-        Winter = 3
+        /// <summary>Base temperature (center of oscillation).</summary>
+        public float BaseTemperature;
+
+        /// <summary>Base humidity (center of oscillation).</summary>
+        public float BaseHumidity;
+
+        /// <summary>Temperature oscillation amplitude.</summary>
+        public float TemperatureOscillation;
+
+        /// <summary>Humidity oscillation amplitude.</summary>
+        public float HumidityOscillation;
+
+        /// <summary>Temperature oscillation period in ticks.</summary>
+        public uint TemperaturePeriod;
+
+        /// <summary>Humidity oscillation period in ticks.</summary>
+        public uint HumidityPeriod;
+
+        /// <summary>Length of each season in ticks (if seasons enabled).</summary>
+        public uint SeasonLengthTicks;
+
+        /// <summary>Whether seasons are enabled (0 = disabled, 1 = enabled).</summary>
+        public byte SeasonsEnabled;
+
+        /// <summary>
+        /// Default configuration with sensible values.
+        /// </summary>
+        public static ClimateConfig Default => new ClimateConfig
+        {
+            BaseTemperature = 20f, // 20°C (temperate)
+            BaseHumidity = 0.5f, // 50% humidity
+            TemperatureOscillation = 10f, // ±10°C variation
+            HumidityOscillation = 0.3f, // ±30% variation
+            TemperaturePeriod = 1000u, // Oscillation period
+            HumidityPeriod = 800u,
+            SeasonLengthTicks = 250u, // 4 seasons per 1000 ticks
+            SeasonsEnabled = 0 // Disabled by default
+        };
     }
 
     /// <summary>
-    /// Moisture grid singleton providing 2D moisture field across terrain.
-    /// Used for biome resolution, vegetation growth, and environmental effects.
+    /// Per-cell climate override (for Tier-2 spatial climate).
+    /// Used when climate varies spatially (e.g., deserts vs forests).
     /// </summary>
-    public struct MoistureGrid : IComponentData
+    public struct ClimateCell
     {
-        /// <summary>
-        /// Grid width in cells.
-        /// </summary>
-        public int GridWidth;
+        /// <summary>Temperature override (additive to base).</summary>
+        public float TemperatureOverride;
 
-        /// <summary>
-        /// Grid height in cells.
-        /// </summary>
-        public int GridHeight;
+        /// <summary>Humidity override (additive to base).</summary>
+        public float HumidityOverride;
 
-        /// <summary>
-        /// Cell size in meters.
-        /// </summary>
-        public float CellSize;
-
-        /// <summary>
-        /// Blob asset reference containing moisture cell data.
-        /// </summary>
-        public BlobAssetReference<MoistureCellBlob> Cells;
-
-        /// <summary>
-        /// Diffusion coefficient for moisture spread between cells.
-        /// </summary>
-        public float DiffusionCoefficient;
-
-        /// <summary>
-        /// Seepage coefficient for moisture flow.
-        /// </summary>
-        public float SeepageCoefficient;
-
-        /// <summary>
-        /// Tick when moisture grid was last updated.
-        /// </summary>
-        public uint LastUpdateTick;
-    }
-
-    /// <summary>
-    /// Blob structure for moisture grid cell data.
-    /// </summary>
-    public struct MoistureCellBlob
-    {
-        /// <summary>
-        /// Moisture values per cell (0-100).
-        /// </summary>
-        public BlobArray<float> Moisture;
-
-        /// <summary>
-        /// Drainage rates per cell.
-        /// </summary>
-        public BlobArray<float> DrainageRate;
-
-        /// <summary>
-        /// Terrain height per cell (for seepage calculations).
-        /// </summary>
-        public BlobArray<float> TerrainHeight;
-
-        /// <summary>
-        /// Last rain tick per cell.
-        /// </summary>
-        public BlobArray<uint> LastRainTick;
-
-        /// <summary>
-        /// Evaporation rates per cell.
-        /// </summary>
-        public BlobArray<float> EvaporationRate;
-    }
-
-    /// <summary>
-    /// Global weather state singleton tracking current weather conditions.
-    /// Used by both Godgame (environmental effects) and Space4X (planet conditions).
-    /// </summary>
-    public struct WeatherState : IComponentData
-    {
-        /// <summary>
-        /// Current weather type (Clear, Rain, Storm, Drought).
-        /// </summary>
-        public WeatherType CurrentWeather;
-
-        /// <summary>
-        /// Duration remaining in ticks until weather change.
-        /// </summary>
-        public uint DurationRemaining;
-
-        /// <summary>
-        /// Weather intensity (0-1). Affects moisture addition rate, visual effects, etc.
-        /// </summary>
-        public float Intensity;
-
-        /// <summary>
-        /// Random seed for deterministic weather transitions.
-        /// </summary>
-        public uint WeatherSeed;
-    }
-
-    /// <summary>
-    /// Weather types for the weather state system.
-    /// </summary>
-    public enum WeatherType : byte
-    {
-        Clear = 0,
-        Rain = 1,
-        Storm = 2,
-        Drought = 3
+        /// <summary>Biome type index (for reference).</summary>
+        public byte BiomeIndex;
     }
 }
-
-

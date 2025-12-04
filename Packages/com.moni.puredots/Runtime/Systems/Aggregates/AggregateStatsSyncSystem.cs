@@ -184,9 +184,9 @@ namespace PureDOTS.Systems.Aggregates
 
             void Execute(
                 Entity guildEntity,
-                ref Guild guild,
-                ref GuildOutlookSet outlooks,
-                in DynamicBuffer<GuildMember> members)
+                ref PureDOTS.Runtime.Aggregates.Guild guild,
+                ref PureDOTS.Runtime.Aggregates.GuildOutlookSet outlooks,
+                in DynamicBuffer<PureDOTS.Runtime.Aggregates.GuildMember> members)
             {
                 if (members.Length == 0)
                 {
