@@ -209,3 +209,4 @@ public void OnUpdate(ref SystemState state)
 - AffiliationComplianceSystem is already fixed (guard exists, no Assert found)
 - BufferLookup systems already have proper `.Update(ref state)` calls
 
+

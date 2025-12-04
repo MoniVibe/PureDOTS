@@ -96,7 +96,7 @@ namespace PureDOTS.Systems.Performance
         private void SpawnVillagers(ref SystemState state, int count, float radius)
         {
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            var random = new Unity.Mathematics.Random((uint)Time.frameCount);
+            var random = new Unity.Mathematics.Random((uint)UnityEngine.Time.frameCount);
 
             for (int i = 0; i < count; i++)
             {

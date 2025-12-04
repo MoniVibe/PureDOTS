@@ -186,7 +186,7 @@ namespace PureDOTS.TestUtilities
             {
                 MiracleId = id,
                 Type = PureDOTS.Runtime.Components.MiracleType.Rain,
-                CastingMode = PureDOTS.Runtime.Components.MiracleCastingMode.Token,
+                CastingMode = PureDOTS.Runtime.Components.MiracleCastingMode.Thrown, // Token equivalent in Components namespace
                 TargetPosition = float3.zero,
                 CasterEntity = Entity.Null
             };
