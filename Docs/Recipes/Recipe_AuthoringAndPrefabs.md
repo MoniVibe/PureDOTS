@@ -450,3 +450,4 @@ AddComponent(entity, new MyConfig { Value = authoring.ConfigValue });
 - `[Space4x/Docs/Guides/Space4X/SpatialAndMiracleIntegration.md](../../../Space4x/Docs/Guides/Space4X/SpatialAndMiracleIntegration.md)` - Spatial integration guide
 - Unity DOTS 1.4 Documentation - Baker API, TransformUsageFlags, SubScenes
 
+

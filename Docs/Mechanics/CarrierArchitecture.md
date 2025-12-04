@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ships in Space4X are modular entities with customizable loadouts, facilities, and crew assignments. This document defines the ship classification system (Capital Ships, Regular Ships, Vessels/Crafts), mount-based module framework, weapon research/manufacturing system, and crew specialization mechanics.
+Ships in Space4X are modular entities with 3 modes of customizability and loadouts: a pure mass based approach where ships are able to carry a set amount of mass and every module has their mass, a carrier may be 100 engines and 2 bridges if they feel like it. the second mode is a varied sized hard point mode, ships have a set capacity of modules, some of them are internal whilst others are located on hard points and weapon slots, depending on ship model and class. the third mode is a 3d "fill-a-hull" based inspired by Robot Arena, ships are hollow (or with some built in components) hulls which may be filled by the player with modules and systems, modules are classified to internal/external and some may be placed both internally or externally. placement matters due to fire and shield arcs emitting from the module, not the entire ship. capital ships may carry facilities, industries, leisure structures, residential complexes, colony components (making them a mobile colony), trade hubs, research stations, cloning facilities and more. they have their captain, his shipmaster, their officers, pilots, deck crews and their assignments. This document defines the ship classification system (Stations, Capital Ships, Regular Ships, Vessels/Crafts, drones/probes), mount-based module framework, weapon research/manufacturing system, and crew specialization mechanics.
 
 ---
 
@@ -858,3 +858,6 @@ byte CalculateRoleEffectiveness(Entity ship, RoleType role)
 - **Intel System**: [IntelVisibilitySystem.md](IntelVisibilitySystem.md) - Sensor integration
 - **AI Behavior**: [AIBehaviorModules.md](AIBehaviorModules.md) - AI role switching decisions
 - **Crew Aggregation**: Phase 3 TODO - Crew as individuals vs. ship-level aggregates
+- **Strike Craft Groups**: `PureDOTS.Runtime.Groups` - Group behavior, formation, intent resolution
+- **Craft Frames**: `PureDOTS.Runtime.Vehicles` - CraftFrameDef, AttackRunProfile, MiningPatternProfile
+- **Focus System**: `PureDOTS.Runtime.Focus` - Mental bandwidth, multitasking, mental breaks

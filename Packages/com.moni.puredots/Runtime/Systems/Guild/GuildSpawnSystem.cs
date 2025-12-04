@@ -81,10 +81,10 @@ namespace PureDOTS.Systems.Guild
         }
 
         [BurstCompile]
-        private static Entity CreateGuildEntity(ref SystemState state, ref EntityCommandBuffer ecb, ref GuildTypeSpec spec, uint currentTick)
+        private static void CreateGuildEntity(ref SystemState state, ref EntityCommandBuffer ecb, ref GuildTypeSpec spec, uint currentTick, out Entity guildEntity)
         {
             // Create guild entity
-            var guildEntity = ecb.CreateEntity();
+            guildEntity = ecb.CreateEntity();
 
             // Add Guild component
             ecb.AddComponent(guildEntity, new PureDOTS.Runtime.Aggregates.Guild
@@ -148,7 +148,6 @@ namespace PureDOTS.Systems.Guild
                 VoteEndTick = 0
             });
 
-            return guildEntity;
         }
     }
 }

@@ -370,6 +370,12 @@ namespace PureDOTS.Authoring
 
             AddComponent<RewindableTag>(entity);
             
+            // Add RewindImportance for rewind tier classification
+            AddComponent(entity, new RewindImportance
+            {
+                Tier = RewindTier.SnapshotFull
+            });
+            
             // Add HistoryProfile for rewind proof-of-concept
             // Configured for LocalTransform + Health with TickInterval = 2-3, HorizonTicks = ~300 (5 seconds at 60fps)
             AddComponent(entity, new HistoryProfile

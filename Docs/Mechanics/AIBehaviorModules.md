@@ -67,6 +67,26 @@ public enum AIBehaviorMode : byte
 }
 ```
 
+### 1.5 Focus & Group Behavior Components
+
+**Focus System** - Mental bandwidth for multitasking, multi-targeting, command:
+- `FocusState`: Current focus, max, regen rate, soft/hard thresholds, load
+- `FocusTask`: Active tasks consuming focus (PilotCraft, Gunner, SquadronLead, MindLinkControl)
+- `MentalState`: Mental break state (Stable, Frazzled, Panicked, Catatonic, Berserk)
+
+**Group Behavior** - Individual behavior within groups:
+- `GroupTag`, `GroupId`, `GroupMeta`: Group container identification
+- `GroupMember`: Membership buffer (Leader, Wingman, Specialist, Escort)
+- `GroupFormation`, `GroupStanceState`, `GroupMoraleState`: Formation, stance, morale
+- `GroupBehaviorParams`: Individual obedience, independence, cohesion preference
+- `IndividualCombatIntent`: Tactical intent (FollowGroupOrder, AggressivePursuit, CautiousHold, Flee, Desert, Mutiny)
+
+**Combat Components** - Granular health tracking:
+- `LimbState`: Per-limb health (Head, Torso, Arms, Legs, etc.)
+- `LimbFlags`: Augmented, Mutated, Grafted, Severed flags
+
+See `PureDOTS/Packages/com.moni.puredots/Runtime/Focus/Components.cs`, `Runtime/Groups/Components.cs`, `Runtime/Combat/Components.cs` for full definitions.
+
 ### 2. Sensor Components
 
 Sensors detect entities and conditions in the world. **Multi-sensory detection** allows entities to be detected via vision, hearing, or smell.

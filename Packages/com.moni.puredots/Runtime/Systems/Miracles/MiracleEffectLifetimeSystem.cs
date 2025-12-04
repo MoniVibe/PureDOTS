@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Time;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Systems.Miracles

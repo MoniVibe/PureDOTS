@@ -138,6 +138,30 @@ Expert players orchestrate just-in-time hauling, stagger construction queues to 
 - **Satisfactory**: Processing chains feeding build queues.
 - **Homeworld: Deserts of Kharak**: Carrier-based fabrication in hostile territory.
 
+## Rewind Integration
+
+Construction state must save/restore for rewind compatibility.
+
+**RewindTier**: `SnapshotLite` (coarse state for construction sites, `SnapshotFull` for critical projects)
+
+**History Struct**: `ConstructionHistorySample` (records build progress, worker count, completion state)
+
+**Sample Rate**: Every 10-50 ticks (configurable based on project importance)
+
+**Recording**:
+- Record `ConstructionHistorySample` for each construction site
+- Capture: SiteId, BuildProgress, RequiredProgress, IsComplete, WorkerCount, LastUpdateTick
+- Systems check `RewindState.Mode != RewindMode.Record` before processing construction updates
+
+**Playback**:
+- Find sample <= `RewindState.PlaybackTick` and restore construction state
+- Restore build progress, worker assignments from history buffer
+- Skip construction simulation systems during `RewindMode.Playback`
+
+**Components**:
+- Construction sites: `RewindImportance { Tier = RewindTier.SnapshotLite }` (or `SnapshotFull` for critical projects)
+- Processing facilities: `RewindImportance { Tier = RewindTier.SnapshotLite }` (coarse state)
+
 ## Revision History
 
 | Date | Change | Reason |

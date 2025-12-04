@@ -36,13 +36,16 @@ namespace PureDOTS.Systems.Construction
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
             // Process groups with BuildCoordinator and ConstructionIntent buffers
-            foreach (var (coordinator, intents, entity) in SystemAPI.Query<
-                RefRO<BuildCoordinator>,
-                DynamicBuffer<ConstructionIntent>>().WithEntityAccess())
+            foreach (var (coordinator, entity) in SystemAPI.Query<
+                RefRO<BuildCoordinator>>().WithEntityAccess())
             {
                 if (coordinator.ValueRO.AutoBuildEnabled == 0)
                     continue;
 
+                if (!SystemAPI.HasBuffer<ConstructionIntent>(entity))
+                    continue;
+
+                var intents = SystemAPI.GetBuffer<ConstructionIntent>(entity);
                 var coordinatorValue = coordinator.ValueRO;
 
                 // Check if we're at max active sites

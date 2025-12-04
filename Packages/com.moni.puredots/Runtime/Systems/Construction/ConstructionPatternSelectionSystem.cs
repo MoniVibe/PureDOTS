@@ -44,20 +44,25 @@ namespace PureDOTS.Systems.Construction
             ref var catalog = ref configState.Catalog.Value;
 
             // Process groups with ConstructionIntent buffers
-            foreach (var (coordinator, intents, entity) in SystemAPI.Query<
-                RefRO<BuildCoordinator>,
-                DynamicBuffer<ConstructionIntent>>().WithEntityAccess())
+            foreach (var (coordinator, entity) in SystemAPI.Query<
+                RefRO<BuildCoordinator>>().WithEntityAccess())
             {
                 if (coordinator.ValueRO.AutoBuildEnabled == 0)
                     continue;
 
+                if (!SystemAPI.HasBuffer<ConstructionIntent>(entity))
+                    continue;
+
+                var intentsBuffer = SystemAPI.GetBuffer<ConstructionIntent>(entity);
+
                 // Get group metrics for unlock checks
-                var groupMetrics = GetGroupMetrics(ref state, entity);
+                var groupEntityRef = entity;
+                GetGroupMetrics(ref state, ref groupEntityRef, out var groupMetrics);
 
                 // Update intents that don't have a pattern selected yet
-                for (int i = 0; i < intents.Length; i++)
+                for (int i = 0; i < intentsBuffer.Length; i++)
                 {
-                    var intent = intents[i];
+                    var intent = intentsBuffer[i];
                     if (intent.PatternId >= 0 || intent.Status != 0) // Already has pattern or not planned
                         continue;
 
@@ -95,7 +100,7 @@ namespace PureDOTS.Systems.Construction
                     if (bestPatternId >= 0)
                     {
                         intent.PatternId = bestPatternId;
-                        intents[i] = intent;
+                        intentsBuffer[i] = intent;
                     }
                 }
             }
@@ -117,11 +122,11 @@ namespace PureDOTS.Systems.Construction
         }
 
         [BurstCompile]
-        private static GroupMetrics GetGroupMetrics(ref SystemState state, Entity groupEntity)
+        private static void GetGroupMetrics(ref SystemState state, ref Entity groupEntity, out GroupMetrics metrics)
         {
             // Stub - game-specific systems can extend this
             // Would read from group components (population, food, etc.)
-            return new GroupMetrics
+            metrics = new GroupMetrics
             {
                 Population = 10f,
                 FoodPerCapita = 1f,

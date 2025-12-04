@@ -36,15 +36,18 @@ namespace PureDOTS.Systems.Construction
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
             // Process groups with approved ConstructionIntents
-            foreach (var (coordinator, intents, entity) in SystemAPI.Query<
-                RefRW<BuildCoordinator>,
-                DynamicBuffer<ConstructionIntent>>().WithEntityAccess())
+            foreach (var (coordinator, entity) in SystemAPI.Query<
+                RefRW<BuildCoordinator>>().WithEntityAccess())
             {
+                if (!SystemAPI.HasBuffer<ConstructionIntent>(entity))
+                    continue;
+
+                var intentsBuffer = SystemAPI.GetBuffer<ConstructionIntent>(entity);
                 var coordinatorValue = coordinator.ValueRO;
 
-                for (int i = 0; i < intents.Length; i++)
+                for (int i = 0; i < intentsBuffer.Length; i++)
                 {
-                    var intent = intents[i];
+                    var intent = intentsBuffer[i];
                     if (intent.Status != 1) // Not Approved
                         continue;
 
@@ -58,7 +61,7 @@ namespace PureDOTS.Systems.Construction
                     // For now, stub - would integrate with existing ConstructionSiteSpawnSystem
                     // Mark intent as realized for now
                     intent.Status = 2; // Realized
-                    intents[i] = intent;
+                    intentsBuffer[i] = intent;
 
                     // Increment active site count
                     var newCoordinator = coordinator.ValueRO;

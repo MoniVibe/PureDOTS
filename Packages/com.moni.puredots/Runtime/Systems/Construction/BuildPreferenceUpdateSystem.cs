@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Construction;
 using PureDOTS.Runtime.Motivation;
+using PureDOTS.Systems.Aggregate;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

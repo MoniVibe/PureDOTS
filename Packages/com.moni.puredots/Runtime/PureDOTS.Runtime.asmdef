@@ -1,0 +1,27 @@
+{
+    "name": "PureDOTS.Runtime",
+    "rootNamespace": "PureDOTS",
+    "references": [
+        "Unity.Entities",
+        "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Transforms",
+        "Unity.Burst",
+        "Unity.Core",
+        "Unity.InputSystem",
+        "Unity.Scenes",
+        "Unity.Entities.Content",
+        "Unity.Physics",
+        "PureDOTS.Config"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
+

@@ -79,7 +79,7 @@ namespace PureDOTS.Systems.Environment
                 var stressValue = stress.ValueRO;
 
                 // Get moisture for this entity's cell (Tier-1: use global average, Tier-2: sample from grid)
-                float moisture = GetMoistureForEntity(entity, climateState);
+                float moisture = GetMoistureForEntity(in entity, climateState);
 
                 // Calculate environmental factors
                 var moistureFactor = CalculateFactor(
@@ -146,7 +146,7 @@ namespace PureDOTS.Systems.Environment
         }
 
         [BurstCompile]
-        private static float GetMoistureForEntity(Entity entity, PureDOTS.Runtime.Environment.ClimateState climate)
+        private static float GetMoistureForEntity(in Entity entity, in PureDOTS.Runtime.Environment.ClimateState climate)
         {
             // Tier-1: Use global humidity as moisture proxy
             // Tier-2: Sample from MoistureGridState at entity's cell

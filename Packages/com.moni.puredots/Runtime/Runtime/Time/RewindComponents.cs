@@ -18,6 +18,22 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
+    /// Classification tier for how a component/system handles rewind.
+    /// Determines whether state is recorded, derived, or ignored during rewind.
+    /// </summary>
+    public enum RewindTier : byte
+    {
+        /// <summary>Never rewound, re-derived or ignored. Pure VFX, particles, UI-only stuff.</summary>
+        None = 0,
+        /// <summary>Deterministic from seed + time; recompute on rewind. Galaxy orbits, wind/weather fields.</summary>
+        Derived = 1,
+        /// <summary>Coarse snapshot at reduced frequency. Fire/epidemic cells, biome state, economic aggregates.</summary>
+        SnapshotLite = 2,
+        /// <summary>Full history for critical state. Combat stats, positions, AI phase, orders, inventories.</summary>
+        SnapshotFull = 3
+    }
+
+    /// <summary>
     /// Direction of scrubbing through time.
     /// </summary>
     public enum ScrubDirection : byte
@@ -53,6 +69,8 @@ namespace PureDOTS.Runtime.Components
         public float ScrubSpeedMultiplier;
         /// <summary>Window of ticks available for rewind (based on history).</summary>
         public uint RewindWindowTicks;
+        /// <summary>Which track we're currently scrubbing (for track-based rewinds).</summary>
+        public RewindTrackId ActiveTrack;
     }
 
     /// <summary>
@@ -90,5 +108,16 @@ namespace PureDOTS.Runtime.Components
         /// <summary>Rewind speed multiplier (1-4x, can be float).</summary>
         /// <remarks>Controls how fast ghosts scrub through history during ScrubbingPreview.</remarks>
         public float ScrubSpeed;
+    }
+
+    /// <summary>
+    /// Component marking an entity's rewind importance tier.
+    /// Attach at component type level (design-time contract) or optionally at entity level.
+    /// Determines snapshot frequency and playback strategy for this entity.
+    /// </summary>
+    public struct RewindImportance : IComponentData
+    {
+        /// <summary>Rewind tier for this entity (None, Derived, SnapshotLite, SnapshotFull).</summary>
+        public RewindTier Tier;
     }
 }

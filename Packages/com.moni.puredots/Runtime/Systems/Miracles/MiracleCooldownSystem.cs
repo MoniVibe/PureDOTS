@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Miracles
 {
@@ -47,19 +48,28 @@ namespace PureDOTS.Systems.Miracles
             float deltaTime = SystemAPI.Time.DeltaTime;
 
             // Update all cooldown buffers
-            foreach (var cooldowns in SystemAPI.Query<RefRW<DynamicBuffer<MiracleCooldown>>>())
+            var bufferLookup = SystemAPI.GetBufferLookup<MiracleCooldown>(false);
+            bufferLookup.Update(ref state);
+            
+            var entities = SystemAPI.QueryBuilder().WithAll<MiracleCooldown>().Build().ToEntityArray(Allocator.Temp);
+            foreach (var entity in entities)
             {
-                for (int i = 0; i < cooldowns.ValueRW.Length; i++)
+                if (!bufferLookup.HasBuffer(entity))
+                    continue;
+                    
+                var cooldowns = bufferLookup[entity];
+                for (int i = 0; i < cooldowns.Length; i++)
                 {
-                    var cooldown = cooldowns.ValueRW[i];
+                    var cooldown = cooldowns[i];
                     cooldown.RemainingSeconds = math.max(0f, cooldown.RemainingSeconds - deltaTime);
                     
                     // Future: Handle charge recharge when cooldown completes
                     // For MVP, charges are only restored manually or on activation
                     
-                    cooldowns.ValueRW[i] = cooldown;
+                    cooldowns[i] = cooldown;
                 }
             }
+            entities.Dispose();
         }
     }
 }

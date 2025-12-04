@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Spatial;
 using System.Runtime.InteropServices;
@@ -30,6 +31,9 @@ namespace PureDOTS.Systems.Perception
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<SimulationFeatureFlags>();
+            state.RequireForUpdate<SimulationScalars>();
+            state.RequireForUpdate<SimulationOverrides>();
 
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _signatureLookup = state.GetComponentLookup<SensorSignature>(true);
@@ -41,11 +45,25 @@ namespace PureDOTS.Systems.Perception
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
+            var scalars = SystemAPI.GetSingleton<SimulationScalars>();
+            var overrides = SystemAPI.GetSingleton<SimulationOverrides>();
+
+            // Check if perception is disabled
+            if ((features.Flags & SimulationFeatureFlags.PerceptionEnabled) == 0)
+            {
+                return;
+            }
 
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
+
+            // Get effective perception range multiplier
+            float perceptionRangeMult = overrides.OverridePerception
+                ? overrides.PerceptionOverride
+                : scalars.PerceptionRangeMult;
 
             _transformLookup.Update(ref state);
             _signatureLookup.Update(ref state);
@@ -133,7 +151,9 @@ namespace PureDOTS.Systems.Perception
 
                 var sensorPos = transform.ValueRO.Position;
                 var sensorForward = math.forward(transform.ValueRO.Rotation);
-                var rangeSq = capability.ValueRO.Range * capability.ValueRO.Range;
+                // Apply perception range multiplier
+                var effectiveRange = capability.ValueRO.Range * perceptionRangeMult;
+                var rangeSq = effectiveRange * effectiveRange;
                 var fovCos = math.cos(math.radians(capability.ValueRO.FieldOfView * 0.5f));
 
                 var highestThreat = (byte)0;
@@ -179,7 +199,7 @@ namespace PureDOTS.Systems.Perception
                             sensorForward,
                             direction,
                             distance,
-                            capability.ValueRO.Range,
+                            effectiveRange,
                             fovCos,
                             capability.ValueRO.Acuity);
                         if (confidence > 0f)
@@ -197,7 +217,7 @@ namespace PureDOTS.Systems.Perception
                             sensorForward,
                             direction,
                             distance,
-                            capability.ValueRO.Range,
+                            effectiveRange,
                             fovCos,
                             capability.ValueRO.Acuity);
                         if (confidence > 0f)
@@ -215,7 +235,7 @@ namespace PureDOTS.Systems.Perception
                             sensorForward,
                             direction,
                             distance,
-                            capability.ValueRO.Range,
+                            effectiveRange,
                             fovCos,
                             capability.ValueRO.Acuity);
                         if (confidence > 0f)
@@ -233,7 +253,7 @@ namespace PureDOTS.Systems.Perception
                             sensorForward,
                             direction,
                             distance,
-                            capability.ValueRO.Range,
+                            effectiveRange,
                             fovCos,
                             capability.ValueRO.Acuity);
                         if (confidence > 0f)
@@ -247,7 +267,7 @@ namespace PureDOTS.Systems.Perception
                     {
                         // Proximity always works if in range
                         detectedChannels |= PerceptionChannel.Proximity;
-                        bestConfidence = math.max(bestConfidence, 1f - distance / capability.ValueRO.Range);
+                        bestConfidence = math.max(bestConfidence, 1f - distance / effectiveRange);
                     }
 
                     // If detected on any channel, add to perception

@@ -3,6 +3,7 @@ using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Knowledge;
+// using PureDOTS.Runtime.Narrative; // Removed - namespace not accessible, using fully qualified names instead
 using PureDOTS.Runtime.Orders;
 using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Registry;
@@ -13,6 +14,7 @@ using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
 using PureDOTS.Runtime.Villager;
+using PureDOTS.Runtime.Core;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -84,6 +86,25 @@ namespace PureDOTS.Systems
                     blob = default;
                 }
             }
+
+            // TODO: Re-enable when Narrative namespace is accessible
+            // Dispose NarrativeRegistrySingleton blobs
+            // foreach (var narrativeRegistry in SystemAPI.Query<RefRW<PureDOTS.Runtime.Narrative.NarrativeRegistrySingleton>>())
+            // {
+            //     ref var eventBlob = ref narrativeRegistry.ValueRW.EventRegistry;
+            //     if (eventBlob.IsCreated)
+            //     {
+            //         eventBlob.Dispose();
+            //         eventBlob = default;
+            //     }
+            //
+            //     ref var situationBlob = ref narrativeRegistry.ValueRW.SituationRegistry;
+            //     if (situationBlob.IsCreated)
+            //     {
+            //         situationBlob.Dispose();
+            //         situationBlob = default;
+            //     }
+            // }
         }
 
         public static void EnsureSingletons(EntityManager entityManager)
@@ -299,6 +320,9 @@ namespace PureDOTS.Systems
 
             // Ensure TimeSystemFeatureFlags singleton exists
             EnsureTimeSystemFeatureFlags(entityManager);
+
+            // Ensure SimulationValve singleton exists
+            EnsureSimulationValveSingleton(entityManager);
             
             // Verify configs exist and log
             VerifyTimeConfigs(entityManager);
@@ -344,6 +368,8 @@ namespace PureDOTS.Systems
             EnsureResourceTypeIndex(entityManager);
             EnsureResourceRecipeSet(entityManager);
             EnsurePhysicsConfig(entityManager);
+            // TODO: Re-enable when Narrative namespace is accessible
+            // EnsureNarrativeRegistry(entityManager);
 
             // For compatibility with previous behaviour, ensure the system would be disabled after seeding.
         }
@@ -910,6 +936,81 @@ namespace PureDOTS.Systems
             UnityEngine.Debug.Log("[CoreSingletonBootstrapSystem] PhysicsConfig singleton created with default settings");
         }
 
+        // TODO: Re-enable when Narrative namespace is accessible to compiler/source generator
+        // The Narrative types exist but aren't accessible during compilation, causing source generator errors
+        /*
+        private static void EnsureNarrativeRegistry(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Narrative.NarrativeRegistrySingleton>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var eventRegistry = PureDOTS.Runtime.Narrative.NarrativeRegistryBuilder.CreateTestEventRegistry(Allocator.Persistent);
+            var situationRegistry = PureDOTS.Runtime.Narrative.NarrativeRegistryBuilder.CreateTestSituationRegistry(Allocator.Persistent);
+
+            var entity = entityManager.CreateEntity(typeof(PureDOTS.Runtime.Narrative.NarrativeRegistrySingleton));
+            entityManager.SetComponentData(entity, new PureDOTS.Runtime.Narrative.NarrativeRegistrySingleton
+            {
+                EventRegistry = eventRegistry,
+                SituationRegistry = situationRegistry
+            });
+
+            // Create singleton entities for narrative buffers
+            EnsureNarrativeBuffers(entityManager);
+        }
+
+        private static void EnsureNarrativeBuffers(EntityManager entityManager)
+        {
+            // Narrative signal singleton
+            Entity signalEntity;
+            using (var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Narrative.NarrativeSignalBufferElement>()))
+            {
+                if (query.IsEmptyIgnoreFilter)
+                {
+                    signalEntity = entityManager.CreateEntity();
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.NarrativeSignalBufferElement>(signalEntity);
+                }
+            }
+
+            // Effect request singleton
+            Entity effectEntity;
+            using (var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Narrative.NarrativeEffectRequest>()))
+            {
+                if (query.IsEmptyIgnoreFilter)
+                {
+                    effectEntity = entityManager.CreateEntity();
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.NarrativeEffectRequest>(effectEntity);
+                }
+            }
+
+            // Reward signal singleton
+            Entity rewardEntity;
+            using (var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Narrative.NarrativeRewardSignal>()))
+            {
+                if (query.IsEmptyIgnoreFilter)
+                {
+                    rewardEntity = entityManager.CreateEntity();
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.NarrativeRewardSignal>(rewardEntity);
+                }
+            }
+
+            // Inbox singleton (spawn requests, choices, world facts)
+            Entity inboxEntity;
+            using (var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Narrative.SituationSpawnRequest>()))
+            {
+                if (query.IsEmptyIgnoreFilter)
+                {
+                    inboxEntity = entityManager.CreateEntity();
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.SituationSpawnRequest>(inboxEntity);
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.SituationChoice>(inboxEntity);
+                    entityManager.AddBuffer<PureDOTS.Runtime.Narrative.WorldFactEvent>(inboxEntity);
+                }
+            }
+        }
+        */
+
         private static void EnsureTimeScaleSchedule(EntityManager entityManager)
         {
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeScaleScheduleState>());
@@ -1069,13 +1170,33 @@ namespace PureDOTS.Systems
             }
         }
 
+        private static void EnsureSimulationValveSingleton(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SimulationFeatureFlags>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var valveEntity = entityManager.CreateEntity(
+                typeof(SimulationFeatureFlags),
+                typeof(SimulationScalars),
+                typeof(SimulationOverrides),
+                typeof(SimulationSandboxFlags));
+
+            entityManager.SetComponentData(valveEntity, SimulationFeatureFlags.Default);
+            entityManager.SetComponentData(valveEntity, SimulationScalars.Default);
+            entityManager.SetComponentData(valveEntity, SimulationOverrides.Default);
+            entityManager.SetComponentData(valveEntity, SimulationSandboxFlags.Default);
+        }
+
         /// <summary>
         /// Ensures exactly one AudioListener is enabled in the scene.
         /// Unity requires exactly one active AudioListener for audio to work correctly.
         /// </summary>
         private static void EnsureSingleAudioListener()
         {
-            var audioListeners = Object.FindObjectsOfType<AudioListener>();
+            var audioListeners = Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
             
             if (audioListeners.Length == 0)
             {

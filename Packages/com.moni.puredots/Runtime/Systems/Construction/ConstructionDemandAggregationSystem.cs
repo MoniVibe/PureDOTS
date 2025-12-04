@@ -49,13 +49,17 @@ namespace PureDOTS.Systems.Construction
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
             // Process groups with BuildCoordinator
-            foreach (var (coordinator, signals, intents, entity) in SystemAPI.Query<
+            foreach (var (coordinator, signals, entity) in SystemAPI.Query<
                 RefRO<BuildCoordinator>,
-                DynamicBuffer<BuildNeedSignal>,
-                DynamicBuffer<ConstructionIntent>>().WithEntityAccess())
+                DynamicBuffer<BuildNeedSignal>>().WithEntityAccess())
             {
                 if (coordinator.ValueRO.AutoBuildEnabled == 0)
                     continue;
+
+                if (!SystemAPI.HasBuffer<ConstructionIntent>(entity))
+                    continue;
+
+                var intents = SystemAPI.GetBuffer<ConstructionIntent>(entity);
 
                 // Clear old signals (older than N ticks)
                 var signalAgeThreshold = 1000u; // Keep signals for ~11 seconds at 90 TPS
@@ -69,27 +73,41 @@ namespace PureDOTS.Systems.Construction
 
                 // Get preference profile (if exists)
                 var hasPreferences = SystemAPI.HasComponent<BuildPreferenceProfile>(entity);
-                var preferences = hasPreferences
-                    ? SystemAPI.GetComponent<BuildPreferenceProfile>(entity)
-                    : GetDefaultPreferences();
+                BuildPreferenceProfile preferences;
+                if (hasPreferences)
+                {
+                    preferences = SystemAPI.GetComponent<BuildPreferenceProfile>(entity);
+                }
+                else
+                {
+                    GetDefaultPreferences(out preferences);
+                }
 
                 // Get group motivations (if exists)
                 var hasMotivations = SystemAPI.HasComponent<MotivationDrive>(entity) &&
                                     SystemAPI.HasBuffer<MotivationSlot>(entity);
-                var motivationMultipliers = hasMotivations
-                    ? ComputeMotivationMultipliers(ref state, entity)
-                    : GetDefaultMultipliers();
+                NativeHashMap<int, float> motivationMultipliers;
+                if (hasMotivations)
+                {
+                    motivationMultipliers = ComputeMotivationMultipliers(ref state, entity);
+                }
+                else
+                {
+                    motivationMultipliers = new NativeHashMap<int, float>(9, Allocator.TempJob);
+                    GetDefaultMultipliers(ref motivationMultipliers);
+                }
 
                 // Bucket signals by category and compute aggregated demands
-                var categoryDemands = new NativeHashMap<BuildCategory, CategoryDemand>(9, Allocator.Temp);
+                var categoryDemands = new NativeHashMap<int, CategoryDemand>(9, Allocator.Temp);
 
                 // Aggregate signals by category
                 for (int i = 0; i < signals.Length; i++)
                 {
                     var signal = signals[i];
-                    if (!categoryDemands.ContainsKey(signal.Category))
+                    var categoryKey = (int)signal.Category;
+                    if (!categoryDemands.ContainsKey(categoryKey))
                     {
-                        categoryDemands[signal.Category] = new CategoryDemand
+                        categoryDemands[categoryKey] = new CategoryDemand
                         {
                             TotalStrength = 0f,
                             PositionSum = float3.zero,
@@ -97,20 +115,21 @@ namespace PureDOTS.Systems.Construction
                         };
                     }
 
-                    var demand = categoryDemands[signal.Category];
+                    var demand = categoryDemands[categoryKey];
                     demand.TotalStrength += signal.Strength;
                     demand.PositionSum += signal.Position;
                     demand.SignalCount++;
-                    categoryDemands[signal.Category] = demand;
+                    categoryDemands[categoryKey] = demand;
                 }
 
                 // Compute group-wide metrics (stub - game-specific systems can extend)
-                var groupMetrics = ComputeGroupMetrics(ref state, entity);
+                GroupMetrics groupMetrics;
+                ComputeGroupMetrics(ref state, entity, out groupMetrics);
 
                 // Create or update ConstructionIntents for each category
                 foreach (var kvp in categoryDemands)
                 {
-                    var category = kvp.Key;
+                    var category = (BuildCategory)kvp.Key;
                     var demand = kvp.Value;
 
                     if (demand.SignalCount == 0)
@@ -168,9 +187,9 @@ namespace PureDOTS.Systems.Construction
         }
 
         [BurstCompile]
-        private static BuildPreferenceProfile GetDefaultPreferences()
+        private static void GetDefaultPreferences(out BuildPreferenceProfile preferences)
         {
-            return new BuildPreferenceProfile
+            preferences = new BuildPreferenceProfile
             {
                 HousingWeight = 1f,
                 StorageWeight = 1f,
@@ -202,25 +221,24 @@ namespace PureDOTS.Systems.Construction
         }
 
         [BurstCompile]
-        private static NativeHashMap<BuildCategory, float> GetDefaultMultipliers()
+        private static void GetDefaultMultipliers(ref NativeHashMap<int, float> multipliers)
         {
-            var multipliers = new NativeHashMap<BuildCategory, float>(9, Allocator.TempJob);
-            multipliers[BuildCategory.Housing] = 1f;
-            multipliers[BuildCategory.Storage] = 1f;
-            multipliers[BuildCategory.Worship] = 1f;
-            multipliers[BuildCategory.Defense] = 1f;
-            multipliers[BuildCategory.Food] = 1f;
-            multipliers[BuildCategory.Production] = 1f;
-            multipliers[BuildCategory.Infrastructure] = 1f;
-            multipliers[BuildCategory.Aesthetic] = 1f;
-            multipliers[BuildCategory.Special] = 1f;
-            return multipliers;
+            multipliers[(int)BuildCategory.Housing] = 1f;
+            multipliers[(int)BuildCategory.Storage] = 1f;
+            multipliers[(int)BuildCategory.Worship] = 1f;
+            multipliers[(int)BuildCategory.Defense] = 1f;
+            multipliers[(int)BuildCategory.Food] = 1f;
+            multipliers[(int)BuildCategory.Production] = 1f;
+            multipliers[(int)BuildCategory.Infrastructure] = 1f;
+            multipliers[(int)BuildCategory.Aesthetic] = 1f;
+            multipliers[(int)BuildCategory.Special] = 1f;
         }
 
         [BurstCompile]
-        private static NativeHashMap<BuildCategory, float> ComputeMotivationMultipliers(ref SystemState state, Entity groupEntity)
+        private NativeHashMap<int, float> ComputeMotivationMultipliers(ref SystemState state, Entity groupEntity)
         {
-            var multipliers = GetDefaultMultipliers();
+            var multipliers = new NativeHashMap<int, float>(9, Allocator.TempJob);
+            GetDefaultMultipliers(ref multipliers);
 
             // Read active motivation slots and boost relevant categories
             if (SystemAPI.HasBuffer<MotivationSlot>(groupEntity))
@@ -243,17 +261,17 @@ namespace PureDOTS.Systems.Construction
         }
 
         [BurstCompile]
-        private static float GetMotivationMultiplier(in NativeHashMap<BuildCategory, float> multipliers, BuildCategory category)
+        private static float GetMotivationMultiplier(in NativeHashMap<int, float> multipliers, BuildCategory category)
         {
-            return multipliers.TryGetValue(category, out var multiplier) ? multiplier : 1f;
+            return multipliers.TryGetValue((int)category, out var multiplier) ? multiplier : 1f;
         }
 
         [BurstCompile]
-        private static GroupMetrics ComputeGroupMetrics(ref SystemState state, Entity groupEntity)
+        private static void ComputeGroupMetrics(ref SystemState state, in Entity groupEntity, out GroupMetrics metrics)
         {
             // Stub - game-specific systems can extend this
             // Would compute: population, housing capacity, food reserves, storage fill, threat level
-            return new GroupMetrics
+            metrics = new GroupMetrics
             {
                 Population = 0f,
                 HousingCapacity = 0f,

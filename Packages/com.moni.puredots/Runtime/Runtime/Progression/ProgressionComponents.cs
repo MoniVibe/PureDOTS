@@ -69,6 +69,12 @@ namespace PureDOTS.Runtime.Progression
         public byte SkillPoints;          // Unspent skill points for unlocks
         public byte TalentPoints;         // Unspent talent points for passives
         public byte AttributePoints;      // Unspent attribute points
+        
+        // Extended fields for SimIndividual system
+        public float Fame;                // Fame score (positive achievements, recognition)
+        public float Renown;              // Renown score (reputation, influence)
+        public bool IsLegendary;          // Flag indicating legendary status
+        public FixedString64Bytes LegendaryTitle; // Title for legendary individuals (e.g., "The Unbreakable")
     }
 
     /// <summary>

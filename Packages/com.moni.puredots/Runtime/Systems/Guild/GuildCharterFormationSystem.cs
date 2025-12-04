@@ -64,7 +64,7 @@ namespace PureDOTS.Systems.Guild
                 if (signatures.Length >= charterValue.RequiredSignatures)
                 {
                     // Create guild entity
-                    var guildEntity = CreateGuildFromCharter(ref state, ref ecb, in charterValue, in signatures, currentTick);
+                    CreateGuildFromCharter(ref state, ref ecb, in charterValue, in signatures, currentTick, out var guildEntity);
 
                     // Link founder and signatories via GroupMembership
                     // Note: This replaces old GuildMembership pattern
@@ -111,10 +111,10 @@ namespace PureDOTS.Systems.Guild
         }
 
         [BurstCompile]
-        private static Entity CreateGuildFromCharter(ref SystemState state, ref EntityCommandBuffer ecb, in GuildCharter charter, in DynamicBuffer<CharterSignature> signatures, uint currentTick)
+        private static void CreateGuildFromCharter(ref SystemState state, ref EntityCommandBuffer ecb, in GuildCharter charter, in DynamicBuffer<CharterSignature> signatures, uint currentTick, out Entity guildEntity)
         {
             // Create guild entity
-            var guildEntity = ecb.CreateEntity();
+            guildEntity = ecb.CreateEntity();
 
             // Add Guild component (using existing Aggregates namespace type)
             ecb.AddComponent(guildEntity, new PureDOTS.Runtime.Aggregates.Guild
@@ -179,8 +179,6 @@ namespace PureDOTS.Systems.Guild
             });
 
             // GuildAggregateAdapterSystem will create the aggregate entity on next frame
-            // For now, return the guild entity
-            return guildEntity;
         }
     }
 }

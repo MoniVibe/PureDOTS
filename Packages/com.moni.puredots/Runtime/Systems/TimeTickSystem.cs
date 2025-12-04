@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 
 namespace PureDOTS.Systems
 {
@@ -22,6 +23,8 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<SimulationScalars>();
+            state.RequireForUpdate<SimulationOverrides>();
             _accumulator = 0f;
             _lastRealTime = 0f;
         }
@@ -34,6 +37,13 @@ namespace PureDOTS.Systems
             ref var tickState = ref tickStateHandle.ValueRW;
             ref var timeState = ref timeStateHandle.ValueRW;
             var rewind = SystemAPI.GetSingleton<RewindState>();
+            var scalars = SystemAPI.GetSingleton<SimulationScalars>();
+            var overrides = SystemAPI.GetSingleton<SimulationOverrides>();
+
+            // Get effective time scale
+            float effectiveTimeScale = overrides.OverrideTimeScale
+                ? overrides.TimeScaleOverride
+                : scalars.TimeScale;
 
             var elapsed = (float)SystemAPI.Time.ElapsedTime;
             if (rewind.Mode != RewindMode.Record)
@@ -64,8 +74,9 @@ namespace PureDOTS.Systems
             float deltaRealTime = elapsed - _lastRealTime;
             _lastRealTime = elapsed;
 
-            // Apply speed multiplier
-            float scaledDelta = deltaRealTime * Unity.Mathematics.math.max(0.01f, tickState.CurrentSpeedMultiplier);
+            // Apply speed multiplier and time scale valve
+            float baseSpeedMultiplier = Unity.Mathematics.math.max(0.01f, tickState.CurrentSpeedMultiplier);
+            float scaledDelta = deltaRealTime * baseSpeedMultiplier * effectiveTimeScale;
 
             // Accumulate time for fixed timestep
             _accumulator += scaledDelta;

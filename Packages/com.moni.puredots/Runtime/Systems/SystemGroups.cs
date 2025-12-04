@@ -76,6 +76,14 @@ namespace PureDOTS.Systems
     public partial class ResourceSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// System group for power network management.
+    /// </summary>
+    /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(ResourceSystemGroup))]
+    public partial class PowerSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// System group for miracle effect processing.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>

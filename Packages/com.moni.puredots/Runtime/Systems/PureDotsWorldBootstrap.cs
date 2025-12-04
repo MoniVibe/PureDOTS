@@ -52,6 +52,7 @@ namespace PureDOTS.Systems
                     world.GetOrCreateSystemManaged<TimeSystemGroup>();
                     world.GetOrCreateSystemManaged<VillagerSystemGroup>();
                     world.GetOrCreateSystemManaged<ResourceSystemGroup>();
+                    world.GetOrCreateSystemManaged<PowerSystemGroup>();
                     world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
                     world.GetOrCreateSystemManaged<CombatSystemGroup>();
                     world.GetOrCreateSystemManaged<HandSystemGroup>();

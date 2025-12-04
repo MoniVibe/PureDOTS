@@ -122,6 +122,30 @@ Mastery comes from leveraging carrier initiative windows, sequencing engagements
 - **Homeworld**: Carrier-centric fleet command with emphasis on formation management.
 - **Endless Space**: Doctrine-driven combat outcomes.
 
+## Rewind Integration
+
+Combat state must save/restore for rewind compatibility.
+
+**RewindTier**: `SnapshotFull`
+
+**History Struct**: `CombatHistorySample` (records group state, HP, morale, engagement state)
+
+**Sample Rate**: Every tick (combat-critical state)
+
+**Recording**:
+- Record `CombatHistorySample` for each combat group/band/fleet entity
+- Capture: GroupId, FactionId, MemberCount, Formation, CombatTarget, EngagementState, MoraleLevel, LastDamageTick
+- Systems check `RewindState.Mode != RewindMode.Record` before processing combat updates
+
+**Playback**:
+- Find sample <= `RewindState.PlaybackTick` and restore group state
+- Restore HP, position, morale, engagement state from history buffer
+- Skip combat simulation systems during `RewindMode.Playback`
+
+**Components**:
+- Combat groups: `RewindImportance { Tier = RewindTier.SnapshotFull }`
+- Individual combatants: Inherit tier from parent group or `SnapshotFull` if independent
+
 ## Revision History
 
 | Date | Change | Reason |

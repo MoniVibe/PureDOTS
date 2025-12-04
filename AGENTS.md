@@ -1,0 +1,46 @@
+# Agents – DOTS 1.4 Guidelines Scope & Project LayoutThis repo has three main pieces:
+`PureDOTS/` → shared engine-level DOTS package (`Packages/com.moni.puredots`).
+`Godgame/` → game project using PureDOTS.
+`Space4x/` → game project using PureDOTS.
+Treat `Foundation1/` and `Project1/` as read-only references unless the user explicitly says otherwise.
+Put engine / generic systems in `PureDOTS/Packages/com.moni.puredots/Runtime/<Module>/`.
+Put game-specific glue or behavior in:
+`Godgame/Assets/Scripts/Godgame/...`
+`Space4x/Assets/Scripts/Space4x/...`Do not suggest filesystem layout or CI commands unless the user asks. Answer Style (Token-Efficient Defaults)Default to concise, high-signal answers:
+Start directly with the solution; no long preamble.
+Prefer bullet points and short paragraphs.
+For code:
+Prefer small, focused snippets or the smallest compilable unit needed.
+Only show full files when the user clearly wants a full file or asks for “full source”.
+When editing, prefer minimal diffs or the changed method over re-dumping the entire file.
+Don’t restate repo structure, this document, or previous messages unless the user asks for a recap.
+Avoid generic disclaimers and repeated explanations; assume a power user who understands Unity, C#, and DOTS.If the user explicitly asks for deep explanations, architecture breakdowns, or teaching-style answers, it’s fine to be verbose for that request. DOTS 1.4 & Burst StyleAssume Unity Entities 1.4+, C# 9, and Burst as the default.When writing DOTS code:Use `ISystem` and `SystemAPI`:
+No `ComponentSystem`, `SystemBase`, `IJobForEach` or other deprecated patterns.
+Use `IComponentData` / `IBufferElementData` with Burst-safe fields only:
+No managed references, no `string`, no `class` fields inside components.
+Use:
+`RefRO<T>` / `RefRW<T>` for component access.
+`DynamicBuffer<T>` with `[InternalBufferCapacity]` where helpful.
+Avoid:
+`Linq`, reflection, exceptions in hot code paths, allocations inside `OnUpdate`.
+`foreach` on native containers in jobs (use index loops).
+For systems:
+Organize under `PureDOTS.Runtime.<ModuleName>.Systems`.
+Use `[BurstCompile]` on systems and performance-critical static helpers.
+Respect determinism / rewind if the user mentions those systems.If you’re unsure between two APIs, prefer the newest Entities 1.4 idiom. Game vs Engine SeparationEngine-level logic (reusable across Godgame & Space4x) goes in PureDOTS:
+Environment (wind, climate, grids)
+Motivation & goals
+Miracles core, construction decisions, stellar/solar systems, etc.
+Game-specific logic goes in each game:
+Concrete building/ship lists
+Specific miracles, VFX hookups
+UI, input, scene wiringWhen in doubt:  
+> If it could reasonably be reused in another game, put it in PureDOTS and keep the API clean. Testing & ToolingThe user usually runs tests and CI commands manually.
+Do not auto-suggest shell/CI commands unless the user explicitly asks for them.
+When writing tests:
+Assume NUnit via Unity Test Runner.
+Keep examples short and focused on the system under discussion. Git / PR / DocsOnly suggest commit messages, PR descriptions, or doc sections if requested.
+When asked:
+Use short, descriptive commit messages (optionally with `feat:`, `chore:` prefixes).
+Summarize gameplay/engine impact in a few bullet points. When You’re UnsureIf a detail is ambiguous but not critical, make a reasonable assumption and state it briefly.
+If a detail is critical (API choice, breaking change), ask the user once rather than inventing a complex scheme.Remember: this user is a heavy power user; they prefer practical code and minimal fluff over long essays.

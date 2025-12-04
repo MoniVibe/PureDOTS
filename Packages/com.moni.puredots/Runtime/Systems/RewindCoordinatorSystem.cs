@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 
 namespace PureDOTS.Systems
 {
@@ -27,6 +28,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<HistorySettings>();
             state.RequireForUpdate<InputCommandLogEntry>();
             state.RequireForUpdate<InputCommandLogState>();
+            state.RequireForUpdate<SimulationScalars>();
 
             _playbackAccumulator = 0f;
         }
@@ -326,6 +328,12 @@ namespace PureDOTS.Systems
                     ? history.DefaultTicksPerSecond
                     : tickRate;
                 depth = math.max(depth, (uint)math.round(configuredRate * 3f));
+            }
+
+            // Apply rewind window multiplier from valve
+            if (SystemAPI.TryGetSingleton<SimulationScalars>(out var scalars))
+            {
+                depth = (uint)math.round(depth * scalars.RewindWindowMult);
             }
 
             return depth + 2u;
