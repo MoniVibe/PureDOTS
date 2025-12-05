@@ -55,6 +55,7 @@ namespace PureDOTS.Systems.Environment
             }
 
             EnsureMoistureRuntimeBuffers(ref state, configEntity);
+            EnsureClimateRuntimeBuffers(ref state, configEntity);
 
             if (!entityManager.HasComponent<TemperatureGrid>(configEntity))
             {
@@ -107,6 +108,8 @@ namespace PureDOTS.Systems.Environment
                 EnsureBiomeRuntimeBuffer(ref state, configEntity);
             }
 
+            EnsureClimateRuntimeBuffers(ref state, configEntity);
+
             if (!entityManager.HasComponent<MoistureGridSimulationState>(configEntity))
             {
                 entityManager.AddComponentData(configEntity, new MoistureGridSimulationState
@@ -136,6 +139,7 @@ namespace PureDOTS.Systems.Environment
                 RemoveBufferIfPresent<MoistureGridRuntimeCell>(entityManager, _configEntity);
                 RemoveBufferIfPresent<SunlightGridRuntimeSample>(entityManager, _configEntity);
                 RemoveBufferIfPresent<BiomeGridRuntimeCell>(entityManager, _configEntity);
+                RemoveBufferIfPresent<ClimateGridRuntimeCell>(entityManager, _configEntity);
             }
 
             DisposeBlob(ref _moistureBlob);
@@ -393,6 +397,68 @@ namespace PureDOTS.Systems.Environment
             {
                 var value = i < biomes.Length ? biomes[i] : BiomeType.Unknown;
                 buffer[i] = new BiomeGridRuntimeCell { Value = value };
+            }
+        }
+
+        private static void EnsureClimateRuntimeBuffers(ref SystemState state, Entity configEntity)
+        {
+            var entityManager = state.EntityManager;
+            if (!entityManager.HasComponent<MoistureGrid>(configEntity))
+            {
+                return;
+            }
+
+            var moistureGrid = entityManager.GetComponentData<MoistureGrid>(configEntity);
+            var cellCount = math.max(1, moistureGrid.Metadata.CellCount);
+
+            DynamicBuffer<ClimateGridRuntimeCell> buffer;
+            if (!entityManager.HasBuffer<ClimateGridRuntimeCell>(configEntity))
+            {
+                buffer = entityManager.AddBuffer<ClimateGridRuntimeCell>(configEntity);
+                buffer.ResizeUninitialized(cellCount);
+            }
+            else
+            {
+                buffer = entityManager.GetBuffer<ClimateGridRuntimeCell>(configEntity);
+                if (buffer.Length != cellCount)
+                {
+                    buffer.Clear();
+                    buffer.ResizeUninitialized(cellCount);
+                }
+            }
+
+            PopulateClimateRuntimeBuffer(buffer, moistureGrid, entityManager.GetComponentData<TemperatureGrid>(configEntity));
+        }
+
+        private static void PopulateClimateRuntimeBuffer(DynamicBuffer<ClimateGridRuntimeCell> buffer, in MoistureGrid moistureGrid, in TemperatureGrid temperatureGrid)
+        {
+            var cellCount = buffer.Length;
+            var moistureBlob = moistureGrid.Blob;
+            var temperatureBlob = temperatureGrid.Blob;
+
+            for (var i = 0; i < cellCount; i++)
+            {
+                var climate = new ClimateVector();
+
+                // Convert moisture from 0-100 to 0-1
+                if (moistureBlob.IsCreated && i < moistureBlob.Value.Moisture.Length)
+                {
+                    climate.Moisture = math.clamp(moistureBlob.Value.Moisture[i] / 100f, 0f, 1f);
+                }
+
+                // Convert temperature from Celsius to normalized -1..+1 (using 0-40°C range)
+                if (temperatureBlob.IsCreated && i < temperatureBlob.Value.TemperatureCelsius.Length)
+                {
+                    var tempC = temperatureBlob.Value.TemperatureCelsius[i];
+                    climate.Temperature = math.clamp((tempC - 20f) / 20f, -1f, 1f);
+                }
+
+                // Defaults for other values
+                climate.Fertility = 0.5f;
+                climate.WaterLevel = 0f;
+                climate.Ruggedness = 0f;
+
+                buffer[i] = new ClimateGridRuntimeCell { Climate = climate };
             }
         }
 

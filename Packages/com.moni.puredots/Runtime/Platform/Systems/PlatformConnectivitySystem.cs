@@ -34,10 +34,11 @@ namespace PureDOTS.Systems.Platform
             ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            segmentStatesLookup.Update(ref state);
 
-            foreach (var (hullRef, segmentStates, entity) in SystemAPI.Query<
-                RefRO<PlatformHullRef>,
-                DynamicBuffer<PlatformSegmentState>>().WithEntityAccess())
+            foreach (var (hullRef, entity) in SystemAPI.Query<
+                RefRO<PlatformHullRef>>().WithEntityAccess())
             {
                 if (!SystemAPI.HasComponent<NeedConnectivityUpdate>(entity))
                 {
@@ -51,6 +52,13 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
+                if (!segmentStatesLookup.HasBuffer(entity))
+                {
+                    ecb.RemoveComponent<NeedConnectivityUpdate>(entity);
+                    continue;
+                }
+
+                var segmentStates = segmentStatesLookup[entity];
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
 
                 UpdateConnectivity(
@@ -122,7 +130,7 @@ namespace PureDOTS.Systems.Platform
                         continue;
                     }
 
-                    var neighborStateIndex = FindSegmentStateIndex(segmentStates, neighborIndex);
+                    var neighborStateIndex = FindSegmentStateIndex(in segmentStates, neighborIndex);
                     if (neighborStateIndex < 0)
                     {
                         continue;
@@ -165,7 +173,7 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static int FindSegmentStateIndex(DynamicBuffer<PlatformSegmentState> segmentStates, int segmentIndex)
+        private static int FindSegmentStateIndex(in DynamicBuffer<PlatformSegmentState> segmentStates, int segmentIndex)
         {
             for (int i = 0; i < segmentStates.Length; i++)
             {

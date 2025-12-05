@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Environment;
 using PureDOTS.Runtime.Spatial;
@@ -105,13 +106,17 @@ namespace PureDOTS.Systems.Environment
     /// </summary>
     internal static class ClimateStateDefaults
     {
-        public static PureDOTS.Runtime.Environment.ClimateState Default => new PureDOTS.Runtime.Environment.ClimateState
+        public static ClimateState Default => new ClimateState
         {
-            Temperature = 20f,
-            Humidity = 0.5f,
-            SeasonIndex = 0,
-            SeasonTick = 0,
-            SeasonLength = 250u,
+            CurrentSeason = Season.Spring,
+            SeasonProgress = 0f,
+            TimeOfDayHours = 12f,
+            DayNightProgress = 0.5f,
+            GlobalTemperature = 20f,
+            GlobalWindDirection = new float2(1f, 0f),
+            GlobalWindStrength = 5f,
+            AtmosphericMoisture = 50f,
+            CloudCover = 30f,
             LastUpdateTick = 0
         };
     }

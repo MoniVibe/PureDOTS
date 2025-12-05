@@ -54,5 +54,7 @@ namespace PureDOTS.Runtime.Components
         /// <summary>Whether the simulation is currently playing (not paused).</summary>
         [MarshalAs(UnmanagedType.U1)]
         public bool IsPlaying;
+        /// <summary>World time in seconds (Tick * FixedDeltaTime).</summary>
+        public float WorldSeconds;
     }
 }

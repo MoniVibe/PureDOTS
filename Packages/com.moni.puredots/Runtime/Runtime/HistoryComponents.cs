@@ -164,6 +164,16 @@ namespace PureDOTS.Runtime.Components
         public quaternion Rotation;
     }
 
+    /// <summary>
+    /// Health history sample for rewind playback.
+    /// </summary>
+    public struct HealthHistorySample : IBufferElementData
+    {
+        public uint Tick;
+        public float Health;
+        public float MaxHealth;
+    }
+
     public struct ResourceHistorySample : IBufferElementData
     {
         public uint Tick;

@@ -38,12 +38,6 @@ namespace PureDOTS.Runtime.Camera
         private static CameraRigState s_currentState;
         private static bool s_hasState;
 
-        static CameraRigService()
-        {
-            RuntimeConfigRegistry.Initialize();
-            s_ecsCameraVar = Space4XCameraConfigVars.EcsModeEnabled;
-        }
-
         /// <summary>
         /// Fired whenever a new camera rig state is published.
         /// Use for telemetry, debugging, or cross-system camera awareness.
@@ -57,7 +51,19 @@ namespace PureDOTS.Runtime.Camera
         public static CameraRigState Current => s_currentState;
 
         /// <summary>True if ECS camera mode is enabled (game-specific configuration).</summary>
-        public static bool IsEcsCameraEnabled => s_ecsCameraVar != null && s_ecsCameraVar.BoolValue;
+        public static bool IsEcsCameraEnabled
+        {
+            get
+            {
+                // Lazy initialization to avoid triggering RuntimeConfigRegistry during domain reload
+                if (s_ecsCameraVar == null)
+                {
+                    RuntimeConfigRegistry.Initialize();
+                    s_ecsCameraVar = Space4XCameraConfigVars.EcsModeEnabled;
+                }
+                return s_ecsCameraVar != null && s_ecsCameraVar.BoolValue;
+            }
+        }
 
         /// <summary>
         /// Publish a new camera rig state, making it the authoritative state for all cameras.

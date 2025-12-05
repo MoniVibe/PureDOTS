@@ -40,15 +40,18 @@ namespace PureDOTS.Systems.Platform
             var hitEventBufferLookup = SystemAPI.GetBufferLookup<PlatformHitEvent>(false);
             hitEventBufferLookup.Update(ref state);
 
-            foreach (var (transform, hullRef, moduleSlots, segmentStates, arcInstances, entity) in SystemAPI.Query<
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            var arcInstancesLookup = state.GetBufferLookup<PlatformArcInstance>(true);
+            moduleSlotsLookup.Update(ref state);
+            segmentStatesLookup.Update(ref state);
+            arcInstancesLookup.Update(ref state);
+
+            foreach (var (transform, hullRef, entity) in SystemAPI.Query<
                 RefRO<LocalTransform>,
-                RefRO<PlatformHullRef>,
-                DynamicBuffer<PlatformModuleSlot>,
-                DynamicBuffer<PlatformSegmentState>,
-                DynamicBuffer<PlatformArcInstance>,
-                Entity>())
+                RefRO<PlatformHullRef>>().WithEntityAccess())
             {
-                if (!hitEventBufferLookup.HasBuffer(entity))
+                if (!hitEventBufferLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity) || !arcInstancesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
@@ -58,6 +61,10 @@ namespace PureDOTS.Systems.Platform
                 {
                     continue;
                 }
+
+                var moduleSlots = moduleSlotsLookup[entity];
+                var segmentStates = segmentStatesLookup[entity];
+                var arcInstances = arcInstancesLookup[entity];
 
                 var hullId = hullRef.ValueRO.HullId;
                 if (hullId < 0 || hullId >= hullRegistryBlob.Hulls.Length)
@@ -71,10 +78,11 @@ namespace PureDOTS.Systems.Platform
                 for (int i = hitEvents.Length - 1; i >= 0; i--)
                 {
                     var hit = hitEvents[i];
+                    var platformEntityRef = entity;
                     ResolveHit(
                         ref state,
-                        entity,
-                        hit,
+                        ref platformEntityRef,
+                        in hit,
                         in transform.ValueRO,
                         in hullDef,
                         ref moduleSlots,
@@ -91,8 +99,8 @@ namespace PureDOTS.Systems.Platform
         [BurstCompile]
         private static void ResolveHit(
             ref SystemState state,
-            Entity platformEntity,
-            PlatformHitEvent hit,
+            ref Entity platformEntity,
+            in PlatformHitEvent hit,
             in LocalTransform transform,
             in HullDef hullDef,
             ref DynamicBuffer<PlatformModuleSlot> moduleSlots,
@@ -107,7 +115,7 @@ namespace PureDOTS.Systems.Platform
             }
 
             var localHitPos = math.transform(math.inverse(transform.ToMatrix()), hit.WorldHitPosition);
-            var segmentIndex = SelectSegment(localHitPos, in hullDef, ref hullRegistry);
+            var segmentIndex = SelectSegment(in localHitPos, in hullDef, ref hullRegistry);
 
             if (segmentIndex < 0)
             {
@@ -123,12 +131,12 @@ namespace PureDOTS.Systems.Platform
             ref var segmentDef = ref hullRegistry.Segments[segmentOffset];
 
             var damageRemaining = hit.DamageAmount;
-            var weaponProfile = GetWeaponProfile(hit.WeaponId, ref moduleRegistry);
+            GetWeaponProfile(hit.WeaponId, ref moduleRegistry, out var weaponProfile);
 
             damageRemaining = ApplyShieldDamage(
                 damageRemaining,
-                hit.WorldHitPosition,
-                weaponProfile,
+                in hit.WorldHitPosition,
+                in weaponProfile,
                 in arcInstances,
                 ref moduleSlots,
                 ref moduleRegistry);
@@ -140,7 +148,7 @@ namespace PureDOTS.Systems.Platform
 
             damageRemaining = ApplyArmorReduction(
                 damageRemaining,
-                weaponProfile,
+                in weaponProfile,
                 in segmentDef,
                 ref hullRegistry);
 
@@ -153,24 +161,24 @@ namespace PureDOTS.Systems.Platform
                 ref segmentStates,
                 segmentIndex,
                 damageRemaining,
-                weaponProfile);
+                in weaponProfile);
 
             ApplyModuleDamage(
                 ref moduleSlots,
                 segmentIndex,
                 damageRemaining,
-                weaponProfile,
+                in weaponProfile,
                 ref moduleRegistry);
 
             ApplyEnvironmentEffects(
                 ref segmentStates,
                 segmentIndex,
-                weaponProfile);
+                in weaponProfile);
         }
 
         [BurstCompile]
         private static int SelectSegment(
-            float3 localHitPos,
+            in float3 localHitPos,
             in HullDef hullDef,
             ref HullDefRegistryBlob hullRegistry)
         {
@@ -239,11 +247,12 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static WeaponDamageProfile GetWeaponProfile(
+        private static void GetWeaponProfile(
             int weaponId,
-            ref ModuleDefRegistryBlob moduleRegistry)
+            ref ModuleDefRegistryBlob moduleRegistry,
+            out WeaponDamageProfile profile)
         {
-            var profile = new WeaponDamageProfile
+            profile = new WeaponDamageProfile
             {
                 WeaponId = weaponId,
                 BaseDamage = 100f,
@@ -262,15 +271,13 @@ namespace PureDOTS.Systems.Platform
                 ref var moduleDef = ref moduleRegistry.Modules[weaponId];
                 profile.BaseDamage = moduleDef.PowerDraw * 10f;
             }
-
-            return profile;
         }
 
         [BurstCompile]
         private static float ApplyShieldDamage(
             float damage,
-            float3 worldHitPos,
-            WeaponDamageProfile weaponProfile,
+            in float3 worldHitPos,
+            in WeaponDamageProfile weaponProfile,
             in DynamicBuffer<PlatformArcInstance> arcInstances,
             ref DynamicBuffer<PlatformModuleSlot> moduleSlots,
             ref ModuleDefRegistryBlob moduleRegistry)
@@ -309,7 +316,7 @@ namespace PureDOTS.Systems.Platform
         [BurstCompile]
         private static float ApplyArmorReduction(
             float damage,
-            WeaponDamageProfile weaponProfile,
+            in WeaponDamageProfile weaponProfile,
             in PlatformSegmentDef segmentDef,
             ref HullDefRegistryBlob hullRegistry)
         {
@@ -361,7 +368,7 @@ namespace PureDOTS.Systems.Platform
             ref DynamicBuffer<PlatformSegmentState> segmentStates,
             int segmentIndex,
             float damage,
-            WeaponDamageProfile weaponProfile)
+            in WeaponDamageProfile weaponProfile)
         {
             for (int i = 0; i < segmentStates.Length; i++)
             {
@@ -384,7 +391,7 @@ namespace PureDOTS.Systems.Platform
             ref DynamicBuffer<PlatformModuleSlot> moduleSlots,
             int segmentIndex,
             float damage,
-            WeaponDamageProfile weaponProfile,
+            in WeaponDamageProfile weaponProfile,
             ref ModuleDefRegistryBlob moduleRegistry)
         {
             if ((weaponProfile.BehaviorFlags & DamageBehaviorFlags.ModulePreferred) == 0)
@@ -413,7 +420,7 @@ namespace PureDOTS.Systems.Platform
         private static void ApplyEnvironmentEffects(
             ref DynamicBuffer<PlatformSegmentState> segmentStates,
             int segmentIndex,
-            WeaponDamageProfile weaponProfile)
+            in WeaponDamageProfile weaponProfile)
         {
             for (int i = 0; i < segmentStates.Length; i++)
             {

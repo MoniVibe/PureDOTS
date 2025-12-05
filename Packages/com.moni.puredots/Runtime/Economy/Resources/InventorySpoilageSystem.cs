@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Resources
 {
@@ -61,7 +62,7 @@ namespace PureDOTS.Runtime.Economy.Resources
                 for (int i = items.Length - 1; i >= 0; i--)
                 {
                     var item = items[i];
-                    if (!TryFindItemSpec(item.ItemId, catalogBlob, out var spec))
+                    if (!TryFindItemSpec(item.ItemId, ref catalogBlob, out var spec))
                     {
                         continue;
                     }
@@ -90,7 +91,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {

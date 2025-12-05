@@ -79,7 +79,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 for (int i = 0; i < cargoItems.Length; i++)
                 {
                     var cargo = cargoItems[i];
-                    if (TryFindItemSpec(cargo.ResourceId, itemCatalogBlob, out var itemSpec))
+                    if (TryFindItemSpec(cargo.ResourceId, ref itemCatalogBlob, out var itemSpec))
                     {
                         float itemMass = cargo.Amount * itemSpec.MassPerUnit;
                         float itemVolume = cargo.Amount * itemSpec.VolumePerUnit;
@@ -127,7 +127,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {

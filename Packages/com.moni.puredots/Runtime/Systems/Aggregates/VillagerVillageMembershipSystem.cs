@@ -21,7 +21,8 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villageQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillageId, VillageStats>()
+                .WithAll<PureDOTS.Runtime.Village.VillageId>()
+                .WithAll<VillageStats>()
                 .WithAll<VillageResidentEntry>()
                 .Build();
             state.RequireForUpdate(_villageQuery);
@@ -31,7 +32,7 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var villages = _villageQuery.ToEntityArray(state.WorldUpdateAllocator);
-            var villageIds = _villageQuery.ToComponentDataArray<VillageId>(state.WorldUpdateAllocator);
+            var villageIds = _villageQuery.ToComponentDataArray<PureDOTS.Runtime.Village.VillageId>(state.WorldUpdateAllocator);
             var stats = _villageQuery.ToComponentDataArray<VillageStats>(state.WorldUpdateAllocator);
             var alignments = state.GetComponentLookup<VillagerAlignment>(true);
             var residentBufferLookup = state.GetBufferLookup<VillageResidentEntry>(false);

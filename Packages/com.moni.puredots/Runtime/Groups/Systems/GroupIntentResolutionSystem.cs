@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Focus;
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Social;
 using PureDOTS.Runtime.Time;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -35,14 +36,15 @@ namespace PureDOTS.Runtime.Groups
         public void OnUpdate(ref SystemState state)
         {
             _bondLookup.Update(ref state);
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             _companionLinkLookup.Update(ref state);
             _groupMemberBufferLookup.Update(ref state);
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-
             var job = new ResolveIntentJob
             {
-                CurrentTick = timeState.CurrentTick,
+                CurrentTick = timeState.Tick,
                 BondLookup = _bondLookup,
                 CompanionLinkLookup = _companionLinkLookup,
                 GroupMemberBufferLookup = _groupMemberBufferLookup
@@ -103,13 +105,13 @@ namespace PureDOTS.Runtime.Groups
                         var bond = BondLookup[bondEntity];
                         Entity other = (bond.A == entity) ? bond.B : bond.A;
 
-                        if (other == Entity.Null || !other.Valid)
+                        if (other == Entity.Null)
                             continue;
 
                         // Check companion status
                         bool companionNearby = IsInSameGroup(entity, other);
                         bool companionThreatened = IsThreatened(other);
-                        bool companionDead = !other.Valid || !BondLookup.HasComponent(bondEntity);
+                        bool companionDead = !BondLookup.HasComponent(bondEntity);
 
                         if (bond.State == CompanionState.Active && bond.Kind != CompanionKind.Rival && bond.Kind != CompanionKind.Nemesis)
                         {
@@ -127,7 +129,7 @@ namespace PureDOTS.Runtime.Groups
                             if (companionDead)
                             {
                                 companionFleeScore += bond.Intensity * (1f - math.max(0f, personality.Boldness)) * 0.5f;
-                                companionBerserkScore += bond.Intensity * math.max(0f, -personality.VengefulForgiving) * 0.6f;
+                                companionBerserkScore += bond.Intensity * math.max(0f, personality.Vengefulness) * 0.6f;
                             }
                         }
                         else if (bond.Kind == CompanionKind.Nemesis || bond.Kind == CompanionKind.Rival)

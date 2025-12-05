@@ -46,12 +46,16 @@ namespace PureDOTS.Systems.Platform
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (hullRef, boardingState, segmentControls, segmentStates, moduleSlots, entity) in SystemAPI.Query<
+            var segmentControlsLookup = state.GetBufferLookup<SegmentControl>(true);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(true);
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
+            segmentControlsLookup.Update(ref state);
+            segmentStatesLookup.Update(ref state);
+            moduleSlotsLookup.Update(ref state);
+
+            foreach (var (hullRef, boardingState, entity) in SystemAPI.Query<
                 RefRO<PlatformHullRef>,
-                RefRW<BoardingState>,
-                DynamicBuffer<SegmentControl>,
-                DynamicBuffer<PlatformSegmentState>,
-                DynamicBuffer<PlatformModuleSlot>>().WithEntityAccess())
+                RefRW<BoardingState>>().WithEntityAccess())
             {
                 if (boardingState.ValueRO.Phase != BoardingPhase.Fighting)
                 {
@@ -63,6 +67,15 @@ namespace PureDOTS.Systems.Platform
                 {
                     continue;
                 }
+
+                if (!segmentControlsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var segmentControls = segmentControlsLookup[entity];
+                var segmentStates = segmentStatesLookup[entity];
+                var moduleSlots = moduleSlotsLookup[entity];
 
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
 
@@ -78,6 +91,7 @@ namespace PureDOTS.Systems.Platform
                     ref hullRegistryBlob))
                 {
                     TransferOwnership(
+                        ref state,
                         ref ecb,
                         entity,
                         attackerFactionId,
@@ -157,21 +171,21 @@ namespace PureDOTS.Systems.Platform
             return hasBridge && hasReactor && controlRatio > 0.5f;
         }
 
-        [BurstCompile]
         private static void TransferOwnership(
+            ref SystemState state,
             ref EntityCommandBuffer ecb,
             Entity platformEntity,
             int attackerFactionId,
             ref BoardingState boardingState)
         {
             int previousFactionId = -1;
-            if (ecb.HasComponent<PlatformOwnership>(platformEntity))
+            if (state.EntityManager.HasComponent<PlatformOwnership>(platformEntity))
             {
-                var ownership = ecb.GetComponentData<PlatformOwnership>(platformEntity);
+                var ownership = state.EntityManager.GetComponentData<PlatformOwnership>(platformEntity);
                 previousFactionId = ownership.FactionId;
             }
 
-            if (!ecb.HasComponent<PlatformOwnership>(platformEntity))
+            if (!state.EntityManager.HasComponent<PlatformOwnership>(platformEntity))
             {
                 ecb.AddComponent(platformEntity, new PlatformOwnership
                 {

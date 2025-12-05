@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Focus;
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Time;
@@ -38,14 +39,15 @@ namespace PureDOTS.Runtime.Groups
         {
             _moraleLookup.Update(ref state);
             _groupMoraleLookup.Update(ref state);
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             _personalityLookup.Update(ref state);
             _alignmentLookup.Update(ref state);
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-
             var job = new ProcessSurrenderDecisionsJob
             {
-                CurrentTick = timeState.CurrentTick,
+                CurrentTick = timeState.Tick,
                 MoraleLookup = _moraleLookup,
                 GroupMoraleLookup = _groupMoraleLookup,
                 PersonalityLookup = _personalityLookup,

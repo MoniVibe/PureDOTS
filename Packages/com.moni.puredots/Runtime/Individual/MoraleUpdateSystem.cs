@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Time;
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,13 +17,14 @@ namespace PureDOTS.Runtime.Individual
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
             float deltaTime = timeState.DeltaTime;
             
             var job = new UpdateMoraleJob
             {
                 DeltaTime = deltaTime,
-                CurrentTick = timeState.CurrentTick
+                CurrentTick = timeState.Tick
             };
             job.ScheduleParallel();
         }

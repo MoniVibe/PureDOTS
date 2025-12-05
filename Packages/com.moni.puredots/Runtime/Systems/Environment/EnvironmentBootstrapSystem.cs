@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Environment;
 using PureDOTS.Runtime.Spatial;
@@ -35,26 +36,26 @@ namespace PureDOTS.Systems.Environment
         public static void InitializeEnvironmentSystem(EntityManager entityManager)
         {
             // Check if already initialized
-            if (HasSingleton<ClimateState>(entityManager))
+            if (HasSingleton<PureDOTS.Environment.ClimateState>(entityManager))
             {
                 return; // Already initialized
             }
 
             // Create ClimateState singleton
             var climateEntity = entityManager.CreateEntity();
-            entityManager.AddComponentData(climateEntity, new ClimateState
+            entityManager.AddComponentData(climateEntity, new PureDOTS.Environment.ClimateState
             {
-                Temperature = ClimateConfig.Default.BaseTemperature,
-                Humidity = ClimateConfig.Default.BaseHumidity,
-                SeasonIndex = 0,
-                SeasonTick = 0,
-                SeasonLength = ClimateConfig.Default.SeasonLengthTicks,
+                CurrentSeason = PureDOTS.Environment.Season.Spring,
+                SeasonProgress = 0f,
+                TimeOfDayHours = 12f,
+                DayNightProgress = 0.5f,
+                GlobalTemperature = 20f,
+                GlobalWindDirection = new float2(1f, 0f),
+                GlobalWindStrength = 5f,
+                AtmosphericMoisture = 50f,
+                CloudCover = 30f,
                 LastUpdateTick = 0
             });
-
-            // Create ClimateConfig singleton
-            var climateConfigEntity = entityManager.CreateEntity();
-            entityManager.AddComponentData(climateConfigEntity, ClimateConfig.Default);
 
             // Create WindState singleton
             var windEntity = entityManager.CreateEntity();

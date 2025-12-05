@@ -12,7 +12,7 @@ namespace PureDOTS.Systems.Navigation
     /// Computes local steering forces (separation, avoidance, cohesion) for agents.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(VillagerSystemGroup))]
+    [UpdateInGroup(typeof(HotPathSystemGroup))]
     [UpdateAfter(typeof(FlowFieldFollowSystem))]
     public partial struct LocalSteeringSystem : ISystem
     {

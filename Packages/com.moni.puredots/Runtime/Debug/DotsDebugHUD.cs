@@ -31,7 +31,7 @@ namespace PureDOTS.Debugging
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
         private DivineHandEventBridge _handBridge;
-        private HandState _handState = HandState.Empty;
+        private HandState _handState = HandState.Idle;
         private int _handAmount;
         private int _handCapacity;
         private ushort _handType = DivineHandConstants.NoResourceType;

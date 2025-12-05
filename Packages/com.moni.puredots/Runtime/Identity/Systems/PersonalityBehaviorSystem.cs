@@ -30,31 +30,31 @@ namespace PureDOTS.Runtime.Identity
         /// Get action weight modifier based on personality. Used by action selection systems.
         /// </summary>
         [BurstCompile]
-        public static float GetActionWeight(PersonalityAxes personality, ActionType actionType)
+        public static float GetActionWeight(in PersonalityAxes personality, ActionType actionType)
         {
             return actionType switch
             {
-                ActionType.AdventureQuest => GetAdventureWeight(personality),
-                ActionType.StartFamily => GetFamilyWeight(personality),
-                ActionType.OpenBusiness => GetBusinessWeight(personality),
-                ActionType.ChallengeAuthority => GetAuthorityWeight(personality),
-                ActionType.JoinMilitary => GetMilitaryWeight(personality),
-                ActionType.PlotRevenge => GetRevengeWeight(personality),
-                ActionType.ForgiveEnemy => GetForgiveWeight(personality),
-                ActionType.SeekSafety => GetSafetyWeight(personality),
+                ActionType.AdventureQuest => GetAdventureWeight(in personality),
+                ActionType.StartFamily => GetFamilyWeight(in personality),
+                ActionType.OpenBusiness => GetBusinessWeight(in personality),
+                ActionType.ChallengeAuthority => GetAuthorityWeight(in personality),
+                ActionType.JoinMilitary => GetMilitaryWeight(in personality),
+                ActionType.PlotRevenge => GetRevengeWeight(in personality),
+                ActionType.ForgiveEnemy => GetForgiveWeight(in personality),
+                ActionType.SeekSafety => GetSafetyWeight(in personality),
                 _ => 1.0f // Default neutral weight
             };
         }
 
         [BurstCompile]
-        private static float GetAdventureWeight(PersonalityAxes personality)
+        private static float GetAdventureWeight(in PersonalityAxes personality)
         {
             // Bold seeks adventure, Craven avoids it
             return 0.5f + (personality.CravenBold * 0.005f); // -100 → 0.0, +100 → 1.0
         }
 
         [BurstCompile]
-        private static float GetFamilyWeight(PersonalityAxes personality)
+        private static float GetFamilyWeight(in PersonalityAxes personality)
         {
             // Bold commits quickly, Craven is cautious
             // Vengeful avoids if active grudge exists (handled elsewhere)
@@ -62,7 +62,7 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static float GetBusinessWeight(PersonalityAxes personality)
+        private static float GetBusinessWeight(in PersonalityAxes personality)
         {
             // Bold chooses risky ventures, Craven chooses safe ones
             // Base weight is neutral, personality shifts risk level
@@ -70,35 +70,35 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static float GetAuthorityWeight(PersonalityAxes personality)
+        private static float GetAuthorityWeight(in PersonalityAxes personality)
         {
             // Bold challenges, Craven avoids
             return 0.2f + (personality.CravenBold * 0.006f); // -100 → 0.0, +100 → 0.8
         }
 
         [BurstCompile]
-        private static float GetMilitaryWeight(PersonalityAxes personality)
+        private static float GetMilitaryWeight(in PersonalityAxes personality)
         {
             // Bold volunteers, Craven avoids
             return 0.1f + (personality.CravenBold * 0.009f); // -100 → 0.0, +100 → 1.0
         }
 
         [BurstCompile]
-        private static float GetRevengeWeight(PersonalityAxes personality)
+        private static float GetRevengeWeight(in PersonalityAxes personality)
         {
             // Vengeful plots revenge, Forgiving avoids
             return 0.9f - (personality.VengefulForgiving * 0.009f); // -100 → 1.8, +100 → 0.0
         }
 
         [BurstCompile]
-        private static float GetForgiveWeight(PersonalityAxes personality)
+        private static float GetForgiveWeight(in PersonalityAxes personality)
         {
             // Forgiving seeks reconciliation, Vengeful avoids
             return 0.3f + (personality.VengefulForgiving * 0.007f); // -100 → 0.0, +100 → 1.0
         }
 
         [BurstCompile]
-        private static float GetSafetyWeight(PersonalityAxes personality)
+        private static float GetSafetyWeight(in PersonalityAxes personality)
         {
             // Craven seeks safety, Bold avoids
             return 0.8f - (personality.CravenBold * 0.008f); // -100 → 1.6, +100 → 0.0

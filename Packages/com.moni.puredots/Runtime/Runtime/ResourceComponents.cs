@@ -414,4 +414,32 @@ namespace PureDOTS.Runtime.Components
         public const byte PlayerClaim = 1 << 0;
         public const byte VillagerReserved = 1 << 1;
     }
+
+    /// <summary>
+    /// Generic inventory element for storing resources.
+    /// Used by facilities, storage buildings, carriers, etc.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct ResourceStack : IBufferElementData
+    {
+        public int ResourceTypeId;
+        public float Amount;
+    }
+
+    /// <summary>
+    /// Static class with hardcoded resource type IDs for demo.
+    /// Can be replaced with data-driven catalog later.
+    /// </summary>
+    public static class ResourceIds
+    {
+        public const int Wood = 0;
+        public const int Stone = 1;
+        public const int Ore = 2;
+        public const int Planks = 3;
+        public const int Ingots = 4;
+        public const int Food = 5;
+        public const int RefinedOre = 6;
+        public const int Fuel = 7;
+        public const int Supplies = 8;
+    }
 }

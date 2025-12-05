@@ -1,4 +1,7 @@
+#nullable disable
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Entities;
 
 namespace PureDOTS.Runtime.Narrative
 {

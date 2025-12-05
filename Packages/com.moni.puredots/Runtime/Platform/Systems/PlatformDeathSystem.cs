@@ -39,10 +39,13 @@ namespace PureDOTS.Systems.Platform
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (hullRef, segmentStates, moduleSlots, explosionEvents, entity) in SystemAPI.Query<
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
+            segmentStatesLookup.Update(ref state);
+            moduleSlotsLookup.Update(ref state);
+
+            foreach (var (hullRef, explosionEvents, entity) in SystemAPI.Query<
                 RefRO<PlatformHullRef>,
-                DynamicBuffer<PlatformSegmentState>,
-                DynamicBuffer<PlatformModuleSlot>,
                 DynamicBuffer<PlatformExplosionEvent>>().WithEntityAccess())
             {
                 if (SystemAPI.HasComponent<DerelictTag>(entity))
@@ -56,6 +59,14 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
+                if (!segmentStatesLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var segmentStates = segmentStatesLookup[entity];
+                var moduleSlots = moduleSlotsLookup[entity];
+
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
 
                 bool hasMeltdown = explosionEvents.Length > 0;
@@ -68,13 +79,14 @@ namespace PureDOTS.Systems.Platform
 
                 if (isDead)
                 {
+                    var entityRef = entity;
                     if (hasMeltdown)
                     {
-                        DestroyPlatform(ref ecb, entity);
+                        DestroyPlatform(ref ecb, ref entityRef);
                     }
                     else
                     {
-                        MakeDerelict(ref ecb, entity);
+                        MakeDerelict(ref ecb, ref entityRef);
                     }
                 }
             }
@@ -190,28 +202,21 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static void DestroyPlatform(ref EntityCommandBuffer ecb, Entity entity)
+        private static void DestroyPlatform(ref EntityCommandBuffer ecb, ref Entity entity)
         {
             ecb.DestroyEntity(entity);
         }
 
         [BurstCompile]
-        private static void MakeDerelict(ref EntityCommandBuffer ecb, Entity entity)
+        private static void MakeDerelict(ref EntityCommandBuffer ecb, ref Entity entity)
         {
-            if (!ecb.HasComponent<DerelictTag>(entity))
+            ecb.AddComponent<DerelictTag>(entity);
+            ecb.AddComponent(entity, new SalvageableState
             {
-                ecb.AddComponent<DerelictTag>(entity);
-            }
-
-            if (!ecb.HasComponent<SalvageableState>(entity))
-            {
-                ecb.AddComponent(entity, new SalvageableState
-                {
-                    Infested = 0,
-                    HasLootCache = 1,
-                    StructuralIntegrity = 0.5f
-                });
-            }
+                Infested = 0,
+                HasLootCache = 1,
+                StructuralIntegrity = 0.5f
+            });
         }
     }
 }

@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Platform;
 using Unity.Burst;
 using Unity.Collections;

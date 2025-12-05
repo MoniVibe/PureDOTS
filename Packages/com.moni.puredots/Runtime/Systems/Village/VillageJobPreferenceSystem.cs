@@ -23,14 +23,14 @@ namespace PureDOTS.Systems
         {
             _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
             _outlookLookup = state.GetComponentLookup<VillageOutlook>(true);
-            state.RequireForUpdate<VillageId>();
+            state.RequireForUpdate<PureDOTS.Runtime.Village.VillageId>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillageJobPreferenceEntry>().WithEntityAccess())
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageJobPreferenceEntry>().WithEntityAccess())
             {
                 ecb.AddBuffer<VillageJobPreferenceEntry>(entity);
             }
@@ -41,7 +41,7 @@ namespace PureDOTS.Systems
             _outlookLookup.Update(ref state);
 
             foreach (var (villageId, entity) in SystemAPI
-                         .Query<RefRO<VillageId>>()
+                         .Query<RefRO<PureDOTS.Runtime.Village.VillageId>>()
                          .WithEntityAccess())
             {
                 var alignment = _alignmentLookup.HasComponent(entity)

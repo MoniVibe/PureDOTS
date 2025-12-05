@@ -21,7 +21,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (orgId, aggregate, members, entity) in SystemAPI.Query<RefRO<OrgId>, RefRO<AggregateEntity>, DynamicBuffer<AggregateMember>>()
+            foreach (var (orgId, aggregate, members, entity) in SystemAPI.Query<RefRO<OrgId>, RefRO<PureDOTS.Runtime.Aggregate.AggregateEntity>, DynamicBuffer<PureDOTS.Runtime.Aggregate.AggregateMember>>()
                 .WithEntityAccess())
             {
                 if (members.Length == 0)

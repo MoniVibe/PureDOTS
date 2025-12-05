@@ -28,8 +28,7 @@ namespace PureDOTS.Runtime.Identity
             var rng = Random.CreateFromIndex((uint)SystemAPI.Time.ElapsedTime);
 
             // Initialize entities missing identity components
-            foreach (var (entity, alignment) in SystemAPI.Query<Entity>()
-                .WithAll<EntityAlignment>()
+            foreach (var (alignment, entity) in SystemAPI.Query<RefRO<EntityAlignment>>()
                 .WithNone<EntityOutlook, PersonalityAxes, MightMagicAffinity>()
                 .WithEntityAccess())
             {

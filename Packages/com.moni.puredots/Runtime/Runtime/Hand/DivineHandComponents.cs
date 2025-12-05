@@ -23,5 +23,16 @@ namespace PureDOTS.Runtime.Components
         public Entity HeldEntity;
         public ushort HeldResourceTypeIndex;
         public float HeldAmount;
+        
+        // Throw mode and hand state
+        public bool ThrowModeEnabled;
+        public float3 HeldOffset;
+        public float3 LastAimDirection;
+        public float LastStrength;
     }
+
+    /// <summary>
+    /// Tag component marking an entity as pickable by the divine hand.
+    /// </summary>
+    public struct PickableTag : IComponentData { }
 }

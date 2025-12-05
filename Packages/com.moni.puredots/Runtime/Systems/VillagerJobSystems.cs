@@ -1,3 +1,4 @@
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
@@ -281,6 +282,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
@@ -362,8 +369,12 @@ namespace PureDOTS.Systems
         }
     }
 
+    /// <summary>
+    /// WARM path: Job reassignment (replan).
+    /// Only when work done/workplace changed/skills changed.
+    /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     [UpdateAfter(typeof(VillagerJobRequestSystem))]
     public partial struct VillagerJobAssignmentSystem : ISystem
     {
@@ -396,6 +407,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
@@ -681,8 +698,13 @@ namespace PureDOTS.Systems
         }
     }
 
+    /// <summary>
+    /// HOT path: Executes current job step (follow plan).
+    /// Performs job anim/loop with simple timers.
+    /// No job re-selection every tick.
+    /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
+    [UpdateInGroup(typeof(HotPathSystemGroup))]
     [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
     public partial struct VillagerJobExecutionSystem : ISystem
     {
@@ -755,6 +777,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
@@ -1204,6 +1232,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
@@ -1556,6 +1590,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
@@ -1715,6 +1755,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var historySettings = SystemAPI.GetSingleton<HistorySettings>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
@@ -1785,6 +1831,12 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             if (rewindState.Mode != RewindMode.Playback)
             {
@@ -1852,6 +1904,12 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            // Gate by DemoScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
             {

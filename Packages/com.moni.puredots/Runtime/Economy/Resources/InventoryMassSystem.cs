@@ -61,7 +61,7 @@ namespace PureDOTS.Runtime.Economy.Resources
                 for (int i = 0; i < items.Length; i++)
                 {
                     var item = items[i];
-                    if (TryFindItemSpec(item.ItemId, catalogBlob, out var spec))
+                    if (TryFindItemSpec(item.ItemId, ref catalogBlob, out var spec))
                     {
                         totalMass += item.Quantity * spec.MassPerUnit;
                         totalVolume += item.Quantity * spec.VolumePerUnit;
@@ -75,7 +75,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {

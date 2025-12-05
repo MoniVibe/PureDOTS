@@ -109,7 +109,11 @@ namespace PureDOTS.Runtime.Transport.Systems
                     BookingId = bookingValue.BookingId,
                     CurrentIndex = 0
                 };
-                state.EntityManager.AddComponent(bookingEntity, route);
+                if (!state.EntityManager.HasComponent<HyperwayRoute>(bookingEntity))
+                {
+                    state.EntityManager.AddComponent<HyperwayRoute>(bookingEntity);
+                }
+                state.EntityManager.SetComponentData(bookingEntity, route);
 
                 // Update booking state
                 booking.ValueRW.State = WarpBookingState.QueuedAtOriginNode;
@@ -117,7 +121,7 @@ namespace PureDOTS.Runtime.Transport.Systems
         }
 
         [BurstCompile]
-        private static bool IsNodeAvailable(WarpRelayNode node)
+        private static bool IsNodeAvailable(in WarpRelayNode node)
         {
             // Check if node is available for routing
             // Uses KnownFacts in practice - for now, check status directly

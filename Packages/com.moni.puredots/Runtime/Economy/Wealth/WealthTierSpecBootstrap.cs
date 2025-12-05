@@ -28,10 +28,13 @@ namespace PureDOTS.Runtime.Economy.Wealth
         [BurstCompile]
         private static void EnsureCatalog(ref SystemState state)
         {
-            if (SystemAPI.HasSingleton<WealthTierSpecCatalog>())
+            var query = state.EntityManager.CreateEntityQuery(typeof(WealthTierSpecCatalog));
+            if (!query.IsEmptyIgnoreFilter)
             {
+                query.Dispose();
                 return;
             }
+            query.Dispose();
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<WealthTierSpecCatalogBlob>();

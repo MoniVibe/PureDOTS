@@ -60,13 +60,13 @@ namespace PureDOTS.Runtime.Economy.Production
             // Process scheduling requests
             foreach (var (request, entity) in SystemAPI.Query<RefRO<ProductionJobRequest>>().WithEntityAccess())
             {
-                ProcessJobRequest(ref state, entity, request.ValueRO, catalogBlob, tick);
+                ProcessJobRequest(ref state, entity, request.ValueRO, ref catalogBlob, tick);
                 state.EntityManager.RemoveComponent<ProductionJobRequest>(entity);
             }
         }
 
         [BurstCompile]
-        private void ProcessJobRequest(ref SystemState state, Entity businessEntity, ProductionJobRequest request, ProductionRecipeCatalogBlob catalog, uint tick)
+        private void ProcessJobRequest(ref SystemState state, Entity businessEntity, ProductionJobRequest request, ref ProductionRecipeCatalogBlob catalog, uint tick)
         {
             if (!_productionLookup.HasComponent(businessEntity))
             {
@@ -79,10 +79,12 @@ namespace PureDOTS.Runtime.Economy.Production
             }
 
             // Find recipe
-            if (!TryFindRecipe(request.RecipeId, catalog, out var recipe))
+            if (!TryFindRecipe(request.RecipeId, ref catalog, out int recipeIndex))
             {
                 return;
             }
+
+            ref var recipe = ref catalog.Recipes[recipeIndex];
 
             var businessInventory = _businessInventoryLookup[businessEntity];
             var inventoryEntity = businessInventory.InventoryEntity;
@@ -97,8 +99,8 @@ namespace PureDOTS.Runtime.Economy.Production
             // Check inputs are available
             for (int i = 0; i < recipe.Inputs.Length; i++)
             {
-                var input = recipe.Inputs[i];
-                float available = GetItemQuantity(items, input.ItemId);
+                ref var input = ref recipe.Inputs[i];
+                float available = GetItemQuantity(in items, input.ItemId);
                 if (available < input.Quantity)
                 {
                     return; // Cannot start job - missing inputs
@@ -125,23 +127,24 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static bool TryFindRecipe(FixedString64Bytes recipeId, ProductionRecipeCatalogBlob catalog, out ProductionRecipeBlob recipe)
+        private static bool TryFindRecipe(in FixedString64Bytes recipeId, ref ProductionRecipeCatalogBlob catalog, out int recipeIndex)
         {
             for (int i = 0; i < catalog.Recipes.Length; i++)
             {
-                if (catalog.Recipes[i].RecipeId.Equals(recipeId))
+                ref var candidateRecipe = ref catalog.Recipes[i];
+                if (candidateRecipe.RecipeId.Equals(recipeId))
                 {
-                    recipe = catalog.Recipes[i];
+                    recipeIndex = i;
                     return true;
                 }
             }
 
-            recipe = default;
+            recipeIndex = -1;
             return false;
         }
 
         [BurstCompile]
-        private static float GetItemQuantity(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId)
+        private static float GetItemQuantity(in DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId)
         {
             float total = 0f;
             for (int i = 0; i < items.Length; i++)

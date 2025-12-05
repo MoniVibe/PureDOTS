@@ -14,16 +14,14 @@ namespace PureDOTS.Runtime.Individual
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = new Unity.Collections.LowLevel.Unsafe.UnsafeList<EntityCommandBuffer>(1, Unity.Collections.Allocator.Temp);
-            var ecbParallel = state.GetEntityCommandBuffer(state.WorldUnmanaged.UpdateAllocator.ToAllocator);
+            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var job = new CheckPromotionJob
             {
-                Ecb = ecbParallel.AsParallelWriter()
+                Ecb = ecb
             };
             job.ScheduleParallel();
-
-            state.Dependency.Complete();
         }
 
         [BurstCompile]

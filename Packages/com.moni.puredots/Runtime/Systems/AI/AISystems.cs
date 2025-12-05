@@ -1,7 +1,9 @@
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Mobility;
+using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Spatial;
+using PureDOTS.Systems.Performance;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -97,8 +99,14 @@ namespace PureDOTS.Systems.AI
         }
     }
 
+    /// <summary>
+    /// WARM path: Updates AI sensor awareness via spatial queries.
+    /// Group-level sensing: sensor anchors (squad leaders, watchtowers) do the sensing.
+    /// Respects budget and uses spatial hashing for efficient queries.
+    /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(AISystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
     public partial struct AISensorUpdateSystem : ISystem
     {
         private EntityQuery _sensorQuery;
@@ -117,8 +125,11 @@ namespace PureDOTS.Systems.AI
                 .Build();
 
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<SpatialGridConfig>();
             state.RequireForUpdate<SpatialGridState>();
+            state.RequireForUpdate<UniversalPerformanceBudget>();
+            state.RequireForUpdate<UniversalPerformanceCounters>();
             state.RequireForUpdate(_sensorQuery);
 
             _villagerLookup = state.GetComponentLookup<VillagerId>(true);
@@ -161,10 +172,20 @@ namespace PureDOTS.Systems.AI
             var maskList = new NativeList<AISensorCategoryMask>(Allocator.TempJob);
             var configList = new NativeList<AISensorConfig>(Allocator.TempJob);
 
+            var budget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
+            var counters = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
+            
             var offset = 0;
+            int processedCount = 0;
             foreach (var (config, sensorState, transform, entity) in SystemAPI.Query<RefRO<AISensorConfig>, RefRW<AISensorState>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
             {
+                // Check budget
+                if (processedCount >= budget.MaxPerceptionChecksPerTick)
+                {
+                    break;
+                }
+
                 var sensorConfig = config.ValueRO;
                 var stateRef = sensorState.ValueRW;
                 stateRef.Elapsed += timeState.FixedDeltaTime;
@@ -179,6 +200,8 @@ namespace PureDOTS.Systems.AI
                 stateRef.Elapsed = 0f;
                 stateRef.LastSampleTick = timeState.Tick;
                 sensorState.ValueRW = stateRef;
+                
+                processedCount++;
 
                 var capacity = math.max(1, sensorConfig.MaxResults);
                 descriptorList.Add(new SpatialQueryDescriptor
@@ -299,6 +322,10 @@ namespace PureDOTS.Systems.AI
                 }
             }
 
+            // Update counters
+            counters.ValueRW.PerceptionChecksThisTick += processedCount;
+            counters.ValueRW.TotalWarmOperationsThisTick += processedCount;
+            
             descriptorList.Dispose();
             rangeList.Dispose();
             sensorList.Dispose();

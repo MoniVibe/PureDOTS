@@ -72,10 +72,10 @@ namespace PureDOTS.Systems.Time.Templates
 
             // Track config - in real usage, this would come from domain config or be parameterized
             var trackId = new RewindTrackId { Value = 1 }; // Example: Combat track
-            if (!RewindUtil.TryGetTrackDef(config, trackId, out var trackDef))
+            if (!RewindUtil.TryGetTrackDef(ref config, trackId, out var trackDef))
                 return; // Track not configured
 
-            if (!RewindUtil.ShouldRecordTrack(config, trackId, time.Tick))
+            if (!RewindUtil.ShouldRecordTrack(ref config, trackId, time.Tick))
                 return;
 
             uint tick = time.Tick;
@@ -109,7 +109,7 @@ namespace PureDOTS.Systems.Time.Templates
                 var snapshot = new PosHpSnapshot
                 {
                     Position = transform.ValueRO.Position,
-                    Velocity = transform.ValueRO.Forward, // Or separate velocity component
+                    Velocity = transform.ValueRO.Forward(), // Or separate velocity component
                     HitPoints = hp.ValueRO.Current
                 };
 
@@ -151,7 +151,7 @@ namespace PureDOTS.Systems.Time.Templates
             ref var config = ref configSingleton.Config.Value;
 
             var activeTrack = rewindState.ActiveTrack;
-            if (!RewindUtil.TryGetTrackDef(config, activeTrack, out var trackDef))
+            if (!RewindUtil.TryGetTrackDef(ref config, activeTrack, out var trackDef))
                 return;
 
             uint targetTick = rewindState.PlaybackTick;

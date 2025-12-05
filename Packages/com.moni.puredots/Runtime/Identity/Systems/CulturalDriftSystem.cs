@@ -24,14 +24,21 @@ namespace PureDOTS.Runtime.Identity
             // Run at low frequency (e.g., once per in-game day/week)
             // For now, this is a framework - games implement specific drift logic
 
-            foreach (var (entity, aggregateAlignment, members) in SystemAPI.Query<RefRW<AggregateAlignment>, RefRO<AggregateMember>>()
+            var memberBufferLookup = state.GetBufferLookup<AggregateMember>(true);
+            memberBufferLookup.Update(ref state);
+
+            foreach (var (aggregateAlignment, entity) in SystemAPI.Query<RefRW<AggregateAlignment>>()
                 .WithEntityAccess())
             {
-                if (members.ValueRO.Length == 0)
+                if (!memberBufferLookup.HasBuffer(entity))
+                    continue;
+
+                var members = memberBufferLookup[entity];
+                if (members.Length == 0)
                     continue;
 
                 // Calculate target alignment from members
-                var targetAlignment = CalculateMemberAverageAlignment(ref state, members.ValueRO);
+                CalculateMemberAverageAlignment(ref state, in members, out var targetAlignment);
 
                 // Drift toward target based on cohesion and drift rate
                 var current = aggregateAlignment.ValueRO;
@@ -44,7 +51,7 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static EntityAlignment CalculateMemberAverageAlignment(ref SystemState state, DynamicBuffer<AggregateMember> members)
+        private static void CalculateMemberAverageAlignment(ref SystemState state, in DynamicBuffer<AggregateMember> members, out EntityAlignment result)
         {
             float totalMoral = 0f;
             float totalOrder = 0f;
@@ -66,9 +73,12 @@ namespace PureDOTS.Runtime.Identity
             }
 
             if (totalWeight == 0f)
-                return new EntityAlignment(); // Default neutral
+            {
+                result = new EntityAlignment(); // Default neutral
+                return;
+            }
 
-            return new EntityAlignment
+            result = new EntityAlignment
             {
                 Moral = totalMoral / totalWeight,
                 Order = totalOrder / totalWeight,

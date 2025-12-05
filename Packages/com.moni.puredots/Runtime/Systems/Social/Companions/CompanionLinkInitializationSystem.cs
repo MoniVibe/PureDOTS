@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Social;
 using PureDOTS.Systems;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Systems.Social.Companions
@@ -50,7 +51,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
 
             void EnsureLink(Entity entity, Entity bondEntity)
             {
-                if (entity == Entity.Null || !entity.Valid)
+                if (entity == Entity.Null)
                     return;
 
                 if (!CompanionLinkLookup.HasBuffer(entity))

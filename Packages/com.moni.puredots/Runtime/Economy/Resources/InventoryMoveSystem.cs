@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Resources
 {
@@ -47,13 +48,13 @@ namespace PureDOTS.Runtime.Economy.Resources
             // Process move requests
             foreach (var (moveRequest, entity) in SystemAPI.Query<RefRO<InventoryMoveRequest>>().WithEntityAccess())
             {
-                ProcessMove(ref state, moveRequest.ValueRO, catalogBlob);
+                ProcessMove(ref state, moveRequest.ValueRO, ref catalogBlob);
                 state.EntityManager.RemoveComponent<InventoryMoveRequest>(entity);
             }
         }
 
         [BurstCompile]
-        private void ProcessMove(ref SystemState state, InventoryMoveRequest request, ItemSpecCatalogBlob catalog)
+        private void ProcessMove(ref SystemState state, InventoryMoveRequest request, ref ItemSpecCatalogBlob catalog)
         {
             if (!_inventoryLookup.HasComponent(request.Source) || !_inventoryLookup.HasComponent(request.Destination))
             {
@@ -71,13 +72,13 @@ namespace PureDOTS.Runtime.Economy.Resources
             var destItems = _itemBufferLookup[request.Destination];
 
             // Find item spec for mass/volume calculation
-            if (!TryFindItemSpec(request.ItemId, catalog, out var spec))
+            if (!TryFindItemSpec(request.ItemId, ref catalog, out var spec))
             {
                 return;
             }
 
             // Check if source has enough
-            float available = GetItemQuantity(sourceItems, request.ItemId);
+            float available = GetItemQuantity(in sourceItems, request.ItemId);
             if (available < request.Quantity)
             {
                 return;
@@ -98,14 +99,14 @@ namespace PureDOTS.Runtime.Economy.Resources
             }
 
             // Remove from source
-            RemoveItem(sourceItems, request.ItemId, request.Quantity);
+            RemoveItem(ref sourceItems, request.ItemId, request.Quantity);
 
             // Add to destination
             AddItem(destItems, request.ItemId, request.Quantity, request.Quality, request.Durability);
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {
@@ -121,7 +122,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
 
         [BurstCompile]
-        private static float GetItemQuantity(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId)
+        private static float GetItemQuantity(in DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId)
         {
             float total = 0f;
             for (int i = 0; i < items.Length; i++)
@@ -136,7 +137,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
 
         [BurstCompile]
-        private static void RemoveItem(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId, float quantity)
+        private static void RemoveItem(ref DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId, float quantity)
         {
             float remaining = quantity;
 

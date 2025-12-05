@@ -1,7 +1,9 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Platform;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Platform
 {
@@ -58,7 +60,8 @@ namespace PureDOTS.Systems.Platform
             tuningState.MaintenanceDebt = math.max(0f, tuningState.MaintenanceDebt - (BaseMaintenanceRate * maintenanceEffectiveness));
 
             var wearRate = BaseWearRate;
-            if (IsInCombat(ref state, platformEntity))
+            var platformEntityRef = platformEntity;
+            if (IsInCombat(ref state, ref platformEntityRef))
             {
                 wearRate *= CombatWearMultiplier;
             }
@@ -73,7 +76,7 @@ namespace PureDOTS.Systems.Platform
             tuningState.Reliability = math.clamp(baseReliability + maintenanceBonus + qualityBonus + crewBonus, 0f, 1f);
             tuningState.PerformanceFactor = math.clamp(0.5f + (tuningState.Reliability * 0.5f), 0.5f, 1f);
 
-            if (tuningState.Reliability < 0.3f && SystemAPI.HasComponent<DynamicBuffer<PlatformModuleSlot>>(platformEntity))
+            if (tuningState.Reliability < 0.3f && SystemAPI.HasBuffer<PlatformModuleSlot>(platformEntity))
             {
                 var modules = SystemAPI.GetBuffer<PlatformModuleSlot>(platformEntity);
                 var random = new Unity.Mathematics.Random((uint)(platformEntity.Index + currentTick));
@@ -100,10 +103,11 @@ namespace PureDOTS.Systems.Platform
             float totalSkill = 0f;
             int count = 0;
 
+            var entityManager = state.EntityManager;
             for (int i = 0; i < crewMembers.Length; i++)
             {
                 var crewEntity = crewMembers[i].CrewEntity;
-                if (SystemAPI.Exists(crewEntity))
+                if (entityManager.Exists(crewEntity))
                 {
                     totalSkill += 50f;
                     count++;
@@ -114,7 +118,7 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static bool IsInCombat(ref SystemState state, Entity platformEntity)
+        private static bool IsInCombat(ref SystemState state, ref Entity platformEntity)
         {
             return false;
         }

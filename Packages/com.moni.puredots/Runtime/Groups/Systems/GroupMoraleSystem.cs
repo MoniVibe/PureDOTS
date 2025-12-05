@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -26,12 +27,14 @@ namespace PureDOTS.Runtime.Groups
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             _moraleLookup.Update(ref state);
-            var timeState = SystemAPI.GetSingleton<TimeState>();
 
             var job = new UpdateGroupMoraleJob
             {
-                CurrentTick = timeState.CurrentTick,
+                CurrentTick = timeState.Tick,
                 MoraleLookup = _moraleLookup
             };
             job.ScheduleParallel();

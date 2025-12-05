@@ -4,14 +4,16 @@ using PureDOTS.Runtime.Power;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Power
 {
     /// <summary>
-    /// Solves power flow distribution by priority tiers and sets consumer supplied amounts.
+    /// WARM path: Power flow solve per network (few ticks/network changes).
+    /// Supply status solving periodically.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PowerSystemGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     [UpdateAfter(typeof(PowerNetworkBuildSystem))]
     public partial struct PowerFlowSolveSystem : ISystem
     {
@@ -81,7 +83,10 @@ namespace PureDOTS.Systems.Power
                 if (_sourceStateLookup.HasComponent(sourceEntities[i]))
                 {
                     var sourceState = _sourceStateLookup[sourceEntities[i]];
-                    var netGen = networkGeneration.GetValueOrDefault(node.Network.NetworkId, 0f);
+                    if (!networkGeneration.TryGetValue(node.Network.NetworkId, out var netGen))
+                    {
+                        netGen = 0f;
+                    }
                     netGen += sourceState.MaxOutput * (1f - node.LocalLoss);
                     networkGeneration[node.Network.NetworkId] = netGen;
                 }
@@ -97,7 +102,10 @@ namespace PureDOTS.Systems.Power
                 if (_consumerStateLookup.HasComponent(consumerEntities[i]))
                 {
                     var consumerState = _consumerStateLookup[consumerEntities[i]];
-                    var netDemand = networkDemand.GetValueOrDefault(node.Network.NetworkId, 0f);
+                    if (!networkDemand.TryGetValue(node.Network.NetworkId, out var netDemand))
+                    {
+                        netDemand = 0f;
+                    }
                     netDemand += consumerState.RequestedDemand;
                     networkDemand[node.Network.NetworkId] = netDemand;
                 }
@@ -158,8 +166,14 @@ namespace PureDOTS.Systems.Power
             }
 
             // Get network totals
-            var availablePower = NetworkGeneration.GetValueOrDefault(node.Network.NetworkId, 0f);
-            var totalDemand = NetworkDemand.GetValueOrDefault(node.Network.NetworkId, 0f);
+            if (!NetworkGeneration.TryGetValue(node.Network.NetworkId, out var availablePower))
+            {
+                availablePower = 0f;
+            }
+            if (!NetworkDemand.TryGetValue(node.Network.NetworkId, out var totalDemand))
+            {
+                totalDemand = 0f;
+            }
 
             // Simple proportional distribution by priority
             var supplyRatio = totalDemand > 0 ? math.min(1f, availablePower / totalDemand) : 0f;

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Narrative;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -75,57 +76,57 @@ namespace PureDOTS.Systems.Narrative
                 }
 
                 ref var situationRegistry = ref registry.SituationRegistry.Value;
-                SituationArchetype? archetype = null;
+                int archetypeIndex = -1;
                 
                 for (int i = 0; i < situationRegistry.Archetypes.Length; i++)
                 {
                     ref var arch = ref situationRegistry.Archetypes[i];
                     if (arch.SituationId.Value == instance.ValueRO.SituationId.Value)
                     {
-                        archetype = arch;
+                        archetypeIndex = i;
                         break;
                     }
                 }
 
-                if (!archetype.HasValue)
+                if (archetypeIndex < 0)
                 {
                     continue;
                 }
 
-                ref var arch = ref archetype.Value;
+                ref var archetype = ref situationRegistry.Archetypes[archetypeIndex];
 
                 // Get current step
                 var currentStepIndex = instance.ValueRO.StepIndex;
-                SituationStepDef? currentStep = null;
+                int stepIndex = -1;
 
-                for (int i = 0; i < arch.Steps.Length; i++)
+                for (int i = 0; i < archetype.Steps.Length; i++)
                 {
-                    ref var step = ref arch.Steps[i];
-                    if (step.StepIndex == currentStepIndex)
+                    ref var stepDef = ref archetype.Steps[i];
+                    if (stepDef.StepIndex == currentStepIndex)
                     {
-                        currentStep = step;
+                        stepIndex = i;
                         break;
                     }
                 }
 
-                if (!currentStep.HasValue)
+                if (stepIndex < 0)
                 {
                     continue;
                 }
 
-                ref var step = ref currentStep.Value;
+                ref var currentStep = ref archetype.Steps[stepIndex];
 
                 // Evaluate step timeout
                 var stepDuration = worldTime - instance.ValueRO.LastStepChangeAt;
-                var minDuration = (double)step.MinDuration;
-                var maxDuration = (double)step.MaxDuration;
+                var minDuration = (double)currentStep.MinDuration;
+                var maxDuration = (double)currentStep.MaxDuration;
 
                 // Find valid transitions from current step
                 var validTransitions = new NativeList<int>(Allocator.Temp);
                 
-                for (int i = 0; i < arch.Transitions.Length; i++)
+                for (int i = 0; i < archetype.Transitions.Length; i++)
                 {
-                    ref var transition = ref arch.Transitions[i];
+                    ref var transition = ref archetype.Transitions[i];
                     
                     if (transition.FromStepIndex != currentStepIndex)
                     {
@@ -136,7 +137,7 @@ namespace PureDOTS.Systems.Narrative
                     bool conditionsMet = true;
 
                     // Check time-based conditions
-                    if (step.Kind == SituationStepKind.TimedTick || step.Kind == SituationStepKind.AutoAdvance)
+                    if (currentStep.Kind == SituationStepKind.TimedTick || currentStep.Kind == SituationStepKind.AutoAdvance)
                     {
                         if (stepDuration < minDuration)
                         {
@@ -197,16 +198,17 @@ namespace PureDOTS.Systems.Narrative
                         float totalWeight = 0f;
                         for (int i = 0; i < validTransitions.Length; i++)
                         {
-                            ref var trans = ref arch.Transitions[validTransitions[i]];
+                            ref var trans = ref archetype.Transitions[validTransitions[i]];
                             totalWeight += trans.Weight;
                         }
 
-                        float random = math.random().NextFloat() * totalWeight;
+                        var rng = new Unity.Mathematics.Random((uint)(entity.Index + timeState.Tick));
+                        float random = rng.NextFloat() * totalWeight;
                         float accumulated = 0f;
                         
                         for (int i = 0; i < validTransitions.Length; i++)
                         {
-                            ref var trans = ref arch.Transitions[validTransitions[i]];
+                            ref var trans = ref archetype.Transitions[validTransitions[i]];
                             accumulated += trans.Weight;
                             if (random <= accumulated)
                             {
@@ -216,7 +218,7 @@ namespace PureDOTS.Systems.Narrative
                         }
                     }
 
-                    ref var selectedTransition = ref arch.Transitions[selectedTransitionIndex];
+                    ref var selectedTransition = ref archetype.Transitions[selectedTransitionIndex];
 
                     // Apply transition effects
                     for (int i = 0; i < selectedTransition.Effects.Length; i++)
@@ -235,7 +237,7 @@ namespace PureDOTS.Systems.Narrative
                     var newStepIndex = selectedTransition.ToStepIndex;
                     var newPhase = instance.ValueRO.Phase;
 
-                    if (newStepIndex >= arch.Steps.Length)
+                    if (newStepIndex >= archetype.Steps.Length)
                     {
                         newPhase = SituationPhase.Finished;
                     }
@@ -257,9 +259,9 @@ namespace PureDOTS.Systems.Narrative
                     instance.ValueRW.LastStepChangeAt = worldTime;
 
                     // Calculate next evaluation time
-                    if (newStepIndex < arch.Steps.Length)
+                    if (newStepIndex < archetype.Steps.Length)
                     {
-                        ref var newStep = ref arch.Steps[newStepIndex];
+                        ref var newStep = ref archetype.Steps[newStepIndex];
                         var nextMinDuration = (double)newStep.MinDuration;
                         instance.ValueRW.NextEvaluationTime = worldTime + nextMinDuration;
                     }

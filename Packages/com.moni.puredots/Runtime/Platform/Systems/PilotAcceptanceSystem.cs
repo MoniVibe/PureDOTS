@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Platform;
 using Unity.Burst;
 using Unity.Collections;
@@ -23,21 +24,24 @@ namespace PureDOTS.Systems.Platform
         public void OnUpdate(ref SystemState state)
         {
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            var crewMemberLookup = SystemAPI.GetBufferLookup<PlatformCrewMember>(false);
 
-            foreach (var (tuningState, pilotPref, crewMembers, kind, entity) in SystemAPI.Query<RefRO<PlatformTuningState>, RefRO<PlatformPilotPreference>, DynamicBuffer<PlatformCrewMember>, RefRO<PlatformKind>>().WithEntityAccess())
+            foreach (var (tuningState, pilotPref, kind, entity) in SystemAPI.Query<RefRO<PlatformTuningState>, RefRO<PlatformPilotPreference>, RefRO<PlatformKind>>().WithAll<PlatformCrewMember>().WithEntityAccess())
             {
                 if ((kind.ValueRO.Flags & (PlatformFlags.Craft | PlatformFlags.Drone)) == 0)
                 {
                     continue;
                 }
 
+                var crewMembers = crewMemberLookup[entity];
+                var platformEntityRef = entity;
                 CheckPilotAcceptance(
                     ref state,
                     ref ecb,
-                    entity,
+                    ref platformEntityRef,
                     in tuningState.ValueRO,
                     in pilotPref.ValueRO,
-                    in crewMembers);
+                    ref crewMembers);
             }
         }
 
@@ -45,10 +49,10 @@ namespace PureDOTS.Systems.Platform
         private static void CheckPilotAcceptance(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
-            Entity platformEntity,
+            ref Entity platformEntity,
             in PlatformTuningState tuningState,
             in PlatformPilotPreference pilotPref,
-            in DynamicBuffer<PlatformCrewMember> crewMembers)
+            ref DynamicBuffer<PlatformCrewMember> crewMembers)
         {
             var reliabilityBelowMin = tuningState.Reliability < pilotPref.MinReliability;
             var performanceBelowMin = tuningState.PerformanceFactor < pilotPref.MinPerformance;
@@ -66,9 +70,11 @@ namespace PureDOTS.Systems.Platform
                 for (int i = 0; i < crewMembers.Length; i++)
                 {
                     var crewEntity = crewMembers[i].CrewEntity;
-                    if (SystemAPI.Exists(crewEntity) && crewMembers[i].RoleId == 4)
+                    if (state.EntityManager.Exists(crewEntity) && crewMembers[i].RoleId == 4)
                     {
-                        EmitPilotRefusalEvent(ref ecb, crewEntity, platformEntity);
+                        var pilotEntityRef = crewEntity;
+                        var platformEntityRef = platformEntity;
+                        EmitPilotRefusalEvent(ref ecb, ref pilotEntityRef, ref platformEntityRef);
                         break;
                     }
                 }
@@ -78,9 +84,11 @@ namespace PureDOTS.Systems.Platform
                 for (int i = 0; i < crewMembers.Length; i++)
                 {
                     var crewEntity = crewMembers[i].CrewEntity;
-                    if (SystemAPI.Exists(crewEntity) && crewMembers[i].RoleId == 4)
+                    if (state.EntityManager.Exists(crewEntity) && crewMembers[i].RoleId == 4)
                     {
-                        EmitGrudgingAcceptanceEvent(ref ecb, crewEntity, platformEntity);
+                        var pilotEntityRef = crewEntity;
+                        var platformEntityRef = platformEntity;
+                        EmitGrudgingAcceptanceEvent(ref ecb, ref pilotEntityRef, ref platformEntityRef);
                         break;
                     }
                 }
@@ -88,12 +96,12 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static void EmitPilotRefusalEvent(ref EntityCommandBuffer ecb, Entity pilotEntity, Entity craftEntity)
+        private static void EmitPilotRefusalEvent(ref EntityCommandBuffer ecb, ref Entity pilotEntity, ref Entity craftEntity)
         {
         }
 
         [BurstCompile]
-        private static void EmitGrudgingAcceptanceEvent(ref EntityCommandBuffer ecb, Entity pilotEntity, Entity craftEntity)
+        private static void EmitGrudgingAcceptanceEvent(ref EntityCommandBuffer ecb, ref Entity pilotEntity, ref Entity craftEntity)
         {
         }
     }

@@ -17,6 +17,14 @@ namespace PureDOTS.Systems
 
         public bool Initialize(string defaultWorldName)
         {
+#if UNITY_EDITOR
+            // Guard: Skip world creation during domain reload/compilation to prevent editor freeze
+            if (!Application.isPlaying && (UnityEditor.EditorApplication.isCompiling || UnityEditor.EditorApplication.isUpdating))
+            {
+                return false; // Let Unity use default bootstrap during reload
+            }
+#endif
+
             using (InitializeMarker.Auto())
             {
                 var profile = SystemRegistry.ResolveActiveProfile();

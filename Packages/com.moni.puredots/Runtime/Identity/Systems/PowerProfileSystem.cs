@@ -31,7 +31,7 @@ namespace PureDOTS.Runtime.Identity
         /// <param name="powerType">Type of power (Might or Magic)</param>
         /// <returns>Preference weight (0..1). Higher = more preferred.</returns>
         [BurstCompile]
-        public static float GetPowerPreference(MightMagicAffinity affinity, PowerType powerType)
+        public static float GetPowerPreference(in MightMagicAffinity affinity, PowerType powerType)
         {
             float normalizedAxis = math.clamp(affinity.Axis / 100f, -1f, 1f);
 
@@ -48,7 +48,7 @@ namespace PureDOTS.Runtime.Identity
         /// Check if entity prefers might-based approaches.
         /// </summary>
         [BurstCompile]
-        public static bool PrefersMight(MightMagicAffinity affinity)
+        public static bool PrefersMight(in MightMagicAffinity affinity)
         {
             return affinity.Axis < -30f && affinity.Strength > 0.5f;
         }
@@ -57,7 +57,7 @@ namespace PureDOTS.Runtime.Identity
         /// Check if entity prefers magic-based approaches.
         /// </summary>
         [BurstCompile]
-        public static bool PrefersMagic(MightMagicAffinity affinity)
+        public static bool PrefersMagic(in MightMagicAffinity affinity)
         {
             return affinity.Axis > 30f && affinity.Strength > 0.5f;
         }
@@ -66,7 +66,7 @@ namespace PureDOTS.Runtime.Identity
         /// Check if entity is hybrid (uses both might and magic).
         /// </summary>
         [BurstCompile]
-        public static bool IsHybrid(MightMagicAffinity affinity)
+        public static bool IsHybrid(in MightMagicAffinity affinity)
         {
             return math.abs(affinity.Axis) <= 30f || affinity.Strength < 0.5f;
         }
@@ -75,7 +75,7 @@ namespace PureDOTS.Runtime.Identity
         /// Get group power preference from aggregate power profile.
         /// </summary>
         [BurstCompile]
-        public static float GetGroupPowerPreference(AggregatePowerProfile profile, PowerType powerType)
+        public static float GetGroupPowerPreference(in AggregatePowerProfile profile, PowerType powerType)
         {
             float normalizedAxis = math.clamp(profile.AvgMightMagicAxis / 100f, -1f, 1f);
 

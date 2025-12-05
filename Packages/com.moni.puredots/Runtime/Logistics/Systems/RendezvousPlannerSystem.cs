@@ -109,12 +109,13 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 // Compute rendezvous point using naive intercept math
                 // Simplified: assume hauler travels at constant speed, target moves at constant speed
                 // Solve for meeting point where hauler travel time ≈ target travel time
-                float3 rendezvousPoint = ComputeRendezvousPoint(
-                    originPos,
-                    targetPos,
-                    targetMovementPlan.CurrentTarget,
+                ComputeRendezvousPoint(
+                    in originPos,
+                    in targetPos,
+                    in targetMovementPlan.CurrentTarget,
                     targetMovementPlan.Speed,
-                    5.0f); // Default hauler speed (should come from hauler stats)
+                    5.0f, // Default hauler speed (should come from hauler stats)
+                    out var rendezvousPoint);
 
                 // Create or update waypoint buffer for the job
                 // In practice, waypoints would be on the hauler entity, not the job
@@ -127,12 +128,13 @@ namespace PureDOTS.Runtime.Logistics.Systems
         }
 
         [BurstCompile]
-        private static float3 ComputeRendezvousPoint(
-            float3 originPos,
-            float3 targetCurrentPos,
-            float3 targetDestination,
+        private static void ComputeRendezvousPoint(
+            in float3 originPos,
+            in float3 targetCurrentPos,
+            in float3 targetDestination,
             float targetSpeed,
-            float haulerSpeed)
+            float haulerSpeed,
+            out float3 result)
         {
             // Naive intercept calculation
             // Vector from target current to destination
@@ -150,13 +152,14 @@ namespace PureDOTS.Runtime.Logistics.Systems
             // Otherwise, intercept somewhere along target's path
             if (haulerTime <= targetTime)
             {
-                return targetDestination;
+                result = targetDestination;
+                return;
             }
 
             // Intercept along path
             // Simplified: intercept at midpoint of target's path
             float interceptRatio = 0.5f;
-            return targetCurrentPos + targetDirection * (targetDistance * interceptRatio);
+            result = targetCurrentPos + targetDirection * (targetDistance * interceptRatio);
         }
     }
 }

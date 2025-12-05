@@ -23,39 +23,42 @@ namespace PureDOTS.Runtime.Individual
             if (!em.HasComponent<IndividualId>(villagerEntity))
             {
                 // Generate a unique ID (in practice, this would come from a registry)
-                em.AddComponent<IndividualId>(villagerEntity, new IndividualId { Value = villagerEntity.Index });
+                em.AddComponentData(villagerEntity, new IndividualId { Value = villagerEntity.Index });
             }
 
             // Add core SimIndividual components if not present
             if (!em.HasComponent<AlignmentTriplet>(villagerEntity))
             {
-                em.AddComponent<AlignmentTriplet>(villagerEntity, AlignmentTriplet.FromFloats(0f, 0f, 0f));
+                em.AddComponentData(villagerEntity, AlignmentTriplet.FromFloats(0f, 0f, 0f));
             }
 
             if (!em.HasComponent<IndividualStats>(villagerEntity))
             {
                 // Initialize from existing VillagerAttributes if available
-                em.AddComponent<IndividualStats>(villagerEntity, IndividualStats.FromValues(5f, 5f, 5f, 5f, 5f, 5f, 5f));
+                em.AddComponentData(villagerEntity, IndividualStats.FromValues(5f, 5f, 5f, 5f, 5f, 5f, 5f));
             }
 
             if (!em.HasComponent<MoraleState>(villagerEntity))
             {
-                em.AddComponent<MoraleState>(villagerEntity, MoraleState.FromValues(0f, 0f));
+                em.AddComponentData(villagerEntity, MoraleState.FromValues(0f, 0f));
             }
 
             if (!em.HasComponent<InitiativeState>(villagerEntity))
             {
-                em.AddComponent<InitiativeState>(villagerEntity, InitiativeState.FromValues(0.05f, 0.2f));
+                em.AddComponent<InitiativeState>(villagerEntity);
+                em.SetComponentData(villagerEntity, InitiativeState.FromValues(0.05f, 0.2f));
             }
 
             if (!em.HasComponent<PersonalityAxes>(villagerEntity))
             {
-                em.AddComponent<PersonalityAxes>(villagerEntity, PersonalityAxes.FromValues(0f, 0f, 0f, 0f, 0f));
+                em.AddComponent<PersonalityAxes>(villagerEntity);
+                em.SetComponentData(villagerEntity, PersonalityAxes.FromValues(0f, 0f, 0f, 0f, 0f));
             }
 
             if (!em.HasComponent<BehaviorTuning>(villagerEntity))
             {
-                em.AddComponent<BehaviorTuning>(villagerEntity, BehaviorTuning.Neutral());
+                em.AddComponent<BehaviorTuning>(villagerEntity);
+                em.SetComponentData(villagerEntity, BehaviorTuning.Neutral());
             }
 
             // Remove PromotionPending tag

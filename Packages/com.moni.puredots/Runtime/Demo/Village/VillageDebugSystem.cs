@@ -26,6 +26,16 @@ namespace PureDOTS.Demo.Village
 
         public void OnUpdate(ref SystemState state)
         {
+            // Guard: Skip if world is not ready (during domain reload)
+            if (!state.WorldUnmanaged.IsCreated)
+                return;
+
+#if UNITY_EDITOR
+            // Guard: Skip heavy work in editor when not playing
+            if (!UnityEngine.Application.isPlaying)
+                return;
+#endif
+
             if (_loggedOnce)
                 return;
 

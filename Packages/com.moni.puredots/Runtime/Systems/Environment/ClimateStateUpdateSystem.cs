@@ -8,11 +8,12 @@ using Unity.Mathematics;
 namespace PureDOTS.Systems.Environment
 {
     /// <summary>
-    /// Advances the shared <see cref="ClimateState"/> each tick using authored profile data.
+    /// WARM path: Advances the shared ClimateState using authored profile data.
     /// Keeps global temperature, wind, moisture, and seasonal progression in sync with simulation time.
+    /// Staggered updates, only simulate where something is happening.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(EnvironmentSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     public partial struct ClimateStateUpdateSystem : ISystem
     {
         [BurstCompile]

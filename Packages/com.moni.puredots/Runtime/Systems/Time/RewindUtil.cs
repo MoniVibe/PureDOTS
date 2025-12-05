@@ -15,9 +15,9 @@ namespace PureDOTS.Systems
         /// <summary>
         /// Checks if a track should record a snapshot at the current tick based on RecordEveryTicks.
         /// </summary>
-        public static bool ShouldRecordTrack(in RewindConfigBlob config, RewindTrackId track, uint currentTick)
+        public static bool ShouldRecordTrack(ref RewindConfigBlob config, RewindTrackId track, uint currentTick)
         {
-            ref var trackDef = ref GetTrackDef(config, track);
+            ref var trackDef = ref GetTrackDef(ref config, track);
             if (trackDef.RecordEveryTicks == 0)
                 return false;
             return (currentTick % trackDef.RecordEveryTicks) == 0;
@@ -27,7 +27,7 @@ namespace PureDOTS.Systems
         /// Gets the track definition for a given track ID from the config blob.
         /// Throws if track not found.
         /// </summary>
-        public static ref RewindTrackDef GetTrackDef(in RewindConfigBlob config, RewindTrackId id)
+        public static ref RewindTrackDef GetTrackDef(ref RewindConfigBlob config, RewindTrackId id)
         {
             for (int i = 0; i < config.Tracks.Length; i++)
             {
@@ -41,7 +41,7 @@ namespace PureDOTS.Systems
         /// Tries to get the track definition for a given track ID.
         /// Returns true if found, false otherwise.
         /// </summary>
-        public static bool TryGetTrackDef(in RewindConfigBlob config, RewindTrackId id, out RewindTrackDef trackDef)
+        public static bool TryGetTrackDef(ref RewindConfigBlob config, RewindTrackId id, out RewindTrackDef trackDef)
         {
             for (int i = 0; i < config.Tracks.Length; i++)
             {

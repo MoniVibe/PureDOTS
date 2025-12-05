@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
@@ -17,19 +18,23 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
+            var currentTick = timeState.Tick;
 
             // Process all relation events
             foreach (var (relationEvent, entity) in SystemAPI.Query<RefRO<OrgRelationEvent>>()
                 .WithEntityAccess())
             {
                 // Find the relation entity for this org pair
-                Entity? relationEntity = FindRelationEntity(state, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg);
+                Entity? relationEntity = FindRelationEntity(ref state, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg);
                 
                 if (!relationEntity.HasValue)
                 {
                     // Relation doesn't exist yet, create it first
-                    relationEntity = CreateRelationEntity(state, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg);
+                    var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+                    relationEntity = CreateRelationEntity(ref state, ecbSingleton, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg, currentTick);
                 }
 
                 if (relationEntity.HasValue && SystemAPI.HasComponent<OrgRelation>(relationEntity.Value))
@@ -37,7 +42,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var relation = SystemAPI.GetComponentRW<OrgRelation>(relationEntity.Value);
 
                     // Apply deltas with persona-based modifiers
-                    ApplyEventDeltas(ref relation, relationEvent.ValueRO, state);
+                    ApplyEventDeltas(ref relation, relationEvent.ValueRO, ref state);
 
                     // Update relation kind based on new attitude
                     relation.ValueRW.Kind = DetermineRelationKind(relation.ValueRO.Attitude);
@@ -50,13 +55,15 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static void ApplyEventDeltas(ref RefRW<OrgRelation> relation, OrgRelationEvent evt, SystemState state)
+        private static void ApplyEventDeltas(ref RefRW<OrgRelation> relation, OrgRelationEvent evt, ref SystemState state)
         {
             // Get source org persona for modifier calculation
             float personaModifier = 1f;
-            if (SystemAPI.HasComponent<OrgPersona>(evt.SourceOrg))
+            var personaLookup = state.GetComponentLookup<OrgPersona>(true);
+            personaLookup.Update(ref state);
+            if (personaLookup.HasComponent(evt.SourceOrg))
             {
-                var persona = SystemAPI.GetComponent<OrgPersona>(evt.SourceOrg);
+                var persona = personaLookup[evt.SourceOrg];
                 
                 // Vengeful orgs amplify negative events, forgiving orgs reduce them
                 if (evt.AttitudeDelta < 0f)
@@ -99,26 +106,35 @@ namespace PureDOTS.Runtime.IntergroupRelations
             relation.ValueRW.Treaties &= ~evt.TreatyFlagsToRemove;
         }
 
-        private static Entity? FindRelationEntity(SystemState state, Entity orgA, Entity orgB)
+        private static Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
         {
-            foreach (var (relation, entity) in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>()
-                .WithEntityAccess())
+            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
+            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            for (int i = 0; i < relations.Length; i++)
             {
-                if ((relation.ValueRO.OrgA == orgA && relation.ValueRO.OrgB == orgB) ||
-                    (relation.ValueRO.OrgA == orgB && relation.ValueRO.OrgB == orgA))
+                var relation = relations[i];
+                if ((relation.OrgA == orgA && relation.OrgB == orgB) ||
+                    (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
-                    return entity;
+                    var result = entities[i];
+                    relations.Dispose();
+                    entities.Dispose();
+                    query.Dispose();
+                    return result;
                 }
             }
+            
+            relations.Dispose();
+            entities.Dispose();
+            query.Dispose();
             return null;
         }
 
-        private static Entity CreateRelationEntity(SystemState state, Entity orgA, Entity orgB)
+        private static Entity CreateRelationEntity(ref SystemState state, EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton, Entity orgA, Entity orgB, uint currentTick)
         {
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             var relationEntity = ecb.CreateEntity();
             ecb.AddComponent(relationEntity, new OrgRelationTag());

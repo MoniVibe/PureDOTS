@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Navigation
     /// FlowFields for local movement/crowds.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     [UpdateAfter(typeof(PathRequestSystem))]
     public partial struct PathfindingSystem : ISystem
     {
@@ -36,6 +36,21 @@ namespace PureDOTS.Systems.Navigation
                 return;
             }
 
+            // Check budget - WARM path system
+            if (!SystemAPI.HasSingleton<NavPerformanceBudget>() || !SystemAPI.HasSingleton<NavPerformanceCounters>())
+            {
+                return;
+            }
+
+            var budget = SystemAPI.GetSingleton<NavPerformanceBudget>();
+            var counters = SystemAPI.GetSingletonRW<NavPerformanceCounters>();
+
+            // Skip if budget already exceeded
+            if (counters.ValueRO.LocalPathQueriesThisTick >= budget.MaxLocalPathQueriesPerTick)
+            {
+                return;
+            }
+
             // Get or create nav graph singleton
             Entity graphEntity;
             if (!SystemAPI.TryGetSingletonEntity<NavGraph>(out graphEntity))
@@ -53,7 +68,7 @@ namespace PureDOTS.Systems.Navigation
                 return; // Empty graph
             }
 
-            // Process path requests
+            // Process WARM path requests in priority order, respecting budget
             foreach (var (request, pathState, pathResult, entity) in
                 SystemAPI.Query<RefRO<PathRequest>, RefRW<PathState>, DynamicBuffer<PathResult>>()
                 .WithEntityAccess())
@@ -62,6 +77,20 @@ namespace PureDOTS.Systems.Navigation
                 {
                     continue;
                 }
+
+                // Only process WARM path requests (local pathfinding)
+                if (request.ValueRO.HeatTier != NavHeatTier.Warm)
+                {
+                    continue;
+                }
+
+                // Check budget
+                if (counters.ValueRO.LocalPathQueriesThisTick >= budget.MaxLocalPathQueriesPerTick)
+                {
+                    break; // Budget exceeded, stop processing
+                }
+
+                counters.ValueRW.LocalPathQueriesThisTick++;
 
                 // Find nearest nodes to start and goal
                 var startNode = FindNearestNode(ref nodes, request.ValueRO.StartPosition);

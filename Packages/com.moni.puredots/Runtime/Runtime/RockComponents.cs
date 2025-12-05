@@ -22,6 +22,21 @@ namespace PureDOTS.Runtime
     public struct ResourceNodeTag : IComponentData { }
 
     /// <summary>
+    /// Tag component identifying tree resource nodes (wood).
+    /// </summary>
+    public struct TreeTag : IComponentData { }
+
+    /// <summary>
+    /// Tag component identifying stone resource nodes.
+    /// </summary>
+    public struct StoneNodeTag : IComponentData { }
+
+    /// <summary>
+    /// Tag component identifying ore resource nodes.
+    /// </summary>
+    public struct OreNodeTag : IComponentData { }
+
+    /// <summary>
     /// Component tracking health/destruction state for destructible entities.
     /// Used by collision systems to apply damage and handle destruction.
     /// </summary>
@@ -88,5 +103,7 @@ namespace PureDOTS.Runtime
     /// </summary>
     public struct DepletedTag : IComponentData { }
 }
+
+
 
 

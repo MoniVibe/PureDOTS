@@ -18,7 +18,7 @@ namespace PureDOTS.Runtime.MonoBehaviours
             var em = world.EntityManager;
             var query = em.CreateEntityQuery(typeof(DemoScenarioState));
             
-            if (!query.TryGetSingletonEntity(out var e))
+            if (!query.TryGetSingletonEntity<DemoScenarioState>(out var e))
                 return;
 
             var state = em.GetComponentData<DemoScenarioState>(e);
@@ -56,5 +56,7 @@ namespace PureDOTS.Runtime.MonoBehaviours
         }
     }
 }
+
+
 
 

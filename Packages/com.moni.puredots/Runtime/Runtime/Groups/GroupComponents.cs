@@ -1,5 +1,7 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace PureDOTS.Runtime.Groups
 {
@@ -324,6 +326,61 @@ namespace PureDOTS.Runtime.Groups
         public Entity MemberEntity;
         public RemovalReason Reason;
         public uint RequestTick;
+    }
+
+    // NOTE: GroupTag, GroupStance, and GroupStanceState are defined in Runtime/Groups/Components.cs
+    // Duplicate definitions removed to avoid conflicts
+
+    /// <summary>
+    /// Helper methods for creating groups.
+    /// </summary>
+    public static class GroupHelpers
+    {
+        /// <summary>
+        /// Creates a band/group entity with members.
+        /// </summary>
+        public static Entity CreateBand(
+            EntityCommandBuffer ecb,
+            Entity ownerOrg,
+            NativeArray<Entity> members,
+            int groupId,
+            float3 position,
+            uint currentTick = 0)
+        {
+            var groupEntity = ecb.CreateEntity();
+            ecb.AddComponent(groupEntity, new LocalTransform
+            {
+                Position = position,
+                Rotation = quaternion.identity,
+                Scale = 1f
+            });
+
+            ecb.AddComponent<GroupTag>(groupEntity);
+            ecb.AddComponent(groupEntity, new GroupIdentity
+            {
+                GroupId = groupId,
+                ParentEntity = ownerOrg,
+                LeaderEntity = members.Length > 0 ? members[0] : Entity.Null,
+                FormationTick = currentTick,
+                Status = GroupStatus.Active
+            });
+            ecb.AddComponent(groupEntity, GroupConfig.Default);
+
+            var groupMembers = ecb.AddBuffer<GroupMember>(groupEntity);
+            for (int i = 0; i < members.Length; i++)
+            {
+                groupMembers.Add(new GroupMember
+                {
+                    MemberEntity = members[i],
+                    Weight = i == 0 ? 1f : 0.5f, // First member is leader
+                    Role = i == 0 ? GroupRole.Leader : GroupRole.Member,
+                    JoinedTick = currentTick,
+                    Flags = GroupMemberFlags.Active
+                });
+            }
+
+            return groupEntity;
+        }
     }
 }
 

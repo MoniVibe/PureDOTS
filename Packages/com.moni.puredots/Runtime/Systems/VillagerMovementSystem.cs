@@ -19,7 +19,7 @@ namespace PureDOTS.Systems
     /// Integrates with flow field navigation when available.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(VillagerSystemGroup))]
+    [UpdateInGroup(typeof(HotPathSystemGroup))]
     [UpdateAfter(typeof(VillagerTargetingSystem))]
     [UpdateAfter(typeof(FlowFieldFollowSystem))]
     public partial struct VillagerMovementSystem : ISystem

@@ -53,10 +53,14 @@ namespace PureDOTS.Runtime.Logistics.Systems
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             // Process perishable cargo on haulers
-            foreach (var (cargoBuffer, haulerEntity) in SystemAPI.Query<DynamicBuffer<CargoItem>>()
-                .WithAll<HaulerTag>()
+            foreach (var (haulerTag, haulerEntity) in SystemAPI.Query<RefRO<HaulerTag>>()
+                .WithAll<CargoItem>()
                 .WithEntityAccess())
             {
+                if (!_cargoBufferLookup.HasBuffer(haulerEntity))
+                    continue;
+
+                var cargoBuffer = _cargoBufferLookup[haulerEntity];
                 bool cargoChanged = false;
 
                 for (int i = cargoBuffer.Length - 1; i >= 0; i--)
@@ -64,7 +68,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     var cargo = cargoBuffer[i];
 
                     // Check if item is perishable
-                    if (!TryFindItemSpec(cargo.ResourceId, itemCatalogBlob, out var itemSpec))
+                    if (!TryFindItemSpec(cargo.ResourceId, ref itemCatalogBlob, out var itemSpec))
                     {
                         continue;
                     }
@@ -128,7 +132,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {

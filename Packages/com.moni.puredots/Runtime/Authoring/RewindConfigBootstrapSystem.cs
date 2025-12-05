@@ -1,37 +1,35 @@
-using Unity.Burst;
+#if UNITY_EDITOR || UNITY_STANDALONE
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Authoring;
+using PureDOTS.Systems;
 
-namespace PureDOTS.Systems
+namespace PureDOTS.Authoring
 {
     /// <summary>
     /// Bootstraps rewind configuration by merging all RewindConfigAuthoring track definitions
     /// into a single RewindConfigBlob and creating RewindConfigSingleton.
     /// Runs once at startup, before other rewind systems.
+    /// Only available when Authoring assembly is referenced.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
     [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
     public partial struct RewindConfigBootstrapSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<RewindConfigTag>();
+            state.RequireForUpdate<RewindConfigTrackEntry>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Collect all track definitions from all config entities
             var allTracks = new NativeList<RewindTrackDef>(Allocator.Temp);
             var seenIds = new NativeHashSet<byte>(16, Allocator.Temp);
 
-            // Query all config entities
+            // Query all config entities (by buffer presence, since RewindConfigTag is in Authoring assembly)
             foreach (var (trackBuffer, entity) in SystemAPI.Query<DynamicBuffer<RewindConfigTrackEntry>>()
-                         .WithAll<RewindConfigTag>()
                          .WithEntityAccess())
             {
                 foreach (var entry in trackBuffer)
@@ -108,4 +106,5 @@ namespace PureDOTS.Systems
         }
     }
 }
+#endif
 

@@ -5,6 +5,11 @@ using Unity.Mathematics;
 namespace PureDOTS.Runtime.Platform
 {
     /// <summary>
+    /// Tag component identifying a platform entity.
+    /// </summary>
+    public struct PlatformTag : IComponentData { }
+
+    /// <summary>
     /// Platform classification flags. Platforms can have multiple flags (e.g., Capital | IsCarrier | IsColonyCapable).
     /// </summary>
     [System.Flags]
@@ -249,6 +254,20 @@ namespace PureDOTS.Runtime.Platform
         public byte Infested;
         public byte HasLootCache;
         public float StructuralIntegrity;
+    }
+
+    /// <summary>
+    /// Resource storage for a platform (carriers, stations, etc.).
+    /// Similar to VillageResources but for Space4X platforms.
+    /// </summary>
+    public struct PlatformResources : IComponentData
+    {
+        public float Ore;
+        public float RefinedOre;
+        public float Fuel;
+        public float Supplies;
+        public float RawMaterials;
+        public float ProcessedMaterials;
     }
 }
 

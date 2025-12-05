@@ -110,7 +110,7 @@ namespace PureDOTS.Systems.Power
             {
                 // Create network entity
                 networkEntity = state.EntityManager.CreateEntity();
-                state.EntityManager.AddComponent<PowerNetwork>(networkEntity, new PowerNetwork
+                state.EntityManager.AddComponentData(networkEntity, new PowerNetwork
                 {
                     NetworkId = networkId,
                     Domain = domain
@@ -211,11 +211,11 @@ namespace PureDOTS.Systems.Power
                 
                 if (state.EntityManager.HasComponent<PowerRouteInfo>(nodeEntities[i]))
                 {
-                    state.EntityManager.SetComponent(nodeEntities[i], routeInfo);
+                    state.EntityManager.SetComponentData(nodeEntities[i], routeInfo);
                 }
                 else
                 {
-                    state.EntityManager.AddComponent(nodeEntities[i], routeInfo);
+                    state.EntityManager.AddComponentData(nodeEntities[i], routeInfo);
                 }
             }
         }

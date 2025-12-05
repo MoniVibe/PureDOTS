@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Narrative;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -72,7 +73,7 @@ namespace PureDOTS.Systems.Narrative
                             // Create situation instance entity
                             var situationEntity = state.EntityManager.CreateEntity();
                             
-                            state.EntityManager.AddComponent(situationEntity, new SituationInstance
+                            var situationInstance = new SituationInstance
                             {
                                 SituationId = request.SituationId,
                                 Phase = SituationPhase.Intro,
@@ -81,14 +82,16 @@ namespace PureDOTS.Systems.Narrative
                                 StartedAt = worldTime,
                                 LastStepChangeAt = worldTime,
                                 IsBackground = 0
-                            });
+                            };
+                            state.EntityManager.AddComponentData(situationEntity, situationInstance);
 
-                            state.EntityManager.AddComponent(situationEntity, new SituationContext
+                            var situationContext = new SituationContext
                             {
                                 Location = request.Location,
                                 OwningFaction = request.Faction,
                                 Tags = request.Tags
-                            });
+                            };
+                            state.EntityManager.AddComponentData(situationEntity, situationContext);
 
                             // Add participant buffer (empty for now, can be filled by game-side)
                             state.EntityManager.AddBuffer<SituationParticipant>(situationEntity);

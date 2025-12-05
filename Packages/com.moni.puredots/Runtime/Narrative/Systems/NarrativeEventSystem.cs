@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Narrative;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -81,7 +82,8 @@ namespace PureDOTS.Systems.Narrative
                     if (condition.ConditionType == NarrativeRegistryBuilder.ConditionTypeRandomRoll)
                     {
                         // Random roll: ParamA = chance out of ParamB
-                        float roll = math.random().NextFloat();
+                        var rng = new Unity.Mathematics.Random((uint)(i + j + timeState.Tick));
+                        float roll = rng.NextFloat();
                         float threshold = (float)condition.ParamA / (float)condition.ParamB;
                         if (roll > threshold)
                         {

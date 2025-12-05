@@ -61,7 +61,6 @@ namespace PureDOTS.Systems.Platform
             }
         }
 
-        [BurstCompile]
         private static void BuildArcInstances(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
@@ -72,7 +71,12 @@ namespace PureDOTS.Systems.Platform
             ref ModuleDefRegistryBlob moduleRegistry,
             ref HullDefRegistryBlob hullRegistry)
         {
-            var arcBuffer = SystemAPI.GetBuffer<PlatformArcInstance>(platformEntity, true);
+            if (!state.EntityManager.HasBuffer<PlatformArcInstance>(platformEntity))
+            {
+                ecb.AddBuffer<PlatformArcInstance>(platformEntity);
+                return; // Buffer will be available next frame
+            }
+            var arcBuffer = state.EntityManager.GetBuffer<PlatformArcInstance>(platformEntity);
             arcBuffer.Clear();
 
             for (int i = 0; i < moduleSlots.Length; i++)
@@ -135,7 +139,7 @@ namespace PureDOTS.Systems.Platform
 
                 var worldPosition = math.transform(transform.ToMatrix(), localPosition);
                 var worldForward = math.mul(transform.Rotation, forwardDirection);
-                var arcAngle = ExtractArcAngle(moduleDef.CapabilityPayload);
+                var arcAngle = ExtractArcAngle(ref moduleDef.CapabilityPayload);
 
                 arcBuffer.Add(new PlatformArcInstance
                 {
@@ -146,18 +150,19 @@ namespace PureDOTS.Systems.Platform
                 });
             }
 
-            if (arcBuffer.Length > 0 && !SystemAPI.HasBuffer<PlatformArcInstance>(platformEntity))
+            if (arcBuffer.Length > 0 && !state.EntityManager.HasComponent<PlatformArcInstance>(platformEntity))
             {
                 ecb.AddBuffer<PlatformArcInstance>(platformEntity);
             }
         }
 
         [BurstCompile]
-        private static float ExtractArcAngle(BlobArray<byte> payload)
+        private static float ExtractArcAngle(ref BlobArray<byte> payload)
         {
             if (payload.Length < 8)
                 return math.PI * 2f;
-            return math.asfloat(new uint4(payload[4], payload[5], payload[6], payload[7]));
+            var bytes = new uint4(payload[4], payload[5], payload[6], payload[7]);
+            return math.asfloat(bytes.x);
         }
     }
 }

@@ -22,16 +22,29 @@ namespace PureDOTS.Systems.Platform
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (boardingState, boardingTeams, segmentControls, segmentStates, entity) in SystemAPI.Query<
-                RefRW<BoardingState>,
-                DynamicBuffer<BoardingTeam>,
-                DynamicBuffer<SegmentControl>,
-                DynamicBuffer<PlatformSegmentState>>().WithEntityAccess())
+            var boardingTeamsLookup = state.GetBufferLookup<BoardingTeam>(false);
+            var segmentControlsLookup = state.GetBufferLookup<SegmentControl>(false);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            boardingTeamsLookup.Update(ref state);
+            segmentControlsLookup.Update(ref state);
+            segmentStatesLookup.Update(ref state);
+
+            foreach (var (boardingState, entity) in SystemAPI.Query<
+                RefRW<BoardingState>>().WithEntityAccess())
             {
                 if (boardingState.ValueRO.Phase != BoardingPhase.Fighting)
                 {
                     continue;
                 }
+
+                if (!boardingTeamsLookup.HasBuffer(entity) || !segmentControlsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var boardingTeams = boardingTeamsLookup[entity];
+                var segmentControls = segmentControlsLookup[entity];
+                var segmentStates = segmentStatesLookup[entity];
 
                 ResolveBoardingCombat(
                     ref boardingState.ValueRW,

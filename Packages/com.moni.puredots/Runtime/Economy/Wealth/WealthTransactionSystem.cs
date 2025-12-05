@@ -187,13 +187,14 @@ namespace PureDOTS.Runtime.Economy.Wealth
 
         private static Entity GetOrCreateLedgerEntity(ref SystemState state)
         {
-            using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WealthLedger>());
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<WealthLedger>());
             if (!query.IsEmptyIgnoreFilter)
             {
                 return query.GetSingletonEntity();
             }
 
-            var ledgerEntity = state.EntityManager.CreateEntity(typeof(WealthLedger));
+            var ledgerEntity = state.EntityManager.CreateEntity();
+            state.EntityManager.AddComponent<WealthLedger>(ledgerEntity);
             return ledgerEntity;
         }
     }

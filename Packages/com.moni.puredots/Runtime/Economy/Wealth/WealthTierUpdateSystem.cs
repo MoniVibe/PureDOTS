@@ -64,7 +64,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (wealth, entity) in SystemAPI.Query<RefRW<VillagerWealth>>().WithEntityAccess())
             {
                 var balance = wealth.ValueRO.Balance;
-                var newTier = ComputeTier(balance, catalogBlob);
+                var newTier = ComputeTier(balance, ref catalogBlob);
                 if (wealth.ValueRO.Tier != newTier)
                 {
                     wealth.ValueRW.Tier = newTier;
@@ -74,7 +74,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (wealth, entity) in SystemAPI.Query<RefRW<FamilyWealth>>().WithEntityAccess())
             {
                 var balance = wealth.ValueRO.Balance;
-                var newTier = ComputeTier(balance, catalogBlob);
+                var newTier = ComputeTier(balance, ref catalogBlob);
                 if (wealth.ValueRO.Tier != newTier)
                 {
                     wealth.ValueRW.Tier = newTier;
@@ -84,7 +84,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (wealth, entity) in SystemAPI.Query<RefRW<DynastyWealth>>().WithEntityAccess())
             {
                 var balance = wealth.ValueRO.Balance;
-                var newTier = ComputeTier(balance, catalogBlob);
+                var newTier = ComputeTier(balance, ref catalogBlob);
                 if (wealth.ValueRO.Tier != newTier)
                 {
                     wealth.ValueRW.Tier = newTier;
@@ -94,7 +94,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (balance, entity) in SystemAPI.Query<RefRW<BusinessBalance>>().WithEntityAccess())
             {
                 var cash = balance.ValueRO.Cash;
-                var newTier = ComputeTier(cash, catalogBlob);
+                var newTier = ComputeTier(cash, ref catalogBlob);
                 if (balance.ValueRO.Tier != newTier)
                 {
                     balance.ValueRW.Tier = newTier;
@@ -104,7 +104,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (treasury, entity) in SystemAPI.Query<RefRW<GuildTreasury>>().WithEntityAccess())
             {
                 var balance = treasury.ValueRO.Balance;
-                var newTier = ComputeTier(balance, catalogBlob);
+                var newTier = ComputeTier(balance, ref catalogBlob);
                 if (treasury.ValueRO.Tier != newTier)
                 {
                     treasury.ValueRW.Tier = newTier;
@@ -114,7 +114,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             foreach (var (treasury, entity) in SystemAPI.Query<RefRW<VillageTreasury>>().WithEntityAccess())
             {
                 var balance = treasury.ValueRO.Balance;
-                var newTier = ComputeTier(balance, catalogBlob);
+                var newTier = ComputeTier(balance, ref catalogBlob);
                 if (treasury.ValueRO.Tier != newTier)
                 {
                     treasury.ValueRW.Tier = newTier;
@@ -123,7 +123,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
         }
 
         [BurstCompile]
-        private static WealthTier ComputeTier(float balance, WealthTierSpecCatalogBlob catalog)
+        private static WealthTier ComputeTier(float balance, ref WealthTierSpecCatalogBlob catalog)
         {
             for (int i = 0; i < catalog.Tiers.Length; i++)
             {

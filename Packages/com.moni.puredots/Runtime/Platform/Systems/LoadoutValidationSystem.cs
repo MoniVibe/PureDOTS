@@ -35,8 +35,17 @@ namespace PureDOTS.Systems.Platform
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (hullRef, moduleSlots, kind, entity) in SystemAPI.Query<RefRO<PlatformHullRef>, DynamicBuffer<PlatformModuleSlot>, RefRO<PlatformKind>>().WithEntityAccess())
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
+            moduleSlotsLookup.Update(ref state);
+
+            foreach (var (hullRef, kind, entity) in SystemAPI.Query<RefRO<PlatformHullRef>, RefRO<PlatformKind>>().WithEntityAccess())
             {
+                if (!moduleSlotsLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var moduleSlots = moduleSlotsLookup[entity];
                 var hullId = hullRef.ValueRO.HullId;
                 ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
                 
@@ -48,12 +57,13 @@ namespace PureDOTS.Systems.Platform
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
                 ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
+                var platformEntityRef = entity;
                 ValidateAndUpdateLoadout(
                     ref state,
                     ref ecb,
-                    entity,
+                    ref platformEntityRef,
                     in hullDef,
-                    in moduleSlots,
+                    ref moduleSlots,
                     in kind.ValueRO,
                     ref moduleRegistryBlob);
             }
@@ -63,9 +73,9 @@ namespace PureDOTS.Systems.Platform
         private static void ValidateAndUpdateLoadout(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
-            Entity platformEntity,
+            ref Entity platformEntity,
             in HullDef hullDef,
-            in DynamicBuffer<PlatformModuleSlot> moduleSlots,
+            ref DynamicBuffer<PlatformModuleSlot> moduleSlots,
             in PlatformKind kind,
             ref ModuleDefRegistryBlob moduleRegistry)
         {
@@ -156,16 +166,16 @@ namespace PureDOTS.Systems.Platform
 
                     if (moduleDef.Category == ModuleCategory.Engine)
                     {
-                        stats.MaxThrust += ExtractThrust(moduleDef.CapabilityPayload);
+                        stats.MaxThrust += ExtractThrust(ref moduleDef.CapabilityPayload);
                     }
                     else if (moduleDef.Category == ModuleCategory.Shield)
                     {
-                        stats.ShieldStrength += ExtractShieldStrength(moduleDef.CapabilityPayload);
-                        stats.ShieldCoverage += ExtractShieldCoverage(moduleDef.CapabilityPayload);
+                        stats.ShieldStrength += ExtractShieldStrength(ref moduleDef.CapabilityPayload);
+                        stats.ShieldCoverage += ExtractShieldCoverage(ref moduleDef.CapabilityPayload);
                     }
                     else if (moduleDef.Category == ModuleCategory.Hangar)
                     {
-                        stats.HangarCapacity += ExtractHangarCapacity(moduleDef.CapabilityPayload);
+                        stats.HangarCapacity += ExtractHangarCapacity(ref moduleDef.CapabilityPayload);
                     }
                 }
             }
@@ -182,7 +192,7 @@ namespace PureDOTS.Systems.Platform
             stats.PowerConsumed = totalPowerDraw;
             stats.MaxHP = hullDef.BaseHP;
 
-            if (!SystemAPI.HasComponent<PlatformAggregatedStats>(platformEntity))
+            if (!state.EntityManager.HasComponent<PlatformAggregatedStats>(platformEntity))
             {
                 ecb.AddComponent(platformEntity, stats);
             }
@@ -196,35 +206,39 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static float ExtractThrust(BlobArray<byte> payload)
+        private static float ExtractThrust(ref BlobArray<byte> payload)
         {
             if (payload.Length < 4)
                 return 0f;
-            return math.asfloat(new uint4(payload[0], payload[1], payload[2], payload[3]));
+            var bytes = new uint4(payload[0], payload[1], payload[2], payload[3]);
+            return math.asfloat(bytes.x);
         }
 
         [BurstCompile]
-        private static float ExtractShieldStrength(BlobArray<byte> payload)
+        private static float ExtractShieldStrength(ref BlobArray<byte> payload)
         {
             if (payload.Length < 4)
                 return 0f;
-            return math.asfloat(new uint4(payload[0], payload[1], payload[2], payload[3]));
+            var bytes = new uint4(payload[0], payload[1], payload[2], payload[3]);
+            return math.asfloat(bytes.x);
         }
 
         [BurstCompile]
-        private static float ExtractShieldCoverage(BlobArray<byte> payload)
+        private static float ExtractShieldCoverage(ref BlobArray<byte> payload)
         {
             if (payload.Length < 8)
                 return 0f;
-            return math.asfloat(new uint4(payload[4], payload[5], payload[6], payload[7]));
+            var bytes = new uint4(payload[4], payload[5], payload[6], payload[7]);
+            return math.asfloat(bytes.x);
         }
 
         [BurstCompile]
-        private static float ExtractHangarCapacity(BlobArray<byte> payload)
+        private static float ExtractHangarCapacity(ref BlobArray<byte> payload)
         {
             if (payload.Length < 4)
                 return 0f;
-            return math.asfloat(new uint4(payload[0], payload[1], payload[2], payload[3]));
+            var bytes = new uint4(payload[0], payload[1], payload[2], payload[3]);
+            return math.asfloat(bytes.x);
         }
     }
 }

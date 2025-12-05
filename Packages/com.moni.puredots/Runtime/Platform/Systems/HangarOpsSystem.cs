@@ -1,7 +1,9 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Platform;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Platform
 {
@@ -24,20 +26,25 @@ namespace PureDOTS.Systems.Platform
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            var hangarBayLookup = SystemAPI.GetBufferLookup<HangarBay>(false);
+            var assignmentLookup = SystemAPI.GetBufferLookup<HangarAssignment>(false);
 
-            foreach (var (hangarBays, assignments, kind, entity) in SystemAPI.Query<DynamicBuffer<HangarBay>, DynamicBuffer<HangarAssignment>, RefRO<PlatformKind>>().WithEntityAccess())
+            foreach (var (kind, entity) in SystemAPI.Query<RefRO<PlatformKind>>().WithAll<HangarBay>().WithAll<HangarAssignment>().WithEntityAccess())
             {
                 if ((kind.ValueRO.Flags & PlatformFlags.IsCarrier) == 0)
                 {
                     continue;
                 }
 
+                var hangarBays = hangarBayLookup[entity];
+                var assignments = assignmentLookup[entity];
+                var carrierEntityRef = entity;
                 ProcessHangarOperations(
                     ref state,
                     ref ecb,
-                    entity,
-                    hangarBays,
-                    assignments,
+                    ref carrierEntityRef,
+                    ref hangarBays,
+                    ref assignments,
                     timeState.Tick);
             }
 
@@ -48,9 +55,9 @@ namespace PureDOTS.Systems.Platform
         private static void ProcessHangarOperations(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
-            Entity carrierEntity,
-            DynamicBuffer<HangarBay> hangarBays,
-            DynamicBuffer<HangarAssignment> assignments,
+            ref Entity carrierEntity,
+            ref DynamicBuffer<HangarBay> hangarBays,
+            ref DynamicBuffer<HangarAssignment> assignments,
             uint currentTick)
         {
             for (int bayIndex = 0; bayIndex < hangarBays.Length; bayIndex++)
@@ -81,18 +88,20 @@ namespace PureDOTS.Systems.Platform
                         continue;
                     }
 
-                    if (!SystemAPI.Exists(assignment.SubPlatform))
+                    if (!state.EntityManager.Exists(assignment.SubPlatform))
                     {
                         assignmentsToRemove.Add(i);
                         continue;
                     }
 
-                    if (SystemAPI.HasComponent<PlatformKind>(assignment.SubPlatform))
+                    if (state.EntityManager.HasComponent<PlatformKind>(assignment.SubPlatform))
                     {
-                        var subKind = SystemAPI.GetComponent<PlatformKind>(assignment.SubPlatform);
+                        var subKind = state.EntityManager.GetComponentData<PlatformKind>(assignment.SubPlatform);
                         if ((subKind.Flags & PlatformFlags.Craft) != 0 || (subKind.Flags & PlatformFlags.Drone) != 0)
                         {
-                            LaunchSubPlatform(ref state, ref ecb, assignment.SubPlatform, carrierEntity);
+                            var subPlatformRef = assignment.SubPlatform;
+                            var carrierRef = carrierEntity;
+                            LaunchSubPlatform(ref state, ref ecb, ref subPlatformRef, ref carrierRef);
                             assignmentsToRemove.Add(i);
                             launchCount++;
                             bay.OccupiedSlots--;
@@ -117,42 +126,54 @@ namespace PureDOTS.Systems.Platform
         private static void LaunchSubPlatform(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
-            Entity subPlatform,
-            Entity carrier)
+            ref Entity subPlatform,
+            ref Entity carrier)
         {
-            if (SystemAPI.HasComponent<HangarAssignment>(subPlatform))
+            if (state.EntityManager.HasComponent<HangarAssignment>(subPlatform))
             {
-                ecb.RemoveComponent<HangarAssignment>(subPlatform);
+                ecb.RemoveComponent<DynamicBuffer<HangarAssignment>>(subPlatform);
             }
         }
 
         [BurstCompile]
         private static void CheckOrphanedCraft(ref SystemState state, ref EntityCommandBuffer ecb)
         {
-            foreach (var (kind, entity) in SystemAPI.Query<RefRO<PlatformKind>>().WithEntityAccess())
+            var query = state.EntityManager.CreateEntityQuery(typeof(PlatformKind));
+            var entities = query.ToEntityArray(Allocator.Temp);
+            var kinds = query.ToComponentDataArray<PlatformKind>(Allocator.Temp);
+
+            for (int idx = 0; idx < entities.Length; idx++)
             {
-                if ((kind.ValueRO.Flags & (PlatformFlags.Craft | PlatformFlags.Drone)) == 0)
+                var entity = entities[idx];
+                var kind = kinds[idx];
+
+                if ((kind.Flags & (PlatformFlags.Craft | PlatformFlags.Drone)) == 0)
                 {
                     continue;
                 }
 
-                if (!SystemAPI.HasComponent<HangarAssignment>(entity))
+                if (!state.EntityManager.HasComponent<HangarAssignment>(entity))
                 {
                     continue;
                 }
 
-                var assignment = SystemAPI.GetComponent<HangarAssignment>(entity);
+                var assignmentBuffer = state.EntityManager.GetBuffer<HangarAssignment>(entity);
+                if (assignmentBuffer.Length == 0)
+                {
+                    continue;
+                }
+                var assignment = assignmentBuffer[0];
                 
-                if (!SystemAPI.Exists(assignment.SubPlatform))
+                if (!state.EntityManager.Exists(assignment.SubPlatform))
                 {
-                    if (SystemAPI.HasComponent<PlatformKind>(entity))
-                    {
-                        var platformKind = SystemAPI.GetComponent<PlatformKind>(entity);
-                        platformKind.Flags |= PlatformFlags.IsDisposable;
-                        ecb.SetComponent(entity, platformKind);
-                    }
+                    kind.Flags |= PlatformFlags.IsDisposable;
+                    ecb.SetComponent(entity, kind);
                 }
             }
+
+            entities.Dispose();
+            kinds.Dispose();
+            query.Dispose();
         }
     }
 }

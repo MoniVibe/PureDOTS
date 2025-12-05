@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Groups;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -18,11 +19,12 @@ namespace PureDOTS.Runtime.Focus
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
 
             var job = new ProcessMentalBreaksJob
             {
-                CurrentTick = timeState.CurrentTick
+                CurrentTick = timeState.Tick
             };
             job.ScheduleParallel();
         }
@@ -46,7 +48,8 @@ namespace PureDOTS.Runtime.Focus
 
                     case MentalBreakState.Frazzled:
                         // Random intent flips, bad target choices
-                        uint hash = (uint)(CurrentTick + focus.GetHashCode());
+                        // Burst-compatible hash: combine focus state fields
+                        uint hash = (uint)(CurrentTick + (uint)(focus.Current * 1000f) + (uint)(focus.Max * 100f) + (uint)(focus.Load * 50f));
                         float random = (hash % 1000) / 1000f;
                         if (random < 0.2f) // 20% chance to flip intent
                         {

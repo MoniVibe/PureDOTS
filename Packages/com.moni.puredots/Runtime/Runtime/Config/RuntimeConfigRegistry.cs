@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 #nullable enable
 
@@ -156,9 +159,20 @@ namespace PureDOTS.Runtime.Config
             if (s_initialized)
                 return;
 
+#if UNITY_EDITOR
+            // Skip heavy assembly scanning during domain reload/compilation to prevent editor freeze
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                UnityEngine.Debug.Log("[RuntimeConfigRegistry] Initialize skipped - editor is compiling/updating");
+                return;
+            }
+#endif
+
+            UnityEngine.Debug.Log("[RuntimeConfigRegistry] Initialize - scanning assemblies");
             ScanAssemblies();
             LoadFromDisk();
             s_initialized = true;
+            UnityEngine.Debug.Log($"[RuntimeConfigRegistry] Initialize complete - registered {s_configVars.Count} config vars");
         }
 
         public static IEnumerable<RuntimeConfigVar> GetVariables()
@@ -271,6 +285,14 @@ namespace PureDOTS.Runtime.Config
 
         private static void ScanAssemblies()
         {
+#if UNITY_EDITOR
+            // Guard: Skip assembly scanning during domain reload/compilation to prevent editor freeze
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                return;
+            }
+#endif
+
             s_configVars.Clear();
             s_registeredFields.Clear();
 
@@ -285,37 +307,50 @@ namespace PureDOTS.Runtime.Config
                 {
                     types = ex.Types.Where(t => t != null).ToArray()!;
                 }
+                catch (Exception)
+                {
+                    // Skip problematic assemblies during reload
+                    continue;
+                }
 
                 foreach (var type in types)
                 {
                     if (type == null)
                         continue;
 
-                    foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    try
                     {
-                        if (!field.IsDefined(typeof(RuntimeConfigVarAttribute), inherit: false))
-                            continue;
+                        foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                        {
+                            if (!field.IsDefined(typeof(RuntimeConfigVarAttribute), inherit: false))
+                                continue;
 
-                        if (!field.IsStatic)
-                            continue;
+                            if (!field.IsStatic)
+                                continue;
 
-                        if (field.FieldType != typeof(RuntimeConfigVar))
-                            continue;
+                            if (field.FieldType != typeof(RuntimeConfigVar))
+                                continue;
 
-                        var attribute = field.GetCustomAttribute<RuntimeConfigVarAttribute>(false);
-                        if (attribute == null)
-                            continue;
+                            var attribute = field.GetCustomAttribute<RuntimeConfigVarAttribute>(false);
+                            if (attribute == null)
+                                continue;
 
-                        if (string.IsNullOrWhiteSpace(attribute.Name))
-                            continue;
+                            if (string.IsNullOrWhiteSpace(attribute.Name))
+                                continue;
 
-                        if (s_configVars.ContainsKey(attribute.Name))
-                            continue;
+                            if (s_configVars.ContainsKey(attribute.Name))
+                                continue;
 
-                        var configVar = new RuntimeConfigVar(attribute.Name, attribute.Description, attribute.DefaultValue, attribute.Flags);
-                        s_configVars.Add(configVar.Name, configVar);
-                        s_registeredFields.Add(field);
-                        field.SetValue(null, configVar);
+                            var configVar = new RuntimeConfigVar(attribute.Name, attribute.Description, attribute.DefaultValue, attribute.Flags);
+                            s_configVars.Add(configVar.Name, configVar);
+                            s_registeredFields.Add(field);
+                            field.SetValue(null, configVar);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Skip problematic types during reload
+                        continue;
                     }
                 }
             }

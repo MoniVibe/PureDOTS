@@ -33,13 +33,14 @@ namespace PureDOTS.Runtime.Identity
         /// <param name="magnitude">How strong the shift is (0..1)</param>
         /// <param name="permanent">If true, shift is permanent; if false, temporary (decays over time)</param>
         [BurstCompile]
-        public static PersonalityAxes ApplyPersonalityShift(
-            PersonalityAxes personality,
+        public static void ApplyPersonalityShift(
+            in PersonalityAxes personality,
             PersonalityShiftType shiftType,
             float magnitude,
-            bool permanent)
+            bool permanent,
+            out PersonalityAxes result)
         {
-            var result = personality;
+            result = personality;
 
             switch (shiftType)
             {
@@ -73,8 +74,6 @@ namespace PureDOTS.Runtime.Identity
                     result.VengefulForgiving = math.max(-100f, result.VengefulForgiving - (magnitude * 15f));
                     break;
             }
-
-            return result;
         }
     }
 

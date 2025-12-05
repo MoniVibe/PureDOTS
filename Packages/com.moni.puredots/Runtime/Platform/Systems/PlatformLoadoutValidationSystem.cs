@@ -36,17 +36,27 @@ namespace PureDOTS.Systems.Platform
             ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
             ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
-            foreach (var (hullRef, moduleSlots, segmentStates) in SystemAPI.Query<
-                RefRO<PlatformHullRef>,
-                DynamicBuffer<PlatformModuleSlot>,
-                DynamicBuffer<PlatformSegmentState>>())
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            moduleSlotsLookup.Update(ref state);
+            segmentStatesLookup.Update(ref state);
+
+            foreach (var (hullRef, entity) in SystemAPI.Query<
+                RefRO<PlatformHullRef>>().WithEntityAccess())
             {
+                if (!moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
                 var hullId = hullRef.ValueRO.HullId;
                 if (hullId < 0 || hullId >= hullRegistryBlob.Hulls.Length)
                 {
                     continue;
                 }
 
+                var moduleSlots = moduleSlotsLookup[entity];
+                var segmentStates = segmentStatesLookup[entity];
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
                 if (hullDef.SegmentCount == 0)
                 {

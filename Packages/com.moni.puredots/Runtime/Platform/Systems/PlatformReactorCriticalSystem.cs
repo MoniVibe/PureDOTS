@@ -27,15 +27,27 @@ namespace PureDOTS.Systems.Platform
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             var random = new Unity.Mathematics.Random((uint)SystemAPI.Time.ElapsedTime + 1);
 
-            foreach (var (transform, segmentStates, moduleSlots, entity) in SystemAPI.Query<
-                RefRO<LocalTransform>,
-                DynamicBuffer<PlatformSegmentState>,
-                DynamicBuffer<PlatformModuleSlot>>().WithEntityAccess())
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
+            segmentStatesLookup.Update(ref state);
+            moduleSlotsLookup.Update(ref state);
+
+            foreach (var (transform, entity) in SystemAPI.Query<
+                RefRO<LocalTransform>>().WithEntityAccess())
             {
+                if (!segmentStatesLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var segmentStates = segmentStatesLookup[entity];
+                var moduleSlots = moduleSlotsLookup[entity];
+                var platformEntity = entity;
+
                 CheckReactorFailures(
                     ref state,
                     ref ecb,
-                    entity,
+                    ref platformEntity,
                     in transform.ValueRO,
                     ref segmentStates,
                     in moduleSlots,
@@ -47,7 +59,7 @@ namespace PureDOTS.Systems.Platform
         private static void CheckReactorFailures(
             ref SystemState state,
             ref EntityCommandBuffer ecb,
-            Entity platformEntity,
+            ref Entity platformEntity,
             in LocalTransform transform,
             ref DynamicBuffer<PlatformSegmentState> segmentStates,
             in DynamicBuffer<PlatformModuleSlot> moduleSlots,
@@ -86,7 +98,7 @@ namespace PureDOTS.Systems.Platform
                     segmentState.Status |= SegmentStatusFlags.ReactorCritical;
                     segmentStates[i] = segmentState;
 
-                    var reactorDef = GetReactorDef(segmentState.SegmentIndex, in moduleSlots);
+                    GetReactorDef(segmentState.SegmentIndex, in moduleSlots, out var reactorDef);
                     var shutdownChance = reactorDef.SafeShutdownChance;
                     var roll = random.NextFloat();
 
@@ -98,21 +110,22 @@ namespace PureDOTS.Systems.Platform
                     }
                     else
                     {
+                        var pos = transform.Position;
                         TriggerMeltdown(
                             ref ecb,
-                            platformEntity,
+                            ref platformEntity,
                             segmentState.SegmentIndex,
-                            transform.Position,
-                            reactorDef);
+                            in pos,
+                            in reactorDef);
                     }
                 }
             }
         }
 
         [BurstCompile]
-        private static ReactorDef GetReactorDef(int segmentIndex, in DynamicBuffer<PlatformModuleSlot> moduleSlots)
+        private static void GetReactorDef(int segmentIndex, in DynamicBuffer<PlatformModuleSlot> moduleSlots, out ReactorDef def)
         {
-            var def = new ReactorDef
+            def = new ReactorDef
             {
                 ReactorDefId = 0,
                 MaxOutput = 1000f,
@@ -126,20 +139,18 @@ namespace PureDOTS.Systems.Platform
             {
                 if (moduleSlots[i].SegmentIndex == segmentIndex)
                 {
-                    return def;
+                    return;
                 }
             }
-
-            return def;
         }
 
         [BurstCompile]
         private static void TriggerMeltdown(
             ref EntityCommandBuffer ecb,
-            Entity platformEntity,
+            ref Entity platformEntity,
             int segmentIndex,
-            float3 worldPosition,
-            ReactorDef reactorDef)
+            in float3 worldPosition,
+            in ReactorDef reactorDef)
         {
             ecb.AddBuffer<PlatformExplosionEvent>(platformEntity);
             var explosionBuffer = ecb.SetBuffer<PlatformExplosionEvent>(platformEntity);

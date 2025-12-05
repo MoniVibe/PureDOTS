@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Environment;
 using Unity.Burst;
@@ -37,20 +38,24 @@ namespace PureDOTS.Systems.Environment
             var currentTick = timeState.Tick;
 
             // Get environment state (use defaults if singletons don't exist)
-            PureDOTS.Runtime.Environment.ClimateState climateState;
+            ClimateState climateState;
             if (SystemAPI.TryGetSingleton<ClimateState>(out var climate))
             {
                 climateState = climate;
             }
             else
             {
-                climateState = new PureDOTS.Runtime.Environment.ClimateState
+                climateState = new ClimateState
                 {
-                    Temperature = 20f,
-                    Humidity = 0.5f,
-                    SeasonIndex = 0,
-                    SeasonTick = 0,
-                    SeasonLength = 250u,
+                    CurrentSeason = Season.Spring,
+                    SeasonProgress = 0f,
+                    TimeOfDayHours = 12f,
+                    DayNightProgress = 0.5f,
+                    GlobalTemperature = 20f,
+                    GlobalWindDirection = new float2(1f, 0f),
+                    GlobalWindStrength = 5f,
+                    AtmosphericMoisture = 50f,
+                    CloudCover = 30f,
                     LastUpdateTick = 0
                 };
             }
@@ -88,7 +93,7 @@ namespace PureDOTS.Systems.Environment
                     needsValue.MoistureMax);
 
                 var tempFactor = CalculateFactor(
-                    climateState.Temperature,
+                    climateState.GlobalTemperature,
                     needsValue.TempMin,
                     needsValue.TempMax);
 
@@ -146,12 +151,12 @@ namespace PureDOTS.Systems.Environment
         }
 
         [BurstCompile]
-        private static float GetMoistureForEntity(in Entity entity, in PureDOTS.Runtime.Environment.ClimateState climate)
+        private static float GetMoistureForEntity(in Entity entity, in ClimateState climate)
         {
             // Tier-1: Use global humidity as moisture proxy
             // Tier-2: Sample from MoistureGridState at entity's cell
-            // For now, use humidity as a simple approximation
-            return climate.Humidity;
+            // For now, use humidity as a simple approximation (convert 0-100 to 0-1)
+            return climate.AtmosphericMoisture / 100f;
         }
     }
 }

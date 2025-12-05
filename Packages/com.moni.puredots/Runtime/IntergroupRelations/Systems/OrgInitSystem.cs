@@ -2,7 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Collections;
 using PureDOTS.Runtime.Aggregate;
-using PureDOTS.Runtime.Components;
+using AggregateEntity = PureDOTS.Runtime.Aggregate.AggregateEntity;
 
 namespace PureDOTS.Runtime.IntergroupRelations
 {

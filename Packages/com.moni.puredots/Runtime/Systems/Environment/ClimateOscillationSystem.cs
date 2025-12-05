@@ -1,5 +1,5 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Environment;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -36,37 +36,35 @@ namespace PureDOTS.Systems.Environment
 
             var currentTick = timeState.Tick;
 
-            // Get config (use default if singleton doesn't exist)
-            var config = ClimateConfig.Default;
-            if (SystemAPI.TryGetSingleton<ClimateConfig>(out var configSingleton))
-            {
-                config = configSingleton;
-            }
-
             // Update climate state
             if (SystemAPI.TryGetSingletonRW<ClimateState>(out var climateState))
             {
                 var climate = climateState.ValueRO;
-                var configRef = config;
+
+                // Default oscillation parameters
+                const float baseTemperature = 20f;
+                const float temperatureOscillation = 10f;
+                const float temperaturePeriod = 3600f; // ticks
+                const float baseHumidity = 50f;
+                const float humidityOscillation = 20f;
+                const float humidityPeriod = 1800f; // ticks
+                const uint seasonLengthTicks = 250u;
 
                 // Calculate temperature oscillation
-                var tempPhase = (float)(currentTick % configRef.TemperaturePeriod) / configRef.TemperaturePeriod;
-                var tempOscillation = math.sin(tempPhase * 2f * math.PI) * configRef.TemperatureOscillation;
-                climate.Temperature = configRef.BaseTemperature + tempOscillation;
+                var tempPhase = (float)(currentTick % (uint)temperaturePeriod) / temperaturePeriod;
+                var tempOscillation = math.sin(tempPhase * 2f * math.PI) * temperatureOscillation;
+                climate.GlobalTemperature = baseTemperature + tempOscillation;
 
                 // Calculate humidity oscillation
-                var humidityPhase = (float)(currentTick % configRef.HumidityPeriod) / configRef.HumidityPeriod;
-                var humidityOscillation = math.sin(humidityPhase * 2f * math.PI) * configRef.HumidityOscillation;
-                climate.Humidity = math.clamp(configRef.BaseHumidity + humidityOscillation, 0f, 1f);
+                var humidityPhase = (float)(currentTick % (uint)humidityPeriod) / humidityPeriod;
+                var humidityOscillationValue = math.sin(humidityPhase * 2f * math.PI) * humidityOscillation;
+                climate.AtmosphericMoisture = math.clamp(baseHumidity + humidityOscillationValue, 0f, 100f);
 
-                // Update seasons if enabled
-                if (configRef.SeasonsEnabled != 0 && configRef.SeasonLengthTicks > 0)
-                {
-                    var seasonTick = currentTick % (configRef.SeasonLengthTicks * 4u); // 4 seasons
-                    climate.SeasonIndex = (byte)(seasonTick / configRef.SeasonLengthTicks);
-                    climate.SeasonTick = seasonTick % configRef.SeasonLengthTicks;
-                    climate.SeasonLength = configRef.SeasonLengthTicks;
-                }
+                // Update seasons
+                var seasonTick = currentTick % (seasonLengthTicks * 4u); // 4 seasons
+                var seasonIndex = (byte)(seasonTick / seasonLengthTicks);
+                climate.CurrentSeason = (Season)seasonIndex;
+                climate.SeasonProgress = (float)(seasonTick % seasonLengthTicks) / seasonLengthTicks;
 
                 climate.LastUpdateTick = currentTick;
                 climateState.ValueRW = climate;
@@ -74,4 +72,6 @@ namespace PureDOTS.Systems.Environment
         }
     }
 }
+
+
 

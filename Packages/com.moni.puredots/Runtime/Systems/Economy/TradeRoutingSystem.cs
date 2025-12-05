@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Economy;
+using PureDOTS.Runtime.Relations;
 using PureDOTS.Runtime.Transport;
 using Unity.Burst;
 using Unity.Entities;
@@ -10,11 +11,11 @@ namespace PureDOTS.Systems.Economy
 {
     /// <summary>
     /// Converts surfaced trade opportunities into logistics requests routed through the transport pipeline.
+    /// COLD path: Runs rarely, uses budgets & batching, only for important goods/hubs.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(TransportPhaseGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(TradeOpportunitySystem))]
-    [UpdateBefore(typeof(LogisticsRequestRegistrySystem))]
     public partial struct TradeRoutingSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -26,6 +27,8 @@ namespace PureDOTS.Systems.Economy
             state.RequireForUpdate<ResourceTypeIndex>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<RelationPerformanceBudget>();
+            state.RequireForUpdate<RelationPerformanceCounters>();
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
@@ -81,10 +84,25 @@ namespace PureDOTS.Systems.Economy
                 return;
             }
 
+            var budget = SystemAPI.GetSingleton<RelationPerformanceBudget>();
+            var counters = SystemAPI.GetSingletonRW<RelationPerformanceCounters>();
+
+            // Process only important goods/hubs, respect budget
             var opportunities = state.EntityManager.GetBuffer<TradeOpportunity>(tradeStateEntity);
-            for (int i = 0; i < opportunities.Length; i++)
+            int routesCreated = 0;
+            const int maxRoutesPerTick = 5; // Budget for trade route creation
+
+            for (int i = 0; i < opportunities.Length && routesCreated < maxRoutesPerTick; i++)
             {
                 var opp = opportunities[i];
+                
+                // Only process important goods or major hubs
+                // In full implementation, would check resource importance and hub size
+                if (opp.AvailableUnits < 10f) // Skip small opportunities
+                {
+                    continue;
+                }
+
                 var resourceIndex = catalog.Value.LookupIndex(opp.ResourceId);
                 if (resourceIndex < 0)
                 {
@@ -116,7 +134,12 @@ namespace PureDOTS.Systems.Economy
                     AssignedTransportCount = 0,
                     LastAssignmentTick = 0
                 });
+
+                routesCreated++;
             }
+
+            // Update counters
+            counters.ValueRW.MarketUpdatesThisTick += routesCreated;
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

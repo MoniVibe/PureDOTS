@@ -41,7 +41,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             _companionLinkLookup.Update(ref state);
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint currentTick = timeState.CurrentTick;
+            uint currentTick = timeState.Tick;
 
             var job = new EndDetectionJob
             {
@@ -66,8 +66,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                     return;
 
                 // Check for death
-                bool aDead = bond.A == Entity.Null || !bond.A.Valid || DeathLookup.HasComponent(bond.A);
-                bool bDead = bond.B == Entity.Null || !bond.B.Valid || DeathLookup.HasComponent(bond.B);
+                bool aDead = bond.A == Entity.Null || DeathLookup.HasComponent(bond.A);
+                bool bDead = bond.B == Entity.Null || DeathLookup.HasComponent(bond.B);
 
                 if (aDead || bDead)
                 {

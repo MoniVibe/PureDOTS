@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Power;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Power
 {
@@ -64,14 +65,20 @@ namespace PureDOTS.Systems.Power
                 if (node.Type == PowerNodeType.Source && _sourceStateLookup.HasComponent(nodeEntities[i]))
                 {
                     var sourceState = _sourceStateLookup[nodeEntities[i]];
-                    var totals = networkTotals.GetValueOrDefault(networkId, (0f, 0f, 0f));
+                    if (!networkTotals.TryGetValue(networkId, out var totals))
+                    {
+                        totals = (0f, 0f, 0f);
+                    }
                     totals.generation += sourceState.MaxOutput * (1f - node.LocalLoss);
                     networkTotals[networkId] = totals;
                 }
                 else if (node.Type == PowerNodeType.Consumer && _consumerStateLookup.HasComponent(nodeEntities[i]))
                 {
                     var consumerState = _consumerStateLookup[nodeEntities[i]];
-                    var totals = networkTotals.GetValueOrDefault(networkId, (0f, 0f, 0f));
+                    if (!networkTotals.TryGetValue(networkId, out var totals))
+                    {
+                        totals = (0f, 0f, 0f);
+                    }
                     totals.demand += consumerState.RequestedDemand;
                     totals.supplied += consumerState.Supplied;
                     networkTotals[networkId] = totals;
@@ -106,11 +113,11 @@ namespace PureDOTS.Systems.Power
 
                     if (state.EntityManager.HasComponent<AggregatePowerState>(networkEntity))
                     {
-                        state.EntityManager.SetComponent(networkEntity, aggregateState);
+                        state.EntityManager.SetComponentData(networkEntity, aggregateState);
                     }
                     else
                     {
-                        state.EntityManager.AddComponent(networkEntity, aggregateState);
+                        state.EntityManager.AddComponentData(networkEntity, aggregateState);
                     }
                 }
             }

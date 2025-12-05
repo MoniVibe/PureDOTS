@@ -31,7 +31,7 @@ namespace PureDOTS.Systems
             _preferenceLookup = state.GetBufferLookup<VillageJobPreferenceEntry>(true);
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
-            state.RequireForUpdate<VillageId>();
+            state.RequireForUpdate<PureDOTS.Runtime.Village.VillageId>();
             state.RequireForUpdate<AggregateBehaviorProfile>();
             state.RequireForUpdate<VillagerId>();
         }
@@ -169,10 +169,10 @@ namespace PureDOTS.Systems
         private NativeParallelHashMap<int, VillageSnapshot> BuildVillageSnapshots(ref SystemState state, ref AggregateBehaviorProfileBlob profileBlob)
         {
             var allocator = state.WorldUpdateAllocator;
-            var villageCount = math.max(1, SystemAPI.QueryBuilder().WithAll<VillageId>().Build().CalculateEntityCount());
+            var villageCount = math.max(1, SystemAPI.QueryBuilder().WithAll<PureDOTS.Runtime.Village.VillageId>().Build().CalculateEntityCount());
             var snapshots = new NativeParallelHashMap<int, VillageSnapshot>(villageCount, allocator);
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithEntityAccess())
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithEntityAccess())
             {
                 var snapshot = new VillageSnapshot
                 {

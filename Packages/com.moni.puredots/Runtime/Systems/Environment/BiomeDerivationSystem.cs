@@ -85,13 +85,28 @@ namespace PureDOTS.Systems.Environment
                 }
             }
 
+            NativeArray<ClimateGridRuntimeCell> climateRuntime = default;
+            var hasClimateRuntime = false;
+            if (SystemAPI.TryGetSingletonEntity<MoistureGrid>(out var climateEntity) &&
+                SystemAPI.HasBuffer<ClimateGridRuntimeCell>(climateEntity))
+            {
+                var buffer = SystemAPI.GetBuffer<ClimateGridRuntimeCell>(climateEntity);
+                if (buffer.Length == biomeBuffer.Length)
+                {
+                    climateRuntime = buffer.AsNativeArray();
+                    hasClimateRuntime = true;
+                }
+            }
+
             var job = new BiomeDerivationJob
             {
                 Biomes = biomeBuffer.AsNativeArray(),
                 MoistureRuntime = moistureRuntime,
                 MoistureBlob = moistureGrid.Blob,
                 HasMoistureRuntime = hasMoistureRuntime,
-                TemperatureBlob = temperatureGrid.Blob
+                TemperatureBlob = temperatureGrid.Blob,
+                ClimateRuntime = climateRuntime,
+                HasClimateRuntime = hasClimateRuntime
             };
 
             state.Dependency = job.ScheduleParallel(biomeBuffer.Length, 64, state.Dependency);
@@ -109,13 +124,30 @@ namespace PureDOTS.Systems.Environment
 
             [ReadOnly] public BlobAssetReference<TemperatureGridBlob> TemperatureBlob;
 
+            [ReadOnly] public NativeArray<ClimateGridRuntimeCell> ClimateRuntime;
+            public bool HasClimateRuntime;
+
             public void Execute(int index)
             {
-                var moisture = SampleMoisture(index);
-                var temperature = SampleTemperature(index);
+                BiomeType biome;
+                
+                if (HasClimateRuntime && ClimateRuntime.IsCreated && index < ClimateRuntime.Length)
+                {
+                    // Use climate vector for classification
+                    var climate = ClimateRuntime[index].Climate;
+                    biome = ClassifyBiomeFromClimate(climate);
+                }
+                else
+                {
+                    // Fallback to temperature/moisture
+                    var moisture = SampleMoisture(index);
+                    var temperature = SampleTemperature(index);
+                    biome = ClassifyBiome(temperature, moisture);
+                }
+
                 Biomes[index] = new BiomeGridRuntimeCell
                 {
-                    Value = ClassifyBiome(temperature, moisture)
+                    Value = biome
                 };
             }
 
@@ -195,6 +227,22 @@ namespace PureDOTS.Systems.Environment
                 }
 
                 return moisture >= 30f ? BiomeType.Savanna : BiomeType.Desert;
+            }
+
+            private static BiomeType ClassifyBiomeFromClimate(in ClimateVector climate)
+            {
+                // Convert normalized temperature back to Celsius for compatibility
+                var temperature = 20f + climate.Temperature * 20f;
+                var moisture = climate.Moisture * 100f;
+
+                // Water level overrides: ocean/swamp
+                if (climate.WaterLevel > 0.7f)
+                {
+                    return BiomeType.Swamp;
+                }
+
+                // Use temperature/moisture classification
+                return ClassifyBiome(temperature, moisture);
             }
         }
     }

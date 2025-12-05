@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Economy.Wealth;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Production
 {
@@ -94,9 +95,9 @@ namespace PureDOTS.Runtime.Economy.Production
                     if (job.Progress >= 1f || job.RemainingTime <= 0f)
                     {
                         // Complete job
-                        if (TryFindRecipe(job.RecipeId, catalogBlob, out var recipe))
+                        if (TryFindRecipe(job.RecipeId, ref catalogBlob, out int recipeIndex))
                         {
-                            CompleteJob(ref state, entity, job, recipe, items, inventoryEntity, tick);
+                            CompleteJob(ref state, entity, job, ref catalogBlob, recipeIndex, items, inventoryEntity, tick);
                         }
 
                         jobs.RemoveAt(i);
@@ -106,20 +107,22 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private void CompleteJob(ref SystemState state, Entity businessEntity, ProductionJob job, ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items, Entity inventoryEntity, uint tick)
+        private void CompleteJob(ref SystemState state, Entity businessEntity, ProductionJob job, ref ProductionRecipeCatalogBlob catalog, int recipeIndex, DynamicBuffer<InventoryItem> items, Entity inventoryEntity, uint tick)
         {
+            ref var recipe = ref catalog.Recipes[recipeIndex];
+            
             // Consume inputs
             for (int i = 0; i < recipe.Inputs.Length; i++)
             {
-                var input = recipe.Inputs[i];
-                RemoveItem(items, input.ItemId, input.Quantity);
+                ref var input = ref recipe.Inputs[i];
+                RemoveItem(ref items, input.ItemId, input.Quantity);
             }
 
             // Produce outputs (quality calculation will be done by ProductionQualitySystem)
             for (int i = 0; i < recipe.Outputs.Length; i++)
             {
-                var output = recipe.Outputs[i];
-                AddItem(items, output.ItemId, output.Quantity, 50f, 1.0f, tick); // Default quality, will be updated by quality system
+                ref var output = ref recipe.Outputs[i];
+                AddItem(ref items, output.ItemId, output.Quantity, 50f, 1.0f, tick); // Default quality, will be updated by quality system
             }
 
             // Pay wages (Chunk 1)
@@ -147,23 +150,24 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static bool TryFindRecipe(FixedString64Bytes recipeId, ProductionRecipeCatalogBlob catalog, out ProductionRecipeBlob recipe)
+        private static bool TryFindRecipe(in FixedString64Bytes recipeId, ref ProductionRecipeCatalogBlob catalog, out int recipeIndex)
         {
             for (int i = 0; i < catalog.Recipes.Length; i++)
             {
-                if (catalog.Recipes[i].RecipeId.Equals(recipeId))
+                ref var candidateRecipe = ref catalog.Recipes[i];
+                if (candidateRecipe.RecipeId.Equals(recipeId))
                 {
-                    recipe = catalog.Recipes[i];
+                    recipeIndex = i;
                     return true;
                 }
             }
 
-            recipe = default;
+            recipeIndex = -1;
             return false;
         }
 
         [BurstCompile]
-        private static void RemoveItem(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId, float quantity)
+        private static void RemoveItem(ref DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId, float quantity)
         {
             float remaining = quantity;
 
@@ -189,7 +193,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static void AddItem(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId, float quantity, float quality, float durability, uint tick)
+        private static void AddItem(ref DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId, float quantity, float quality, float durability, uint tick)
         {
             // Try to merge with existing stack
             for (int i = 0; i < items.Length; i++)

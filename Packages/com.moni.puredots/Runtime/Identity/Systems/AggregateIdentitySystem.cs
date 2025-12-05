@@ -22,28 +22,29 @@ namespace PureDOTS.Runtime.Identity
         public void OnUpdate(ref SystemState state)
         {
             // Process all entities with AggregateMember buffers
-            foreach (var (entity, members) in SystemAPI.Query<RefRO<AggregateMember>>()
+            foreach (var (members, entity) in SystemAPI.Query<DynamicBuffer<AggregateMember>>()
                 .WithEntityAccess())
             {
-                if (members.ValueRO.Length == 0)
+                if (members.Length == 0)
                     continue;
 
                 // Compute aggregate alignment
-                ComputeAggregateAlignment(ref state, entity, members.ValueRO);
+                var entityRef = entity;
+                ComputeAggregateAlignment(ref state, ref entityRef, in members);
 
                 // Compute aggregate outlook
-                ComputeAggregateOutlook(ref state, entity, members.ValueRO);
+                ComputeAggregateOutlook(ref state, ref entityRef, in members);
 
                 // Compute group persona
-                ComputeGroupPersona(ref state, entity, members.ValueRO);
+                ComputeGroupPersona(ref state, ref entityRef, in members);
 
                 // Compute aggregate power profile
-                ComputeAggregatePowerProfile(ref state, entity, members.ValueRO);
+                ComputeAggregatePowerProfile(ref state, ref entityRef, in members);
             }
         }
 
         [BurstCompile]
-        private static void ComputeAggregateAlignment(ref SystemState state, Entity groupEntity, DynamicBuffer<AggregateMember> members)
+        private static void ComputeAggregateAlignment(ref SystemState state, ref Entity groupEntity, in DynamicBuffer<AggregateMember> members)
         {
             float totalMoral = 0f;
             float totalOrder = 0f;
@@ -84,8 +85,10 @@ namespace PureDOTS.Runtime.Identity
                 Purity = totalPurity / totalWeight,
                 // Cohesion: inverse of spread (higher spread = lower cohesion)
                 Cohesion = 1f - math.max(
-                    (maxMoral - minMoral) / 200f,
-                    (maxOrder - minOrder) / 200f,
+                    math.max(
+                        (maxMoral - minMoral) / 200f,
+                        (maxOrder - minOrder) / 200f
+                    ),
                     (maxPurity - minPurity) / 200f
                 ),
                 DriftRate = 0.5f // Default, can be adjusted per game
@@ -95,9 +98,9 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static void ComputeAggregateOutlook(ref SystemState state, Entity groupEntity, DynamicBuffer<AggregateMember> members)
+        private static void ComputeAggregateOutlook(ref SystemState state, ref Entity groupEntity, in DynamicBuffer<AggregateMember> members)
         {
-            var outlookCounts = new NativeHashMap<OutlookType, int>(16, Allocator.Temp);
+            var outlookCounts = new NativeHashMap<byte, int>(16, Allocator.Temp);
 
             foreach (var member in members)
             {
@@ -108,16 +111,25 @@ namespace PureDOTS.Runtime.Identity
                 
                 // Count primary (weight 3), secondary (weight 2), tertiary (weight 1)
                 if (outlook.Primary != OutlookType.None)
-                    outlookCounts.TryAdd(outlook.Primary, 0);
-                outlookCounts[outlook.Primary] = outlookCounts[outlook.Primary] + 3;
+                {
+                    byte primaryKey = (byte)outlook.Primary;
+                    outlookCounts.TryAdd(primaryKey, 0);
+                    outlookCounts[primaryKey] = outlookCounts[primaryKey] + 3;
+                }
 
                 if (outlook.Secondary != OutlookType.None)
-                    outlookCounts.TryAdd(outlook.Secondary, 0);
-                outlookCounts[outlook.Secondary] = outlookCounts[outlook.Secondary] + 2;
+                {
+                    byte secondaryKey = (byte)outlook.Secondary;
+                    outlookCounts.TryAdd(secondaryKey, 0);
+                    outlookCounts[secondaryKey] = outlookCounts[secondaryKey] + 2;
+                }
 
                 if (outlook.Tertiary != OutlookType.None)
-                    outlookCounts.TryAdd(outlook.Tertiary, 0);
-                outlookCounts[outlook.Tertiary] = outlookCounts[outlook.Tertiary] + 1;
+                {
+                    byte tertiaryKey = (byte)outlook.Tertiary;
+                    outlookCounts.TryAdd(tertiaryKey, 0);
+                    outlookCounts[tertiaryKey] = outlookCounts[tertiaryKey] + 1;
+                }
             }
 
             // Find top 3 outlooks by count
@@ -126,25 +138,26 @@ namespace PureDOTS.Runtime.Identity
 
             foreach (var kvp in outlookCounts)
             {
+                OutlookType outlookType = (OutlookType)kvp.Key;
                 if (kvp.Value > primaryCount)
                 {
                     tertiary = secondary;
                     tertiaryCount = secondaryCount;
                     secondary = primary;
                     secondaryCount = primaryCount;
-                    primary = kvp.Key;
+                    primary = outlookType;
                     primaryCount = kvp.Value;
                 }
                 else if (kvp.Value > secondaryCount)
                 {
                     tertiary = secondary;
                     tertiaryCount = secondaryCount;
-                    secondary = kvp.Key;
+                    secondary = outlookType;
                     secondaryCount = kvp.Value;
                 }
                 else if (kvp.Value > tertiaryCount)
                 {
-                    tertiary = kvp.Key;
+                    tertiary = outlookType;
                     tertiaryCount = kvp.Value;
                 }
             }
@@ -176,7 +189,7 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static void ComputeGroupPersona(ref SystemState state, Entity groupEntity, DynamicBuffer<AggregateMember> members)
+        private static void ComputeGroupPersona(ref SystemState state, ref Entity groupEntity, in DynamicBuffer<AggregateMember> members)
         {
             float totalVengeful = 0f;
             float totalBold = 0f;
@@ -220,7 +233,7 @@ namespace PureDOTS.Runtime.Identity
         }
 
         [BurstCompile]
-        private static void ComputeAggregatePowerProfile(ref SystemState state, Entity groupEntity, DynamicBuffer<AggregateMember> members)
+        private static void ComputeAggregatePowerProfile(ref SystemState state, ref Entity groupEntity, in DynamicBuffer<AggregateMember> members)
         {
             float totalAxis = 0f;
             float totalWeight = 0f;

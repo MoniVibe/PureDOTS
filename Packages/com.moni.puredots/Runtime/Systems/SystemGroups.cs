@@ -28,6 +28,32 @@ namespace PureDOTS.Systems
     public partial class SpatialSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Hot path system group - runs every tick, no throttling.
+    /// Contains systems that process many entities with simple math (movement, steering).
+    /// Must be tiny, branch-light, data tight. No allocations, no pathfinding calls.
+    /// </summary>
+    [UpdateInGroup(typeof(SpatialSystemGroup), OrderFirst = true)]
+    public partial class HotPathSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Warm path system group - throttled, staggered updates.
+    /// Contains systems that do local pathfinding, group decisions, replanning.
+    /// Throttled (K queries/tick), staggered updates, local A* only.
+    /// </summary>
+    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateAfter(typeof(HotPathSystemGroup))]
+    public partial class WarmPathSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Cold path system group - long intervals, event-driven.
+    /// Contains systems that do strategic planning, graph building, multi-modal routing.
+    /// Event-driven or long intervals (50-200 ticks), strategic planning.
+    /// </summary>
+    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateAfter(typeof(WarmPathSystemGroup))]
+    public partial class ColdPathSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// Shared AI systems that feed data into gameplay domains.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>

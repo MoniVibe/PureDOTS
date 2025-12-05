@@ -30,6 +30,18 @@ namespace PureDOTS.Runtime
     }
 
     /// <summary>
+    /// Boot phase for demo scenario spawning.
+    /// Used to spread spawning across multiple frames.
+    /// </summary>
+    public enum DemoBootPhase : byte
+    {
+        None = 0,
+        SpawnGodgame = 1,
+        SpawnSpace4x = 2,
+        Done = 3
+    }
+
+    /// <summary>
     /// Singleton component tracking the current demo scenario mode.
     /// Systems should check this to determine if they should run.
     /// </summary>
@@ -39,7 +51,29 @@ namespace PureDOTS.Runtime
         /// Current active scenario mode.
         /// </summary>
         public DemoScenario Current;
+
+        /// <summary>
+        /// Whether the demo scenario has been initialized (entities spawned).
+        /// </summary>
+        public bool IsInitialized;
+
+        /// <summary>
+        /// Current boot phase for phased spawning.
+        /// </summary>
+        public DemoBootPhase BootPhase;
+
+        /// <summary>
+        /// Enable Godgame slice (villages, villagers, terrain).
+        /// </summary>
+        public bool EnableGodgame;
+
+        /// <summary>
+        /// Enable Space4X slice (carriers, miners, asteroids).
+        /// </summary>
+        public bool EnableSpace4x;
     }
 }
+
+
 
 

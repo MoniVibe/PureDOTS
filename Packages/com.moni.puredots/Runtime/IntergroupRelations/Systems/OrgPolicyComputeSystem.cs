@@ -17,7 +17,10 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
+            var currentTick = timeState.Tick;
 
             foreach (var (relation, entity) in SystemAPI.Query<RefRO<OrgRelation>>()
                 .WithAll<OrgRelationTag>()

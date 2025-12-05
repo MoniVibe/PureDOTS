@@ -28,7 +28,7 @@ namespace PureDOTS.Systems
             _outlookLookup = state.GetComponentLookup<VillageOutlook>(true);
             _policyLookup = state.GetComponentLookup<VillageWorkforcePolicy>(true);
             _residencyLookup = state.GetComponentLookup<VillageResidencyState>(true);
-            state.RequireForUpdate<VillageId>();
+            state.RequireForUpdate<PureDOTS.Runtime.Village.VillageId>();
             state.RequireForUpdate<VillagerJob>();
         }
 
@@ -36,7 +36,7 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillageWorkforceDemandEntry>().WithEntityAccess())
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageWorkforceDemandEntry>().WithEntityAccess())
             {
                 ecb.AddBuffer<VillageWorkforceDemandEntry>(entity);
             }
@@ -72,7 +72,7 @@ namespace PureDOTS.Systems
             _residencyLookup.Update(ref state);
 
             foreach (var (villageId, stats, entity) in SystemAPI
-                         .Query<RefRO<VillageId>, RefRO<VillageStats>>()
+                         .Query<RefRO<PureDOTS.Runtime.Village.VillageId>, RefRO<VillageStats>>()
                          .WithEntityAccess())
             {
                 var demandBuffer = state.EntityManager.GetBuffer<VillageWorkforceDemandEntry>(entity);

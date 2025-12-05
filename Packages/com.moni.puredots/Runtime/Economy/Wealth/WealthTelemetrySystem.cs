@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Wealth
 {
@@ -100,7 +101,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
 
             if (allWealth.Length > 0)
             {
-                telemetry.GiniCoefficient = CalculateGini(allWealth);
+                telemetry.GiniCoefficient = CalculateGini(ref allWealth);
             }
 
             allWealth.Dispose();
@@ -145,7 +146,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
         }
 
         [BurstCompile]
-        private static float CalculateGini(NativeList<float> values)
+        private static float CalculateGini(ref NativeList<float> values)
         {
             if (values.Length == 0)
             {

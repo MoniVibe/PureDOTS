@@ -6,6 +6,8 @@ using PureDOTS.Runtime.Components;
 namespace PureDOTS.Runtime.IntergroupRelations
 {
     /// <summary>
+    /// COLD path: Slow decay for org relations (every 100-200 ticks, only on active edges).
+    /// Maintains sparse graph by pruning inactive relations.
     /// Decays extreme attitudes toward baseline over time.
     /// Rate based on OrgPersona (vengeful orgs decay slower, forgiving faster).
     /// </summary>
@@ -20,9 +22,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
+            var currentTick = timeState.Tick;
 
-            foreach (var (relation, orgA, orgB) in SystemAPI.Query<RefRW<OrgRelation>>()
+            foreach (var (relation, entity) in SystemAPI.Query<RefRW<OrgRelation>>()
                 .WithAll<OrgRelationTag>()
                 .WithEntityAccess())
             {

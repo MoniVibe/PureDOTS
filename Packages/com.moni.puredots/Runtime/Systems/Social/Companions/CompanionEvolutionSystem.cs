@@ -39,7 +39,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint currentTick = timeState.CurrentTick;
+            uint currentTick = timeState.Tick;
 
             // Check if it's time to run evolution update
             if (currentTick % config.EvolutionCheckInterval != 0)

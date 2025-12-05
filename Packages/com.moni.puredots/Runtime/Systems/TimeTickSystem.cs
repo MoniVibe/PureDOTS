@@ -104,6 +104,9 @@ namespace PureDOTS.Systems
                 _accumulator = fixedDt;
             }
 
+            // Update world seconds
+            tickState.WorldSeconds = tickState.Tick * tickState.FixedDeltaTime;
+
             SyncLegacyTime(ref tickState, ref timeState);
         }
 
@@ -114,6 +117,7 @@ namespace PureDOTS.Systems
             legacy.DeltaTime = tickState.FixedDeltaTime;
             legacy.CurrentSpeedMultiplier = tickState.CurrentSpeedMultiplier;
             legacy.IsPaused = tickState.IsPaused;
+            legacy.ElapsedTime = tickState.WorldSeconds;
         }
     }
 }

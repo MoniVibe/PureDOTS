@@ -28,10 +28,13 @@ namespace PureDOTS.Runtime.Economy.Resources
         [BurstCompile]
         private static void EnsureCatalog(ref SystemState state)
         {
-            if (SystemAPI.HasSingleton<ItemSpecCatalog>())
+            var query = state.EntityManager.CreateEntityQuery(typeof(ItemSpecCatalog));
+            if (query.CalculateEntityCount() > 0)
             {
+                query.Dispose();
                 return;
             }
+            query.Dispose();
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<ItemSpecCatalogBlob>();

@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Power;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Power
 {

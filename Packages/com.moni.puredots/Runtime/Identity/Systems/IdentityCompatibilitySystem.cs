@@ -19,15 +19,15 @@ namespace PureDOTS.Runtime.Identity
         /// </summary>
         [BurstCompile]
         public static float CalculateCompatibility(
-            EntityAlignment align1, EntityOutlook outlook1, PersonalityAxes personality1, MightMagicAffinity affinity1,
-            EntityAlignment align2, EntityOutlook outlook2, PersonalityAxes personality2, MightMagicAffinity affinity2)
+            in EntityAlignment align1, in EntityOutlook outlook1, in PersonalityAxes personality1, in MightMagicAffinity affinity1,
+            in EntityAlignment align2, in EntityOutlook outlook2, in PersonalityAxes personality2, in MightMagicAffinity affinity2)
         {
             float total = 0f;
 
-            total += CalculateAlignmentCompatibility(align1, align2);
-            total += CalculateOutlookCompatibility(outlook1, outlook2);
-            total += CalculatePersonalityCompatibility(personality1, personality2);
-            total += CalculateMightMagicCompatibility(affinity1, affinity2);
+            total += CalculateAlignmentCompatibility(in align1, in align2);
+            total += CalculateOutlookCompatibility(in outlook1, in outlook2);
+            total += CalculatePersonalityCompatibility(in personality1, in personality2);
+            total += CalculateMightMagicCompatibility(in affinity1, in affinity2);
 
             return total;
         }
@@ -36,7 +36,7 @@ namespace PureDOTS.Runtime.Identity
         /// Alignment compatibility: uses formulas from Generalized_Alignment_Framework.md
         /// </summary>
         [BurstCompile]
-        public static float CalculateAlignmentCompatibility(EntityAlignment align1, EntityAlignment align2)
+        public static float CalculateAlignmentCompatibility(in EntityAlignment align1, in EntityAlignment align2)
         {
             float total = 0f;
 
@@ -96,7 +96,7 @@ namespace PureDOTS.Runtime.Identity
         /// Outlook compatibility: matching outlooks give bonuses, opposing give penalties.
         /// </summary>
         [BurstCompile]
-        public static float CalculateOutlookCompatibility(EntityOutlook outlook1, EntityOutlook outlook2)
+        public static float CalculateOutlookCompatibility(in EntityOutlook outlook1, in EntityOutlook outlook2)
         {
             float total = 0f;
 
@@ -173,7 +173,7 @@ namespace PureDOTS.Runtime.Identity
         /// Personality compatibility: similar personalities get bonuses, opposites get penalties.
         /// </summary>
         [BurstCompile]
-        public static float CalculatePersonalityCompatibility(PersonalityAxes pers1, PersonalityAxes pers2)
+        public static float CalculatePersonalityCompatibility(in PersonalityAxes pers1, in PersonalityAxes pers2)
         {
             float total = 0f;
 
@@ -210,7 +210,7 @@ namespace PureDOTS.Runtime.Identity
         /// Might/Magic compatibility: matching affinity gives small bonus, opposing gives small penalty.
         /// </summary>
         [BurstCompile]
-        public static float CalculateMightMagicCompatibility(MightMagicAffinity aff1, MightMagicAffinity aff2)
+        public static float CalculateMightMagicCompatibility(in MightMagicAffinity aff1, in MightMagicAffinity aff2)
         {
             float axisDelta = math.abs(aff1.Axis - aff2.Axis);
 

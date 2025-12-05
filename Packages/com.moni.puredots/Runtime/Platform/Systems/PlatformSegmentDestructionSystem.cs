@@ -25,10 +25,18 @@ namespace PureDOTS.Systems.Platform
         {
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (transform, segmentStates, entity) in SystemAPI.Query<
-                RefRO<LocalTransform>,
-                DynamicBuffer<PlatformSegmentState>>().WithEntityAccess())
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            segmentStatesLookup.Update(ref state);
+
+            foreach (var (transform, entity) in SystemAPI.Query<
+                RefRO<LocalTransform>>().WithEntityAccess())
             {
+                if (!segmentStatesLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var segmentStates = segmentStatesLookup[entity];
                 bool needsUpdate = false;
 
                 for (int i = 0; i < segmentStates.Length; i++)
@@ -40,7 +48,8 @@ namespace PureDOTS.Systems.Platform
                         segmentStates[i] = segmentState;
                         needsUpdate = true;
 
-                        EmitSegmentDestroyedEvent(ref ecb, entity, segmentState.SegmentIndex, transform.ValueRO.Position);
+                        var platformEntity = entity;
+                        EmitSegmentDestroyedEvent(ref ecb, ref platformEntity, segmentState.SegmentIndex, transform.ValueRO.Position);
                     }
                 }
 
@@ -57,9 +66,9 @@ namespace PureDOTS.Systems.Platform
         [BurstCompile]
         private static void EmitSegmentDestroyedEvent(
             ref EntityCommandBuffer ecb,
-            Entity platformEntity,
+            ref Entity platformEntity,
             int segmentIndex,
-            float3 worldPosition)
+            in float3 worldPosition)
         {
             ecb.AddBuffer<PlatformSegmentDestroyedEvent>(platformEntity);
             var eventBuffer = ecb.SetBuffer<PlatformSegmentDestroyedEvent>(platformEntity);

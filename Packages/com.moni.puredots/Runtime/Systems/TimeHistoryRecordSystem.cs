@@ -4,15 +4,20 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Performance;
+using PureDOTS.Runtime.Core;
+using PureDOTS.Systems.Performance;
 
 namespace PureDOTS.Systems
 {
     /// <summary>
-    /// Records history samples for entities with HistoryProfile during Record mode.
-    /// Runs in HistorySystemGroup after simulation to capture final state.
+    /// WARM path: History recording for important entities (sampled rate).
+    /// Narrative/debug logs.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(HistorySystemGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
     public partial struct TimeHistoryRecordSystem : ISystem
     {
         [BurstCompile]
@@ -21,6 +26,8 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<HistorySettings>();
+            state.RequireForUpdate<UniversalPerformanceBudget>();
+            state.RequireForUpdate<UniversalPerformanceCounters>();
         }
 
         [BurstDiscard]
@@ -86,10 +93,27 @@ namespace PureDOTS.Systems
         [BurstCompile]
         private void RecordTransformHistory(ref SystemState state, uint currentTick)
         {
-            foreach (var (profile, transform, historyBuffer) in SystemAPI
+            var budget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
+            var counters = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
+            var importanceLookup = SystemAPI.GetComponentLookup<AIImportance>(true);
+            var updateCadenceLookup = SystemAPI.GetComponentLookup<UpdateCadence>(true);
+            
+            importanceLookup.Update(ref state);
+            updateCadenceLookup.Update(ref state);
+            
+            int recordsThisTick = 0;
+            
+            foreach (var (profile, transform, historyBuffer, entity) in SystemAPI
                 .Query<RefRW<HistoryProfile>, RefRO<LocalTransform>, DynamicBuffer<ComponentHistory<LocalTransform>>>()
-                .WithAll<HistoryActiveTag, RewindableTag>())
+                .WithAll<HistoryActiveTag, RewindableTag>()
+                .WithEntityAccess())
             {
+                // Check budget
+                if (recordsThisTick >= budget.MaxHistoryRecordsPerTick)
+                {
+                    break;
+                }
+                
                 // Check if transform recording is enabled
                 if ((profile.ValueRO.RecordFlags & HistoryRecordFlags.Transform) == 0)
                 {
@@ -99,6 +123,42 @@ namespace PureDOTS.Systems
                 // Check sampling frequency
                 if (profile.ValueRO.LastSampleTick != 0 && 
                     currentTick - profile.ValueRO.LastSampleTick < profile.ValueRO.SamplingFrequencyTicks)
+                {
+                    continue;
+                }
+                
+                // Check update cadence (staggered updates)
+                if (updateCadenceLookup.HasComponent(entity))
+                {
+                    var cadence = updateCadenceLookup[entity];
+                    if (!UpdateCadenceHelpers.ShouldUpdate(currentTick, cadence))
+                    {
+                        continue;
+                    }
+                }
+                
+                // Sample based on importance (higher importance = more frequent sampling)
+                byte importanceLevel = 3; // Default to background
+                if (importanceLookup.HasComponent(entity))
+                {
+                    importanceLevel = importanceLookup[entity].Level;
+                }
+                
+                // Adjust sampling frequency based on importance
+                // Level 0 (hero): sample every tick if enabled
+                // Level 1 (important): sample every 2-5 ticks
+                // Level 2 (normal): sample every 10-20 ticks
+                // Level 3 (background): sample every 50+ ticks
+                uint importanceMultiplier = importanceLevel switch
+                {
+                    0 => 1u,
+                    1 => 2u,
+                    2 => 5u,
+                    _ => 10u
+                };
+                
+                if (profile.ValueRO.LastSampleTick != 0 && 
+                    currentTick - profile.ValueRO.LastSampleTick < profile.ValueRO.SamplingFrequencyTicks * importanceMultiplier)
                 {
                     continue;
                 }
@@ -112,10 +172,15 @@ namespace PureDOTS.Systems
 
                 historyBuffer.Add(sample);
                 profile.ValueRW.LastSampleTick = currentTick;
+                recordsThisTick++;
 
                 // Prune old samples based on horizon
                 PruneHistory(historyBuffer, currentTick, profile.ValueRO.HorizonTicks);
             }
+            
+            // Update counters
+            counters.ValueRW.HistoryRecordsThisTick += recordsThisTick;
+            counters.ValueRW.TotalWarmOperationsThisTick += recordsThisTick;
         }
 
         [BurstCompile]

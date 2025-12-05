@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Resources
 {
@@ -50,13 +51,13 @@ namespace PureDOTS.Runtime.Economy.Resources
             // Process spawn requests
             foreach (var (spawnRequest, entity) in SystemAPI.Query<RefRO<InventorySpawnRequest>>().WithEntityAccess())
             {
-                ProcessSpawn(ref state, spawnRequest.ValueRO, catalogBlob, tick);
+                ProcessSpawn(ref state, spawnRequest.ValueRO, ref catalogBlob, tick);
                 state.EntityManager.RemoveComponent<InventorySpawnRequest>(entity);
             }
         }
 
         [BurstCompile]
-        private void ProcessSpawn(ref SystemState state, InventorySpawnRequest request, ItemSpecCatalogBlob catalog, uint tick)
+        private void ProcessSpawn(ref SystemState state, InventorySpawnRequest request, ref ItemSpecCatalogBlob catalog, uint tick)
         {
             if (!_inventoryLookup.HasComponent(request.Target))
             {
@@ -68,7 +69,7 @@ namespace PureDOTS.Runtime.Economy.Resources
                 state.EntityManager.AddBuffer<InventoryItem>(request.Target);
             }
 
-            if (!TryFindItemSpec(request.ItemId, catalog, out var spec))
+            if (!TryFindItemSpec(request.ItemId, ref catalog, out var spec))
             {
                 return;
             }
@@ -91,11 +92,11 @@ namespace PureDOTS.Runtime.Economy.Resources
             }
 
             // Add item
-            AddItem(items, request.ItemId, request.Quantity, request.Quality, request.Durability, tick);
+            AddItem(ref items, request.ItemId, request.Quantity, request.Quality, request.Durability, tick);
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {
@@ -111,7 +112,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
 
         [BurstCompile]
-        private static void AddItem(DynamicBuffer<InventoryItem> items, FixedString64Bytes itemId, float quantity, float quality, float durability, uint tick)
+        private static void AddItem(ref DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId, float quantity, float quality, float durability, uint tick)
         {
             // Try to merge with existing stack
             for (int i = 0; i < items.Length; i++)

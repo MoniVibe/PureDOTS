@@ -285,5 +285,46 @@ namespace PureDOTS.Runtime.Combat
             }
         }
     }
+
+    /// <summary>
+    /// Simple attack stats component for demo combat (Milestone 6).
+    /// </summary>
+    public struct AttackStats : IComponentData
+    {
+        public float Damage;
+        public float Range;
+        public float AttackCooldown;
+        public float LastAttackTime;
+    }
+
+    /// <summary>
+    /// Simple defense stats component for demo combat (Milestone 6).
+    /// </summary>
+    public struct DefenseStats : IComponentData
+    {
+        public float Armor;
+        public float Evasion;
+    }
+
+    /// <summary>
+    /// Combat intent component for individual behavior in groups (Milestone 6).
+    /// </summary>
+    public struct CombatIntent : IComponentData
+    {
+        public byte State;     // FollowGroup, Flank, Flee, Berserk…
+        public Entity Target;  // optional override
+    }
+
+    /// <summary>
+    /// Combat intent state enum.
+    /// </summary>
+    public enum CombatIntentState : byte
+    {
+        FollowGroup = 0,
+        Flank = 1,
+        Flee = 2,
+        Berserk = 3,
+        HoldPosition = 4
+    }
 }
 

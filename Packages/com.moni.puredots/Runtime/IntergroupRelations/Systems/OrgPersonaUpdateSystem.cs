@@ -20,9 +20,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
+            var currentTick = timeState.Tick;
 
-            foreach (var (orgId, aggregate, members, memberStats, entity) in SystemAPI.Query<RefRO<OrgId>, RefRO<AggregateEntity>, DynamicBuffer<AggregateMember>, RefRO<AggregateMemberStats>>()
+            foreach (var (orgId, aggregate, members, memberStats, entity) in SystemAPI.Query<RefRO<OrgId>, RefRO<PureDOTS.Runtime.Aggregate.AggregateEntity>, DynamicBuffer<PureDOTS.Runtime.Aggregate.AggregateMember>, RefRO<PureDOTS.Runtime.Aggregate.AggregateMemberStats>>()
                 .WithEntityAccess())
             {
                 if (members.Length == 0)

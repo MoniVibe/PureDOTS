@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Collections;
+using Unity.Mathematics;
 using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Components;
 
@@ -18,9 +19,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            var currentTick = timeState.Tick;
 
             // Find orgs with complete ownership (share >= 1.0)
             var orgsToProcess = new NativeList<Entity>(Allocator.Temp);
@@ -35,7 +39,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     if (ownership.Share >= 1f && SystemAPI.Exists(ownership.OwnerOrg))
                     {
                         // Check if integration process is active
-                        var relation = GetRelation(state, ownership.OwnerOrg, orgEntity);
+                        var relation = GetRelation(ref state, ownership.OwnerOrg, orgEntity);
                         if (relation.HasValue && 
                             (relation.Value.Treaties & OrgTreatyFlags.IntegrationProcess) != 0)
                         {
@@ -66,14 +70,14 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     continue;
 
                 // Merge orgs: transfer members from target to owner
-                if (SystemAPI.HasComponent<AggregateEntity>(orgEntity) && 
-                    SystemAPI.HasComponent<AggregateEntity>(ownerOrg.Value))
+                if (SystemAPI.HasComponent<PureDOTS.Runtime.Aggregate.AggregateEntity>(orgEntity) && 
+                    SystemAPI.HasComponent<PureDOTS.Runtime.Aggregate.AggregateEntity>(ownerOrg.Value))
                 {
-                    MergeAggregates(state, ecb, orgEntity, ownerOrg.Value);
+                    MergeAggregates(ref state, ecb, orgEntity, ownerOrg.Value);
                 }
 
                 // Update relation to Integrated
-                var relationEntity = FindRelationEntity(state, ownerOrg.Value, orgEntity);
+                var relationEntity = FindRelationEntity(ref state, ownerOrg.Value, orgEntity);
                 if (relationEntity.HasValue && SystemAPI.HasComponent<OrgRelation>(relationEntity.Value))
                 {
                     var relation = SystemAPI.GetComponentRW<OrgRelation>(relationEntity.Value);
@@ -97,19 +101,22 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static void MergeAggregates(SystemState state, EntityCommandBuffer ecb, Entity sourceOrg, Entity targetOrg)
+        private static void MergeAggregates(ref SystemState state, EntityCommandBuffer ecb, Entity sourceOrg, Entity targetOrg)
         {
             // Transfer members from source to target
-            if (SystemAPI.HasBuffer<AggregateMember>(sourceOrg) && 
-                SystemAPI.HasBuffer<AggregateMember>(targetOrg))
+            var memberBufferLookup = state.GetBufferLookup<PureDOTS.Runtime.Aggregate.AggregateMember>(false);
+            memberBufferLookup.Update(ref state);
+            
+            if (memberBufferLookup.HasBuffer(sourceOrg) && 
+                memberBufferLookup.HasBuffer(targetOrg))
             {
-                var sourceMembers = SystemAPI.GetBuffer<AggregateMember>(sourceOrg);
-                var targetMembers = SystemAPI.GetBuffer<AggregateMember>(targetOrg);
+                var sourceMembers = memberBufferLookup[sourceOrg];
+                var targetMembers = memberBufferLookup[targetOrg];
 
                 for (int i = 0; i < sourceMembers.Length; i++)
                 {
                     var member = sourceMembers[i];
-                    if (SystemAPI.Exists(member.MemberEntity))
+                    if (state.EntityManager.Exists(member.MemberEntity))
                     {
                         // Add member to target aggregate
                         targetMembers.Add(member);
@@ -125,42 +132,64 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
 
             // Update target aggregate member count
-            if (SystemAPI.HasComponent<AggregateEntity>(targetOrg))
+            var aggregateLookup = state.GetComponentLookup<PureDOTS.Runtime.Aggregate.AggregateEntity>(false);
+            aggregateLookup.Update(ref state);
+            if (aggregateLookup.HasComponent(targetOrg))
             {
-                var aggregate = SystemAPI.GetComponentRW<AggregateEntity>(targetOrg);
-                if (SystemAPI.HasBuffer<AggregateMember>(targetOrg))
+                var aggregate = aggregateLookup[targetOrg];
+                if (memberBufferLookup.HasBuffer(targetOrg))
                 {
-                    aggregate.ValueRW.MemberCount = (ushort)SystemAPI.GetBuffer<AggregateMember>(targetOrg).Length;
+                    aggregate.MemberCount = (ushort)memberBufferLookup[targetOrg].Length;
+                    aggregateLookup[targetOrg] = aggregate;
                 }
             }
         }
 
-        private static OrgRelation? GetRelation(SystemState state, Entity orgA, Entity orgB)
+        private static OrgRelation? GetRelation(ref SystemState state, Entity orgA, Entity orgB)
         {
-            foreach (var relation in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>())
+            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
+            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            
+            for (int i = 0; i < relations.Length; i++)
             {
-                if ((relation.ValueRO.OrgA == orgA && relation.ValueRO.OrgB == orgB) ||
-                    (relation.ValueRO.OrgA == orgB && relation.ValueRO.OrgB == orgA))
+                var relation = relations[i];
+                if ((relation.OrgA == orgA && relation.OrgB == orgB) ||
+                    (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
-                    return relation.ValueRO;
+                    relations.Dispose();
+                    query.Dispose();
+                    return relation;
                 }
             }
+            
+            relations.Dispose();
+            query.Dispose();
             return null;
         }
 
-        private static Entity? FindRelationEntity(SystemState state, Entity orgA, Entity orgB)
+        private static Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
         {
-            foreach (var (relation, entity) in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>()
-                .WithEntityAccess())
+            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
+            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            for (int i = 0; i < relations.Length; i++)
             {
-                if ((relation.ValueRO.OrgA == orgA && relation.ValueRO.OrgB == orgB) ||
-                    (relation.ValueRO.OrgA == orgB && relation.ValueRO.OrgB == orgA))
+                var relation = relations[i];
+                if ((relation.OrgA == orgA && relation.OrgB == orgB) ||
+                    (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
-                    return entity;
+                    var result = entities[i];
+                    relations.Dispose();
+                    entities.Dispose();
+                    query.Dispose();
+                    return result;
                 }
             }
+            
+            relations.Dispose();
+            entities.Dispose();
+            query.Dispose();
             return null;
         }
     }

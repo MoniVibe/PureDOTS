@@ -20,7 +20,7 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _villageQuery = state.GetEntityQuery(ComponentType.ReadOnly<VillageId>());
+            _villageQuery = state.GetEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Village.VillageId>());
             state.RequireForUpdate(_villageQuery);
         }
 
@@ -29,12 +29,12 @@ namespace PureDOTS.Systems
         {
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillageOutlook>().WithEntityAccess())
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageOutlook>().WithEntityAccess())
             {
                 ecb.AddComponent(entity, new VillageOutlook { Flags = VillageOutlookFlags.None });
             }
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillageWorkforcePolicy>().WithEntityAccess())
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageWorkforcePolicy>().WithEntityAccess())
             {
                 ecb.AddComponent(entity, new VillageWorkforcePolicy
                 {
@@ -44,7 +44,7 @@ namespace PureDOTS.Systems
                 });
             }
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillagerAlignment>().WithEntityAccess())
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillagerAlignment>().WithEntityAccess())
             {
                 ecb.AddComponent(entity, new VillagerAlignment());
             }
@@ -55,7 +55,7 @@ namespace PureDOTS.Systems
             var alignments = state.GetComponentLookup<VillagerAlignment>(true);
             var outlooks = state.GetComponentLookup<VillageOutlook>();
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<VillageId>>().WithEntityAccess())
+            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithEntityAccess())
             {
                 if (!outlooks.HasComponent(entity))
                 {

@@ -49,16 +49,22 @@ namespace PureDOTS.Runtime.Logistics.Systems
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             // Process living cargo on haulers
-            foreach (var (cargoBuffer, haulerEntity) in SystemAPI.Query<DynamicBuffer<CargoItem>>()
-                .WithAll<HaulerTag>()
+            foreach (var (haulerTag, haulerEntity) in SystemAPI.Query<RefRO<HaulerTag>>()
+                .WithAll<CargoItem>()
                 .WithEntityAccess())
             {
+                if (!_cargoBufferLookup.HasBuffer(haulerEntity))
+                {
+                    continue;
+                }
+
+                var cargoBuffer = _cargoBufferLookup[haulerEntity];
                 for (int i = 0; i < cargoBuffer.Length; i++)
                 {
                     var cargo = cargoBuffer[i];
 
                     // Check if item is living/personnel
-                    if (!TryFindItemSpec(cargo.ResourceId, itemCatalogBlob, out var itemSpec))
+                    if (!TryFindItemSpec(cargo.ResourceId, ref itemCatalogBlob, out var itemSpec))
                     {
                         continue;
                     }
@@ -122,7 +128,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         }
 
         [BurstCompile]
-        private static bool TryFindItemSpec(FixedString64Bytes itemId, ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
+        private static bool TryFindItemSpec(in FixedString64Bytes itemId, ref ItemSpecCatalogBlob catalog, out ItemSpecBlob spec)
         {
             for (int i = 0; i < catalog.Items.Length; i++)
             {

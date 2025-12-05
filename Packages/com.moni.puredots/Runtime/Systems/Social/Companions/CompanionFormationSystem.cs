@@ -23,8 +23,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
         BufferLookup<EntityRelation> _relationLookup;
         ComponentLookup<EntityAlignment> _alignmentLookup;
         ComponentLookup<EntityOutlook> _outlookLookup;
-        ComponentLookup<PersonalityAxes> _personalityLookup;
-        ComponentLookup<MightMagicAffinity> _affinityLookup;
+        ComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes> _personalityLookup;
+        ComponentLookup<PureDOTS.Runtime.Individual.MightMagicAffinity> _affinityLookup;
         BufferLookup<CompanionLink> _companionLinkBufferLookup;
 
         [BurstCompile]
@@ -37,8 +37,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             _companionLinkBufferLookup = state.GetBufferLookup<CompanionLink>(false);
             _alignmentLookup = state.GetComponentLookup<EntityAlignment>(true);
             _outlookLookup = state.GetComponentLookup<EntityOutlook>(true);
-            _personalityLookup = state.GetComponentLookup<PersonalityAxes>(true);
-            _affinityLookup = state.GetComponentLookup<MightMagicAffinity>(true);
+            _personalityLookup = state.GetComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes>(true);
+            _affinityLookup = state.GetComponentLookup<PureDOTS.Runtime.Individual.MightMagicAffinity>(true);
         }
 
         [BurstCompile]
@@ -52,7 +52,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint currentTick = timeState.CurrentTick;
+            uint currentTick = timeState.Tick;
 
             // Check if it's time to run formation scan
             if (currentTick % config.FormationCheckInterval != 0)
@@ -93,8 +93,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             [NativeDisableParallelForRestriction] public BufferLookup<CompanionLink> CompanionLinkBufferLookup;
             [ReadOnly] public ComponentLookup<EntityAlignment> AlignmentLookup;
             [ReadOnly] public ComponentLookup<EntityOutlook> OutlookLookup;
-            [ReadOnly] public ComponentLookup<PersonalityAxes> PersonalityLookup;
-            [ReadOnly] public ComponentLookup<MightMagicAffinity> AffinityLookup;
+            [ReadOnly] public ComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes> PersonalityLookup;
+            [ReadOnly] public ComponentLookup<PureDOTS.Runtime.Individual.MightMagicAffinity> AffinityLookup;
             public EntityCommandBuffer.ParallelWriter Ecb;
 
             void Execute([EntityIndexInQuery] int entityInQueryIndex, DynamicBuffer<GroupMember> members)
@@ -105,13 +105,13 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 // Check all pairs in the group
                 for (int i = 0; i < members.Length - 1; i++)
                 {
-                    var memberA = members[i].Member;
+                    var memberA = members[i].MemberEntity;
                     if (memberA == Entity.Null)
                         continue;
 
                     for (int j = i + 1; j < members.Length; j++)
                     {
-                        var memberB = members[j].Member;
+                        var memberB = members[j].MemberEntity;
                         if (memberB == Entity.Null)
                             continue;
 
@@ -233,11 +233,33 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 EntityOutlook outlookA = OutlookLookup.HasComponent(a) ? OutlookLookup[a] : default;
                 EntityOutlook outlookB = OutlookLookup.HasComponent(b) ? OutlookLookup[b] : default;
 
-                PersonalityAxes persA = PersonalityLookup.HasComponent(a) ? PersonalityLookup[a] : default;
-                PersonalityAxes persB = PersonalityLookup.HasComponent(b) ? PersonalityLookup[b] : default;
+                PureDOTS.Runtime.Individual.PersonalityAxes persAInd = PersonalityLookup.HasComponent(a) ? PersonalityLookup[a] : default;
+                PureDOTS.Runtime.Individual.PersonalityAxes persBInd = PersonalityLookup.HasComponent(b) ? PersonalityLookup[b] : default;
 
-                MightMagicAffinity affA = AffinityLookup.HasComponent(a) ? AffinityLookup[a] : default;
-                MightMagicAffinity affB = AffinityLookup.HasComponent(b) ? AffinityLookup[b] : default;
+                PureDOTS.Runtime.Individual.MightMagicAffinity affAInd = AffinityLookup.HasComponent(a) ? AffinityLookup[a] : default;
+                PureDOTS.Runtime.Individual.MightMagicAffinity affBInd = AffinityLookup.HasComponent(b) ? AffinityLookup[b] : default;
+
+                // Convert Individual types to Identity types for compatibility calculation
+                PureDOTS.Runtime.Identity.PersonalityAxes persA = new PureDOTS.Runtime.Identity.PersonalityAxes
+                {
+                    CravenBold = persAInd.Boldness * 100f, // Convert -1..1 to -100..100
+                    VengefulForgiving = persAInd.Vengefulness * 100f
+                };
+                PureDOTS.Runtime.Identity.PersonalityAxes persB = new PureDOTS.Runtime.Identity.PersonalityAxes
+                {
+                    CravenBold = persBInd.Boldness * 100f,
+                    VengefulForgiving = persBInd.Vengefulness * 100f
+                };
+                PureDOTS.Runtime.Identity.MightMagicAffinity affA = new PureDOTS.Runtime.Identity.MightMagicAffinity
+                {
+                    Axis = affAInd.Value * 100f, // Convert -1..1 to -100..100
+                    Strength = 1f
+                };
+                PureDOTS.Runtime.Identity.MightMagicAffinity affB = new PureDOTS.Runtime.Identity.MightMagicAffinity
+                {
+                    Axis = affBInd.Value * 100f,
+                    Strength = 1f
+                };
 
                 // Use IdentityCompatibility system
                 return IdentityCompatibility.CalculateCompatibility(

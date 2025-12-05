@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
@@ -20,12 +21,22 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
+            var currentTick = timeState.Tick;
+            var ownershipBufferLookup = state.GetBufferLookup<OrgOwnership>(false);
+            ownershipBufferLookup.Update(ref state);
 
             // Process ownership changes for all orgs
-            foreach (var (ownershipBuffer, orgEntity) in SystemAPI.Query<DynamicBuffer<OrgOwnership>>()
+            foreach (var (orgTag, orgEntity) in SystemAPI.Query<RefRO<OrgTag>>()
                 .WithEntityAccess())
             {
+                if (!ownershipBufferLookup.HasBuffer(orgEntity))
+                    continue;
+                    
+                var ownershipBuffer = ownershipBufferLookup[orgEntity];
+                
                 for (int i = 0; i < ownershipBuffer.Length; i++)
                 {
                     var ownership = ownershipBuffer[i];
@@ -43,7 +54,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     }
 
                     // Check relation to determine acquisition type
-                    var relation = GetRelation(state, ownership.OwnerOrg, orgEntity);
+                    var relation = GetRelation(ref state, ownership.OwnerOrg, orgEntity);
                     if (!relation.HasValue)
                         continue;
 
@@ -66,17 +77,28 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static OrgRelation? GetRelation(SystemState state, Entity orgA, Entity orgB)
+        private static OrgRelation? GetRelation(ref SystemState state, Entity orgA, Entity orgB)
         {
-            foreach (var relation in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>())
+            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
+            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var entities = query.ToEntityArray(Allocator.Temp);
+            
+            for (int i = 0; i < relations.Length; i++)
             {
-                if ((relation.ValueRO.OrgA == orgA && relation.ValueRO.OrgB == orgB) ||
-                    (relation.ValueRO.OrgA == orgB && relation.ValueRO.OrgB == orgA))
+                var relation = relations[i];
+                if ((relation.OrgA == orgA && relation.OrgB == orgB) ||
+                    (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
-                    return relation.ValueRO;
+                    relations.Dispose();
+                    entities.Dispose();
+                    query.Dispose();
+                    return relation;
                 }
             }
+            
+            relations.Dispose();
+            entities.Dispose();
+            query.Dispose();
             return null;
         }
     }

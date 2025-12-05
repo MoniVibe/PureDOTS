@@ -158,6 +158,32 @@ namespace PureDOTS.Runtime.Navigation
     }
 
     /// <summary>
+    /// Path request priority levels.
+    /// </summary>
+    public enum NavRequestPriority : byte
+    {
+        /// <summary>
+        /// Critical - player command, immediate danger (processed first).
+        /// </summary>
+        Critical = 0,
+
+        /// <summary>
+        /// Important - army re-route, high-value trade (processed second).
+        /// </summary>
+        Important = 1,
+
+        /// <summary>
+        /// Normal - routine movements (processed third).
+        /// </summary>
+        Normal = 2,
+
+        /// <summary>
+        /// Low - random wandering, ambience (processed last, dropped if budget exceeded).
+        /// </summary>
+        Low = 3
+    }
+
+    /// <summary>
     /// Path request - entity wants to find a path.
     /// </summary>
     public struct PathRequest : IComponentData
@@ -183,9 +209,16 @@ namespace PureDOTS.Runtime.Navigation
         public LocomotionMode LocomotionMode;
 
         /// <summary>
-        /// Request priority (higher = more urgent).
+        /// Request priority level (0=Critical, 1=Important, 2=Normal, 3=Low).
+        /// Lower values processed first.
         /// </summary>
-        public byte Priority;
+        public NavRequestPriority Priority;
+
+        /// <summary>
+        /// Heat tier classification for this request (Hot/Warm/Cold).
+        /// Determines which system processes it and budget allocation.
+        /// </summary>
+        public NavHeatTier HeatTier;
 
         /// <summary>
         /// Tick when request was made.

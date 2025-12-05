@@ -138,3 +138,7 @@ var configState = new GuildConfigState
 - **Integration Pattern**: Adapter components bridge existing Guild entities to generic aggregate system (preserves existing code)
 - **Membership Pattern**: `GroupMembership` replaces `GuildMembership` for unified aggregate membership tracking
 
+
+
+
+

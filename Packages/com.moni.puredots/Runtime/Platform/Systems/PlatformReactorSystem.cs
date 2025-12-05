@@ -32,10 +32,24 @@ namespace PureDOTS.Systems.Platform
 
             ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
-            foreach (var (moduleSlots, segmentStates) in SystemAPI.Query<
-                DynamicBuffer<PlatformModuleSlot>,
-                DynamicBuffer<PlatformSegmentState>>())
+            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
+            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            moduleSlotsLookup.Update(ref state);
+            segmentStatesLookup.Update(ref state);
+
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<PlatformTag>>()
+                .WithAll<PlatformModuleSlot>()
+                .WithAll<PlatformSegmentState>()
+                .WithEntityAccess())
             {
+                if (!moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                {
+                    continue;
+                }
+
+                var moduleSlots = moduleSlotsLookup[entity];
+                var segmentStates = segmentStatesLookup[entity];
+
                 UpdateReactorFlags(
                     ref segmentStates,
                     in moduleSlots,

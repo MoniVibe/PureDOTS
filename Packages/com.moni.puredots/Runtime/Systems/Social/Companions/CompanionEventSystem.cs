@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Focus;
 using PureDOTS.Runtime.Identity;
 using PureDOTS.Runtime.Individual;
@@ -23,7 +24,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
     {
         ComponentLookup<CompanionBond> _bondLookup;
         BufferLookup<CompanionLink> _companionLinkLookup;
-        ComponentLookup<PersonalityAxes> _personalityLookup;
+        ComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes> _personalityLookup;
         ComponentLookup<MoraleState> _moraleLookup;
         ComponentLookup<FocusState> _focusLookup;
         ComponentLookup<MentalState> _mentalStateLookup;
@@ -35,7 +36,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
 
             _bondLookup = state.GetComponentLookup<CompanionBond>(true);
             _companionLinkLookup = state.GetBufferLookup<CompanionLink>(true);
-            _personalityLookup = state.GetComponentLookup<PersonalityAxes>(true);
+            _personalityLookup = state.GetComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes>(true);
             _moraleLookup = state.GetComponentLookup<MoraleState>(false);
             _focusLookup = state.GetComponentLookup<FocusState>(false);
             _mentalStateLookup = state.GetComponentLookup<MentalState>(false);
@@ -56,7 +57,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             _mentalStateLookup.Update(ref state);
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint currentTick = timeState.CurrentTick;
+            uint currentTick = timeState.Tick;
 
             // Process death events
             var deathJob = new ProcessDeathEventsJob
@@ -89,7 +90,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             public uint CurrentTick;
             [ReadOnly] public ComponentLookup<CompanionBond> BondLookup;
             [ReadOnly] public BufferLookup<CompanionLink> CompanionLinkLookup;
-            [ReadOnly] public ComponentLookup<PersonalityAxes> PersonalityLookup;
+            [ReadOnly] public ComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes> PersonalityLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<MoraleState> MoraleLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<FocusState> FocusLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<MentalState> MentalStateLookup;
@@ -115,7 +116,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                         var bond = BondLookup[bondEntity];
                         Entity companion = (bond.A == deadEntity) ? bond.B : bond.A;
 
-                        if (companion == Entity.Null || !companion.Valid)
+                        if (companion == Entity.Null)
                             continue;
 
                         // Apply companion death effects
@@ -136,13 +137,13 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 }
 
                 // Get personality for reaction type
-                PersonalityAxes personality = PersonalityLookup.HasComponent(companion)
+                PureDOTS.Runtime.Individual.PersonalityAxes personality = PersonalityLookup.HasComponent(companion)
                     ? PersonalityLookup[companion]
                     : default;
 
                 // Personality-based reactions
-                float boldness = personality.CravenBold; // Using CravenBold from PersonalityAxes
-                float vengefulness = personality.VengefulForgiving < 0 ? math.abs(personality.VengefulForgiving) : 0f;
+                float boldness = personality.Boldness; // Using Boldness from PersonalityAxes
+                float vengefulness = personality.Vengefulness;
 
                 // Bold + Vengeful → Berserk state
                 if (boldness > 0.5f && vengefulness > 0.5f)
@@ -192,7 +193,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
             public uint CurrentTick;
             [ReadOnly] public ComponentLookup<CompanionBond> BondLookup;
             [ReadOnly] public BufferLookup<CompanionLink> CompanionLinkLookup;
-            [ReadOnly] public ComponentLookup<PersonalityAxes> PersonalityLookup;
+            [ReadOnly] public ComponentLookup<PureDOTS.Runtime.Individual.PersonalityAxes> PersonalityLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<FocusState> FocusLookup;
 
             void Execute(Entity entity, DynamicBuffer<DamageEvent> damageEvents)
@@ -211,7 +212,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                     var bond = BondLookup[bondEntity];
                     Entity companion = (bond.A == entity) ? bond.B : bond.A;
 
-                    if (companion == Entity.Null || !companion.Valid)
+                    if (companion == Entity.Null)
                         continue;
 
                     // Check if companion is near death (high damage events)
@@ -245,11 +246,11 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 }
 
                 // Modify morale based on personality
-                PersonalityAxes personality = PersonalityLookup.HasComponent(companion)
+                PureDOTS.Runtime.Individual.PersonalityAxes personality = PersonalityLookup.HasComponent(companion)
                     ? PersonalityLookup[companion]
                     : default;
 
-                float boldness = personality.CravenBold;
+                float boldness = personality.Boldness;
                 // Bold + Vengeful → heroic rage (morale up)
                 if (boldness > 0.3f)
                 {

@@ -49,7 +49,7 @@ namespace PureDOTS.Runtime.Economy.Production
         /// Calculates output quality for a refining recipe.
         /// </summary>
         [BurstCompile]
-        public static float CalculateRefiningQuality(float inputPurity, float artisanExpertise, float businessQuality, int techTier, RefiningFormulaConfigBlob config)
+        public static float CalculateRefiningQuality(float inputPurity, float artisanExpertise, float businessQuality, int techTier, in RefiningFormulaConfigBlob config)
         {
             return (inputPurity * config.PurityCoefficient) +
                    (artisanExpertise * config.ExpertiseCoefficient) +
@@ -61,7 +61,7 @@ namespace PureDOTS.Runtime.Economy.Production
         /// Calculates output quality for a crafting recipe.
         /// </summary>
         [BurstCompile]
-        public static float CalculateCraftingQuality(float averageComponentQuality, float artisanBonus, float businessBonus, int techTier, CraftingFormulaConfigBlob config)
+        public static float CalculateCraftingQuality(float averageComponentQuality, float artisanBonus, float businessBonus, int techTier, in CraftingFormulaConfigBlob config)
         {
             return (averageComponentQuality * config.AverageComponentCoefficient) +
                    (artisanBonus * config.ArtisanBonusCoefficient) +

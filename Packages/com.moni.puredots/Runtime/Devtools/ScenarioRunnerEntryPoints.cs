@@ -20,7 +20,7 @@ namespace PureDOTS.Runtime.Devtools
         /// </summary>
         public static void RunScenarioFromArgs()
         {
-            var args = Environment.GetCommandLineArgs();
+            var args = System.Environment.GetCommandLineArgs();
             var scenarioPath = ReadArg(args, "--scenario");
             var reportPath = ReadArg(args, "--report");
 
@@ -69,7 +69,7 @@ namespace PureDOTS.Runtime.Devtools
         /// </summary>
         public static void RunScaleTest()
         {
-            var args = Environment.GetCommandLineArgs();
+            var args = System.Environment.GetCommandLineArgs();
             var scenarioArg = ReadArg(args, "--scenario");
             var metricsPath = ReadArg(args, "--metrics");
             var targetMsArg = ReadArg(args, "--target-ms");

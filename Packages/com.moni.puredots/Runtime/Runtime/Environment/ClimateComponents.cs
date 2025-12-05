@@ -1,92 +1,73 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace PureDOTS.Runtime.Environment
+namespace PureDOTS.Environment
 {
     /// <summary>
-    /// Global climate state for a world/planet.
-    /// Singleton component tracking temperature, humidity, and optional seasons.
+    /// Unified climate vector describing local environmental conditions per cell.
+    /// Temperature is normalized (-1..+1), other values are 0..1.
     /// </summary>
-    public struct ClimateState : IComponentData
+    public struct ClimateVector
     {
-        /// <summary>Current temperature (abstract units or °C).</summary>
-        public float Temperature;
+        public float Temperature;   // Normalized: -1 (cold) to +1 (hot)
+        public float Moisture;       // 0..1 (0 = dry, 1 = saturated)
+        public float Fertility;      // 0..1 (0 = barren, 1 = rich)
+        public float WaterLevel;     // 0..1 (0 = dry land, 1 = ocean)
+        public float Ruggedness;     // 0..1 (0 = flat, 1 = mountainous)
 
-        /// <summary>Current humidity (0-1, where 1 = 100%).</summary>
-        public float Humidity;
-
-        /// <summary>Current season index (0=Spring, 1=Summer, 2=Fall, 3=Winter).</summary>
-        public byte SeasonIndex;
-
-        /// <summary>Current tick within the current season.</summary>
-        public uint SeasonTick;
-
-        /// <summary>Length of each season in ticks.</summary>
-        public uint SeasonLength;
-
-        /// <summary>Last update tick for climate oscillation.</summary>
-        public uint LastUpdateTick;
-    }
-
-    /// <summary>
-    /// Configuration for climate oscillation and seasonal behavior.
-    /// Singleton component defining how climate changes over time.
-    /// </summary>
-    public struct ClimateConfig : IComponentData
-    {
-        /// <summary>Base temperature (center of oscillation).</summary>
-        public float BaseTemperature;
-
-        /// <summary>Base humidity (center of oscillation).</summary>
-        public float BaseHumidity;
-
-        /// <summary>Temperature oscillation amplitude.</summary>
-        public float TemperatureOscillation;
-
-        /// <summary>Humidity oscillation amplitude.</summary>
-        public float HumidityOscillation;
-
-        /// <summary>Temperature oscillation period in ticks.</summary>
-        public uint TemperaturePeriod;
-
-        /// <summary>Humidity oscillation period in ticks.</summary>
-        public uint HumidityPeriod;
-
-        /// <summary>Length of each season in ticks (if seasons enabled).</summary>
-        public uint SeasonLengthTicks;
-
-        /// <summary>Whether seasons are enabled (0 = disabled, 1 = enabled).</summary>
-        public byte SeasonsEnabled;
-
-        /// <summary>
-        /// Default configuration with sensible values.
-        /// </summary>
-        public static ClimateConfig Default => new ClimateConfig
+        public static ClimateVector Lerp(in ClimateVector a, in ClimateVector b, float t)
         {
-            BaseTemperature = 20f, // 20°C (temperate)
-            BaseHumidity = 0.5f, // 50% humidity
-            TemperatureOscillation = 10f, // ±10°C variation
-            HumidityOscillation = 0.3f, // ±30% variation
-            TemperaturePeriod = 1000u, // Oscillation period
-            HumidityPeriod = 800u,
-            SeasonLengthTicks = 250u, // 4 seasons per 1000 ticks
-            SeasonsEnabled = 0 // Disabled by default
-        };
+            return new ClimateVector
+            {
+                Temperature = math.lerp(a.Temperature, b.Temperature, t),
+                Moisture = math.lerp(a.Moisture, b.Moisture, t),
+                Fertility = math.lerp(a.Fertility, b.Fertility, t),
+                WaterLevel = math.lerp(a.WaterLevel, b.WaterLevel, t),
+                Ruggedness = math.lerp(a.Ruggedness, b.Ruggedness, t)
+            };
+        }
+
+        public readonly float Distance(in ClimateVector other)
+        {
+            var dT = math.abs(Temperature - other.Temperature);
+            var dM = math.abs(Moisture - other.Moisture);
+            var dF = math.abs(Fertility - other.Fertility);
+            var dW = math.abs(WaterLevel - other.WaterLevel);
+            var dR = math.abs(Ruggedness - other.Ruggedness);
+            return dT + dM + dF + dW + dR;
+        }
     }
 
     /// <summary>
-    /// Per-cell climate override (for Tier-2 spatial climate).
-    /// Used when climate varies spatially (e.g., deserts vs forests).
+    /// Runtime per-cell climate data stored in dynamic buffer for deterministic mutation.
     /// </summary>
-    public struct ClimateCell
+    [InternalBufferCapacity(0)]
+    public struct ClimateGridRuntimeCell : IBufferElementData
     {
-        /// <summary>Temperature override (additive to base).</summary>
-        public float TemperatureOverride;
+        public ClimateVector Climate;
+    }
 
-        /// <summary>Humidity override (additive to base).</summary>
-        public float HumidityOverride;
+    /// <summary>
+    /// Kind of climate control source (natural phenomena, god intervention, or structures).
+    /// </summary>
+    public enum ClimateControlKind : byte
+    {
+        Natural = 0,      // Volcano, glacier, ocean currents
+        GodMiracle = 1,   // Direct god interaction
+        Structure = 2     // Terraforming altar, weather machine, biodeck module
+    }
 
-        /// <summary>Biome type index (for reference).</summary>
-        public byte BiomeIndex;
+    /// <summary>
+    /// Climate control source that gradually pulls local climate toward a target vector.
+    /// Used by miracles, terraforming structures, and biodeck modules.
+    /// </summary>
+    public struct ClimateControlSource : IComponentData
+    {
+        public ClimateControlKind Kind;
+        public float3 Center;
+        public float Radius;
+        public ClimateVector TargetClimate;
+        public float Strength;  // 0..1, how fast it pushes toward target
     }
 }

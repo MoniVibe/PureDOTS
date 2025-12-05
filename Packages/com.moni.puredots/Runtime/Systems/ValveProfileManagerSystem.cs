@@ -34,7 +34,7 @@ namespace PureDOTS.Systems
         /// Applies a profile to the simulation valve singleton.
         /// Called by external systems or commands.
         /// </summary>
-        public static void ApplyProfile(ref SystemState state, in SimulationValveProfile profile)
+        public void ApplyProfile(ref SystemState state, in SimulationValveProfile profile)
         {
             var valveEntity = SystemAPI.GetSingletonEntity<SimulationFeatureFlags>();
             
@@ -48,7 +48,7 @@ namespace PureDOTS.Systems
         /// Gets the current valve state as a profile.
         /// Useful for saving current configuration.
         /// </summary>
-        public static SimulationValveProfile GetCurrentProfile(ref SystemState state)
+        public SimulationValveProfile GetCurrentProfile(ref SystemState state)
         {
             var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
             var scalars = SystemAPI.GetSingleton<SimulationScalars>();

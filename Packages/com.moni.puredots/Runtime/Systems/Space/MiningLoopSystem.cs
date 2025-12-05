@@ -1,3 +1,4 @@
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Entities;
@@ -18,6 +19,12 @@ namespace PureDOTS.Systems.Space
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            // Gate on demo scenario initialization
+            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) && !scenario.IsInitialized)
+            {
+                return;
+            }
+
             var deltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (loopStateRW, harvesterConfig, loopConfig) in SystemAPI

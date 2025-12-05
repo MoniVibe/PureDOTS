@@ -50,18 +50,15 @@ namespace PureDOTS.Authoring.Environment
 
         /// <summary>
         /// Converts to ECS component.
+        /// Note: ClimateConfig component doesn't exist - climate is managed via ClimateState singleton.
+        /// This method is kept for potential future use.
         /// </summary>
-        public ClimateConfig ToComponent() => new ClimateConfig
+        public object ToComponent()
         {
-            BaseTemperature = baseTemperature,
-            BaseHumidity = baseHumidity,
-            TemperatureOscillation = temperatureOscillation,
-            HumidityOscillation = humidityOscillation,
-            TemperaturePeriod = temperaturePeriod,
-            HumidityPeriod = humidityPeriod,
-            SeasonLengthTicks = seasonLengthTicks,
-            SeasonsEnabled = (byte)(seasonsEnabled ? 1 : 0)
-        };
+            // ClimateConfig component doesn't exist - climate is managed via ClimateState singleton
+            // Return null as placeholder - actual climate config should be set via ClimateState directly
+            return null;
+        }
 
 #if UNITY_EDITOR
         private void OnValidate()
@@ -76,4 +73,6 @@ namespace PureDOTS.Authoring.Environment
     }
 }
 #endif
+
+
 

@@ -62,9 +62,9 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 bool jobFound = false;
                 Entity jobEntity = Entity.Null;
 
-                foreach (var (job, jobEnt) in SystemAPI.Query<RefRO<LogisticsJob>>().WithEntityAccess())
+                foreach (var (jobRef, jobEnt) in SystemAPI.Query<RefRO<LogisticsJob>>().WithEntityAccess())
                 {
-                    if (job.ValueRO.JobId == assign.JobId)
+                    if (jobRef.ValueRO.JobId == assign.JobId)
                     {
                         jobEntity = jobEnt;
                         jobFound = true;

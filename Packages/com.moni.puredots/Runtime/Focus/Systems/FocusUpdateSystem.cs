@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Individual;
 using Unity.Burst;
 using Unity.Collections;
@@ -17,13 +18,15 @@ namespace PureDOTS.Runtime.Focus
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             float deltaTime = timeState.DeltaTime;
 
             var job = new UpdateFocusJob
             {
                 DeltaTime = deltaTime,
-                CurrentTick = timeState.CurrentTick
+                CurrentTick = timeState.Tick
             };
             job.ScheduleParallel();
         }
@@ -67,7 +70,8 @@ namespace PureDOTS.Runtime.Focus
                     float breakChance = math.clamp(deficit / focus.HardThreshold, 0f, 1f);
 
                     // Random check (using deterministic hash for consistency)
-                    uint hash = (uint)(CurrentTick + focus.GetHashCode());
+                    // Burst-compatible hash: combine focus state fields
+                    uint hash = (uint)(CurrentTick + (uint)(focus.Current * 1000f) + (uint)(focus.Max * 100f) + (uint)(focus.Load * 50f));
                     float random = (hash % 1000) / 1000f;
 
                     if (random < breakChance * 0.1f) // 10% max chance per tick

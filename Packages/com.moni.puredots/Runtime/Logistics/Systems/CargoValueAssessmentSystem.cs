@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Logistics.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Logistics.Systems
 {

@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Time;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
@@ -29,14 +30,15 @@ namespace PureDOTS.Runtime.Groups
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             _alignmentLookup.Update(ref state);
             _personalityLookup.Update(ref state);
 
-            var timeState = SystemAPI.GetSingleton<PureDOTS.Runtime.Time.TimeState>();
-
             var job = new ProcessCapturesJob
             {
-                CurrentTick = timeState.CurrentTick,
+                CurrentTick = timeState.Tick,
                 AlignmentLookup = _alignmentLookup,
                 PersonalityLookup = _personalityLookup
             };

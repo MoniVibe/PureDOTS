@@ -251,3 +251,7 @@ if (SystemAPI.HasComponent<AmbientGroupConditions>(groupEntity))
 - **Villager/Crew Simulation**: Individual behavior systems
 - **Environment & Economy**: Aggregate stats influenced by environment, economic systems use desire coverage
 
+
+
+
+

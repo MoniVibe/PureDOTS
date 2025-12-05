@@ -20,7 +20,9 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villageQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillageId, LocalTransform, VillageWorkforcePolicy>()
+                .WithAll<PureDOTS.Runtime.Village.VillageId>()
+                .WithAll<LocalTransform>()
+                .WithAll<VillageWorkforcePolicy>()
                 .Build();
             state.RequireForUpdate<ArmyIntent>();
             state.RequireForUpdate(_villageQuery);
@@ -31,7 +33,7 @@ namespace PureDOTS.Systems
         {
             var allocator = state.WorldUpdateAllocator;
             var villageEntities = _villageQuery.ToEntityArray(allocator);
-            var villageIds = _villageQuery.ToComponentDataArray<VillageId>(allocator);
+            var villageIds = _villageQuery.ToComponentDataArray<PureDOTS.Runtime.Village.VillageId>(allocator);
             var villageTransforms = _villageQuery.ToComponentDataArray<LocalTransform>(allocator);
             var villagePolicies = _villageQuery.ToComponentDataArray<VillageWorkforcePolicy>(allocator);
 

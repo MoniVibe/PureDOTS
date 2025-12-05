@@ -137,3 +137,7 @@ AddComponent(configEntity, config.ToComponent());
 - Maintains backward compatibility with existing planet-moon relationships
 - Stars orbit galactic center (no parent), planets orbit stars, moons orbit planets
 
+
+
+
+

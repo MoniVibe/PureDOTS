@@ -54,8 +54,10 @@ namespace PureDOTS.Runtime.Economy.Resources
         public int StackSize;
         public ItemTags Tags;
         public float BaseValue;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.U1)]
         public bool IsPerishable;
         public float PerishRate;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.U1)]
         public bool IsDurable;
         public float BaseDurability;
     }

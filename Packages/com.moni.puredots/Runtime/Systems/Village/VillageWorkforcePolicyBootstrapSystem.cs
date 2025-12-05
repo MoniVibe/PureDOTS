@@ -16,14 +16,14 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<VillageId>();
+            state.RequireForUpdate<PureDOTS.Runtime.Village.VillageId>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<VillageId>>().WithNone<VillageWorkforcePolicy>().WithEntityAccess())
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageWorkforcePolicy>().WithEntityAccess())
             {
                 ecb.AddComponent(entity, new VillageWorkforcePolicy
                 {

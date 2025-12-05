@@ -13,6 +13,11 @@ namespace PureDOTS.Runtime.IntergroupRelations
     /// Creates relation edges when organizations first interact.
     /// Computes baseline Attitude/Trust/Fear from alignment/outlook compatibility.
     /// </summary>
+    /// <summary>
+    /// COLD path: Creates/destroys OrgRelation edges (sparse graph).
+    /// Only for active pairs: bordering territories, trading partners, shared parent, historical enemies/allies.
+    /// Event-driven: war, alliance, embargo, scandal, atrocities.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(OrgAlignmentUpdateSystem))]
@@ -21,9 +26,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+                return;
+            
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
-            var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
+            var currentTick = timeState.Tick;
 
             // Find all org pairs that need relations initialized
             var orgs = SystemAPI.QueryBuilder()
@@ -39,7 +47,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var orgB = orgs[j];
 
                     // Check if relation already exists
-                    if (RelationExists(state, orgA, orgB))
+                    if (RelationExists(ref state, orgA, orgB))
                         continue;
 
                     // Check if they should interact (proximity, shared parent, etc.)
@@ -51,7 +59,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     ecb.AddComponent(relationEntity, new OrgRelationTag());
 
                     // Compute baseline values
-                    var baseline = ComputeBaselineRelation(state, orgA, orgB);
+                    var baseline = ComputeBaselineRelation(ref state, orgA, orgB);
 
                     ecb.AddComponent(relationEntity, new OrgRelation
                     {
@@ -71,20 +79,26 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static bool RelationExists(SystemState state, Entity orgA, Entity orgB)
+        private static bool RelationExists(ref SystemState state, Entity orgA, Entity orgB)
         {
             // Check if relation entity exists for this pair
-            // This is a simplified check - in production, use a hash map or relation registry
-            foreach (var (relation, entity) in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>()
-                .WithEntityAccess())
+            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
+            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            
+            for (int i = 0; i < relations.Length; i++)
             {
-                if ((relation.ValueRO.OrgA == orgA && relation.ValueRO.OrgB == orgB) ||
-                    (relation.ValueRO.OrgA == orgB && relation.ValueRO.OrgB == orgA))
+                var relation = relations[i];
+                if ((relation.OrgA == orgA && relation.OrgB == orgB) ||
+                    (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
+                    relations.Dispose();
+                    query.Dispose();
                     return true;
                 }
             }
+            
+            relations.Dispose();
+            query.Dispose();
             return false;
         }
 
@@ -95,13 +109,16 @@ namespace PureDOTS.Runtime.IntergroupRelations
             return true;
         }
 
-        private static BaselineRelation ComputeBaselineRelation(SystemState state, Entity orgA, Entity orgB)
+        private static BaselineRelation ComputeBaselineRelation(ref SystemState state, Entity orgA, Entity orgB)
         {
-            var alignmentA = SystemAPI.HasComponent<VillagerAlignment>(orgA) 
-                ? SystemAPI.GetComponent<VillagerAlignment>(orgA) 
+            var alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
+            alignmentLookup.Update(ref state);
+            
+            var alignmentA = alignmentLookup.HasComponent(orgA) 
+                ? alignmentLookup[orgA] 
                 : new VillagerAlignment();
-            var alignmentB = SystemAPI.HasComponent<VillagerAlignment>(orgB) 
-                ? SystemAPI.GetComponent<VillagerAlignment>(orgB) 
+            var alignmentB = alignmentLookup.HasComponent(orgB) 
+                ? alignmentLookup[orgB] 
                 : new VillagerAlignment();
 
             // Compute alignment compatibility (reuse formulas from Entity_Relations_And_Interactions.md)
