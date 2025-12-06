@@ -47,6 +47,10 @@ namespace PureDOTS.Runtime.Components
     /// Singleton component tracking the global rewind/playback state.
     /// The RewindCoordinatorSystem is the authoritative writer for this component.
     /// </summary>
+    /// <summary>
+    /// Rewind state for deterministic replay.
+    /// Extended with RNG seed for deterministic utility learning.
+    /// </summary>
     public struct RewindState : IComponentData
     {
         /// <summary>Current rewind mode (Record, Playback, CatchUp, Idle).</summary>
@@ -71,6 +75,8 @@ namespace PureDOTS.Runtime.Components
         public uint RewindWindowTicks;
         /// <summary>Which track we're currently scrubbing (for track-based rewinds).</summary>
         public RewindTrackId ActiveTrack;
+        /// <summary>RNG seed for deterministic utility learning replay.</summary>
+        public uint Seed;
     }
 
     /// <summary>

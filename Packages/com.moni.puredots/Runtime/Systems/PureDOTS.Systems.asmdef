@@ -6,6 +6,7 @@
         "PureDOTS.Core",
         "PureDOTS.Input",
         "PureDOTS.Config",
+        "PureDOTS.Shared",
         "Unity.Burst",
         "Unity.Entities",
         "Unity.Mathematics",

@@ -25,6 +25,8 @@ namespace PureDOTS.Runtime.Economy.Wealth
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
+            EnsureLedgerExists(ref state);
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
             _dynastyWealthLookup = state.GetComponentLookup<DynastyWealth>(false);
@@ -46,6 +48,13 @@ namespace PureDOTS.Runtime.Economy.Wealth
             var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
             var tick = tickTimeState.Tick;
 
+            // Ensure ledger and buffer are present before using lookups (structural changes happen here)
+            var ledgerEntity = GetOrCreateLedgerEntity(ref state);
+            if (!state.EntityManager.HasBuffer<WealthTransaction>(ledgerEntity))
+            {
+                state.EntityManager.AddBuffer<WealthTransaction>(ledgerEntity);
+            }
+
             _villagerWealthLookup.Update(ref state);
             _familyWealthLookup.Update(ref state);
             _dynastyWealthLookup.Update(ref state);
@@ -55,7 +64,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
             _transactionBufferLookup.Update(ref state);
 
             // Process pending transactions from the ledger
-            var ledgerEntity = GetOrCreateLedgerEntity(ref state);
             if (_transactionBufferLookup.HasBuffer(ledgerEntity))
             {
                 var transactions = _transactionBufferLookup[ledgerEntity];
@@ -196,6 +204,25 @@ namespace PureDOTS.Runtime.Economy.Wealth
             var ledgerEntity = state.EntityManager.CreateEntity();
             state.EntityManager.AddComponent<WealthLedger>(ledgerEntity);
             return ledgerEntity;
+        }
+
+        [BurstDiscard]
+        private static void EnsureLedgerExists(ref SystemState state)
+        {
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<WealthLedger>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                var ledgerEntity = query.GetSingletonEntity();
+                if (!state.EntityManager.HasBuffer<WealthTransaction>(ledgerEntity))
+                {
+                    state.EntityManager.AddBuffer<WealthTransaction>(ledgerEntity);
+                }
+                return;
+            }
+
+            var e = state.EntityManager.CreateEntity();
+            state.EntityManager.AddComponent<WealthLedger>(e);
+            state.EntityManager.AddBuffer<WealthTransaction>(e);
         }
     }
 

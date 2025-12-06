@@ -22,6 +22,7 @@ namespace PureDOTS.Runtime.Transport.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _nodeLookup = state.GetComponentLookup<WarpRelayNode>(false);
             _bookingLookup = state.GetComponentLookup<WarpBooking>(false);
             _accessContractBufferLookup = state.GetBufferLookup<HyperwayAccessContract>(false);

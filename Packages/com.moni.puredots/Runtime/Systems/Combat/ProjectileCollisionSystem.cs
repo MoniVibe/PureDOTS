@@ -18,6 +18,8 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateAfter(typeof(ProjectileMotionSystem))]
+    [UpdateBefore(typeof(ProjectileAoESystem))]
     public partial struct ProjectileCollisionSystem : ISystem
     {
         [BurstCompile]

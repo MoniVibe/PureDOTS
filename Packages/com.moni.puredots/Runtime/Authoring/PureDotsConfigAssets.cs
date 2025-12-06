@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Config;
+using PureDOTS.Config;
 
 namespace PureDOTS.Authoring
 {
@@ -33,6 +34,9 @@ namespace PureDOTS.Authoring
         [SerializeField]
         private ThreadingSettingsData _threading = ThreadingSettingsData.CreateDefault();
 
+        [SerializeField]
+        private CognitiveTickProfileData _cognitive = CognitiveTickProfileData.CreateDefault();
+
         public int SchemaVersion => _schemaVersion;
         public TimeSettingsData Time => _time;
         public HistorySettingsData History => _history;
@@ -40,6 +44,7 @@ namespace PureDOTS.Authoring
         public ResourceRecipeCatalog RecipeCatalog => _recipeCatalog;
         public PoolingSettingsData Pooling => _pooling;
         public ThreadingSettingsData Threading => _threading;
+        public CognitiveTickProfileData Cognitive => _cognitive;
 
 #if UNITY_EDITOR
         public void SetSchemaVersion(int value)
@@ -53,6 +58,7 @@ namespace PureDOTS.Authoring
             _history.Clamp();
             _pooling.Clamp();
             _threading.Clamp();
+            _cognitive.Clamp();
         }
 #endif
     }

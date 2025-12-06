@@ -1,0 +1,22 @@
+{
+    "name": "PureDOTS.AI",
+    "rootNamespace": "PureDOTS.AI",
+    "references": [
+        "PureDOTS.Shared",
+        "PureDOTS.Runtime",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "DefaultEcs"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
+

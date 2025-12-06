@@ -238,4 +238,24 @@ namespace PureDOTS.Runtime.Components
         public uint IssuedTick;
         public uint ProcessedTick;
     }
+
+    /// <summary>
+    /// Minimal per-plant state for statistical sampling optimization.
+    /// </summary>
+    public struct FloraState : IComponentData
+    {
+        public byte Stage; // 0=seed, 1=grow, 2=mature, 3=decay
+        public half Energy; // from light+nutrients
+        public half MoistureNeed; // required moisture level
+    }
+
+    /// <summary>
+    /// Groups nearby plants into patches for statistical sampling.
+    /// </summary>
+    public struct VegetationPatch : IComponentData
+    {
+        public int2 PatchCoord; // Patch coordinates in patch space
+        public Entity RepresentativeEntity; // Sample entity for this patch
+        public byte SampleCount; // Plants in this patch
+    }
 }

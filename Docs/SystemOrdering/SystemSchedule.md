@@ -77,6 +77,31 @@ The Pure DOTS template uses the following custom groups and ordering rules:
 ## Physics
 - Combat and hand interaction groups are slotted between `BuildPhysicsWorld` and `ExportPhysicsWorld` via `UpdateAfter/Before` attributes.
 
+### CombatSystemGroup
+- Runs within `PhysicsSystemGroup` for physics integration.
+- **System Order** (see `Docs/Guides/CombatSystemIntegration.md` for details):
+  1. `BehaviorCatalogSystem` - Loads/validates behavior catalogs (OrderFirst)
+  2. `BehaviorGatingSystem` - Evaluates 3-tier behavior model
+  3. `StaminaUpdateSystem` - Regenerates stamina
+  4. `BehaviorCostSystem` - Consumes focus/stamina
+  5. `ActionComposerSystem` - Blends atomic actions
+  6. `CombatExecutionSystem` - Applies physics impulses
+  7. `BehaviorUnlockSystem` - Experience-driven unlocks
+  8. `SkillEfficiencySystem` - Efficiency modifiers
+  9. `ImpulseReactionSystem` - Reactive motion
+  10. `ParryReactionSystem` - Parry mechanics
+  11. `ReboundSystem` - Rebound effects
+  12. `TargetPacketSystem` - Multi-target packet building
+  13. `MultiTargetCombatSystem` - AoE handling
+  14. `CombatLearningSystem` - Adaptive learning
+  15. `LearningDecaySystem` - Tactical diversity
+  16. `CognitiveModifierSystem` - Stat modifiers
+  17. `FleetCommandSystem` - Aggregate command learning
+  18. `FormationAdaptationSystem` - Formation adaptation
+- [REWIND GUARD] All systems check `RewindState.Mode != RewindMode.Record`
+- [PERFORMANCE] Tiered tick rates: Baseline 60Hz, Advanced 30Hz
+- [DOCUMENTATION] See `Docs/Guides/CombatSystemIntegration.md` for integration guide
+
 ## Rewind Routing
 - `RewindCoordinatorSystem` runs early in simulation to enable/disable record, catch-up, or playback groups.
 

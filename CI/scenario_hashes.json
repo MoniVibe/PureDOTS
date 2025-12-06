@@ -1,0 +1,9 @@
+{
+  "format": "scenario_hash_validation",
+  "version": 1,
+  "hashes": {
+    "comment": "Expected tick hashes for scenario determinism validation",
+    "scenarios": {}
+  }
+}
+

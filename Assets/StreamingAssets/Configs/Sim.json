@@ -1,0 +1,7 @@
+{
+  "FixedDeltaTime": 0.0166667,
+  "MindTickRate": 1.0,
+  "AggregateTickRate": 5.0,
+  "RewindBufferSeconds": 300
+}
+

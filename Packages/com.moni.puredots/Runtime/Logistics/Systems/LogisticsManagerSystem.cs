@@ -22,6 +22,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _jobLookup = state.GetComponentLookup<LogisticsJob>(false);
             _movementPlanLookup = state.GetComponentLookup<MovementPlan>(false);
         }

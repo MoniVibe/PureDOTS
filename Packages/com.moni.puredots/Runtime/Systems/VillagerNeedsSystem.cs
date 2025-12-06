@@ -22,6 +22,7 @@ namespace PureDOTS.Systems
             _villagerQuery = SystemAPI.QueryBuilder()
                 .WithAll<VillagerId, VillagerNeeds>()
                 .WithNone<PlaybackGuardTag>()
+                .WithChangeFilter<VillagerNeeds>() // Only update when needs change
                 .Build();
 
             state.RequireForUpdate<TimeState>();

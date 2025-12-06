@@ -22,6 +22,7 @@ namespace PureDOTS.Runtime.Economy.Markets
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ItemSpecCatalog>();
             _inventoryLookup = state.GetComponentLookup<Inventory>(false);
             _itemBufferLookup = state.GetBufferLookup<InventoryItem>(false);

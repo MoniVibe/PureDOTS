@@ -1,0 +1,80 @@
+{
+  "scenarioId": "scenario.multi_ecs.million_agents",
+  "description": "Multi-ECS validation scenario: 1M entities with 50k active cognitive agents. Tests hybrid ECS architecture, sync performance, and Burst compliance.",
+  "seed": 12345,
+  "runTicks": 3600,
+  "performanceTargets": {
+    "maxTickTimeMs": 16.67,
+    "maxMemoryMB": 2048,
+    "targetFPS": 60,
+    "maxSyncCostMs": 3.0
+  },
+  "entityCounts": [
+    {
+      "registryId": "registry.villager",
+      "count": 1000000,
+      "description": "Total villagers (1M entities) - most inert, 50k active cognitive agents"
+    },
+    {
+      "registryId": "registry.resource",
+      "count": 10000,
+      "description": "Resource nodes for harvesting"
+    },
+    {
+      "registryId": "registry.storehouse",
+      "count": 100,
+      "description": "Storehouses for resource storage"
+    },
+    {
+      "registryId": "registry.village",
+      "count": 50,
+      "description": "Village aggregates"
+    }
+  ],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    },
+    {
+      "tick": 100,
+      "commandId": "metrics.sample",
+      "payload": "warmup_100_ticks"
+    },
+    {
+      "tick": 1000,
+      "commandId": "metrics.sample",
+      "payload": "mid_1000_ticks"
+    },
+    {
+      "tick": 2000,
+      "commandId": "metrics.sample",
+      "payload": "mid_2000_ticks"
+    },
+    {
+      "tick": 3599,
+      "commandId": "metrics.sample",
+      "payload": "end_3600_ticks"
+    }
+  ],
+  "metricsConfig": {
+    "sampleInterval": 10,
+    "logInterval": 100,
+    "collectSystemTimings": true,
+    "collectMemoryStats": true,
+    "collectSyncMetrics": true,
+    "enableLODDebug": false,
+    "enableAggregateDebug": false,
+    "enableMultiECSDebug": true
+  },
+  "multiECSConfig": {
+    "activeCognitiveAgents": 50000,
+    "bodyToMindSyncInterval": 0.1,
+    "mindToBodySyncInterval": 0.25,
+    "cognitiveTickRate": 2.0,
+    "syncPerformanceBudgetMs": 3.0
+  },
+  "docs": "This scenario validates the multi-ECS hybrid architecture. 1M total entities with 50k active cognitive agents (DefaultEcs) syncing with Body ECS (Unity Entities). Performance targets: < 3ms sync cost per frame, 60 FPS deterministic simulation, Burst compliance maintained."
+}
+

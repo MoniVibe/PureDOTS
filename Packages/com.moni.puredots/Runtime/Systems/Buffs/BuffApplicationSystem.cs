@@ -10,6 +10,14 @@ namespace PureDOTS.Systems.Buffs
     /// <summary>
     /// Processes buff application requests and handles stacking behavior.
     /// Runs in GameplaySystemGroup before buff tick/aggregation systems.
+    /// 
+    /// INTEGRATION NOTE: This system can optionally route buffs through the modifier event system
+    /// for improved performance at scale. To enable modifier integration:
+    /// 1. Add ModifierEventCoordinator entity with ApplyModifierEvent buffer
+    /// 2. Convert buff IDs to modifier IDs and emit ApplyModifierEvent instead of ActiveBuff
+    /// 3. ModifierHotPathSystem will handle aggregation more efficiently
+    /// 
+    /// Current implementation maintains backward compatibility with existing buff system.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup))]

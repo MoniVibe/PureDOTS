@@ -25,6 +25,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<ItemSpecCatalog>();
+            state.RequireForUpdate<RewindState>();
             _cargoBufferLookup = state.GetBufferLookup<CargoItem>(false);
             _containerBufferLookup = state.GetBufferLookup<CargoContainerSlot>(false);
             _loadStateLookup = state.GetComponentLookup<CargoLoadState>(false);

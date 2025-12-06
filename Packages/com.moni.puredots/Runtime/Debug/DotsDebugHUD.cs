@@ -163,7 +163,7 @@ namespace PureDOTS.Debugging
         void AttachHandBridge()
         {
             if (_handBridge != null) return;
-            _handBridge = FindObjectOfType<DivineHandEventBridge>();
+            _handBridge = FindFirstObjectByType<DivineHandEventBridge>();
             if (_handBridge == null) return;
 
             _handBridge.HandStateChanged += HandleHandStateChanged;

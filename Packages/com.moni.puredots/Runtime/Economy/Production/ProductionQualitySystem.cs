@@ -24,6 +24,7 @@ namespace PureDOTS.Runtime.Economy.Production
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ProductionRecipeCatalog>();
             _productionLookup = state.GetComponentLookup<BusinessProduction>(false);
             _businessInventoryLookup = state.GetComponentLookup<BusinessInventory>(false);
@@ -35,8 +36,7 @@ namespace PureDOTS.Runtime.Economy.Production
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

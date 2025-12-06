@@ -15,11 +15,14 @@ namespace PureDOTS.Runtime.Economy.Wealth
     {
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
         private ComponentLookup<FamilyWealth> _familyWealthLookup;
+        private static readonly FixedString64Bytes OpportunismReason = new FixedString64Bytes("opportunism");
+        private static readonly FixedString64Bytes DonationReason = new FixedString64Bytes("donation");
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
         }
@@ -55,17 +58,17 @@ namespace PureDOTS.Runtime.Economy.Wealth
             if (donorWealth.Balance < request.Amount)
             {
                 // Insufficient funds
-                state.EntityManager.RemoveComponent<DonationRequest>(donor);
-                return;
-            }
+            state.EntityManager.RemoveComponent<DonationRequest>(donor);
+            return;
+        }
 
-            // Record transaction
-            var reason = request.IsOpportunism ? new FixedString64Bytes("opportunism") : new FixedString64Bytes("donation");
-            WealthTransactionSystem.RecordTransaction(
-                ref state,
-                donor,
-                request.Recipient,
-                request.Amount,
+        // Record transaction
+        var reason = request.IsOpportunism ? OpportunismReason : DonationReason;
+        WealthTransactionSystem.RecordTransaction(
+            ref state,
+            donor,
+            request.Recipient,
+            request.Amount,
                 TransactionType.Transfer,
                 reason,
                 request.Context

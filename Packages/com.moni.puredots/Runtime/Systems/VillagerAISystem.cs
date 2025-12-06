@@ -31,7 +31,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket, VillagerFlags, LocalTransform, VillagerArchetypeResolved>()
+                .WithAll<VillagerAIState, VillagerNeeds, VillagerJob, VillagerJobTicket, VillagerFlags, LocalTransform, VillagerArchetypeResolved, PeriodicTickComponent>()
                 .WithNone<PlaybackGuardTag>()
                 .Build();
 
@@ -76,6 +76,21 @@ namespace PureDOTS.Systems
 
             VillagerArchetypeDefaults.CreateFallback(out var fallbackArchetype);
 
+            // Use periodic ticks for AI evaluation (every 10 ticks by default)
+            // Add PeriodicTickComponent to entities that don't have it
+            var entities = _villagerQuery.ToEntityArray(Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            foreach (var entity in entities)
+            {
+                if (!state.EntityManager.HasComponent<PeriodicTickComponent>(entity))
+                {
+                    ecb.AddComponent(entity, PeriodicTickHelper.Create(10)); // Update AI goals every 10 ticks
+                }
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+            entities.Dispose();
+
             var job = new EvaluateVillagerAIJob
             {
                 DeltaTime = timeState.FixedDeltaTime,
@@ -101,10 +116,16 @@ namespace PureDOTS.Systems
             [ReadOnly] public ComponentLookup<VillagerAIPipelineBridgeState> BridgeStateLookup;
             public VillagerArchetypeData FallbackArchetype;
 
-            public void Execute(Entity entity, ref VillagerAIState aiState, ref VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags, in LocalTransform transform, in VillagerArchetypeResolved resolved)
+            public void Execute(Entity entity, ref VillagerAIState aiState, ref VillagerNeeds needs, ref PeriodicTickComponent periodic, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags, in LocalTransform transform, in VillagerArchetypeResolved resolved)
             {
                 // Skip dead villagers
                 if (flags.IsDead)
+                {
+                    return;
+                }
+
+                // Check periodic tick - only update AI goals every N ticks
+                if (!PeriodicTickHelper.ShouldUpdate(CurrentTick, ref periodic))
                 {
                     return;
                 }

@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Physics.Systems;
+using PureDOTS.Runtime.Threading;
 
 namespace PureDOTS.Systems
 {
@@ -9,6 +10,7 @@ namespace PureDOTS.Systems
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
+    [ThreadRole(ThreadRoleType.MainOrchestrator)]
     public partial class TimeSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -16,6 +18,7 @@ namespace PureDOTS.Systems
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
     public partial class EnvironmentSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -25,6 +28,7 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(EnvironmentSystemGroup))]
     [UpdateBefore(typeof(GameplaySystemGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
     public partial class SpatialSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -54,6 +58,98 @@ namespace PureDOTS.Systems
     public partial class ColdPathSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Event-driven system group that processes events first.
+    /// Runs before other simulation groups to handle event triggers.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    public partial class EventSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Modifier system group for processing modifier events and applying modifiers.
+    /// Runs after EventSystemGroup and before GameplaySystemGroup.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(EventSystemGroup))]
+    [UpdateBefore(typeof(GameplaySystemGroup))]
+    public partial class ModifierSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Hot path modifier group - runs every tick (60Hz) for active modifier math.
+    /// </summary>
+    [UpdateInGroup(typeof(ModifierSystemGroup), OrderFirst = true)]
+    public partial class ModifierHotPathGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Cold path modifier group - throttled updates (0.2-1Hz) for expiry/cleanup.
+    /// </summary>
+    [UpdateInGroup(typeof(ModifierSystemGroup))]
+    [UpdateAfter(typeof(ModifierHotPathGroup))]
+    public partial class ModifierColdPathGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Cognitive system group with adaptive tick rate (0.5-5Hz).
+    /// Runs at lower frequency than physics for cognitive AI processing.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    public partial class CognitiveSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Reflex system group - runs at 60Hz for instant sensor→action reactive mapping.
+    /// Pure reactive layer with no learning, lowest latency.
+    /// </summary>
+    [UpdateInGroup(typeof(HotPathSystemGroup))]
+    public partial class ReflexSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Learning system group - runs at 1Hz for procedural learning and pattern extraction.
+    /// Handles procedural memory, affordance detection, causal chains, context hashing.
+    /// </summary>
+    [UpdateInGroup(typeof(CognitiveSystemGroup))]
+    public partial class LearningSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Motivation system group - runs at 0.2Hz for emotion and motivation updates.
+    /// Handles limbic modulation and emotion-driven learning.
+    /// </summary>
+    [UpdateInGroup(typeof(CognitiveSystemGroup))]
+    [UpdateAfter(typeof(LearningSystemGroup))]
+    public partial class MotivationSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Economy system group - parent group for all economy systems.
+    /// Contains BodyEconomySystemGroup (60Hz), MindEconomySystemGroup (1Hz), AggregateEconomySystemGroup (0.2Hz).
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(ResourceSystemGroup))]
+    public partial class EconomySystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Body economy system group - runs at 60Hz for physical resource extraction and logistics.
+    /// Handles production, mining, hauling at fixed timestep.
+    /// </summary>
+    [UpdateInGroup(typeof(EconomySystemGroup), OrderFirst = true)]
+    [ThreadRole(ThreadRoleType.Logic)]
+    public partial class BodyEconomySystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Mind economy system group - runs at 1Hz for investment and strategic decisions.
+    /// Handles investment evaluation, risk assessment, trade negotiations.
+    /// </summary>
+    [UpdateInGroup(typeof(EconomySystemGroup))]
+    [UpdateAfter(typeof(BodyEconomySystemGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
+    public partial class MindEconomySystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// Aggregate economy system group - runs at 0.2Hz for market simulation and macro-economy.
+    /// Handles market equilibrium, empire wealth aggregation, tax collection.
+    /// </summary>
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateBefore(typeof(HistorySystemGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
+    public partial class AggregateEconomySystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// Shared AI systems that feed data into gameplay domains.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
@@ -62,12 +158,23 @@ namespace PureDOTS.Systems
     public partial class AISystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Tactical system group for formation commands, group morale, and tactical AI.
+    /// Runs at 1-5 Hz (throttled) after spatial systems and before individual villager systems.
+    /// </summary>
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateAfter(typeof(SpatialSystemGroup))]
+    [UpdateBefore(typeof(VillagerSystemGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
+    public partial class TacticalSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// High level gameplay simulation group containing domain-specific subgroups.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpatialSystemGroup))]
     [UpdateAfter(typeof(TransportPhaseGroup))]
+    [ThreadRole(ThreadRoleType.Logic)]
     public partial class GameplaySystemGroup : ComponentSystemGroup { }
 
     /// <summary>
@@ -156,6 +263,27 @@ namespace PureDOTS.Systems
     public partial class HandSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// System group for micro collision regime (< 100m objects).
+    /// Uses Newtonian rigid-body impact physics.
+    /// </summary>
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    public partial class MicroCollisionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// System group for meso collision regime (100m - 10km objects).
+    /// Uses cratering / momentum transfer physics.
+    /// </summary>
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    public partial class MesoCollisionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
+    /// System group for macro collision regime (> 10km objects, moons, planets).
+    /// Uses hydrodynamic approximation (SPH or energy map).
+    /// </summary>
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    public partial class MacroCollisionSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// System group for vegetation systems.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
@@ -185,6 +313,16 @@ namespace PureDOTS.Systems
     public partial class LateSimulationSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
+    /// Predictive simulation system group for multiplayer rollback networking.
+    /// Currently empty - reserves system group slots for future rollback networking.
+    /// Systems marked with [UpdateInGroup(typeof(PredictedSimulationSystemGroup))] will replay
+    /// buffered inputs ahead of the authoritative tick for client-side prediction.
+    /// </summary>
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(LateSimulationSystemGroup))]
+    public partial class PredictedSimulationSystemGroup : ComponentSystemGroup { }
+
+    /// <summary>
     /// PureDOTS presentation system group for rendering/UI bridge systems.
     /// Runs under Unity's PresentationSystemGroup for proper frame-time execution.
     /// Consumes simulation data for visualization. Guarded by PresentationRewindGuardSystem.
@@ -195,6 +333,7 @@ namespace PureDOTS.Systems
     /// See Docs/FoundationGuidelines.md for presentation system group policy.
     /// </remarks>
     [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [ThreadRole(ThreadRoleType.RenderingIO)]
     public partial class PureDotsPresentationSystemGroup : ComponentSystemGroup { }
 
     /// <summary>

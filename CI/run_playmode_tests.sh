@@ -9,14 +9,34 @@ ARTIFACTS_DIR="${ARTIFACTS_DIR:-$RESULTS_DIR/Artifacts}"
 mkdir -p "$RESULTS_DIR"
 mkdir -p "$ARTIFACTS_DIR"
 
-echo "Running EditMode tests..."
-"$UNITY_PATH" \
-  -batchmode \
-  -nographics \
-  -projectPath "$PROJECT_PATH" \
-  -runTests \
-  -testPlatform EditMode \
-  -testResults "$RESULTS_DIR/editmode-results.xml" \
+# Check for scenario argument
+SCENARIO_ARG=""
+for arg in "$@"; do
+    if [[ "$arg" == "--scenario"* ]]; then
+        SCENARIO_ARG="$arg"
+        break
+    fi
+done
+
+if [ -n "$SCENARIO_ARG" ]; then
+    echo "Running scenario: $SCENARIO_ARG"
+    "$UNITY_PATH" \
+      -batchmode \
+      -nographics \
+      -projectPath "$PROJECT_PATH" \
+      -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScenarioFromArgs \
+      $SCENARIO_ARG \
+      --report "$RESULTS_DIR/scenario-results.json" \
+      -logFile "$RESULTS_DIR/scenario.log"
+else
+    echo "Running EditMode tests..."
+    "$UNITY_PATH" \
+      -batchmode \
+      -nographics \
+      -projectPath "$PROJECT_PATH" \
+      -runTests \
+      -testPlatform EditMode \
+      -testResults "$RESULTS_DIR/editmode-results.xml" \
   -logFile "$RESULTS_DIR/editmode.log" \
   -quit
 

@@ -151,6 +151,33 @@ namespace PureDOTS.Runtime.Spatial
     /// <summary>
     /// Burst-friendly helpers for common spatial queries.
     /// All vector and array parameters use ref for Burst compatibility.
+    /// Supports both legacy CellId-based queries and new SFC key-based queries.
+    /// 
+    /// <para>
+    /// <b>Query Types:</b>
+    /// - <see cref="CollectEntitiesInRadius"/>: Legacy radius query (uses CellId)
+    /// - <see cref="CollectEntitiesInRadiusSFC"/>: SFC-based radius query (uses CellKey, cache-coherent)
+    /// - <see cref="FindKNearestInRadius"/>: K-nearest entities within radius
+    /// - <see cref="BatchRadiusQueries"/>: Parallel batch queries
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>Performance:</b> SFC-based queries (<see cref="CollectEntitiesInRadiusSFC"/>) provide better cache
+    /// coherence and should be preferred for new code. Legacy queries remain for backward compatibility.
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>Usage Example:</b>
+    /// <code>
+    /// var results = new NativeList&lt;Entity&gt;(Allocator.TempJob);
+    /// SpatialQueryHelper.CollectEntitiesInRadius(
+    ///     ref position, radius, config, ranges, entries, ref results);
+    /// // Process results...
+    /// results.Dispose();
+    /// </code>
+    /// </para>
+    /// 
+    /// See also: <see cref="SpaceFillingCurve"/>, <see cref="SpatialQueryBucketJob{TFilter}"/>
     /// </summary>
     [BurstCompile]
     public static class SpatialQueryHelper
@@ -335,6 +362,61 @@ namespace PureDOTS.Runtime.Spatial
             var entryArray = entries.AsNativeArray();
             slice = entryArray.Slice(range.StartIndex, range.Count);
             return true;
+        }
+
+        /// <summary>
+        /// Gets all entities within a radius using SFC key bucket lookup for cache coherence.
+        /// </summary>
+        [BurstCompile]
+        public static void CollectEntitiesInRadiusSFC(
+            ref float3 position,
+            float radius,
+            in SpatialGridConfig config,
+            in NativeParallelMultiHashMap<ulong, Entity> cellKeyBuckets,
+            in DynamicBuffer<SpatialGridEntry> entries,
+            ref NativeList<Entity> results)
+        {
+            var radiusSq = radius * radius;
+            SpatialHash.Quantize(position, config, out var centerCoords);
+            var cellKey = SpaceFillingCurve.Morton3D(in centerCoords);
+            var maxOffset = (int)math.ceil(radius / math.max(config.CellSize, 1e-3f));
+
+            // Query cells in SFC order for cache coherence
+            for (int dx = -maxOffset; dx <= maxOffset; dx++)
+            {
+                for (int dy = -maxOffset; dy <= maxOffset; dy++)
+                {
+                    for (int dz = -maxOffset; dz <= maxOffset; dz++)
+                    {
+                        var coords = centerCoords + new int3(dx, dy, dz);
+                        if (!IsWithinBounds(coords, config.CellCounts))
+                        {
+                            continue;
+                        }
+
+                        var queryKey = SpaceFillingCurve.Morton3D(in coords);
+                        if (cellKeyBuckets.TryGetFirstValue(queryKey, out var entity, out var iterator))
+                        {
+                            do
+                            {
+                                // Find entry and check distance
+                                for (int i = 0; i < entries.Length; i++)
+                                {
+                                    if (entries[i].Entity == entity)
+                                    {
+                                        var distSq = math.lengthsq(entries[i].Position - position);
+                                        if (distSq <= radiusSq)
+                                        {
+                                            results.Add(entity);
+                                        }
+                                        break;
+                                    }
+                                }
+                            } while (cellKeyBuckets.TryGetNextValue(out entity, ref iterator));
+                        }
+                    }
+                }
+            }
         }
 
         public static void CollectEntitiesInRadius(
@@ -1053,6 +1135,114 @@ namespace PureDOTS.Runtime.Spatial
         public int CompareTo(BatchRadiusResult other)
         {
             return QueryIndex.CompareTo(other.QueryIndex);
+        }
+    }
+
+    /// <summary>
+    /// Parallel query bucket job for SFC-based spatial queries.
+    /// Uses NativeParallelMultiHashMap for bucket lookup and processes queries in parallel.
+    /// </summary>
+    [BurstCompile]
+    public struct SpatialQueryBucketJob<TFilter> : IJobParallelFor
+        where TFilter : struct, ISpatialQueryFilter
+    {
+        [ReadOnly] public SpatialGridConfig Config;
+        [ReadOnly] public NativeParallelMultiHashMap<ulong, Entity> CellKeyBuckets;
+        [ReadOnly, NativeDisableParallelForRestriction] public NativeArray<SpatialGridEntry> Entries;
+        [ReadOnly] public NativeArray<SpatialQueryDescriptor> Descriptors;
+        [NativeDisableParallelForRestriction] public NativeList<Entity>.ParallelWriter ResultsWriter;
+        public TFilter Filter;
+
+        public void Execute(int index)
+        {
+            if (index >= Descriptors.Length)
+            {
+                return;
+            }
+
+            var descriptor = Descriptors[index];
+            var radiusSq = descriptor.Radius > 0f
+                ? descriptor.Radius * descriptor.Radius + descriptor.Tolerance
+                : float.MaxValue;
+
+            SpatialHash.Quantize(descriptor.Origin, Config, out var centerCoords);
+            var maxOffset = descriptor.Radius > 0f
+                ? (int)math.ceil(descriptor.Radius / math.max(Config.CellSize, 1e-3f))
+                : math.max(math.max(Config.CellCounts.x, Config.CellCounts.y), Config.CellCounts.z);
+
+            // Query cells in SFC order for cache coherence
+            for (int dx = -maxOffset; dx <= maxOffset; dx++)
+            {
+                for (int dy = -maxOffset; dy <= maxOffset; dy++)
+                {
+                    for (int dz = -maxOffset; dz <= maxOffset; dz++)
+                    {
+                        var coords = centerCoords + new int3(dx, dy, dz);
+                        if (!IsWithinBounds(coords, Config.CellCounts))
+                        {
+                            continue;
+                        }
+
+                        var cellKey = SpaceFillingCurve.Morton3D(in coords);
+
+                        // Lookup entities in this cell via bucket
+                        if (CellKeyBuckets.TryGetFirstValue(cellKey, out var entity, out var iterator))
+                        {
+                            do
+                            {
+                                // Find entry and check filter/distance
+                                for (int i = 0; i < Entries.Length; i++)
+                                {
+                                    if (Entries[i].Entity != entity)
+                                    {
+                                        continue;
+                                    }
+
+                                    var entry = Entries[i];
+
+                                    if ((descriptor.Options & SpatialQueryOptions.IgnoreSelf) != 0 &&
+                                        entry.Entity == descriptor.ExcludedEntity)
+                                    {
+                                        continue;
+                                    }
+
+                                    if (!Filter.Accept(index, in descriptor, in entry))
+                                    {
+                                        continue;
+                                    }
+
+                                    var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, descriptor.Options);
+                                    if (distanceSq <= radiusSq)
+                                    {
+                                        ResultsWriter.AddNoResize(entity);
+                                    }
+
+                                    break;
+                                }
+                            } while (CellKeyBuckets.TryGetNextValue(out entity, ref iterator));
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool IsWithinBounds(int3 coords, int3 maxCounts)
+        {
+            return coords.x >= 0 && coords.y >= 0 && coords.z >= 0
+                && coords.x < maxCounts.x
+                && coords.y < maxCounts.y
+                && coords.z < maxCounts.z;
+        }
+
+        private static float ComputeDistanceSq(float3 position, float3 origin, SpatialQueryOptions options)
+        {
+            var delta = position - origin;
+            if ((options & SpatialQueryOptions.ProjectToXZ) != 0)
+            {
+                delta.y = 0f;
+            }
+
+            return math.lengthsq(delta);
         }
     }
 }

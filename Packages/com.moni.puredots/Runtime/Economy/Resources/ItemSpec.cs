@@ -60,6 +60,10 @@ namespace PureDOTS.Runtime.Economy.Resources
         [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.U1)]
         public bool IsDurable;
         public float BaseDurability;
+        /// <summary>
+        /// Material identifier for physics calculations (density, elasticity, etc.).
+        /// </summary>
+        public FixedString64Bytes MaterialId;
     }
 
     /// <summary>

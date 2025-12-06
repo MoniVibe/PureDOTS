@@ -340,18 +340,23 @@ namespace PureDOTS.Systems.Spatial
         {
             public int Compare(SpatialGridStagingEntry x, SpatialGridStagingEntry y)
             {
-                var cellCompare = x.CellId.CompareTo(y.CellId);
+                // Primary sort by SFC key (if available), fallback to CellId for legacy compatibility
+                var xKey = x.GetPrimaryKey();
+                var yKey = y.GetPrimaryKey();
+                var cellCompare = xKey.CompareTo(yKey);
                 if (cellCompare != 0)
                 {
                     return cellCompare;
                 }
 
+                // Secondary sort by Entity.Index for determinism
                 var indexCompare = x.Entity.Index.CompareTo(y.Entity.Index);
                 if (indexCompare != 0)
                 {
                     return indexCompare;
                 }
 
+                // Tertiary sort by Entity.Version for determinism
                 return x.Entity.Version.CompareTo(y.Entity.Version);
             }
         }

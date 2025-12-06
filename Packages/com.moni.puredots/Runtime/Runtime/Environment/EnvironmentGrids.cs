@@ -443,6 +443,62 @@ namespace PureDOTS.Environment
     }
 
     /// <summary>
+    /// Cloud grid component with 2D vector field for moisture and upward velocity.
+    /// </summary>
+    public struct CloudGrid : IComponentData
+    {
+        public EnvironmentGridMetadata Metadata;
+        public BlobAssetReference<CloudGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
+        public float CondensationThreshold;
+        public uint LastUpdateTick;
+        public uint LastTerrainVersion;
+
+        public readonly bool IsCreated => Blob.IsCreated;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int GetCellIndex(int2 cell) => EnvironmentGridMath.GetCellIndex(Metadata, cell);
+    }
+
+    /// <summary>
+    /// Blob payload for cloud grid.
+    /// </summary>
+    public struct CloudGridBlob
+    {
+        public BlobArray<float> Moisture;
+        public BlobArray<float> UpwardVelocity;
+        public BlobArray<float> RainRate;
+    }
+
+    /// <summary>
+    /// Fire grid component with heat values and active fire flags.
+    /// </summary>
+    public struct FireGrid : IComponentData
+    {
+        public EnvironmentGridMetadata Metadata;
+        public BlobAssetReference<FireGridBlob> Blob;
+        public FixedString64Bytes ChannelId;
+        public float SpreadCoefficient;
+        public float RainCoefficient;
+        public uint LastUpdateTick;
+        public uint LastTerrainVersion;
+
+        public readonly bool IsCreated => Blob.IsCreated;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int GetCellIndex(int2 cell) => EnvironmentGridMath.GetCellIndex(Metadata, cell);
+    }
+
+    /// <summary>
+    /// Blob payload for fire grid.
+    /// </summary>
+    public struct FireGridBlob
+    {
+        public BlobArray<float> Heat;
+        public BlobArray<byte> ActiveFire; // 0/1 flag
+    }
+
+    /// <summary>
     /// Utility math helpers shared by all environment grids.
     /// </summary>
     public static class EnvironmentGridMath
@@ -685,6 +741,28 @@ namespace PureDOTS.Environment
         {
             values[GetCellIndex(metadata, cell)] = value;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ChemicalSample SampleBilinearChemical(in EnvironmentGridMetadata metadata, ref BlobArray<ChemicalSample> values, float3 worldPosition, ChemicalSample defaultValue)
+        {
+            if (!TryWorldToCell(metadata, worldPosition, out var baseCell, out var frac))
+            {
+                return defaultValue;
+            }
+
+            var right = baseCell + new int2(1, 0);
+            var up = baseCell + new int2(0, 1);
+            var upRight = baseCell + new int2(1, 1);
+
+            var c00 = values[GetCellIndex(metadata, baseCell)];
+            var c10 = values[GetCellIndex(metadata, right)];
+            var c01 = values[GetCellIndex(metadata, up)];
+            var c11 = values[GetCellIndex(metadata, upRight)];
+
+            var x0 = ChemicalSample.Lerp(c00, c10, frac.x);
+            var x1 = ChemicalSample.Lerp(c01, c11, frac.x);
+            return ChemicalSample.Lerp(x0, x1, frac.y);
+        }
     }
 
     /// <summary>
@@ -715,5 +793,110 @@ namespace PureDOTS.Environment
         public FixedString64Bytes ChannelId;
         public float Intensity;
         public uint Tick;
+    }
+
+    /// <summary>
+    /// Scalar light field extracted from SunlightGrid for biome evaluation.
+    /// Stores combined direct + ambient light as a single scalar value (0-100).
+    /// </summary>
+    public struct LightField : IComponentData
+    {
+        public EnvironmentGridMetadata Metadata;
+        public BlobAssetReference<LightFieldBlob> Blob;
+        public FixedString64Bytes ChannelId;
+        public uint LastUpdateTick;
+        public uint LastTerrainVersion;
+
+        public readonly bool IsCreated => Blob.IsCreated;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int GetCellIndex(int2 cell) => EnvironmentGridMath.GetCellIndex(Metadata, cell);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly float SampleBilinear(float3 worldPosition, float defaultValue = 0f)
+        {
+            if (!IsCreated)
+            {
+                return defaultValue;
+            }
+
+            ref var light = ref Blob.Value.Light;
+            return EnvironmentGridMath.SampleBilinear(Metadata, ref light, worldPosition, defaultValue);
+        }
+    }
+
+    /// <summary>
+    /// Blob payload for light field scalar values.
+    /// </summary>
+    public struct LightFieldBlob
+    {
+        public BlobArray<float> Light; // Combined direct + ambient light (0-100)
+    }
+
+    /// <summary>
+    /// Chemical field storing atmospheric composition (O₂, CO₂, pollutants) per cell.
+    /// </summary>
+    public struct ChemicalField : IComponentData
+    {
+        public EnvironmentGridMetadata Metadata;
+        public BlobAssetReference<ChemicalFieldBlob> Blob;
+        public FixedString64Bytes ChannelId;
+        public uint LastUpdateTick;
+        public uint LastTerrainVersion;
+
+        public readonly bool IsCreated => Blob.IsCreated;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int GetCellIndex(int2 cell) => EnvironmentGridMath.GetCellIndex(Metadata, cell);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ChemicalSample SampleBilinear(float3 worldPosition, ChemicalSample defaultValue = default)
+        {
+            if (!IsCreated)
+            {
+                return defaultValue;
+            }
+
+            ref var samples = ref Blob.Value.Samples;
+            return EnvironmentGridMath.SampleBilinearChemical(Metadata, ref samples, worldPosition, defaultValue);
+        }
+    }
+
+    /// <summary>
+    /// Chemical composition sample (O₂, CO₂, pollutants).
+    /// </summary>
+    public struct ChemicalSample
+    {
+        public float Oxygen;      // O₂ percentage (0-100)
+        public float CarbonDioxide; // CO₂ percentage (0-100)
+        public float Pollutants;   // Pollutant concentration (0-100)
+
+        public static ChemicalSample Lerp(in ChemicalSample a, in ChemicalSample b, float t)
+        {
+            return new ChemicalSample
+            {
+                Oxygen = math.lerp(a.Oxygen, b.Oxygen, t),
+                CarbonDioxide = math.lerp(a.CarbonDioxide, b.CarbonDioxide, t),
+                Pollutants = math.lerp(a.Pollutants, b.Pollutants, t)
+            };
+        }
+    }
+
+    /// <summary>
+    /// Blob payload for chemical field.
+    /// </summary>
+    public struct ChemicalFieldBlob
+    {
+        public BlobArray<ChemicalSample> Samples;
+    }
+
+    /// <summary>
+    /// Runtime buffer for biome mask updates (incremental classification results).
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct BiomeMask : IBufferElementData
+    {
+        public BiomeType Value;
+        public uint LastUpdateTick;
     }
 }

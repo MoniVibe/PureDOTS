@@ -23,6 +23,13 @@ namespace PureDOTS.Environment
         public float HoursPerSecond;              // In-game hours progressed per simulated second
         public float DaysPerSeason;               // Length of a season in in-game days
         public float EvaporationBaseRate;         // Baseline evaporation factor
+        
+        // Atmospheric feedback loop coefficients (per biome)
+        public float SunIrradianceCoefficient;    // Temperature increase from sun
+        public float EvaporationCoolingCoefficient; // Temperature decrease from evaporation
+        public float RainfallCoefficient;         // Moisture increase from rain
+        public float PhotosynthesisOxygenCoefficient; // Oxygen production from vegetation
+        public float CombustionOxygenCoefficient; // Oxygen consumption from fire
     }
 
     /// <summary>
@@ -63,7 +70,12 @@ namespace PureDOTS.Environment
                 CloudCoverVariation = 20f,
                 HoursPerSecond = 0.5f,
                 DaysPerSeason = 30f,
-                EvaporationBaseRate = 0.5f
+                EvaporationBaseRate = 0.5f,
+                SunIrradianceCoefficient = 1.0f,
+                EvaporationCoolingCoefficient = 0.2f,
+                RainfallCoefficient = 1.0f,
+                PhotosynthesisOxygenCoefficient = 0.1f,
+                CombustionOxygenCoefficient = 0.5f
             };
         }
     }

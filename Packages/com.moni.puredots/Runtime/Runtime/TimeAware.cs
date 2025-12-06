@@ -16,6 +16,26 @@ namespace PureDOTS.Runtime.Time
         void OnRewindEnd();
     }
 
+    /// <summary>
+    /// Extended interface for systems that support reversible computation.
+    /// SystemGroups call these automatically during rewind ticks.
+    /// Only systems with side effects (physics, RNG, messaging) need full saves.
+    /// </summary>
+    public interface IRewindableSystem : ITimeAware
+    {
+        /// <summary>
+        /// Save system state for rewind.
+        /// Called during record phase.
+        /// </summary>
+        void SaveState(in SystemState state, ref TimeStreamWriter writer);
+
+        /// <summary>
+        /// Restore system state from snapshot.
+        /// Called during playback/rewind phase.
+        /// </summary>
+        void RestoreState(ref SystemState state, ref TimeStreamReader reader);
+    }
+
     public struct TimeStreamWriter
     {
         internal NativeList<byte> Buffer;

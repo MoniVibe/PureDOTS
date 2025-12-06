@@ -68,6 +68,71 @@ In headless/test harness worlds:
 
 ---
 
+## Multi-ECS Architecture Patterns
+
+### Layer Separation
+
+PureDOTS uses a hybrid multi-ECS design with three distinct layers:
+
+**Cognitive ECS (DefaultEcs)**:
+- Domain: Goals, morality, deception, memory, personality profiles
+- Tick Rate: 1-5 Hz (configurable per entity)
+- Threading: Main thread / async Tasks
+- Components: Class-based (managed) - `PersonalityProfile`, `BehaviorProfile`, `GoalProfile`, `CognitiveMemory`
+- Location: `Runtime/AI/MindECS/`
+
+**Simulation ECS (Unity Entities 1.4)**:
+- Domain: Physics, movement, combat, resources, spatial logic
+- Tick Rate: FixedStep (deterministic, 60 Hz)
+- Threading: Burst jobs
+- Components: Struct-based (unmanaged) - `AgentBody`, `Health`, `Position`, `Velocity`, `IntentCommand`
+- Location: Existing `Runtime/` systems
+
+**Presentation (GameObjects/MonoBehaviours)**:
+- Domain: Camera, UI, rendering
+- Tick Rate: FrameTime
+- Threading: Unity main thread
+- Location: Game projects (Godgame, Space4X)
+
+### Cross-ECS Communication
+
+**AgentSyncBus** (`Runtime/Bridges/AgentSyncBus.cs`):
+- Batched message queues with delta compression
+- Body → Mind sync: 100ms default interval
+- Mind → Body sync: 250ms default interval
+- Only changed fields are synced (delta compression)
+
+**GUID-Based Identity**:
+- `AgentGuid` (128-bit, Burst-safe) shared across ECSes
+- `AgentSyncId` component links Unity Entities ↔ DefaultEcs entities
+- `AgentMappingSystem` maintains mappings
+
+**Sync Performance**:
+- Target: < 3ms/frame sync cost
+- Use `MultiECSPerformanceProfiler` for validation
+- Batch updates per sync interval
+- Delta compression reduces message volume
+
+### Burst Compliance
+
+- **Body ECS systems**: All remain `[BurstCompile]`, no managed allocations
+- **Mind ECS systems**: Run on main thread (managed allowed)
+- **Bridge systems**: Managed components for sync bus, Burst-compiled for data processing
+- **Never mix**: Managed types from Mind ECS must not leak into Body ECS Burst code paths
+
+### Determinism
+
+- Body ECS uses `TickTimeState` (deterministic)
+- Mind ECS uses `UnityEngine.Time.deltaTime` (non-deterministic, acceptable for cognitive layer)
+- Sync messages timestamped with tick number
+- Intent resolution maintains determinism in Body ECS
+
+### Integration Guide
+
+For implementation examples and API reference:
+- **`Docs/Guides/MultiECS_Integration_Guide.md`** - Complete integration guide with code examples
+- **`Docs/DesignNotes/MultiECSArchitecture.md`** - Architecture overview
+
 ## Component Size Guidelines
 
 ### Hot-Path Components (< 128 bytes)

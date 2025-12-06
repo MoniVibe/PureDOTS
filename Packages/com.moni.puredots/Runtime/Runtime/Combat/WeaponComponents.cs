@@ -62,6 +62,7 @@ namespace PureDOTS.Runtime.Combat
 
     /// <summary>
     /// Component marking entities that can be damaged.
+    /// Extended with mitigation coefficients for Burst-safe damage calculation.
     /// </summary>
     public struct Damageable : IComponentData
     {
@@ -71,6 +72,12 @@ namespace PureDOTS.Runtime.Combat
         public float MaxArmorPoints;
         public float HullPoints;
         public float MaxHullPoints;
+
+        // Mitigation coefficients (Phase 10 optimization)
+        public float ArmorCoeff; // Armor coefficient for mitigation formula
+        public float ShieldFactor; // Shield absorption factor (0-1)
+        public float ShieldAbsorbCoeff; // Shield decay coefficient
+        public float Resistance; // General resistance factor (0-1)
     }
 
     /// <summary>

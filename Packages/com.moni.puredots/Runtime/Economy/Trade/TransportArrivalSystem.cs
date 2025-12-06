@@ -24,6 +24,7 @@ namespace PureDOTS.Runtime.Economy.Trade
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _transportLookup = state.GetComponentLookup<TransportEntity>(false);
             _progressLookup = state.GetComponentLookup<TransportProgress>(false);
             _inventoryLookup = state.GetComponentLookup<Inventory>(false);

@@ -10,6 +10,7 @@ using UnityEngine.InputSystem.Controls;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Hybrid;
+using PureDOTS.Runtime.Camera;
 using UnityEngineCamera = UnityEngine.Camera;
 #if GODGAME
 using Godgame.Runtime;
@@ -855,11 +856,55 @@ namespace PureDOTS.Runtime.Camera
 
             if (handQuery.TryGetSingleton(out DivineHandState state))
             {
+                // Try to read interpolated position from CameraTargetHistory if available
+                // Falls back to raw cursor position if interpolation not available
+                if (TryGetInterpolatedHandCursor(world, state, out var interpolatedCursor))
+                {
+                    cursor = interpolatedCursor;
+                    return true;
+                }
+                
                 float3 c = state.CursorPosition;
                 cursor = new Vector3(c.x, c.y, c.z);
                 return true;
             }
 #endif
+            return false;
+        }
+
+        bool TryGetInterpolatedHandCursor(World world, DivineHandState handState, out Vector3 cursor)
+        {
+            cursor = default;
+            
+            // Try to find CameraTargetHistory for the hand entity
+            // This provides smooth interpolation between simulation ticks
+            try
+            {
+                var query = world.EntityManager.CreateEntityQuery(
+                    ComponentType.ReadOnly<DivineHandTag>(),
+                    ComponentType.ReadOnly<CameraTargetHistory>());
+                
+                if (!query.IsEmptyIgnoreFilter && query.TryGetSingleton(out CameraTargetHistory history))
+                {
+                    // Interpolate between prev and next positions
+                    float3 interpolated = math.lerp(history.PrevPosition, history.NextPosition, history.Alpha);
+                    
+                    // Apply velocity-based extrapolation for high-velocity motion
+                    if (math.lengthsq(history.Velocity) > 1e-6f)
+                    {
+                        float extrapolationTime = UnityEngine.Time.deltaTime;
+                        interpolated += history.Velocity * extrapolationTime;
+                    }
+                    
+                    cursor = new Vector3(interpolated.x, interpolated.y, interpolated.z);
+                    return true;
+                }
+            }
+            catch
+            {
+                // Fall back to raw position if interpolation not available
+            }
+            
             return false;
         }
 

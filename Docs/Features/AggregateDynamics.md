@@ -245,11 +245,69 @@ if (SystemAPI.HasComponent<AmbientGroupConditions>(groupEntity))
 
 ---
 
+## Tactical Layer (Hierarchical Behavior System)
+
+**Status**: Tier-1 Implementation Complete  
+**Category**: Tactical AI / Formation Behavior  
+**Scope**: Connects aggregate strategy with individual expression under deterministic umbrella
+
+### Overview
+
+The tactical layer provides a three-tier hierarchical behavior model (Strategic → Tactical → Individual) that connects aggregate formations with individual personality-driven deviation, morale simulation, and cultural doctrines. Inspired by Total War AI architecture and military agent-based modeling research.
+
+### Key Features
+
+- **Formation Commands**: Strategic layer issues commands to formations (Move, Attack, Hold, Regroup)
+- **Individual Deviation**: BehaviorProfile-based deviation creates organic, dynamic formations
+- **Group Morale**: Shared morale pool with casualty/leader/support modifiers, rout state triggers
+- **Cultural Doctrines**: Archetype behaviors (Corrupt Spiritualist, Zealot Paladin, etc.) modify formation behavior
+- **Tactical AI State Machine**: Idle → Advance → Engage → Evaluate → Regroup → Pursue transitions
+- **Leader Influence Field**: CommandAura radiates cohesion and morale bonuses based on proximity
+
+### Core Components
+
+**Formation Components** (`PureDOTS.Runtime.Bands.BandComponents`):
+- `FormationCommand`: CommandId, TargetPos, Facing
+- `FormationMember`: FormationEntity, Offset, Alignment
+- `CommandAura`: Radius, CohesionBonus, MoraleBonus (on leaders)
+- `BandFormation` extended with: Cohesion (0-1), Morale (group morale), FormationId
+
+**Individual Behavior** (`PureDOTS.Runtime.Combat.BehaviorProfile`):
+- `Discipline` (0-1): Alignment adherence
+- `Courage` (0-1): Morale decay resistance
+- `Chaos` (0-1): Formation deviation probability
+- `Zeal` (0-1): Leader ideal following strength
+
+**Group Morale** (`PureDOTS.Runtime.Morale.MoraleComponents`):
+- `GroupMorale`: Shared morale pool, casualty tracking, leader status, support proximity
+- `RoutState`: Tag when morale < 0.3, triggers flee behavior
+
+**Cultural Doctrines** (`PureDOTS.Runtime.Culture.CulturalDoctrine`):
+- `CulturalDoctrineBlob`: Archetype effects stored as BlobAsset
+- `CulturalDoctrineReference`: Links formations to doctrine blobs
+
+**Tactical AI** (`PureDOTS.Runtime.AI.TacticalAIState`):
+- `TacticalAIState`: Current state, decision tick, context (RelativeMorale, Cohesion, CommanderTraits, BattlefieldContext)
+
+### System Groups
+
+**TacticalSystemGroup** (1-5 Hz):
+- Runs after `SpatialSystemGroup`, before `VillagerSystemGroup`
+- Systems: `FormationCommandSystem`, `GroupMoraleSystem`, `TacticalAIStateMachineSystem`, `CulturalDoctrineSystem`, `LeaderAuraSystem`
+
+**VillagerSystemGroup** (60 Hz):
+- `FormationDeviationSystem`: Applies BehaviorProfile-based deviation to individual movement
+
+### Usage Examples
+
+See `Docs/Guides/TacticalAI_Guide.md` for detailed usage examples and integration patterns.
+
 ## Related Systems
 
 - **Motivation & Legacy**: Group ambitions and legacy points
 - **Villager/Crew Simulation**: Individual behavior systems
 - **Environment & Economy**: Aggregate stats influenced by environment, economic systems use desire coverage
+- **Tactical AI**: Formation commands, group morale, cultural doctrines (this system)
 
 
 

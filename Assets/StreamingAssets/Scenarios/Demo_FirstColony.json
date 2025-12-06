@@ -1,0 +1,21 @@
+{
+  "scenarioId": "Demo_FirstColony",
+  "seed": 42,
+  "runTicks": 3600,
+  "entityCounts": [
+    {
+      "registryId": "Villager",
+      "count": 10
+    },
+    {
+      "registryId": "Storehouse",
+      "count": 2
+    },
+    {
+      "registryId": "Resource",
+      "count": 5
+    }
+  ],
+  "inputCommands": []
+}
+

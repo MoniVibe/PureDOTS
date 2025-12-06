@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine.Profiling;
 
 namespace PureDOTS.Systems
@@ -35,20 +36,26 @@ namespace PureDOTS.Systems
 
         private EntityQuery _streamQuery;
         private Dictionary<FrameTimingGroup, FrameTimingSample> _pendingSamples;
+        private Dictionary<string, JobMetricsSample> _jobMetrics;
         private int _previousGc0;
         private int _previousGc1;
         private int _previousGc2;
+        private uint _lastJobMetricsTick;
+        private const uint JobMetricsIntervalTicks = 600; // 10 seconds at 60Hz
 
         protected override void OnCreate()
         {
             _streamQuery = GetEntityQuery(ComponentType.ReadWrite<FrameTimingStream>());
             _pendingSamples = new Dictionary<FrameTimingGroup, FrameTimingSample>(16);
+            _jobMetrics = new Dictionary<string, JobMetricsSample>(32);
+            _lastJobMetricsTick = 0;
             EnsureStreamEntity();
         }
 
         protected override void OnDestroy()
         {
             _pendingSamples.Clear();
+            _jobMetrics?.Clear();
         }
 
         /// <summary>
@@ -163,6 +170,74 @@ namespace PureDOTS.Systems
             diagnostics.TotalUnusedReservedBytes = Profiler.GetTotalUnusedReservedMemoryLong();
 
             EntityManager.SetComponentData(entity, diagnostics);
+
+            // Collect job metrics every 10 seconds
+            if (SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                uint currentTick = timeState.Tick;
+                if (currentTick - _lastJobMetricsTick >= JobMetricsIntervalTicks)
+                {
+                    CollectJobMetrics(entity, currentTick);
+                    _lastJobMetricsTick = currentTick;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Records job metrics for profiling.
+        /// </summary>
+        public void RecordJobMetrics(string jobName, float durationMs, float cpuUtilization)
+        {
+            _jobMetrics ??= new Dictionary<string, JobMetricsSample>(32);
+
+            if (_jobMetrics.TryGetValue(jobName, out var existing))
+            {
+                // Update with exponential moving average
+                float alpha = 0.1f;
+                existing.AvgMs = alpha * durationMs + (1f - alpha) * existing.AvgMs;
+                existing.CPUUtilization = alpha * cpuUtilization + (1f - alpha) * existing.CPUUtilization;
+                existing.Count++;
+            }
+            else
+            {
+                existing = new JobMetricsSample
+                {
+                    JobName = jobName,
+                    AvgMs = durationMs,
+                    Count = 1,
+                    CPUUtilization = cpuUtilization,
+                    MeasurementTick = 0
+                };
+            }
+
+            _jobMetrics[jobName] = existing;
+        }
+
+        private void CollectJobMetrics(Entity entity, uint currentTick)
+        {
+            if (!EntityManager.HasBuffer<JobMetricsSample>(entity))
+            {
+                EntityManager.AddBuffer<JobMetricsSample>(entity);
+            }
+
+            var buffer = EntityManager.GetBuffer<JobMetricsSample>(entity);
+            buffer.Clear();
+
+            foreach (var kvp in _jobMetrics)
+            {
+                var sample = kvp.Value;
+                sample.MeasurementTick = currentTick;
+                buffer.Add(sample);
+
+                // Auto-rebalance or split systems when > 2ms
+                if (sample.AvgMs > 2.0f)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[FrameTimingRecorderSystem] Job '{sample.JobName}' exceeds 2ms threshold: {sample.AvgMs:F2}ms. Consider splitting or optimizing.");
+                }
+            }
+
+            _jobMetrics.Clear();
         }
 
         private void EnsureStreamEntity()

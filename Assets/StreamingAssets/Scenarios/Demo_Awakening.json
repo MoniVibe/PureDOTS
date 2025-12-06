@@ -1,0 +1,13 @@
+{
+  "scenarioId": "Demo_Awakening",
+  "seed": 42,
+  "runTicks": 3600,
+  "entityCounts": [
+    {
+      "registryId": "Villager",
+      "count": 5
+    }
+  ],
+  "inputCommands": []
+}
+

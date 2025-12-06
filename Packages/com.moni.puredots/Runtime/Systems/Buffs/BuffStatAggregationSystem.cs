@@ -10,6 +10,13 @@ namespace PureDOTS.Systems.Buffs
     /// <summary>
     /// Aggregates stat modifiers from all active buffs into BuffStatCache.
     /// Runs after BuffTickSystem to update cache when buffs change.
+    /// 
+    /// INTEGRATION NOTE: This system can integrate with ModifierCategoryAccumulator for shared stats.
+    /// When modifier system is active, read from ModifierCategoryAccumulator instead of recalculating
+    /// to avoid duplicate aggregation. The modifier system provides pre-aggregated category sums
+    /// (Economy, Military, Environment) that can be consumed here.
+    /// 
+    /// Current implementation maintains backward compatibility with existing buff system.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup))]

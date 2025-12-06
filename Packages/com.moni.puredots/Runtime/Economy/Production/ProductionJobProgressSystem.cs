@@ -21,6 +21,7 @@ namespace PureDOTS.Runtime.Economy.Production
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _productionLookup = state.GetComponentLookup<BusinessProduction>(false);
             _jobBufferLookup = state.GetBufferLookup<ProductionJob>(false);
         }

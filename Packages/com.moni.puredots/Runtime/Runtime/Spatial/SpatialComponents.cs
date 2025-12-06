@@ -2,25 +2,130 @@ using PureDOTS.Runtime.Registry;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
 
 namespace PureDOTS.Runtime.Spatial
 {
     /// <summary>
-    /// Configuration for the active spatial grid provider.
-    /// Authored through data assets and baked into a singleton.
+    /// Hierarchical grid level identifiers for multi-resolution spatial partitioning.
     /// </summary>
-    public struct SpatialGridConfig : IComponentData
+    public enum HierarchicalGridLevel : byte
     {
+        L0_Galactic = 0,  // 1 ly - 100 AU, 0.001 Hz, analytic orbits only
+        L1_System = 1,   // 10^6 km, 0.01 Hz, coarse collision zones
+        L2_Planet = 2,   // 1-10 km, 1 Hz, full deterministic grid
+        L3_Local = 3     // 1-100 m, 60 Hz, fine physics & AI
+    }
+
+    /// <summary>
+    /// Configuration for a single hierarchical grid level.
+    /// </summary>
+    public struct HierarchicalLevelConfig
+    {
+        public HierarchicalGridLevel Level;
         public float CellSize;
+        public float TickRate; // Updates per second
+        public bool UseAnalyticOrbits; // If true, only store orbital parameters, not entity positions
         public float3 WorldMin;
         public float3 WorldMax;
         public int3 CellCounts;
+
+        public readonly float3 WorldExtent => WorldMax - WorldMin;
+        public readonly int CellCount => math.max(CellCounts.x * CellCounts.y * CellCounts.z, 0);
+    }
+
+    /// <summary>
+    /// Configuration for the active spatial grid provider.
+    /// Authored through data assets and baked into a singleton.
+    /// Supports both single-level (legacy) and multi-level hierarchical grids.
+    /// 
+    /// <para>
+    /// <b>Legacy Mode:</b> Set <see cref="IsHierarchical"/> = false, use <see cref="CellSize"/> and <see cref="CellCounts"/>.
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>Hierarchical Mode:</b> Set <see cref="IsHierarchical"/> = true, configure <see cref="HierarchicalLevels"/> (L0-L3).
+    /// Use <see cref="TryGetLevelConfig"/> to access level-specific settings.
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>Usage Example:</b>
+    /// <code>
+    /// var config = SystemAPI.GetSingleton&lt;SpatialGridConfig&gt;();
+    /// if (config.IsHierarchical &amp;&amp; config.TryGetLevelConfig(HierarchicalGridLevel.L3_Local, out var level))
+    /// {
+    ///     var cellSize = level.CellSize; // Level-specific cell size
+    /// }
+    /// else
+    /// {
+    ///     var cellSize = config.CellSize; // Legacy single-level
+    /// }
+    /// </code>
+    /// </para>
+    /// 
+    /// See also: <see cref="HierarchicalSpatialGridGuide.md"/>, <see cref="SpatialGridMigration"/>
+    /// </summary>
+    public struct SpatialGridConfig : IComponentData
+    {
+        public float CellSize; // Legacy single-level cell size (used when HierarchicalLevels.Length == 0)
+        public float3 WorldMin;
+        public float3 WorldMax;
+        public int3 CellCounts; // Legacy single-level cell counts
         public uint HashSeed;
         public byte ProviderId;
+
+        // Hierarchical grid support
+        public bool IsHierarchical; // If true, use HierarchicalLevels; otherwise use legacy CellSize
+        public FixedList512Bytes<HierarchicalLevelConfig> HierarchicalLevels; // Per-level configurations
+
+        // Adaptive subdivision thresholds
+        public float UpperDensityThreshold; // Subdivide if density > this (default: 100.0 entities/cell)
+        public float LowerDensityThreshold; // Merge if density < this (default: 10.0 entities/cell)
+        public int MaxSubdivisionDepth; // Maximum octree depth (default: 4 levels)
 
         public readonly float3 WorldExtent => WorldMax - WorldMin;
 
         public readonly int CellCount => math.max(CellCounts.x * CellCounts.y * CellCounts.z, 0);
+
+        /// <summary>
+        /// Gets the level configuration for a specific hierarchical level, or returns default if not found.
+        /// </summary>
+        public readonly bool TryGetLevelConfig(HierarchicalGridLevel level, out HierarchicalLevelConfig config)
+        {
+            if (!IsHierarchical || HierarchicalLevels.Length == 0)
+            {
+                config = default;
+                return false;
+            }
+
+            for (int i = 0; i < HierarchicalLevels.Length; i++)
+            {
+                if (HierarchicalLevels[i].Level == level)
+                {
+                    config = HierarchicalLevels[i];
+                    return true;
+                }
+            }
+
+            config = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the active cell size for the current configuration (hierarchical or legacy).
+        /// </summary>
+        public readonly float GetActiveCellSize(HierarchicalGridLevel? level = null)
+        {
+            if (IsHierarchical && level.HasValue)
+            {
+                if (TryGetLevelConfig(level.Value, out var levelConfig))
+                {
+                    return levelConfig.CellSize;
+                }
+            }
+
+            return CellSize; // Legacy single-level
+        }
     }
 
     /// <summary>
@@ -60,13 +165,35 @@ namespace PureDOTS.Runtime.Spatial
 
     /// <summary>
     /// Buffer element storing the flattened entity list for all cells.
+    /// Supports both legacy CellId (int) and new CellKey (ulong SFC) for backward compatibility.
     /// </summary>
     [InternalBufferCapacity(0)]
     public struct SpatialGridEntry : IBufferElementData
     {
         public Entity Entity;
         public float3 Position;
-        public int CellId;
+        public int CellId; // Legacy: flattened cell index (backward compatibility)
+        public ulong CellKey; // New: space-filling curve key (Morton/Hilbert)
+
+        /// <summary>
+        /// Gets the primary cell identifier. Uses CellKey if non-zero, otherwise falls back to CellId.
+        /// </summary>
+        public readonly ulong GetPrimaryKey()
+        {
+            return CellKey != 0 ? CellKey : (ulong)(uint)CellId;
+        }
+
+        /// <summary>
+        /// Sets both CellId and CellKey from a Morton key.
+        /// </summary>
+        public void SetFromMortonKey(ulong mortonKey, int fallbackCellId = -1)
+        {
+            CellKey = mortonKey;
+            if (fallbackCellId >= 0)
+            {
+                CellId = fallbackCellId;
+            }
+        }
     }
 
     /// <summary>
@@ -78,13 +205,20 @@ namespace PureDOTS.Runtime.Spatial
 
     /// <summary>
     /// Buffer used as a staging area while rebuilding the grid.
+    /// Supports both legacy CellId and new CellKey for backward compatibility.
     /// </summary>
     [InternalBufferCapacity(0)]
     public struct SpatialGridStagingEntry : IBufferElementData
     {
         public Entity Entity;
         public float3 Position;
-        public int CellId;
+        public int CellId; // Legacy: flattened cell index
+        public ulong CellKey; // New: space-filling curve key
+
+        public readonly ulong GetPrimaryKey()
+        {
+            return CellKey != 0 ? CellKey : (ulong)(uint)CellId;
+        }
     }
 
     /// <summary>
@@ -110,9 +244,21 @@ namespace PureDOTS.Runtime.Spatial
     {
         public Entity Entity;
         public float3 Position;
-        public int OldCellId;
-        public int NewCellId;
+        public int OldCellId; // Legacy: flattened cell index
+        public int NewCellId; // Legacy: flattened cell index
+        public ulong OldCellKey; // New: space-filling curve key
+        public ulong NewCellKey; // New: space-filling curve key
         public SpatialGridDirtyOpType Operation;
+
+        public readonly ulong GetOldPrimaryKey()
+        {
+            return OldCellKey != 0 ? OldCellKey : (ulong)(uint)OldCellId;
+        }
+
+        public readonly ulong GetNewPrimaryKey()
+        {
+            return NewCellKey != 0 ? NewCellKey : (ulong)(uint)NewCellId;
+        }
     }
 
     [InternalBufferCapacity(0)]
@@ -120,14 +266,26 @@ namespace PureDOTS.Runtime.Spatial
     {
         public Entity Entity;
         public int EntryIndex;
-        public int CellId;
+        public int CellId; // Legacy: flattened cell index
+        public ulong CellKey; // New: space-filling curve key
+
+        public readonly ulong GetPrimaryKey()
+        {
+            return CellKey != 0 ? CellKey : (ulong)(uint)CellId;
+        }
     }
 
     public struct SpatialGridResidency : ICleanupComponentData
     {
-        public int CellId;
+        public int CellId; // Legacy: flattened cell index
+        public ulong CellKey; // New: space-filling curve key
         public float3 LastPosition;
         public uint Version;
+
+        public readonly ulong GetPrimaryKey()
+        {
+            return CellKey != 0 ? CellKey : (ulong)(uint)CellId;
+        }
     }
 
     /// <summary>
@@ -257,5 +415,168 @@ namespace PureDOTS.Runtime.Spatial
         public byte Flags;
 
         public readonly bool ShouldLogOnlyOnChange => (Flags & FlagLogOnlyOnChange) != 0;
+    }
+
+    /// <summary>
+    /// Core spatial cell data structure for hierarchical grids.
+    /// Stores hot data (entities, positions) and cold data (density, statistics).
+    /// </summary>
+    public struct SpatialCell
+    {
+        public int3 Index;
+        public AABB Bounds;
+        public NativeList<Entity> Entities; // Hot: queried per tick
+        public float Density; // Cold: queried per second+
+        public byte Level; // 0-3 (HierarchicalGridLevel)
+        public ulong MortonKey; // Space-filling curve index for cache coherence
+
+        public readonly bool IsEmpty => !Entities.IsCreated || Entities.Length == 0;
+        public readonly float Volume => Bounds.IsValid ? Bounds.Size.x * Bounds.Size.y * Bounds.Size.z : 0f;
+        public readonly float EntityDensity => Volume > 0f && Entities.IsCreated ? Entities.Length / Volume : 0f;
+    }
+
+    /// <summary>
+    /// Runtime state for hierarchical spatial grids, tracking per-level grid state and aggregation metadata.
+    /// </summary>
+    public struct HierarchicalSpatialGridState : IComponentData
+    {
+        /// <summary>
+        /// Per-level grid versions (tracks when each level was last updated).
+        /// </summary>
+        public FixedList64Bytes<uint> LevelVersions; // Max 4 levels (L0-L3)
+
+        /// <summary>
+        /// Per-level active cell counts.
+        /// </summary>
+        public FixedList64Bytes<int> LevelCellCounts;
+
+        /// <summary>
+        /// Per-level total entity counts.
+        /// </summary>
+        public FixedList64Bytes<int> LevelEntityCounts;
+
+        /// <summary>
+        /// Last tick when each level was aggregated (for lazy aggregation).
+        /// </summary>
+        public FixedList64Bytes<uint> LastAggregationTicks;
+
+        /// <summary>
+        /// Aggregation interval per level (every Nth tick).
+        /// </summary>
+        public FixedList64Bytes<uint> AggregationIntervals;
+
+        /// <summary>
+        /// Active level per region (for multi-region grids).
+        /// </summary>
+        public byte ActiveLevel;
+
+        /// <summary>
+        /// Global version counter for the hierarchical grid.
+        /// </summary>
+        public uint Version;
+
+        /// <summary>
+        /// Last update tick for the hierarchical grid.
+        /// </summary>
+        public uint LastUpdateTick;
+
+        public void InitializeLevel(HierarchicalGridLevel level, uint aggregationInterval)
+        {
+            var index = (int)level;
+            if (index >= LevelVersions.Length)
+            {
+                return;
+            }
+
+            if (index >= LevelVersions.Length)
+            {
+                return;
+            }
+
+            LevelVersions[index] = 0;
+            LevelCellCounts[index] = 0;
+            LevelEntityCounts[index] = 0;
+            LastAggregationTicks[index] = 0;
+            AggregationIntervals[index] = aggregationInterval;
+        }
+
+        public readonly bool ShouldAggregateLevel(HierarchicalGridLevel level, uint currentTick)
+        {
+            var index = (int)level;
+            if (index >= LastAggregationTicks.Length || index >= AggregationIntervals.Length)
+            {
+                return false;
+            }
+
+            var lastTick = LastAggregationTicks[index];
+            var interval = AggregationIntervals[index];
+            return interval > 0 && (currentTick - lastTick) >= interval;
+        }
+    }
+
+    /// <summary>
+    /// World index shared component for multi-ECS support.
+    /// Each ECS world has a separate grid singleton with a unique WorldIndex.
+    /// </summary>
+    public struct SpatialGridWorldIndex : ISharedComponentData
+    {
+        public int WorldIndex;
+
+        public SpatialGridWorldIndex(int worldIndex)
+        {
+            WorldIndex = worldIndex;
+        }
+    }
+
+    /// <summary>
+    /// Observer component for region streaming and culling.
+    /// Cameras and AI regions subscribe to active cell ranges.
+    /// </summary>
+    public struct SpatialObserver : IComponentData
+    {
+        public float3 Position;
+        public float Radius;
+        public uint LastUpdateTick;
+        public bool IsActive;
+    }
+
+    /// <summary>
+    /// Buffer storing active cell keys for a spatial observer.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct SpatialObserverActiveCells : IBufferElementData
+    {
+        public ulong CellKey; // SFC key of active cell
+    }
+
+    /// <summary>
+    /// Compressed cell summary for inactive cells (streamed to disk or compressed in memory).
+    /// </summary>
+    public struct CompressedCellSummary
+    {
+        public float3 Centroid; // Average position of entities
+        public float TotalMass; // Sum of entity masses
+        public int EntityCount; // Number of entities in this cell
+        public ulong CellKey; // SFC key for reactivation lookup
+        public byte Level; // Hierarchical level (0-3)
+    }
+
+    /// <summary>
+    /// Buffer storing compressed cell summaries for inactive cells.
+    /// </summary>
+    [InternalBufferCapacity(0)]
+    public struct CompressedCellSummaryBuffer : IBufferElementData
+    {
+        public CompressedCellSummary Summary;
+    }
+
+    /// <summary>
+    /// Streaming configuration for spatial grids.
+    /// </summary>
+    public struct SpatialGridStreamingConfig : IComponentData
+    {
+        public float StreamingRadius; // Deactivate cells beyond this radius (default: 1000.0)
+        public bool EnableStreaming; // If false, all cells stay active (default: false)
+        public uint StreamingUpdateInterval; // Update interval in ticks (default: 60)
     }
 }

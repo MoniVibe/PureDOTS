@@ -1,4 +1,5 @@
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Telemetry
@@ -68,6 +69,31 @@ namespace PureDOTS.Runtime.Telemetry
         public int GcCollectionsGeneration0;
         public int GcCollectionsGeneration1;
         public int GcCollectionsGeneration2;
+    }
+
+    /// <summary>
+    /// Thread load sample for load balancing diagnostics.
+    /// </summary>
+    [InternalBufferCapacity(16)]
+    public struct ThreadLoadSample : IBufferElementData
+    {
+        public int ThreadId;
+        public float AvgJobDurationMs;
+        public int JobCount;
+        public uint MeasurementTick;
+    }
+
+    /// <summary>
+    /// Job metrics sample for task group profiling.
+    /// </summary>
+    [InternalBufferCapacity(32)]
+    public struct JobMetricsSample : IBufferElementData
+    {
+        public FixedString64Bytes JobName;
+        public float AvgMs;
+        public int Count;
+        public float CPUUtilization;
+        public uint MeasurementTick;
     }
 
     /// <summary>

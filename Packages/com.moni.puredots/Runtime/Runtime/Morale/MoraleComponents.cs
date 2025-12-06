@@ -163,5 +163,29 @@ namespace PureDOTS.Runtime.Morale
         public uint DecayHalfLife;
         public Entity AssociatedEntity;
     }
+
+    /// <summary>
+    /// Group-level morale shared across formation members.
+    /// Tracks casualties, leader status, and support proximity.
+    /// </summary>
+    public struct GroupMorale : IComponentData
+    {
+        public float CurrentMorale;      // 0-1, shared morale pool
+        public int CasualtyCount;         // Number of casualties
+        public uint LastCasualtyTick;     // Last tick when casualty occurred
+        public bool LeaderAlive;          // Whether leader is alive
+        public int AlliesNearby;          // Count of nearby allied formations
+        public uint LastUpdateTick;
+    }
+
+    /// <summary>
+    /// Tag component indicating entity is in rout state (morale < 0.3).
+    /// Triggers flee behavior in AI systems.
+    /// </summary>
+    public struct RoutState : IComponentData
+    {
+        public float MoraleAtRout;       // Morale value when rout started
+        public uint RoutStartTick;
+    }
 }
 

@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.moni.puredots": "file:Packages/com.moni.puredots",
+    "com.doraku.default-ecs": "https://github.com/Doraku/DefaultEcs.git",
     "com.coplaydev.coplay": "https://github.com/CoplayDev/coplay-unity-plugin.git#beta",
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",
     "com.unity.burst": "1.8.24",

@@ -98,6 +98,12 @@ Add to your game project's `Packages/manifest.json`:
 - Editor validation
 - Scene setup tools
 
+### World Editor & Analytics
+- Scenario authoring API (Warcraft III-style editor)
+- World tree morphing visualization
+- Statistics and correlation dashboard
+- Telemetry streaming and analysis
+
 ## Package Structure
 
 ```
@@ -107,7 +113,11 @@ com.moni.puredots/
 │   ├── Systems/        # Framework systems
 │   ├── Authoring/      # Baker components
 │   ├── Config/         # Configuration assets
-│   └── Input/          # Input handling
+│   ├── Input/          # Input handling
+│   ├── Scenario/       # Scenario authoring API
+│   ├── Aggregate/      # World aggregate profile system
+│   ├── Presentation/   # World tree morphing, statistics UI
+│   └── Telemetry/      # Telemetry components
 └── Editor/             # Editor tooling
 ```
 
@@ -137,6 +147,7 @@ com.moni.puredots/
 - **Architecture**: `Docs/Architecture/PureDOTS_As_Framework.md`
 - **Integration Guide**: `Docs/Guides/UsingPureDOTSInAGame.md`
 - **Integration Spec**: `Docs/PUREDOTS_INTEGRATION_SPEC.md` - Canonical integration patterns
+- **World Editor & Analytics**: `Docs/Guides/WorldEditorAndAnalyticsGuide.md` - Scenario authoring, world tree morphing, statistics dashboard
 - **Vision**: `Docs/Vision.md` - Design pillars and roadmap
 - **API Reference**: See source code documentation
 

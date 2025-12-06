@@ -17,6 +17,7 @@ namespace PureDOTS.Systems.Narrative
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
         }
 
         [BurstCompile]

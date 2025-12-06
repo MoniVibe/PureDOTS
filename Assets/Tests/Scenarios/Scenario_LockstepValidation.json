@@ -1,0 +1,62 @@
+{
+  "name": "LockstepValidation",
+  "description": "Stress-test scenario for lockstep validation. Two 'players' feed scripted opposing inputs. Simulate 10,000 ticks offline. Verify both worlds produce identical CRCs.",
+  "durationTicks": 10000,
+  "players": [
+    {
+      "id": 1,
+      "inputs": [
+        {
+          "tick": 0,
+          "type": "move",
+          "payload": "forward"
+        },
+        {
+          "tick": 100,
+          "type": "move",
+          "payload": "left"
+        },
+        {
+          "tick": 200,
+          "type": "move",
+          "payload": "backward"
+        },
+        {
+          "tick": 300,
+          "type": "move",
+          "payload": "right"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "inputs": [
+        {
+          "tick": 0,
+          "type": "move",
+          "payload": "backward"
+        },
+        {
+          "tick": 100,
+          "type": "move",
+          "payload": "right"
+        },
+        {
+          "tick": 200,
+          "type": "move",
+          "payload": "forward"
+        },
+        {
+          "tick": 300,
+          "type": "move",
+          "payload": "left"
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "checkInterval": 100,
+    "requireExactMatch": true
+  }
+}
+

@@ -1,13 +1,16 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Physics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Resources
 {
     /// <summary>
     /// Calculates total mass and volume for inventories from items using ItemSpec catalog.
     /// Updates Inventory.CurrentMass and CurrentVolume.
+    /// Also updates MassComponent for hierarchical aggregation.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -20,6 +23,7 @@ namespace PureDOTS.Runtime.Economy.Resources
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ItemSpecCatalog>();
             _inventoryLookup = state.GetComponentLookup<Inventory>(false);
             _itemBufferLookup = state.GetBufferLookup<InventoryItem>(false);
@@ -47,6 +51,8 @@ namespace PureDOTS.Runtime.Economy.Resources
             var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
             var tick = tickTimeState.Tick;
 
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
+
             foreach (var (inventory, entity) in SystemAPI.Query<RefRW<Inventory>>().WithEntityAccess())
             {
                 if (!_itemBufferLookup.HasBuffer(entity))
@@ -71,7 +77,29 @@ namespace PureDOTS.Runtime.Economy.Resources
                 inventory.ValueRW.CurrentMass = totalMass;
                 inventory.ValueRW.CurrentVolume = totalVolume;
                 inventory.ValueRW.LastUpdateTick = tick;
+
+                // Update MassComponent for hierarchical aggregation
+                if (SystemAPI.HasComponent<MassComponent>(entity))
+                {
+                    var mass = SystemAPI.GetComponent<MassComponent>(entity);
+                    mass.Mass = totalMass;
+                    SystemAPI.SetComponent(entity, mass);
+                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                }
+                else if (totalMass > 0f)
+                {
+                    SystemAPI.AddComponent(entity, new MassComponent
+                    {
+                        Mass = totalMass,
+                        CenterOfMass = float3.zero,
+                        InertiaTensor = float3.zero
+                    });
+                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
 
         [BurstCompile]

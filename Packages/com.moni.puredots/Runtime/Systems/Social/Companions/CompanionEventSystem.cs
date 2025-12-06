@@ -33,6 +33,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
 
             _bondLookup = state.GetComponentLookup<CompanionBond>(true);
             _companionLinkLookup = state.GetBufferLookup<CompanionLink>(true);

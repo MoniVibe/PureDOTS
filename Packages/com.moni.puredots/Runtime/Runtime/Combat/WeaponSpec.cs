@@ -21,6 +21,7 @@ namespace PureDOTS.Runtime.Combat
 
     /// <summary>
     /// Projectile specification data - defines projectile behavior.
+    /// Extended with motion/aerodynamics for 6-DoF simulation.
     /// </summary>
     public struct ProjectileSpec
     {
@@ -36,6 +37,37 @@ namespace PureDOTS.Runtime.Combat
         public uint HitFilter; // Physics collision mask
         public DamageModel Damage; // Damage calculation model
         public BlobArray<EffectOp> OnHit; // Effect operations on hit
+
+        // Motion/Aerodynamics (Phase 1 optimization)
+        public float Mass; // Projectile mass (for aerodynamic forces)
+        public float DragCoeff; // Drag coefficient (0 = no drag)
+        public float LiftCoeff; // Lift coefficient (0 = no lift)
+        public float3 AngularVelocity; // Angular velocity for spin (rad/s)
+        public float SpreadConeDeg; // Spread cone angle (moved from weapon)
+        public byte GuidanceBehavior; // GuidanceBehavior enum (None, Homing, Ballistic, etc.)
+        public BlobArray<ProjectileEffectSpec> Effects; // Modular effect specs
+        public BlobArray<float> BallisticHeightLUT; // Pre-computed ballistic height table
+    }
+
+    /// <summary>
+    /// Guidance behavior enumeration for projectiles.
+    /// </summary>
+    public enum GuidanceBehavior : byte
+    {
+        None = 0,      // Pure ballistic
+        Homing = 1,    // Seeks target entity
+        Ballistic = 2, // Pre-computed ballistic arc
+        Beam = 3       // Instant hit beam
+    }
+
+    /// <summary>
+    /// Projectile effect specification - modular effect system.
+    /// </summary>
+    public struct ProjectileEffectSpec
+    {
+        public byte EffectType; // EffectOpKind enum
+        public float Radius; // Effect radius
+        public float Energy; // Effect energy/magnitude
     }
 
     /// <summary>
@@ -60,6 +92,12 @@ namespace PureDOTS.Runtime.Combat
         public float ShieldMultiplier; // Damage vs shields (1.0 = normal)
         public float ArmorMultiplier; // Damage vs armor (1.0 = normal)
         public float HullMultiplier; // Damage vs hull (1.0 = normal)
+        
+        /// <summary>
+        /// Material penetration modifiers per material category.
+        /// Indexed by MaterialCategory enum value.
+        /// </summary>
+        public BlobArray<float> MaterialPenetrationModifiers; // e.g., tungsten core vs organic tissue
     }
 
     /// <summary>
@@ -156,6 +194,23 @@ namespace PureDOTS.Runtime.Combat
     public struct TurretCatalog : IComponentData
     {
         public BlobAssetReference<TurretCatalogBlob> Catalog;
+    }
+
+    /// <summary>
+    /// Projectile archetype catalog blob - maps ArchetypeId (ushort) to ProjectileSpec.
+    /// Enables efficient lookup without string comparisons.
+    /// </summary>
+    public struct ProjectileArchetypeCatalogBlob
+    {
+        public BlobArray<ProjectileSpec> Archetypes; // Indexed by ArchetypeId
+    }
+
+    /// <summary>
+    /// Singleton component holding projectile archetype catalog reference.
+    /// </summary>
+    public struct ProjectileArchetypeCatalog : IComponentData
+    {
+        public BlobAssetReference<ProjectileArchetypeCatalogBlob> Catalog;
     }
 }
 

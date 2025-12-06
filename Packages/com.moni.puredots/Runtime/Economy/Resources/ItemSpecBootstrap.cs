@@ -89,7 +89,8 @@ namespace PureDOTS.Runtime.Economy.Resources
                 IsPerishable = false,
                 PerishRate = 0f,
                 IsDurable = true,
-                BaseDurability = 1.0f
+                BaseDurability = 1.0f,
+                MaterialId = new FixedString64Bytes("iron")
             });
 
             items.Add(new ItemSpecBlob
@@ -105,7 +106,8 @@ namespace PureDOTS.Runtime.Economy.Resources
                 IsPerishable = false,
                 PerishRate = 0f,
                 IsDurable = true,
-                BaseDurability = 1.0f
+                BaseDurability = 1.0f,
+                MaterialId = new FixedString64Bytes("wood")
             });
 
             // Processed materials
@@ -122,7 +124,8 @@ namespace PureDOTS.Runtime.Economy.Resources
                 IsPerishable = false,
                 PerishRate = 0f,
                 IsDurable = true,
-                BaseDurability = 1.0f
+                BaseDurability = 1.0f,
+                MaterialId = new FixedString64Bytes("iron")
             });
 
             // Tools
@@ -156,7 +159,8 @@ namespace PureDOTS.Runtime.Economy.Resources
                 IsPerishable = false,
                 PerishRate = 0f,
                 IsDurable = true,
-                BaseDurability = 1.0f
+                BaseDurability = 1.0f,
+                MaterialId = new FixedString64Bytes("steel")
             });
 
             var itemsArray = builder.Allocate(ref root.Items, items.Length);

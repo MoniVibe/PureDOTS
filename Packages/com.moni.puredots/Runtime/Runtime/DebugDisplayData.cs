@@ -227,6 +227,14 @@ namespace PureDOTS.Runtime.Components
         public int RewindGuardViolationCount;
         public FixedString512Bytes RewindGuardViolationText;
 
+        // Diagnostics telemetry
+        public int DiagnosticsErrorCount;
+        public int DiagnosticsArchetypeErrors;
+        public int DiagnosticsBlobErrors;
+        public int DiagnosticsRegistryErrors;
+        public int DiagnosticsBoundsErrors;
+        public FixedString512Bytes DiagnosticsAlertText;
+
 #if DEVTOOLS_ENABLED
         // Spawn telemetry
         public int SpawnRequestsThisTick;

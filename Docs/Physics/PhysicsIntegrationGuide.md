@@ -37,8 +37,12 @@ This guide documents the Unity Physics integration for PureDOTS, Space4X, and Go
 PureDOTS/Packages/com.moni.puredots/Runtime/
 ├── Runtime/Physics/
 │   ├── PhysicsConfig.cs              # Global physics configuration singleton
+│   ├── MassComponents.cs            # MassComponent, MassDirtyTag
 │   └── PhysicsInteractionComponents.cs # Existing interaction components
 └── Systems/Physics/
+    ├── PhysicsStepConfigSystem.cs    # Configures deterministic PhysicsStep singleton
+    ├── CustomMassSyncSystem.cs       # Syncs MassComponent → PhysicsMass
+    ├── PhysicsOptimizationSystem.cs  # Solver tuning, static aggregation prep
     ├── PhysicsBodyBootstrapSystem.cs  # Initializes physics bodies from ECS markers
     ├── PhysicsSyncSystem.cs           # ECS → Unity Physics transform sync
     ├── PhysicsEventSystem.cs          # Unity Physics → ECS collision event translation
@@ -73,6 +77,36 @@ Godgame/Assets/Scripts/Godgame/
 ```
 
 ## Configuration
+
+### Deterministic Physics Configuration
+
+Unity Physics is configured for deterministic simulation matching PureDOTS fixed-step architecture:
+
+**Determinism Requirements:**
+- Fixed Δt only (no variable step) - uses `TimeState.FixedDeltaTime` via `FixedStepSimulationSystemGroup.Timestep`
+- `SimulationType.UnityPhysics` (explicit, not Auto)
+- Burst/math versions locked (Entities 1.4.2 / Burst 1.8.24)
+- Platform parity (same CPU architecture for lockstep)
+
+**Configuration Systems:**
+- `PhysicsStepConfigSystem` - Configures `PhysicsStep` singleton with deterministic settings
+  - Runs in `TimeSystemGroup` after `TimeTickSystem`
+  - Sets `SimulationType.UnityPhysics`, solver iterations (default 2), disables transform sync
+- `CustomMassSyncSystem` - Syncs `MassComponent` → `PhysicsMass` each tick
+  - Runs in `PhysicsSystemGroup` after `PhysicsInitializeGroup`, before simulation
+  - Handles `MassDirtyTag` for efficient dirty tracking
+- `PhysicsOptimizationSystem` - Applies performance optimizations
+  - Configures solver iterations, ensures transform sync disabled
+  - Prepares for static aggregation and broad-phase culling
+
+**Timestep Synchronization:**
+The physics timestep comes from `FixedStepSimulationSystemGroup.Timestep`, which is synchronized with `TimeState.FixedDeltaTime` by `GameplayFixedStepSyncSystem`. Unity Physics `StepPhysicsWorld` system reads `SystemAPI.Time.DeltaTime`, which uses this fixed timestep.
+
+**System Dependencies:**
+- `PhysicsStepConfigSystem` must run before any physics systems (runs in `TimeSystemGroup`)
+- `CustomMassSyncSystem` requires `PhysicsStep` singleton (created by `PhysicsStepConfigSystem`)
+- `CustomMassSyncSystem` requires `PhysicsMass` component (created by `PhysicsBodyBootstrapSystem` or manually)
+- Systems reading synced `PhysicsMass` must run after `CustomMassSyncSystem`
 
 ### PhysicsConfig Singleton
 
@@ -142,6 +176,114 @@ ecb.AddComponent(entity, new RequiresPhysics
 ecb.AddBuffer<PhysicsCollisionEventElement>(entity);
 ```
 
+### Adding Physics with Mass Sync
+
+For entities that need dynamic mass properties synced to Unity Physics:
+
+```csharp
+// Step 1: Add RequiresPhysics (triggers PhysicsBodyBootstrapSystem)
+ecb.AddComponent(entity, new RequiresPhysics
+{
+    Priority = 100,
+    Flags = PhysicsInteractionFlags.Collidable
+});
+
+// Step 2: Add MassComponent with initial mass properties
+ecb.AddComponent(entity, new MassComponent
+{
+    Mass = 1000f, // kg
+    CenterOfMass = float3.zero, // Local space
+    InertiaTensor = new float3(100f, 100f, 100f) // Diagonalized (Ixx, Iyy, Izz)
+});
+
+// Step 3: PhysicsBodyBootstrapSystem will add PhysicsCollider, PhysicsVelocity, PhysicsMass
+// Step 4: CustomMassSyncSystem will sync MassComponent → PhysicsMass each tick
+```
+
+**Important:** `CustomMassSyncSystem` requires both `MassComponent` and `PhysicsMass` to be present. `PhysicsBodyBootstrapSystem` creates `PhysicsMass` for entities with `RequiresPhysics`, but you must add `MassComponent` separately if you want mass sync.
+
+### Updating Mass Properties
+
+When mass changes (e.g., cargo loaded/unloaded, fuel consumed):
+
+```csharp
+// Option 1: Direct update (will sync next tick)
+var mass = SystemAPI.GetComponentRW<MassComponent>(entity);
+mass.ValueRW.Mass = newMass;
+mass.ValueRW.InertiaTensor = newInertiaTensor;
+
+// Option 2: Mark as dirty (optional, for tracking)
+ecb.AddComponent<MassDirtyTag>(entity);
+// CustomMassSyncSystem removes MassDirtyTag after sync
+```
+
+**Note:** `MassDirtyTag` is optional - `CustomMassSyncSystem` syncs all entities with `MassComponent` each tick regardless. Use `MassDirtyTag` only if you need to track which entities had mass changes.
+
+### Reading Synced Physics Mass
+
+After `CustomMassSyncSystem` runs, you can read the synced `PhysicsMass`:
+
+```csharp
+// In a system that runs after CustomMassSyncSystem
+foreach (var (mass, physMass) in 
+    SystemAPI.Query<RefRO<MassComponent>, RefRO<PhysicsMass>>())
+{
+    // Read synced inverse mass
+    float inverseMass = physMass.ValueRO.InverseMass;
+    float actualMass = 1f / inverseMass; // Reconstruct if needed
+    
+    // Read synced inverse inertia (diagonal)
+    float3 inverseInertia = physMass.ValueRO.InverseInertia;
+    
+    // Read center of mass offset
+    float3 comOffset = physMass.ValueRO.Transform.pos;
+}
+```
+
+### Integration with PhysicsBodyBootstrapSystem
+
+`PhysicsBodyBootstrapSystem` creates kinematic physics bodies. For dynamic bodies with mass sync:
+
+```csharp
+// After PhysicsBodyBootstrapSystem creates kinematic body:
+// 1. Remove kinematic PhysicsMass
+ecb.RemoveComponent<PhysicsMass>(entity);
+
+// 2. Add MassComponent (will be synced by CustomMassSyncSystem)
+ecb.AddComponent(entity, new MassComponent
+{
+    Mass = 1000f,
+    CenterOfMass = float3.zero,
+    InertiaTensor = new float3(100f, 100f, 100f)
+});
+
+// 3. CustomMassSyncSystem will create PhysicsMass from MassComponent
+// Note: CustomMassSyncSystem only updates existing PhysicsMass,
+// so you may need to add it manually or modify the system
+```
+
+**Current Limitation:** `CustomMassSyncSystem` only updates existing `PhysicsMass` components. If you need to create `PhysicsMass` from `MassComponent`, you'll need to add it manually or extend the system.
+
+### Overriding Solver Iterations Per Material
+
+Default solver iterations are 2 (configured in `PhysicsStepConfigSystem`). To override per material:
+
+```csharp
+// Option 1: Store iteration count in PhysicsMaterial.CustomTags
+var material = new PhysicsMaterial
+{
+    Friction = 0.5f,
+    Restitution = 0.1f,
+    CustomTags = (uint)myIterationCount // Store in tags
+};
+
+// Option 2: Create custom system to adjust PhysicsStep per entity
+// (Requires modifying PhysicsOptimizationSystem or creating new system)
+// This is advanced and not currently implemented
+```
+
+**Note:** Per-material solver iteration override is not currently implemented. The default of 2 iterations applies globally. For precision-critical collisions, consider using higher default iterations or implementing custom collision response.
+
 ### Reading Collision Events
 
 ```csharp
@@ -198,6 +340,133 @@ if (PhysicsRewindHelper.IsPostRewindSettleFrame(in config, tick))
 - Buildings use box colliders
 - Units use capsule colliders
 - Only enable collision events when needed
+- Use compound colliders with primitive children (sphere, capsule, box)
+- Dynamic mesh colliders are prohibitive beyond ~10k active bodies
+
+### Mass Component Sync
+
+Entities with `MassComponent` are automatically synced to `PhysicsMass` each tick via `CustomMassSyncSystem`:
+
+```csharp
+// Add MassComponent to entity
+ecb.AddComponent(entity, new MassComponent
+{
+    Mass = 1000f, // kg
+    CenterOfMass = float3.zero,
+    InertiaTensor = new float3(100f, 100f, 100f) // Diagonalized
+});
+
+// Add MassDirtyTag when mass changes (triggers recalculation)
+ecb.AddComponent<MassDirtyTag>(entity);
+```
+
+The system calculates:
+- `InverseMass = 1f / math.max(0.0001f, mass.Mass)`
+- `InverseInertia = 1f / math.max(inertia, minInertia)` (diagonal)
+
+### Static Geometry Aggregation
+
+For large-scale simulations, aggregate static geometry into chunked colliders:
+- Combine environment colliders into 64×64m grid chunks
+- One `PhysicsCollider` per grid cell = millions fewer broad-phase nodes
+- Reduces broad-phase pair count from O(n²) to O(n log n)
+
+### Broad-Phase Culling
+
+Manually partition colliders by simulation region/planet cell:
+- Only include active regions in `CollisionWorld`
+- Use spatial partitioning to exclude inactive regions
+- Reduces collision detection overhead for large worlds
+
+### Solver Iteration Tuning
+
+Default solver iterations: 2 (configured in `PhysicsStepConfigSystem`)
+
+Override per material for precision where needed:
+```csharp
+// In PhysicsMaterial.CustomTags, store iteration count
+// Custom systems can read tags and adjust solver iterations
+```
+
+### Extreme Mass Ratios
+
+Unity Physics solver can lose precision with 10⁸:1 mass ratios (planets ↔ probes).
+
+PureDOTS mitigates this using tiered tick domains:
+- **Micro-physics** (probes, debris) → Unity Physics discrete solver
+- **Macro interactions** (planets) → Analytic orbit/energy model
+
+This separation prevents numeric stability edge cases.
+
+## Quick Reference
+
+### Common Integration Patterns
+
+**Pattern 1: Entity needs physics with dynamic mass**
+```csharp
+// 1. Add RequiresPhysics (triggers bootstrap)
+ecb.AddComponent(entity, new RequiresPhysics { Flags = PhysicsInteractionFlags.Collidable });
+
+// 2. Add MassComponent
+ecb.AddComponent(entity, new MassComponent { Mass = 1000f, /* ... */ });
+
+// 3. PhysicsBodyBootstrapSystem creates PhysicsMass (kinematic)
+// 4. CustomMassSyncSystem syncs MassComponent → PhysicsMass each tick
+```
+
+**Pattern 2: Update mass when cargo changes**
+```csharp
+// In cargo system:
+var mass = SystemAPI.GetComponentRW<MassComponent>(entity);
+mass.ValueRW.Mass = CalculateTotalMass(cargo);
+ecb.AddComponent<MassDirtyTag>(entity); // Optional tracking
+```
+
+**Pattern 3: Read synced mass in collision response**
+```csharp
+// System runs after CustomMassSyncSystem
+var massLookup = SystemAPI.GetComponentLookup<PhysicsMass>(true);
+var inverseMass = massLookup[entity].InverseMass;
+```
+
+**Pattern 4: Check if mass sync is active**
+```csharp
+// Query for entities with both components
+var hasMassSync = SystemAPI.HasComponent<MassComponent>(entity) && 
+                  SystemAPI.HasComponent<PhysicsMass>(entity);
+```
+
+### System Query Patterns
+
+**Query entities with mass sync:**
+```csharp
+// Entities with both MassComponent and PhysicsMass
+foreach (var (mass, physMass) in 
+    SystemAPI.Query<RefRO<MassComponent>, RefRW<PhysicsMass>>())
+{
+    // Mass is synced by CustomMassSyncSystem
+}
+```
+
+**Query entities needing mass update:**
+```csharp
+// Entities with MassDirtyTag (optional tracking)
+foreach (var (_, entity) in 
+    SystemAPI.Query<RefRO<MassDirtyTag>>().WithEntityAccess())
+{
+    // Mass was recently changed
+}
+```
+
+**Query physics bodies:**
+```csharp
+// All entities with physics
+foreach (var (collider, transform) in 
+    SystemAPI.Query<RefRO<PhysicsCollider>, RefRO<LocalTransform>>())
+{
+    // Has physics collider
+}
+```
 
 ## Debugging
 
@@ -216,9 +485,33 @@ Authoring components draw wire gizmos when selected:
 - Blue: Godgame unit colliders
 - Orange: Godgame building colliders
 
+### Verify Mass Sync
+
+```csharp
+// Check if PhysicsMass matches MassComponent
+var mass = SystemAPI.GetComponent<MassComponent>(entity);
+var physMass = SystemAPI.GetComponent<PhysicsMass>(entity);
+float expectedInverseMass = 1f / math.max(0.0001f, mass.Mass);
+bool isSynced = math.abs(physMass.InverseMass - expectedInverseMass) < 0.001f;
+```
+
+### Verify Deterministic Configuration
+
+```csharp
+// Check PhysicsStep singleton
+var physicsStep = SystemAPI.GetSingleton<PhysicsStep>();
+bool isDeterministic = physicsStep.SimulationType == SimulationType.UnityPhysics &&
+                       physicsStep.SolverIterationCount == 2 &&
+                       physicsStep.SynchronizeCollisionWorld == 0;
+```
+
 ## System Groups
 
 ```
+TimeSystemGroup
+├── TimeTickSystem
+└── PhysicsStepConfigSystem (configures PhysicsStep singleton)
+
 SimulationSystemGroup
 ├── PhysicsPreSyncSystemGroup (before physics)
 │   ├── PhysicsEventClearSystem
@@ -226,6 +519,8 @@ SimulationSystemGroup
 │   └── PhysicsSyncSystem
 ├── PhysicsSystemGroup (physics step)
 │   ├── PhysicsInitializeGroup
+│   ├── CustomMassSyncSystem (syncs MassComponent → PhysicsMass)
+│   ├── PhysicsOptimizationSystem (solver tuning, optimizations)
 │   ├── PhysicsSimulationGroup
 │   └── ExportPhysicsWorld
 └── PhysicsPostEventSystemGroup (after physics)
@@ -233,6 +528,108 @@ SimulationSystemGroup
     ├── PhysicsResultSyncSystem
     ├── Space4XCollisionResponseSystem
     └── GodgameCollisionResponseSystem
+```
+
+## Integration Examples
+
+### Example: Vessel with Cargo Mass
+
+```csharp
+[BurstCompile]
+[UpdateInGroup(typeof(GameplaySystemGroup))]
+public partial struct VesselCargoMassSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        var ecb = new EntityCommandBuffer(Allocator.Temp);
+        
+        foreach (var (cargo, mass, entity) in 
+            SystemAPI.Query<RefRO<CargoComponent>, RefRW<MassComponent>>()
+                .WithEntityAccess())
+        {
+            // Calculate total mass from cargo
+            float cargoMass = CalculateCargoMass(cargo.ValueRO);
+            float baseMass = 5000f; // Base vessel mass
+            float totalMass = baseMass + cargoMass;
+            
+            // Update mass component
+            mass.ValueRW.Mass = totalMass;
+            
+            // Recalculate inertia based on cargo distribution
+            mass.ValueRW.InertiaTensor = CalculateInertia(totalMass, cargo.ValueRO);
+            
+            // Mark as dirty (optional)
+            ecb.AddComponent<MassDirtyTag>(entity);
+        }
+        
+        ecb.Playback(state.EntityManager);
+        ecb.Dispose();
+    }
+    
+    private static float CalculateCargoMass(in CargoComponent cargo) { /* ... */ }
+    private static float3 CalculateInertia(float mass, in CargoComponent cargo) { /* ... */ }
+}
+```
+
+### Example: Reading Physics Mass for Collision Response
+
+```csharp
+[BurstCompile]
+[UpdateInGroup(typeof(PhysicsPostEventSystemGroup))]
+public partial struct CollisionResponseSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        var massLookup = SystemAPI.GetComponentLookup<PhysicsMass>(true);
+        
+        foreach (var (events, entity) in 
+            SystemAPI.Query<DynamicBuffer<CollisionEvent>>()
+                .WithEntityAccess())
+        {
+            for (int i = 0; i < events.Length; i++)
+            {
+                var evt = events[i];
+                var otherEntity = evt.GetOtherEntity(entity);
+                
+                // Read synced physics mass
+                if (massLookup.HasComponent(entity) && massLookup.HasComponent(otherEntity))
+                {
+                    var myMass = massLookup[entity];
+                    var otherMass = massLookup[otherEntity];
+                    
+                    // Use inverse mass for collision response
+                    float myInverseMass = myMass.InverseMass;
+                    float otherInverseMass = otherMass.InverseMass;
+                    
+                    // Calculate collision response...
+                }
+            }
+        }
+    }
+}
+```
+
+### Example: System Ordering for Mass-Dependent Physics
+
+When creating systems that depend on synced mass:
+
+```csharp
+// ✅ CORRECT: Run after CustomMassSyncSystem
+[BurstCompile]
+[UpdateInGroup(typeof(Unity.Physics.Systems.PhysicsSystemGroup))]
+[UpdateAfter(typeof(CustomMassSyncSystem))]
+[UpdateBefore(typeof(Unity.Physics.Systems.PhysicsSimulationGroup))]
+public partial struct MyMassDependentSystem : ISystem
+{
+    // Can safely read synced PhysicsMass here
+}
+
+// ❌ WRONG: Runs before mass sync
+[UpdateBefore(typeof(CustomMassSyncSystem))]
+public partial struct MyMassDependentSystem : ISystem
+{
+    // PhysicsMass not yet synced - will read stale data
+}
 ```
 
 ## Migration Notes
@@ -250,4 +647,14 @@ Movement systems remain authoritative:
 - `VillagerMovementSystem` still controls villager positions
 - Physics provides collision feedback via `AvoidancePush`
 - Movement systems read `AvoidancePush` and adjust steering
+
+### Migrating to Mass Sync
+
+If you have existing entities with `PhysicsMass` that need mass sync:
+
+1. **Add `MassComponent`** with current mass values
+2. **Ensure `PhysicsMass` exists** (created by `PhysicsBodyBootstrapSystem` or manually)
+3. **`CustomMassSyncSystem` will sync automatically** each tick
+4. **Update `MassComponent`** when mass changes (cargo, fuel, etc.)
+5. **Remove manual `PhysicsMass` updates** - let `CustomMassSyncSystem` handle it
 

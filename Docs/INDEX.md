@@ -24,6 +24,10 @@ Documentation is organized by responsibility:
 - `Docs/TruthSources/RuntimeLifecycle_TruthSource.md`
 - `Docs/TruthSources/PlatformPerformance_TruthSource.md`
 
+## Maintenance & Quality
+
+- [REDUNDANCY_SWEEP_GUIDE.md](../../Docs/REDUNDANCY_SWEEP_GUIDE.md) - Redundancy detection and consolidation guide for agents
+
 ## Best Practices ⭐ NEW
 
 **Implementation-friendly guides for DOTS 1.4.x, C# 9, Unity Input System, and performance optimization:**
@@ -39,6 +43,14 @@ Documentation is organized by responsibility:
 - [BestPractices/EntityCommandBuffers.md](BestPractices/EntityCommandBuffers.md) - ECB patterns and timing
 - [BestPractices/ComponentDesignPatterns.md](BestPractices/ComponentDesignPatterns.md) - Component sizing and design
 - [BestPractices/DeterminismChecklist.md](BestPractices/DeterminismChecklist.md) - Deterministic code checklist
+
+## Advanced Features ⭐ NEW
+
+**Integration guides for the 15 advanced features:**
+
+- [Guides/AdvancedFeaturesGuide.md](Guides/AdvancedFeaturesGuide.md) - **START HERE** - Complete integration guide with examples
+- [Guides/AdvancedFeaturesAPI.md](Guides/AdvancedFeaturesAPI.md) - API reference for all advanced features
+- [ScalabilityPath.md](ScalabilityPath.md) - Long-term scalability architecture
 
 See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding standards (P0-P17 patterns)
 
@@ -68,6 +80,9 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - Core Systems: Registry, StateMachine, Time Management
 - Generic Game Systems: GuildCurriculum, AnchoredCharacters, Celestial, BorderPatrol, Buffs, Skills, DualLeadershipPattern, EnvironmentalQuestsAndLootVectors, etc.
 - See: [PureDOTS Framework Documentation](../Packages/com.moni.puredots/Documentation/README.md)
+
+**Concepts (game-agnostic)**:
+- [Docs/Concepts/Learning_Profiles.md](Concepts/Learning_Profiles.md) - Profile-driven stimuli reactions, lifespan learning/knowledge model, habit formation, and scenario examples
 
 **Godgame Design Notes** (moved to `Assets/Projects/Godgame/Docs/Systems/`):
 - Radical/Rebellion Systems, Miracles, Villagers, Social Dynamics
@@ -100,6 +115,8 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 
 ## AI Documentation
 - `Docs/Guides/AI_Integration_Guide.md` - Comprehensive guide for integrating entities with AI pipeline (includes advanced behavior recipes)
+- `Docs/Guides/Bridge_System_Usage_Guide.md` ⚠️ **NEW** - Practical guide for using the Mind-Body ECS bridge system (creating agents, sending intents, receiving telemetry)
+- `Docs/AI/Hybrid_ECS_Responsibility_Map.md` ⚠️ **NEW** - Architecture documentation for multi-ECS ownership boundaries and communication patterns
 - `Docs/AI_Gap_Audit.md` - Gap analysis and catalog of remaining AI work
 - `Docs/AI_Backlog.md` - Prioritized implementation backlog (AI-001 through AI-008)
 - `Docs/AI_Validation_Plan.md` - Testing and metrics framework for AI systems
@@ -119,6 +136,10 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - `Docs/Guides/GettingStarted.md`
 - `Docs/Streaming_Content.md` - Streaming section content references and preload flow
 - `Docs/Guides/PhysicsValidation.md` - Physics validation scenarios and sample parity
+
+## Combat System ⭐ NEW
+- `Docs/Guides/CombatSystemIntegration.md` - **Combat Skill Gating System integration guide** (how to use combat system)
+- `Docs/Guides/CombatSystemAPI.md` - **Combat System API reference** (complete component/system API)
 
 ## QA & Testing
 - `Docs/QA/IntegrationTestChecklist.md`

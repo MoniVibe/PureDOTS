@@ -52,6 +52,9 @@ namespace PureDOTS.Runtime.Bands
         public float3 Anchor;
         public float Stability;
         public uint LastSolveTick;
+        public float Cohesion;      // 0-1, average alignment of members
+        public float Morale;        // Group morale (0-1)
+        public ushort FormationId;  // Unique formation identifier
     }
 
     public struct BandMember : IBufferElementData
@@ -64,5 +67,35 @@ namespace PureDOTS.Runtime.Bands
     {
         public byte DesiredAction;
         public float IntentWeight;
+    }
+
+    /// <summary>
+    /// Command issued to a formation from strategic layer.
+    /// </summary>
+    public struct FormationCommand : IComponentData
+    {
+        public ushort CommandId;  // Move, Attack, Hold, Regroup
+        public float3 TargetPos;
+        public float3 Facing;
+    }
+
+    /// <summary>
+    /// Member of a formation with desired offset and alignment.
+    /// </summary>
+    public struct FormationMember : IComponentData
+    {
+        public Entity FormationEntity;
+        public float3 Offset;      // Desired offset from formation center
+        public float Alignment;    // Adherence to group (0-1)
+    }
+
+    /// <summary>
+    /// Leader influence field that radiates cohesion and morale bonuses.
+    /// </summary>
+    public struct CommandAura : IComponentData
+    {
+        public float Radius;
+        public float CohesionBonus;
+        public float MoraleBonus;
     }
 }

@@ -19,6 +19,7 @@ namespace PureDOTS.Runtime.Economy.Markets
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
         }
 
         [BurstCompile]

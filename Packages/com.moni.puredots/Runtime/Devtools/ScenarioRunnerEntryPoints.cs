@@ -316,5 +316,43 @@ namespace PureDOTS.Runtime.Devtools
             }
             return false;
         }
+
+        /// <summary>
+        /// Loads a scenario v2 file with version detection and migration.
+        /// Invoked via -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.LoadScenarioV2
+        /// Expected args: --scenario <path to v2 JSON>
+        /// </summary>
+        public static void LoadScenarioV2()
+        {
+            var args = System.Environment.GetCommandLineArgs();
+            var scenarioPath = ReadArg(args, "--scenario");
+
+            if (string.IsNullOrWhiteSpace(scenarioPath))
+            {
+                Debug.LogWarning("LoadScenarioV2: missing --scenario <path>");
+                return;
+            }
+
+            if (!File.Exists(scenarioPath))
+            {
+                Debug.LogError($"LoadScenarioV2: scenario not found at {scenarioPath}");
+                return;
+            }
+
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+            {
+                Debug.LogError("LoadScenarioV2: no active world found");
+                return;
+            }
+
+            if (!PureDOTS.Runtime.Devtools.Scenario.ScenarioLoaderV2.Load(scenarioPath, world, out var error))
+            {
+                Debug.LogError($"LoadScenarioV2: failed to load scenario: {error}");
+                return;
+            }
+
+            Debug.Log($"LoadScenarioV2: successfully loaded scenario from {scenarioPath}");
+        }
     }
 }

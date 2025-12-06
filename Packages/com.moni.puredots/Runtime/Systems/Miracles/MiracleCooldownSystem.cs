@@ -22,6 +22,7 @@ namespace PureDOTS.Systems.Miracles
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
             _controller = new TimeAwareController(
                 TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
@@ -45,7 +46,8 @@ namespace PureDOTS.Systems.Miracles
                 return;
             }
 
-            float deltaTime = SystemAPI.Time.DeltaTime;
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+            float deltaTime = tickTimeState.FixedDeltaTime;
 
             // Update all cooldown buffers
             var bufferLookup = SystemAPI.GetBufferLookup<MiracleCooldown>(false);

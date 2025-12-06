@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
@@ -316,6 +317,15 @@ namespace PureDOTS.Authoring
                     CurrentTarget = Entity.Null
                 });
             }
+
+            // Initialize BehaviorProfile with defaults (can be derived from MoralProfile later)
+            AddComponent(entity, new BehaviorProfile
+            {
+                Discipline = 0.7f,  // Default moderate discipline
+                Courage = 0.6f,      // Default moderate courage
+                Chaos = 0.2f,         // Default low chaos
+                Zeal = 0.5f          // Default moderate zeal
+            });
 
             AddComponent(entity, new VillagerAnimationState
             {

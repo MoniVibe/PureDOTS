@@ -20,6 +20,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
         }

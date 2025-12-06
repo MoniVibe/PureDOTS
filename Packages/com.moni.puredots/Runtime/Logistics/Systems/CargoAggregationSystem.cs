@@ -2,9 +2,11 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Economy.Resources;
 using PureDOTS.Runtime.Logistics.Blobs;
 using PureDOTS.Runtime.Logistics.Components;
+using PureDOTS.Runtime.Physics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Logistics.Systems
 {
@@ -24,6 +26,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ItemSpecCatalog>();
             _capacityLookup = state.GetComponentLookup<HaulerCapacity>(false);
             _cargoBufferLookup = state.GetBufferLookup<CargoItem>(false);
@@ -123,6 +126,27 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 valueState.ValueRW.TotalValue = totalValue;
                 valueState.ValueRW.RaidAttractiveness = totalValue * 0.001f; // Simple scaling, can be enhanced
                 valueState.ValueRW.EscortPriority = totalValue * 0.001f; // Simple scaling, can be enhanced
+
+                // Mark mass as dirty for hierarchical aggregation
+                if (SystemAPI.HasComponent<MassComponent>(entity))
+                {
+                    var mass = SystemAPI.GetComponent<MassComponent>(entity);
+                    mass.Mass = totalMass;
+                    SystemAPI.SetComponent(entity, mass);
+                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                    SystemAPI.AddComponent<CargoChangedTag>(entity);
+                }
+                else if (totalMass > 0f)
+                {
+                    SystemAPI.AddComponent(entity, new MassComponent
+                    {
+                        Mass = totalMass,
+                        CenterOfMass = float3.zero,
+                        InertiaTensor = float3.zero
+                    });
+                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                    SystemAPI.AddComponent<CargoChangedTag>(entity);
+                }
             }
         }
 

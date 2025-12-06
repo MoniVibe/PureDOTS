@@ -29,11 +29,18 @@ namespace PureDOTS.Runtime.Telemetry
 
     /// <summary>
     /// Singleton tagging the active telemetry stream with versioning for change detection.
+    /// Extended with time budget metrics for chrono-profiling.
     /// </summary>
     public struct TelemetryStream : IComponentData
     {
         public uint Version;
         public uint LastTick;
+
+        // Time budget metrics (chrono-profiling)
+        public float RealTimeMs;
+        public float SimTimeMs;
+        public float CompressionFactor; // ΔSim / ΔReal
+        public float DriftMs; // Drift across worlds
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Entities;
@@ -14,6 +15,7 @@ namespace PureDOTS.Systems.Space
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<MiningLoopState>();
+            state.RequireForUpdate<TickTimeState>();
         }
 
         [BurstCompile]
@@ -25,7 +27,8 @@ namespace PureDOTS.Systems.Space
                 return;
             }
 
-            var deltaTime = SystemAPI.Time.DeltaTime;
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+            var deltaTime = tickTimeState.FixedDeltaTime;
 
             foreach (var (loopStateRW, harvesterConfig, loopConfig) in SystemAPI
                          .Query<RefRW<MiningLoopState>, RefRO<HarvesterConfig>, RefRO<MiningLoopConfig>>())

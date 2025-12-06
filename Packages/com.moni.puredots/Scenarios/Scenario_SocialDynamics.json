@@ -1,0 +1,47 @@
+{
+  "name": "SocialDynamics_100kAgents",
+  "description": "Test scenario for large-scale social dynamics with 100k agents",
+  "agentCount": 100000,
+  "aggregateCount": 1000,
+  "duration": 300,
+  "objectives": [
+    {
+      "type": "TrustConvergence",
+      "description": "Verify trust networks converge over time",
+      "targetTrustVariance": 0.05,
+      "timeLimit": 180
+    },
+    {
+      "type": "CulturalPropagation",
+      "description": "Verify cultural signals propagate through population",
+      "targetPropagationRate": 0.1,
+      "timeLimit": 240
+    },
+    {
+      "type": "CooperativeFormation",
+      "description": "Verify cooperative groups form based on trust",
+      "targetCooperationRate": 0.3,
+      "timeLimit": 300
+    },
+    {
+      "type": "Performance",
+      "description": "Verify performance target: < 2ms per 100k entities",
+      "targetFrameTime": 2.0,
+      "timeLimit": 300
+    }
+  ],
+  "initialConditions": {
+    "baseTrust": 0.5,
+    "baseReputation": 0.5,
+    "cooperationWeight": 0.5,
+    "competitionWeight": 0.3
+  },
+  "metrics": [
+    "Social.Trust.Average",
+    "Social.Reputation.Average",
+    "Social.Morale.Average",
+    "Social.Cooperation.Count",
+    "Social.Message.Count"
+  ]
+}
+

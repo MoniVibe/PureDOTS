@@ -24,6 +24,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
             _topDynastyEntityLookup = state.GetBufferLookup<TopDynastyEntity>(false);
             _topDynastyBalanceLookup = state.GetBufferLookup<TopDynastyBalance>(false);
             _bankruptEntityLookup = state.GetBufferLookup<BankruptEntity>(false);
