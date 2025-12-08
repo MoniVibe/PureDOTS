@@ -124,8 +124,7 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -289,8 +288,12 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -414,8 +417,12 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -784,8 +791,12 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -1239,8 +1250,12 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -1597,8 +1612,12 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -1763,9 +1782,7 @@ namespace PureDOTS.Systems
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var historySettings = SystemAPI.GetSingleton<HistorySettings>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -1837,7 +1854,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
             if (rewindState.Mode != RewindMode.Playback)
             {
                 return;

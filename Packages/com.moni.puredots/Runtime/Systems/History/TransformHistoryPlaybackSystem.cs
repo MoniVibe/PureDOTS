@@ -25,7 +25,10 @@ namespace PureDOTS.Systems.History
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
             if (rewindState.Mode != RewindMode.Playback)
             {
                 return;

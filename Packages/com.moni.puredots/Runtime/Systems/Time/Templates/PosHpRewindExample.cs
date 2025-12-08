@@ -62,7 +62,8 @@ namespace PureDOTS.Systems.Time.Templates
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                return;
             if (rewindState.Mode == RewindMode.Playback)
                 return; // Don't advance history when scrubbing
 
@@ -143,7 +144,8 @@ namespace PureDOTS.Systems.Time.Templates
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                return;
             if (rewindState.Mode != RewindMode.Playback)
                 return;
 

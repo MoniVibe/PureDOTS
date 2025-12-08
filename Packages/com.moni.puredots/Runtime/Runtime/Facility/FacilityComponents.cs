@@ -47,66 +47,57 @@ namespace PureDOTS.Runtime.Facility
     /// </summary>
     public static class FacilityRecipes
     {
-        private static FacilityRecipeDef[] _recipes;
-
-        static FacilityRecipes()
-        {
-            _recipes = new FacilityRecipeDef[3];
-
-            // Lumberyard: Wood -> Planks
-            _recipes[0] = new FacilityRecipeDef
-            {
-                RecipeId = 0,
-                FacilityArchetypeId = FacilityArchetypeId.Lumberyard,
-                InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Wood },
-                InputAmounts = new FixedList32Bytes<float> { 10f },
-                OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.Planks },
-                OutputAmounts = new FixedList32Bytes<float> { 5f },
-                WorkRequired = 5f // 5 seconds
-            };
-
-            // Smelter: Ore -> Ingots
-            _recipes[1] = new FacilityRecipeDef
-            {
-                RecipeId = 1,
-                FacilityArchetypeId = FacilityArchetypeId.Smelter,
-                InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ore },
-                InputAmounts = new FixedList32Bytes<float> { 10f },
-                OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ingots },
-                OutputAmounts = new FixedList32Bytes<float> { 5f },
-                WorkRequired = 8f // 8 seconds
-            };
-
-            // Refinery: Ore -> RefinedOre (for Space4X)
-            _recipes[2] = new FacilityRecipeDef
-            {
-                RecipeId = 2,
-                FacilityArchetypeId = FacilityArchetypeId.Refinery,
-                InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ore },
-                InputAmounts = new FixedList32Bytes<float> { 10f },
-                OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.RefinedOre },
-                OutputAmounts = new FixedList32Bytes<float> { 8f },
-                WorkRequired = 6f // 6 seconds
-            };
-        }
-
         /// <summary>
         /// Gets a recipe by facility archetype ID.
         /// Returns the first recipe for that archetype (assumes 1 recipe per archetype for demo).
         /// </summary>
         public static bool TryGetRecipe(FacilityArchetypeId archetypeId, out FacilityRecipeDef recipe)
         {
-            for (int i = 0; i < _recipes.Length; i++)
+            switch (archetypeId)
             {
-                if (_recipes[i].FacilityArchetypeId == archetypeId)
-                {
-                    recipe = _recipes[i];
+                case FacilityArchetypeId.Lumberyard:
+                    recipe = new FacilityRecipeDef
+                    {
+                        RecipeId = 0,
+                        FacilityArchetypeId = FacilityArchetypeId.Lumberyard,
+                        InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Wood },
+                        InputAmounts = new FixedList32Bytes<float> { 10f },
+                        OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.Planks },
+                        OutputAmounts = new FixedList32Bytes<float> { 5f },
+                        WorkRequired = 5f
+                    };
                     return true;
-                }
-            }
 
-            recipe = default;
-            return false;
+                case FacilityArchetypeId.Smelter:
+                    recipe = new FacilityRecipeDef
+                    {
+                        RecipeId = 1,
+                        FacilityArchetypeId = FacilityArchetypeId.Smelter,
+                        InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ore },
+                        InputAmounts = new FixedList32Bytes<float> { 10f },
+                        OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ingots },
+                        OutputAmounts = new FixedList32Bytes<float> { 5f },
+                        WorkRequired = 8f
+                    };
+                    return true;
+
+                case FacilityArchetypeId.Refinery:
+                    recipe = new FacilityRecipeDef
+                    {
+                        RecipeId = 2,
+                        FacilityArchetypeId = FacilityArchetypeId.Refinery,
+                        InputResourceIds = new FixedList32Bytes<int> { ResourceIds.Ore },
+                        InputAmounts = new FixedList32Bytes<float> { 10f },
+                        OutputResourceIds = new FixedList32Bytes<int> { ResourceIds.RefinedOre },
+                        OutputAmounts = new FixedList32Bytes<float> { 8f },
+                        WorkRequired = 6f
+                    };
+                    return true;
+
+                default:
+                    recipe = default;
+                    return false;
+            }
         }
 
         /// <summary>
@@ -114,17 +105,18 @@ namespace PureDOTS.Runtime.Facility
         /// </summary>
         public static bool TryGetRecipeById(int recipeId, out FacilityRecipeDef recipe)
         {
-            for (int i = 0; i < _recipes.Length; i++)
+            switch (recipeId)
             {
-                if (_recipes[i].RecipeId == recipeId)
-                {
-                    recipe = _recipes[i];
-                    return true;
-                }
+                case 0:
+                    return TryGetRecipe(FacilityArchetypeId.Lumberyard, out recipe);
+                case 1:
+                    return TryGetRecipe(FacilityArchetypeId.Smelter, out recipe);
+                case 2:
+                    return TryGetRecipe(FacilityArchetypeId.Refinery, out recipe);
+                default:
+                    recipe = default;
+                    return false;
             }
-
-            recipe = default;
-            return false;
         }
     }
 }

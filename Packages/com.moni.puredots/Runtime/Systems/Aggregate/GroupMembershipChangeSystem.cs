@@ -24,7 +24,10 @@ namespace PureDOTS.Systems.Aggregate
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
 
             // Skip if paused or rewinding
             if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)

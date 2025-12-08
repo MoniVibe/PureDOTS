@@ -24,6 +24,7 @@ namespace PureDOTS.Authoring
                 {
                     EnableGodgame = true,
                     EnableSpace4x = true,
+                    EnableEconomy = false,
                     GodgameSeed = 12345u,
                     Space4xSeed = 67890u,
                     VillageCount = 1,
@@ -42,6 +43,7 @@ namespace PureDOTS.Authoring
             {
                 EnableGodgame = def.EnableGodgame,
                 EnableSpace4x = def.EnableSpace4x,
+                EnableEconomy = def.EnableEconomy,
                 GodgameSeed = def.GodgameSeed > 0 ? def.GodgameSeed : 12345u,
                 Space4xSeed = def.Space4xSeed > 0 ? def.Space4xSeed : 67890u,
                 VillageCount = Mathf.Max(0, def.VillageCount),

@@ -97,14 +97,11 @@ namespace PureDOTS.Runtime.Systems.Villagers
                 return;
             }
 
-            var random = new Unity.Mathematics.Random((uint)System.DateTime.Now.Ticks);
             int addedCount = 0;
-
-            foreach (var (villagerId, entity) in SystemAPI.Query<RefRO<VillagerId>>()
-                .WithNone<PureDOTS.Runtime.Rendering.RenderLODData>()
-                .WithEntityAccess())
+            using var entities = _lodQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
             {
-                VillagerLODHelpers.AddLODComponents(state.EntityManager, entity);
+                VillagerLODHelpers.AddLODComponents(state.EntityManager, entities[i]);
                 addedCount++;
             }
 

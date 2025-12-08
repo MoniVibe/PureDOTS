@@ -34,7 +34,10 @@ namespace PureDOTS.Systems.Miracles
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
 
             if (!_controller.TryBegin(timeState, rewindState, out var context))
             {

@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Economy;
+using PureDOTS.Runtime;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -28,8 +29,17 @@ namespace PureDOTS.Systems.Economy
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) ||
+                !demo.IsInitialized ||
+                !demo.EnableEconomy)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused || SystemAPI.GetSingleton<RewindState>().Mode != RewindMode.Record)
+            if (timeState.IsPaused
+                || !SystemAPI.TryGetSingleton<RewindState>(out var rewindState)
+                || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

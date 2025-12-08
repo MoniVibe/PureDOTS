@@ -42,7 +42,10 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
 
             // Only playback during Playback or CatchUp mode
             if (rewindState.Mode != RewindMode.Playback && rewindState.Mode != RewindMode.CatchUp)

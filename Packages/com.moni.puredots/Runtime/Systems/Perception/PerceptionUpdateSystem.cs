@@ -44,7 +44,10 @@ namespace PureDOTS.Systems.Perception
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
             var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
             var scalars = SystemAPI.GetSingleton<SimulationScalars>();
             var overrides = SystemAPI.GetSingleton<SimulationOverrides>();

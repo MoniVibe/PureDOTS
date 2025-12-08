@@ -33,8 +33,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) ||
+                rewindState.Mode != RewindMode.Record)
                 return;
 
             _deathLookup.Update(ref state);

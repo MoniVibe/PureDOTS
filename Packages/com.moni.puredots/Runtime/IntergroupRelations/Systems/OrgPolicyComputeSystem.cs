@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
+using Unity.Collections;
 
 namespace PureDOTS.Runtime.IntergroupRelations
 {
@@ -22,10 +23,17 @@ namespace PureDOTS.Runtime.IntergroupRelations
             
             var currentTick = timeState.Tick;
 
-            foreach (var (relation, entity) in SystemAPI.Query<RefRO<OrgRelation>>()
-                .WithAll<OrgRelationTag>()
-                .WithEntityAccess())
+            var query = SystemAPI.QueryBuilder()
+                .WithAll<OrgRelation, OrgRelationTag>()
+                .Build();
+
+            using var entities = query.ToEntityArray(Allocator.Temp);
+
+            for (int i = 0; i < entities.Length; i++)
             {
+                var entity = entities[i];
+                var relation = SystemAPI.GetComponent<OrgRelation>(entity);
+
                 // Check if policy state exists, create if not
                 if (!SystemAPI.HasComponent<OrgPolicyState>(entity))
                 {
@@ -35,8 +43,8 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 var policy = SystemAPI.GetComponentRW<OrgPolicyState>(entity);
 
                 // Compute interaction masks from relation kind and treaties
-                var maskAtoB = ComputeInteractionMask(relation.ValueRO.Kind, relation.ValueRO.Treaties, true);
-                var maskBtoA = ComputeInteractionMask(relation.ValueRO.Kind, relation.ValueRO.Treaties, false);
+                var maskAtoB = ComputeInteractionMask(relation.Kind, relation.Treaties, true);
+                var maskBtoA = ComputeInteractionMask(relation.Kind, relation.Treaties, false);
 
                 policy.ValueRW.AToBMask = maskAtoB;
                 policy.ValueRW.BToAMask = maskBtoA;

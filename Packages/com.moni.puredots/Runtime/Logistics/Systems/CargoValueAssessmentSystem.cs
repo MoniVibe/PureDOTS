@@ -24,6 +24,8 @@ namespace PureDOTS.Runtime.Logistics.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<DemoScenarioState>();
             _loadStateLookup = state.GetComponentLookup<CargoLoadState>(false);
             _valueStateLookup = state.GetComponentLookup<CargoValueState>(false);
             _routePlanLookup = state.GetComponentLookup<RoutePlan>(false);
@@ -33,8 +35,15 @@ namespace PureDOTS.Runtime.Logistics.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo)
+                || !demo.IsInitialized
+                || !demo.EnableEconomy)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState)
+                || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

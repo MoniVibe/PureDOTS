@@ -10,6 +10,7 @@ namespace PureDOTS.Runtime
     {
         public bool EnableGodgame;
         public bool EnableSpace4x;
+        public bool EnableEconomy;
         public uint GodgameSeed;
         public uint Space4xSeed;
         public int VillageCount;

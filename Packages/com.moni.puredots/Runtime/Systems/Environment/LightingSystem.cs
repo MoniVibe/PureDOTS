@@ -10,16 +10,16 @@ namespace PureDOTS.Systems.Environment
     /// <summary>
     /// Computes lighting state from time of day (sun angle, intensity, color).
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(EnvironmentSystemGroup))]
     public partial struct LightingSystem : ISystem
     {
         private const float DAY_LENGTH_SECONDS = 300f; // 5 minutes per day
+        private EntityArchetype _lightingArchetype;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
+            _lightingArchetype = state.EntityManager.CreateArchetype(typeof(LightingState));
         }
 
         [BurstCompile]
@@ -61,7 +61,7 @@ namespace PureDOTS.Systems.Environment
             }
             else
             {
-                var entity = state.EntityManager.CreateEntity(typeof(LightingState));
+                var entity = state.EntityManager.CreateEntity(_lightingArchetype);
                 state.EntityManager.SetComponentData(entity, new LightingState
                 {
                     SunAngle = sunAngle,

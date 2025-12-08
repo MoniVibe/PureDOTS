@@ -33,10 +33,20 @@ namespace PureDOTS.Systems.Groups
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            var demoState = SystemAPI.GetSingleton<DemoScenarioState>();
+            if (timeState.IsPaused)
+            {
+                return;
+            }
 
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState))
+            {
+                return;
+            }
             {
                 return;
             }

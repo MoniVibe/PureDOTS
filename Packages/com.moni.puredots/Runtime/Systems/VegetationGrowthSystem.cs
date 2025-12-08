@@ -43,7 +43,10 @@ namespace PureDOTS.Systems
             using (s_UpdateVegetationGrowthMarker.Auto())
             {
                 var timeState = SystemAPI.GetSingleton<TimeState>();
-                var rewindState = SystemAPI.GetSingleton<RewindState>();
+                if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                {
+                    return;
+                }
                 var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
                 
                 // Use TimeHelpers to check if we should update (handles pause, rewind, stasis)

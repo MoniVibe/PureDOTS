@@ -71,6 +71,11 @@ namespace PureDOTS.Runtime
         /// Enable Space4X slice (carriers, miners, asteroids).
         /// </summary>
         public bool EnableSpace4x;
+
+        /// <summary>
+        /// Enable economy/logistics systems.
+        /// </summary>
+        public bool EnableEconomy;
     }
 }
 

@@ -26,7 +26,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
             if (targetGroup.Enabled != shouldRun)
             {
@@ -57,7 +60,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
             if (targetGroup.Enabled != shouldRun)
             {
@@ -88,7 +94,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
             if (targetGroup.Enabled != shouldRun)
             {
@@ -119,7 +128,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
             if (targetGroup.Enabled != shouldRun)
             {
@@ -150,7 +162,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.CatchUp;
             if (targetGroup.Enabled != shouldRun)
             {
@@ -179,7 +194,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var shouldRun = rewind.Mode == RewindMode.Record || rewind.Mode == RewindMode.Playback;
             if (targetGroup.Enabled != shouldRun)
             {

@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
 using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -27,30 +28,48 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+            var em = state.EntityManager;
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageOutlook>().WithEntityAccess())
+            var noOutlookQuery = SystemAPI.QueryBuilder()
+                .WithAll<PureDOTS.Runtime.Village.VillageId>()
+                .WithNone<VillageOutlook>()
+                .Build();
+            using (var entities = noOutlookQuery.ToEntityArray(Allocator.Temp))
             {
-                ecb.AddComponent(entity, new VillageOutlook { Flags = VillageOutlookFlags.None });
-            }
-
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillageWorkforcePolicy>().WithEntityAccess())
-            {
-                ecb.AddComponent(entity, new VillageWorkforcePolicy
+                foreach (var e in entities)
                 {
-                    ConscriptionUrgency = 0f,
-                    DefenseUrgency = 0f,
-                    ConscriptionActive = 0
-                });
+                    em.AddComponentData(e, new VillageOutlook { Flags = VillageOutlookFlags.None });
+                }
             }
 
-            foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithNone<VillagerAlignment>().WithEntityAccess())
+            var noPolicyQuery = SystemAPI.QueryBuilder()
+                .WithAll<PureDOTS.Runtime.Village.VillageId>()
+                .WithNone<VillageWorkforcePolicy>()
+                .Build();
+            using (var entities = noPolicyQuery.ToEntityArray(Allocator.Temp))
             {
-                ecb.AddComponent(entity, new VillagerAlignment());
+                foreach (var e in entities)
+                {
+                    em.AddComponentData(e, new VillageWorkforcePolicy
+                    {
+                        ConscriptionUrgency = 0f,
+                        DefenseUrgency = 0f,
+                        ConscriptionActive = 0
+                    });
+                }
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
+            var noAlignmentQuery = SystemAPI.QueryBuilder()
+                .WithAll<PureDOTS.Runtime.Village.VillageId>()
+                .WithNone<VillagerAlignment>()
+                .Build();
+            using (var entities = noAlignmentQuery.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var e in entities)
+                {
+                    em.AddComponentData(e, new VillagerAlignment());
+                }
+            }
 
             var alignments = state.GetComponentLookup<VillagerAlignment>(true);
             var outlooks = state.GetComponentLookup<VillageOutlook>();

@@ -38,7 +38,10 @@ namespace PureDOTS.Systems
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
             var snapshotStateHandle = SystemAPI.GetSingletonRW<WorldSnapshotState>();
             ref var snapshotState = ref snapshotStateHandle.ValueRW;
 

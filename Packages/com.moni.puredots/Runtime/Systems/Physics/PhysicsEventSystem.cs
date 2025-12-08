@@ -46,7 +46,10 @@ namespace PureDOTS.Systems.Physics
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
             var config = SystemAPI.GetSingleton<PhysicsConfig>();
 
             // Skip during rewind playback

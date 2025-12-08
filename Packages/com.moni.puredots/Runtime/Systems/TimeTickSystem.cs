@@ -36,7 +36,10 @@ namespace PureDOTS.Systems
             var timeStateHandle = SystemAPI.GetSingletonRW<TimeState>();
             ref var tickState = ref tickStateHandle.ValueRW;
             ref var timeState = ref timeStateHandle.ValueRW;
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
             var scalars = SystemAPI.GetSingleton<SimulationScalars>();
             var overrides = SystemAPI.GetSingleton<SimulationOverrides>();
 
@@ -115,9 +118,11 @@ namespace PureDOTS.Systems
             legacy.Tick = tickState.Tick;
             legacy.FixedDeltaTime = tickState.FixedDeltaTime;
             legacy.DeltaTime = tickState.FixedDeltaTime;
+            legacy.DeltaSeconds = tickState.FixedDeltaTime;
             legacy.CurrentSpeedMultiplier = tickState.CurrentSpeedMultiplier;
             legacy.IsPaused = tickState.IsPaused;
             legacy.ElapsedTime = tickState.WorldSeconds;
+            legacy.WorldSeconds = tickState.WorldSeconds;
         }
     }
 }

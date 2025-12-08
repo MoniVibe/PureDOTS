@@ -68,9 +68,12 @@ namespace PureDOTS.Systems.Spatial
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (timeState.IsPaused)
+            {
+                return;
+            }
 
-            if (rewindState.Mode != RewindMode.Record || timeState.IsPaused)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

@@ -193,9 +193,12 @@ namespace PureDOTS.Systems.AI
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

@@ -18,6 +18,15 @@ namespace PureDOTS.Runtime.Groups
         public Entity MemberEntity;
 
         /// <summary>
+        /// Compatibility alias for member entity access.
+        /// </summary>
+        public Entity Member
+        {
+            get => MemberEntity;
+            set => MemberEntity = value;
+        }
+
+        /// <summary>
         /// Influence weight on group aggregates (0-1).
         /// Leaders typically have higher weight.
         /// </summary>

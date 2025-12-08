@@ -29,7 +29,9 @@ namespace PureDOTS.Systems.Economy
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused || SystemAPI.GetSingleton<RewindState>().Mode != RewindMode.Record)
+            if (timeState.IsPaused
+                || !SystemAPI.TryGetSingleton<RewindState>(out var rewindState)
+                || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

@@ -18,7 +18,8 @@
         "Unity.Rendering.Universal",
         "Unity.Scenes",
         "Unity.InputSystem",
-        "Unity.Physics.Hybrid"
+        "Unity.Physics.Hybrid",
+        "PureDOTS.Runtime.Demo"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -12,6 +12,9 @@ namespace PureDOTS.Authoring
         [Tooltip("Enable Space4X slice (carriers, asteroids, miners).")]
         public bool EnableSpace4x = true;
 
+        [Tooltip("Enable economy/logistics systems.")]
+        public bool EnableEconomy = false;
+
         [Header("Seeds")]
         [Tooltip("Deterministic seed for Godgame world generation.")]
         public uint GodgameSeed = 12345u;

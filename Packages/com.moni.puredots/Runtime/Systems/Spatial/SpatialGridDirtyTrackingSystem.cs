@@ -48,10 +48,14 @@ namespace PureDOTS.Systems.Spatial
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
             var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (timeState.IsPaused)
+            {
+                ClearDirtyState(ref state, timeState.Tick);
+                return;
+            }
 
-            if (rewindState.Mode != RewindMode.Record || timeState.IsPaused)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 ClearDirtyState(ref state, timeState.Tick);
                 return;

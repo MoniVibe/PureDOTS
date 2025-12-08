@@ -48,7 +48,10 @@ namespace PureDOTS.Systems
             // For now, just log that sync would occur
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var tickState = SystemAPI.GetSingleton<TickTimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
 
             // TODO: When Netcode is integrated:
             // - Server: Broadcast TimeState, TickTimeState, RewindState to all clients

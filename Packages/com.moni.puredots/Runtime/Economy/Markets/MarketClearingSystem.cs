@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.Economy.Resources;
 using PureDOTS.Runtime.Economy.Wealth;
 using Unity.Burst;
@@ -24,8 +25,15 @@ namespace PureDOTS.Runtime.Economy.Markets
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) ||
+                !demo.IsInitialized ||
+                !demo.EnableEconomy)
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) ||
+                rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

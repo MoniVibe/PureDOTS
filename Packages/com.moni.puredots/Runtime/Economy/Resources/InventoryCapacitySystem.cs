@@ -22,8 +22,15 @@ namespace PureDOTS.Runtime.Economy.Resources
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            if (rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) ||
+                rewindState.Mode != RewindMode.Record)
+            {
+                return;
+            }
+
+            // Optional: skip until demo world is ready
+            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState) &&
+                (!demoState.IsInitialized || !demoState.EnableEconomy))
             {
                 return;
             }

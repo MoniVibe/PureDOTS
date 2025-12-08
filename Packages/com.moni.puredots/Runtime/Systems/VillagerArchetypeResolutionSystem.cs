@@ -11,7 +11,7 @@ namespace PureDOTS.Systems
     /// Runs before AI so behaviour systems consume the updated profile every frame.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(AISystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(VillagerSystemGroup), OrderFirst = true)]
     public partial struct VillagerArchetypeResolutionSystem : ISystem
     {
         private ComponentLookup<VillagerArchetypeAssignment> _assignmentLookup;

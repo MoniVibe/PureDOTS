@@ -21,7 +21,10 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var tick = SystemAPI.GetSingleton<TickTimeState>();
-            var rewind = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
+            {
+                return;
+            }
 
             var simulationGroup = state.World.GetExistingSystemManaged<SimulationSystemGroup>();
             if (simulationGroup != null)

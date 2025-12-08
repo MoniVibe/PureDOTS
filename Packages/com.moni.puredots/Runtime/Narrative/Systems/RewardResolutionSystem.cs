@@ -23,9 +23,8 @@ namespace PureDOTS.Systems.Narrative
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
-            
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) ||
+                timeState.IsPaused || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }

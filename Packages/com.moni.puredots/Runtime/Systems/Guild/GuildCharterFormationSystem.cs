@@ -16,6 +16,9 @@ namespace PureDOTS.Systems.Guild
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct GuildCharterFormationSystem : ISystem
     {
+        private static readonly FixedString64Bytes DefaultGuildName = (FixedString64Bytes)"New Guild";
+        private static readonly FixedString64Bytes EmptyProposal = default;
+
         private ComponentLookup<GuildAggregateAdapter> _guildAdapterLookup;
 
         [BurstCompile]
@@ -30,9 +33,12 @@ namespace PureDOTS.Systems.Guild
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (timeState.IsPaused)
+            {
+                return;
+            }
 
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
@@ -110,7 +116,6 @@ namespace PureDOTS.Systems.Guild
             }
         }
 
-        [BurstCompile]
         private static void CreateGuildFromCharter(ref SystemState state, ref EntityCommandBuffer ecb, in GuildCharter charter, in DynamicBuffer<CharterSignature> signatures, uint currentTick, out Entity guildEntity)
         {
             // Create guild entity
@@ -120,7 +125,7 @@ namespace PureDOTS.Systems.Guild
             ecb.AddComponent(guildEntity, new PureDOTS.Runtime.Aggregates.Guild
             {
                 Type = (PureDOTS.Runtime.Aggregates.Guild.GuildType)charter.ProposedGuildTypeId,
-                GuildName = new Unity.Collections.FixedString64Bytes("New Guild"), // TODO: Generate from charter
+                GuildName = DefaultGuildName, // TODO: Generate from charter
                 FoundedTick = currentTick,
                 HomeVillage = Entity.Null,
                 HeadquartersPosition = Unity.Mathematics.float3.zero,
@@ -174,7 +179,7 @@ namespace PureDOTS.Systems.Guild
                 WarMasterEntity = Entity.Null,
                 SpyMasterEntity = Entity.Null,
                 VoteInProgress = false,
-                VoteProposal = default(Unity.Collections.FixedString64Bytes),
+                VoteProposal = EmptyProposal,
                 VoteEndTick = 0
             });
 

@@ -18,8 +18,12 @@ namespace PureDOTS.Runtime.Components
         public uint Tick;
         /// <summary>Frame delta time, scaled by CurrentSpeedMultiplier.</summary>
         public float DeltaTime;
+        /// <summary>Delta time in seconds (alias for DeltaTime to aid migration).</summary>
+        public float DeltaSeconds;
         /// <summary>Elapsed time in simulation space (wall-clock time scaled by speed).</summary>
         public float ElapsedTime;
+        /// <summary>World time in seconds (Tick * FixedDeltaTime).</summary>
+        public float WorldSeconds;
         /// <summary>Whether the simulation is currently paused.</summary>
         [MarshalAs(UnmanagedType.U1)]
         public bool IsPaused;
