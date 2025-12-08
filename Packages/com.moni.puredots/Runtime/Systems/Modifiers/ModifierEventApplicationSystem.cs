@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Modifiers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace PureDOTS.Systems.Modifiers
 {
@@ -48,7 +49,7 @@ namespace PureDOTS.Systems.Modifiers
 
             // Get event coordinator entity
             var coordinatorQuery = SystemAPI.QueryBuilder()
-                .WithAll<ModifierEventCoordinator, DynamicBuffer<ApplyModifierEvent>>()
+                .WithAll<ModifierEventCoordinator>()
                 .Build();
 
             if (coordinatorQuery.IsEmpty)
@@ -80,7 +81,7 @@ namespace PureDOTS.Systems.Modifiers
         }
 
         [BurstCompile]
-        public struct ProcessModifierEventsJob : IJobFor
+        public partial struct ProcessModifierEventsJob : IJobFor
         {
             [ReadOnly]
             public BlobAssetReference<ModifierCatalogBlob> Catalog;

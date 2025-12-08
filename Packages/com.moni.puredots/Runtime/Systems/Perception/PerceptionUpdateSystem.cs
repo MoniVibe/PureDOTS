@@ -1,5 +1,7 @@
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Caching;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Components.Caching;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Spatial;
@@ -25,6 +27,7 @@ namespace PureDOTS.Systems.Perception
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<SensorSignature> _signatureLookup;
         private ComponentLookup<Detectable> _detectableLookup; // Fallback for entities without SensorSignature
+        private ResultCache<byte> _perceptionCache;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -34,6 +37,15 @@ namespace PureDOTS.Systems.Perception
             state.RequireForUpdate<SimulationFeatureFlags>();
             state.RequireForUpdate<SimulationScalars>();
             state.RequireForUpdate<SimulationOverrides>();
+            state.RequireForUpdate<CacheStats>();
+            // Ensure CacheStats singleton exists
+            if (!SystemAPI.HasSingleton<CacheStats>())
+            {
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new CacheStats());
+            }
+
+            _perceptionCache = new ResultCache<byte>(256, Allocator.Persistent);
 
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _signatureLookup = state.GetComponentLookup<SensorSignature>(true);
@@ -55,7 +67,17 @@ namespace PureDOTS.Systems.Perception
                 return;
             }
 
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (rewindState.Mode != RewindMode.Record)
+            {
+                // Clear cache on rewind/playback to avoid stale reads
+                if (_perceptionCache.IsCreated)
+                {
+                    _perceptionCache.Clear();
+                }
+                return;
+            }
+
+            if (timeState.IsPaused)
             {
                 return;
             }
@@ -68,6 +90,8 @@ namespace PureDOTS.Systems.Perception
             _transformLookup.Update(ref state);
             _signatureLookup.Update(ref state);
             _detectableLookup.Update(ref state);
+            var cacheStats = SystemAPI.GetSingletonRW<CacheStats>();
+            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
             // Collect all detectable entities (with SensorSignature or Detectable fallback)
             var detectableCount = 0;
@@ -85,6 +109,7 @@ namespace PureDOTS.Systems.Perception
             }
 
             var detectables = new NativeList<DetectableData>(detectableCount, Allocator.TempJob);
+            uint detectablesHash = 2166136261;
 
             // Collect entities with SensorSignature
             foreach (var (signature, transform, entity) in SystemAPI.Query<RefRO<SensorSignature>, RefRO<LocalTransform>>()
@@ -111,6 +136,13 @@ namespace PureDOTS.Systems.Perception
                     Category = category,
                     HasSignature = true
                 });
+
+                detectablesHash = ResultCache<byte>.CombineHashes(
+                    detectablesHash,
+                    ResultCache<byte>.ComputeHash(transform.ValueRO.Position));
+                detectablesHash = ResultCache<byte>.CombineHashes(
+                    detectablesHash,
+                    ResultCache<byte>.ComputeHash(signature.ValueRO.VisualSignature));
             }
 
             // Collect entities with only Detectable (fallback)
@@ -129,6 +161,13 @@ namespace PureDOTS.Systems.Perception
                         Category = detectable.ValueRO.Category,
                         HasSignature = false
                     });
+
+                    detectablesHash = ResultCache<byte>.CombineHashes(
+                        detectablesHash,
+                        ResultCache<byte>.ComputeHash(transform.ValueRO.Position));
+                    detectablesHash = ResultCache<byte>.CombineHashes(
+                        detectablesHash,
+                        ResultCache<byte>.ComputeHash(detectable.ValueRO.ThreatLevel));
                 }
             }
 
@@ -145,6 +184,42 @@ namespace PureDOTS.Systems.Perception
                 {
                     continue;
                 }
+
+                // Ensure CacheKey exists
+                if (!SystemAPI.HasComponent<CacheKey>(entity))
+                {
+                    ecb.AddComponent(entity, new CacheKey
+                    {
+                        InputHash = 0,
+                        LastCacheHitTick = 0,
+                        CacheHitCount = 0
+                    });
+                    continue; // will be processed next tick once component exists
+                }
+                var cacheKey = SystemAPI.GetComponentRW<CacheKey>(entity);
+
+                // Build input hash (sensor transform + settings + detectables hash)
+                uint inputHash = detectablesHash;
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(transform.ValueRO.Position));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(transform.ValueRO.Rotation.value.x));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(transform.ValueRO.Rotation.value.y));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(transform.ValueRO.Rotation.value.z));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(transform.ValueRO.Rotation.value.w));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(effectiveRange));
+                inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash((int)capability.ValueRO.EnabledChannels));
+
+                cacheStats.ValueRW.TotalLookups++;
+
+                if (_perceptionCache.IsCreated && _perceptionCache.TryGet(inputHash, out _))
+                {
+                    cacheStats.ValueRW.CacheHits++;
+                    cacheKey.ValueRW.CacheHitCount++;
+                    cacheKey.ValueRW.LastCacheHitTick = timeState.Tick;
+                    perceptionState.ValueRW.LastUpdateTick = timeState.Tick;
+                    continue;
+                }
+
+                cacheStats.ValueRW.CacheMisses++;
 
                 // Clear old perceptions
                 perceivedBuffer.Clear();
@@ -314,9 +389,14 @@ namespace PureDOTS.Systems.Perception
                 perceptionState.ValueRW.HighestThreatEntity = highestThreatEntity;
                 perceptionState.ValueRW.NearestEntity = nearestEntity;
                 perceptionState.ValueRW.NearestDistance = math.sqrt(nearestDistSq);
+
+                cacheKey.ValueRW.InputHash = inputHash;
+                cacheKey.ValueRW.LastCacheHitTick = timeState.Tick;
+                _perceptionCache.Store(inputHash, 0);
             }
 
             detectables.Dispose();
+            ecb.Playback(state.EntityManager);
         }
 
         /// <summary>
@@ -377,6 +457,14 @@ namespace PureDOTS.Systems.Perception
             [MarshalAs(UnmanagedType.U1)]
             public bool HasSignature;
         }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            if (_perceptionCache.IsCreated)
+            {
+                _perceptionCache.Dispose();
+            }
+        }
     }
 }
-

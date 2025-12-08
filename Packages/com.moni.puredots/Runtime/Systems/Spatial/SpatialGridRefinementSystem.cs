@@ -112,7 +112,7 @@ namespace PureDOTS.Systems.Spatial
             }
 
             // Compute density per cell for this level
-            var cellDensities = new NativeHashMap<int, float>(ranges.Length, Allocator.TempJob);
+            var cellDensities = new NativeParallelHashMap<int, float>(ranges.Length, Allocator.TempJob);
 
             var computeDensityJob = new ComputeCellDensityJob
             {
@@ -134,14 +134,14 @@ namespace PureDOTS.Systems.Spatial
             cellDensities.Dispose();
         }
 
-        [BurstCompile]
-        private struct ComputeCellDensityJob : IJobFor
-        {
-            [ReadOnly] public NativeArray<SpatialGridEntry> Entries;
-            [ReadOnly] public NativeArray<SpatialGridCellRange> Ranges;
-            [ReadOnly] public byte Level;
-            [ReadOnly] public float CellSize;
-            [WriteOnly] public NativeHashMap<int, float>.ParallelWriter Densities;
+            [BurstCompile]
+            private struct ComputeCellDensityJob : IJobFor
+            {
+                [ReadOnly] public NativeArray<SpatialGridEntry> Entries;
+                [ReadOnly] public NativeArray<SpatialGridCellRange> Ranges;
+                [ReadOnly] public byte Level;
+                [ReadOnly] public float CellSize;
+                [WriteOnly] public NativeParallelHashMap<int, float>.ParallelWriter Densities;
 
             public void Execute(int index)
             {

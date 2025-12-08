@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Core;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.AI.AQL
@@ -27,13 +28,30 @@ namespace PureDOTS.Runtime.AI.AQL
                 return;
             }
 
-            // Execute AQL queries
-            // In full implementation, would:
-            // 1. Translate AQL queries to pre-compiled DOTS queries
-            // 2. Cache query handles for reuse
-            // 3. Execute queries and return results
-            // 4. Integrate with MindECS systems
+            // Execute AQL queries against entities tagged with AQLTag.Name == query.EntityType.
+            // Conditions are parsed but currently ignored; extend as needed.
+            foreach (var (queries, results, entity) in SystemAPI.Query<DynamicBuffer<AQLQueryElement>, DynamicBuffer<AQLResultElement>>().WithEntityAccess())
+            {
+                results.Clear();
+
+                if (queries.Length == 0)
+                    continue;
+
+                foreach (var queryElem in queries)
+                {
+                    var q = queryElem.Query;
+                    if (q.EntityType.Length == 0)
+                        continue;
+
+                    foreach (var (tag, taggedEntity) in SystemAPI.Query<RefRO<AQLTag>>().WithEntityAccess())
+                    {
+                        if (tag.ValueRO.Name.Equals(q.EntityType))
+                        {
+                            results.Add(new AQLResultElement { Entity = taggedEntity });
+                        }
+                    }
+                }
+            }
         }
     }
 }
-

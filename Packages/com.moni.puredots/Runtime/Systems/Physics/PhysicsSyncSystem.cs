@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityPhysicsVelocity = Unity.Physics.PhysicsVelocity;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Physics
@@ -25,7 +26,7 @@ namespace PureDOTS.Systems.Physics
     public partial struct PhysicsSyncSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
-        private ComponentLookup<PhysicsVelocity> _physicsVelocityLookup;
+        private ComponentLookup<UnityPhysicsVelocity> _physicsVelocityLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -35,7 +36,7 @@ namespace PureDOTS.Systems.Physics
             state.RequireForUpdate<PhysicsConfig>();
 
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
-            _physicsVelocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _physicsVelocityLookup = state.GetComponentLookup<UnityPhysicsVelocity>(false);
         }
 
         [BurstCompile]
@@ -82,7 +83,7 @@ namespace PureDOTS.Systems.Physics
             public void Execute(
                 in LocalTransform transform,
                 in RequiresPhysics requiresPhysics,
-                ref PhysicsVelocity physicsVelocity,
+                ref UnityPhysicsVelocity physicsVelocity,
                 in LocalToWorld localToWorld)
             {
                 // For kinematic bodies, we don't need to set velocity

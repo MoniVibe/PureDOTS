@@ -1,10 +1,11 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Unity.Entities;
+using PureDOTS.Runtime.Debugging;
 using Unity.Profiling;
-using UnityEngine;
 
 namespace PureDOTS.Runtime.Bridges
 {
@@ -86,17 +87,17 @@ namespace PureDOTS.Runtime.Bridges
                 {
                     if (kvp.Value.Count > 1)
                     {
-                        Debug.LogWarning(
+                        DebugLog.LogWarning(
                             $"[OwnershipValidator] Component type name collision detected: '{kvp.Key}' exists in multiple assemblies: {string.Join(", ", kvp.Value)}. " +
                             $"This violates single-writer ownership rules. Consider renaming one of the types.");
                     }
                 }
 
                 // Validate that AgentGuid is only used for identification, not state
-                var agentGuidType = typeof(AgentGuid);
+                var agentGuidType = System.Type.GetType("PureDOTS.Runtime.AgentGuid");
                 if (agentGuidType != null)
                 {
-                    Debug.Log($"[OwnershipValidator] AgentGuid validation: Type exists and is used for cross-ECS identification.");
+                    DebugLog.Log($"[OwnershipValidator] AgentGuid validation: Type exists and is used for cross-ECS identification.");
                 }
             }
         }
@@ -121,7 +122,7 @@ namespace PureDOTS.Runtime.Bridges
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[OwnershipValidator] Failed to scan assembly '{assemblyName}': {ex.Message}");
+                DebugLog.LogWarning($"[OwnershipValidator] Failed to scan assembly '{assemblyName}': {ex.Message}");
             }
 
             return types;

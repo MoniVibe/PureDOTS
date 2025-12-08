@@ -6,152 +6,151 @@ using Unity.Mathematics;
 namespace PureDOTS.Runtime.Caching
 {
     /// <summary>
-    /// Burst-safe ring buffer for temporal caching of computation results.
-    /// Stores results with input hashes to enable cache hits when inputs are unchanged.
+    /// Burst-safe ring-buffer cache keyed by uint hashes. Capacity is fixed; oldest entries are evicted on overflow.
     /// </summary>
     [BurstCompile]
     public struct ResultCache<T> where T : unmanaged
     {
-        private NativeArray<T> _buffer;
         private NativeArray<uint> _hashes;
-        private int _writeIndex;
+        private NativeArray<T> _values;
         private int _capacity;
-        private bool _isCreated;
+        private int _count;
+        private int _head;
+        private bool _created;
 
-        /// <summary>
-        /// Creates a new result cache with the specified capacity.
-        /// </summary>
         public ResultCache(int capacity, Allocator allocator)
         {
-            _buffer = new NativeArray<T>(capacity, allocator);
-            _hashes = new NativeArray<uint>(capacity, allocator);
-            _writeIndex = 0;
-            _capacity = capacity;
-            _isCreated = true;
+            _capacity = math.max(1, capacity);
+            _hashes = new NativeArray<uint>(_capacity, allocator, NativeArrayOptions.ClearMemory);
+            _values = new NativeArray<T>(_capacity, allocator, NativeArrayOptions.ClearMemory);
+            _count = 0;
+            _head = 0;
+            _created = true;
         }
 
-        /// <summary>
-        /// Disposes the cache buffers.
-        /// </summary>
+        public bool IsCreated => _created && _hashes.IsCreated && _values.IsCreated;
+
+        [BurstCompile]
         public void Dispose()
         {
-            if (_isCreated)
-            {
-                if (_buffer.IsCreated)
-                    _buffer.Dispose();
-                if (_hashes.IsCreated)
-                    _hashes.Dispose();
-                _isCreated = false;
-            }
+            if (!IsCreated) return;
+            if (_hashes.IsCreated) _hashes.Dispose();
+            if (_values.IsCreated) _values.Dispose();
+            _created = false;
+            _count = 0;
+            _head = 0;
         }
 
         /// <summary>
-        /// Tries to get a cached result for the given input hash.
-        /// Returns true if cache hit, false if cache miss.
+        /// Try to get a cached value for the hash.
         /// </summary>
-        public bool TryGet(uint inputHash, out T result)
+        [BurstCompile]
+        public bool TryGet(uint hash, out T value)
         {
-            if (!_isCreated || _capacity == 0)
+            if (!_created)
             {
-                result = default;
+                value = default;
                 return false;
             }
 
-            // Search backwards from write index (most recent first)
-            for (int i = 0; i < _capacity; i++)
+            // Linear probe is fine for small capacities (intended for hot-path caches with modest size).
+            for (int i = 0; i < _count; i++)
             {
-                int index = (_writeIndex - 1 - i + _capacity) % _capacity;
-                if (_hashes[index] == inputHash)
+                if (_hashes[i] == hash)
                 {
-                    result = _buffer[index];
+                    value = _values[i];
                     return true;
                 }
             }
 
-            result = default;
+            value = default;
             return false;
         }
 
         /// <summary>
-        /// Stores a result with the given input hash in the cache.
+        /// Store a value for the hash, evicting oldest if full.
         /// </summary>
-        public void Store(uint inputHash, T result)
+        [BurstCompile]
+        public void Store(uint hash, in T value)
         {
-            if (!_isCreated || _capacity == 0)
-                return;
+            if (!_created) return;
 
-            _buffer[_writeIndex] = result;
-            _hashes[_writeIndex] = inputHash;
-            _writeIndex = (_writeIndex + 1) % _capacity;
+            // Update existing
+            for (int i = 0; i < _count; i++)
+            {
+                if (_hashes[i] == hash)
+                {
+                    _values[i] = value;
+                    return;
+                }
+            }
+
+            // Insert at head (ring)
+            _hashes[_head] = hash;
+            _values[_head] = value;
+            _head = (_head + 1) % _capacity;
+            if (_count < _capacity) _count++;
         }
 
         /// <summary>
-        /// Clears all cached entries.
+        /// Clear all entries.
         /// </summary>
+        [BurstCompile]
         public void Clear()
         {
-            if (!_isCreated)
-                return;
-
-            for (int i = 0; i < _capacity; i++)
-            {
-                _hashes[i] = 0;
-            }
+            if (!_created) return;
+            _hashes.Clear();
+            _values.Clear();
+            _count = 0;
+            _head = 0;
         }
 
         /// <summary>
-        /// Computes a hash from input values for cache key generation.
+        /// Combine two hashes into one (FNV-1a inspired).
         /// </summary>
         [BurstCompile]
-        public static uint ComputeHash(float value)
+        public static uint CombineHashes(uint a, uint b)
         {
-            return math.asuint(value);
+            uint hash = 2166136261;
+            hash = (hash ^ a) * 16777619;
+            hash = (hash ^ b) * 16777619;
+            return hash;
         }
 
-        /// <summary>
-        /// Computes a hash from multiple float values.
-        /// </summary>
-        [BurstCompile]
-        public static uint ComputeHash(float2 value)
-        {
-            return math.asuint(value.x) ^ (math.asuint(value.y) << 1);
-        }
-
-        /// <summary>
-        /// Computes a hash from multiple float values.
-        /// </summary>
-        [BurstCompile]
-        public static uint ComputeHash(float3 value)
-        {
-            return math.asuint(value.x) ^ (math.asuint(value.y) << 1) ^ (math.asuint(value.z) << 2);
-        }
-
-        /// <summary>
-        /// Computes a hash from multiple float values.
-        /// </summary>
-        [BurstCompile]
-        public static uint ComputeHash(float4 value)
-        {
-            return math.asuint(value.x) ^ (math.asuint(value.y) << 1) ^ (math.asuint(value.z) << 2) ^ (math.asuint(value.w) << 3);
-        }
-
-        /// <summary>
-        /// Computes a hash from an integer.
-        /// </summary>
         [BurstCompile]
         public static uint ComputeHash(int value)
         {
-            return (uint)value;
+            int mix = value ^ unchecked((int)0x9E3779B9u);
+            return math.hash(new int2(value, mix));
         }
 
-        /// <summary>
-        /// Computes a combined hash from multiple hashes.
-        /// </summary>
         [BurstCompile]
-        public static uint CombineHashes(uint hash1, uint hash2)
+        public static uint ComputeHash(uint value) => math.hash(new uint2(value, value ^ 0x85EBCA6Bu));
+
+        [BurstCompile]
+        public static uint ComputeHash(float value)
         {
-            return hash1 ^ (hash2 << 1);
+            // math.hash(float) is ambiguous in newer math versions; explicitly hash a uint2
+            uint bits = math.asuint(value);
+            return math.hash(new uint2(bits, 0u));
         }
+
+        [BurstCompile]
+        public static uint ComputeHash(float2 value)
+        {
+            // math.hash(float2) is overloaded; pass explicit float2 to avoid float2x2 ambiguity
+            var key = new float2(value.x, value.y);
+            return math.hash(key);
+        }
+
+        [BurstCompile]
+        public static uint ComputeHash(float3 value)
+        {
+            var key = new float3(value.x, value.y, value.z);
+            return math.hash(key);
+        }
+
+        [BurstCompile]
+        public static uint ComputeHash(bool value) => value ? 0xA341316Cu : 0xF27FCE1Fu;
     }
 }
-

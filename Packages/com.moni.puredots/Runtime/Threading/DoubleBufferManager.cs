@@ -40,13 +40,11 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// Gets the read buffer (previous frame's data).
         /// </summary>
-        [BurstCompile]
         public NativeArray<T> ReadBuffer => _readBuffer;
 
         /// <summary>
         /// Gets the write buffer (current frame's data).
         /// </summary>
-        [BurstCompile]
         public NativeArray<T> WriteBuffer => _writeBuffer;
 
         /// <summary>

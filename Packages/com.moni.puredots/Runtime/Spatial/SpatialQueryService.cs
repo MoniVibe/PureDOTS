@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
 
 namespace PureDOTS.Runtime.Spatial
 {
@@ -12,12 +13,12 @@ namespace PureDOTS.Runtime.Spatial
     [BurstCompile]
     public struct SpatialQueryService
     {
-        private NativeMultiHashMap<int3, Entity> _spatialMap;
+        private NativeParallelMultiHashMap<int3, Entity> _spatialMap;
         private Allocator _allocator;
 
         public SpatialQueryService(Allocator allocator)
         {
-            _spatialMap = new NativeMultiHashMap<int3, Entity>(1024, allocator);
+            _spatialMap = new NativeParallelMultiHashMap<int3, Entity>(1024, allocator);
             _allocator = allocator;
         }
 

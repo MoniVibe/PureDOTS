@@ -14,6 +14,7 @@ namespace PureDOTS.Runtime.Telemetry
         private NativeQueue<TelemetryMetric> _ringBuffer;
         private bool _isCreated;
         private int _capacity;
+        private Allocator _allocator;
 
         /// <summary>
         /// Creates a new local telemetry buffer with the specified capacity.
@@ -23,6 +24,7 @@ namespace PureDOTS.Runtime.Telemetry
             _ringBuffer = new NativeQueue<TelemetryMetric>(allocator);
             _isCreated = true;
             _capacity = capacity;
+            _allocator = allocator;
         }
 
         /// <summary>
@@ -35,6 +37,19 @@ namespace PureDOTS.Runtime.Telemetry
                 _ringBuffer.Dispose();
                 _isCreated = false;
             }
+        }
+
+        /// <summary>Whether the buffer was created.</summary>
+        public bool IsCreated => _isCreated && _ringBuffer.IsCreated;
+
+        /// <summary>Current count of pending metrics.</summary>
+        public int Count => _isCreated && _ringBuffer.IsCreated ? _ringBuffer.Count : 0;
+
+        /// <summary>Clears all pending metrics.</summary>
+        public void Clear()
+        {
+            if (!_isCreated || !_ringBuffer.IsCreated) return;
+            while (_ringBuffer.Count > 0) _ringBuffer.Dequeue();
         }
 
         /// <summary>
@@ -50,6 +65,14 @@ namespace PureDOTS.Runtime.Telemetry
                 _ringBuffer.Dequeue(); // Remove oldest
             }
             _ringBuffer.Enqueue(metric);
+        }
+
+        /// <summary>
+        /// Get a ParallelWriter for job producers. Caller must ensure the buffer is created.
+        /// </summary>
+        public NativeQueue<TelemetryMetric>.ParallelWriter AsParallelWriter()
+        {
+            return _ringBuffer.IsCreated ? _ringBuffer.AsParallelWriter() : default;
         }
 
         /// <summary>

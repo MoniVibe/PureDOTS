@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityPhysicsVelocity = Unity.Physics.PhysicsVelocity;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Physics
@@ -18,7 +19,7 @@ namespace PureDOTS.Systems.Physics
     [UpdateInGroup(typeof(MicroCollisionSystemGroup))]
     public partial struct MicroCollisionSystem : ISystem
     {
-        private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private ComponentLookup<UnityPhysicsVelocity> _velocityLookup;
         private ComponentLookup<PhysicsMass> _massLookup;
         private ComponentLookup<CollisionProperties> _collisionPropsLookup;
         private ComponentLookup<StructuralIntegrity> _integrityLookup;
@@ -30,7 +31,7 @@ namespace PureDOTS.Systems.Physics
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
 
-            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _velocityLookup = state.GetComponentLookup<UnityPhysicsVelocity>(false);
             _massLookup = state.GetComponentLookup<PhysicsMass>(true);
             _collisionPropsLookup = state.GetComponentLookup<CollisionProperties>(true);
             _integrityLookup = state.GetComponentLookup<StructuralIntegrity>(false);
@@ -71,7 +72,7 @@ namespace PureDOTS.Systems.Physics
         [WithChangeFilter(typeof(CollisionProperties))]
         partial struct ProcessMicroCollisionsJob : IJobEntity
         {
-            public ComponentLookup<PhysicsVelocity> VelocityLookup;
+            public ComponentLookup<UnityPhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
             [ReadOnly] public ComponentLookup<CollisionProperties> CollisionPropsLookup;
             public ComponentLookup<StructuralIntegrity> IntegrityLookup;
@@ -137,17 +138,19 @@ namespace PureDOTS.Systems.Physics
                     normal = new float3(0f, 1f, 0f); // Default up vector
 
                 // Apply momentum conservation
+                var vAOut = velocityA.Linear;
+                var vBOut = velocityB.Linear;
                 CollisionMath.ComputeMomentumConservation(
-                    velocityA.Linear, velocityB.Linear,
+                    in velocityA.Linear, in velocityB.Linear,
                     massA, massB,
-                    normal,
-                    out var vAOut, out var vBOut);
+                    in normal,
+                    ref vAOut, ref vBOut);
 
                 // Clamp velocities to prevent numeric blow-ups
                 var escapeVelocity = 10000f; // 10 km/s escape velocity
                 var terminalVelocity = 5000f; // 5 km/s terminal velocity
-                vAOut = CollisionMath.ClampVelocity(vAOut, escapeVelocity, terminalVelocity);
-                vBOut = CollisionMath.ClampVelocity(vBOut, escapeVelocity, terminalVelocity);
+                CollisionMath.ClampVelocity(ref vAOut, escapeVelocity, terminalVelocity);
+                CollisionMath.ClampVelocity(ref vBOut, escapeVelocity, terminalVelocity);
 
                 // Update velocities
                 var velA = VelocityLookup[entity];

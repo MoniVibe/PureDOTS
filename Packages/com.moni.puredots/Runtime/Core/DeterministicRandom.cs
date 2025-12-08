@@ -15,11 +15,10 @@ namespace PureDOTS.Runtime.Core
         /// Creates a deterministic Random instance from tick and entity.
         /// Formula: Hash(tick, entity.Index) → Random seed.
         /// </summary>
-        [BurstCompile]
+        [BurstDiscard]
         public static Random CreateFromTickAndEntity(uint tick, Entity entity)
         {
-            uint seed = HashTickAndEntity(tick, entity);
-            return Random.CreateFromIndex(seed);
+            return CreateFromTickAndEntityIndex(tick, entity.Index);
         }
 
         /// <summary>

@@ -37,7 +37,7 @@ namespace PureDOTS.Runtime.Modifiers
             ref BlobBuilder builder,
             ref ModifierCatalogBlob catalog,
             NativeArray<ModifierDependency> dependencies,
-            out ModifierDependencyGraph graph)
+            ref ModifierDependencyGraph graph)
         {
             // Allocate dependency chains array
             var chainsBuilder = builder.Allocate(ref graph.DependencyChains, (int)catalog.Modifiers.Length + 1);

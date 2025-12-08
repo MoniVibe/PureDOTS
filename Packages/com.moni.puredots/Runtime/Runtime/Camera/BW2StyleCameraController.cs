@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -11,7 +12,9 @@ using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Hybrid;
 using PureDOTS.Runtime.Camera;
+using PureDOTS.Runtime.Components;
 using UnityEngineCamera = UnityEngine.Camera;
+using Debug = UnityEngine.Debug;
 #if GODGAME
 using Godgame.Runtime;
 #endif
@@ -163,7 +166,7 @@ namespace PureDOTS.Runtime.Camera
 
             if (groundMask.value == 0)
             {
-                Debug.LogWarning($"{nameof(BW2StyleCameraController)} on {name} has an empty groundMask; terrain snapping and collision guards will be inactive.", this);
+                UnityDebug.LogWarning($"{nameof(BW2StyleCameraController)} on {name} has an empty groundMask; terrain snapping and collision guards will be inactive.", this);
                 warnedMissingGroundMask = true;
             }
 
@@ -218,7 +221,7 @@ namespace PureDOTS.Runtime.Camera
         {
             if (targetCamera == null)
             {
-                Debug.LogWarning($"{nameof(BW2StyleCameraController)} requires a Camera reference.", this);
+                UnityDebug.LogWarning($"{nameof(BW2StyleCameraController)} requires a Camera reference.", this);
                 enabled = false;
                 return;
             }
@@ -633,7 +636,7 @@ namespace PureDOTS.Runtime.Camera
 
             if (!warnedMissingGroundMask)
             {
-                Debug.LogWarning($"{nameof(BW2StyleCameraController)} could not project pointer to terrain. Check groundMask setup.", this);
+                UnityDebug.LogWarning($"{nameof(BW2StyleCameraController)} could not project pointer to terrain. Check groundMask setup.", this);
                 warnedMissingGroundMask = true;
             }
 
@@ -872,6 +875,7 @@ namespace PureDOTS.Runtime.Camera
             return false;
         }
 
+        #if GODGAME
         bool TryGetInterpolatedHandCursor(World world, DivineHandState handState, out Vector3 cursor)
         {
             cursor = default;
@@ -907,6 +911,13 @@ namespace PureDOTS.Runtime.Camera
             
             return false;
         }
+        #else
+        bool TryGetInterpolatedHandCursor(World world, object handState, out Vector3 cursor)
+        {
+            cursor = default;
+            return false;
+        }
+        #endif
 
         void DisposeHandQuery()
         {
@@ -923,7 +934,7 @@ namespace PureDOTS.Runtime.Camera
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[{nameof(BW2StyleCameraController)}] Failed to dispose hand query: {ex.Message}", this);
+                    UnityDebug.LogWarning($"[{nameof(BW2StyleCameraController)}] Failed to dispose hand query: {ex.Message}", this);
                 }
             }
 

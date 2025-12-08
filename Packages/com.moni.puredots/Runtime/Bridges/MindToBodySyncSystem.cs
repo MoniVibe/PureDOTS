@@ -7,7 +7,6 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Bridges;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.AI;
-using PureDOTS.Systems.AI;
 
 namespace PureDOTS.Runtime.Bridges
 {

@@ -9,6 +9,7 @@ namespace PureDOTS.Runtime.Systems.Balancing
     /// System running genetic balancer for automated parameter tuning.
     /// Outputs JSON patches to Blob manifests for CI integration.
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct GeneticBalancerSystem : ISystem

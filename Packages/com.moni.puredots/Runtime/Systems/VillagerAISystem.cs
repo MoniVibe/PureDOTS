@@ -59,6 +59,12 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Respect tick-domain gating (system may be disabled by TickDomainCoordinatorSystem)
+            if (!state.WorldUnmanaged.IsSystemEnabled(state.Unmanaged))
+            {
+                return;
+            }
+
             // Get villager behavior config and archetypes (if any)
             var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
                 ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
@@ -78,7 +84,7 @@ namespace PureDOTS.Systems
 
             // Use periodic ticks for AI evaluation (every 10 ticks by default)
             // Add PeriodicTickComponent to entities that don't have it
-            var entities = _villagerQuery.ToEntityArray(Allocator.Temp);
+            var entities = _villagerQuery.ToEntityArray(Allocator.TempJob);
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
             foreach (var entity in entities)
             {

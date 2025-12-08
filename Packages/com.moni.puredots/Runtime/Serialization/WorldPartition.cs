@@ -44,7 +44,7 @@ namespace PureDOTS.Runtime.Serialization
         /// Gets the authority ID for a given cell coordinate.
         /// </summary>
         [BurstCompile]
-        public static byte GetAuthorityForCell(int3 cellCoords, int partitionSize)
+        public static byte GetAuthorityForCell(in int3 cellCoords, int partitionSize)
         {
             // Simple hash-based partitioning
             int hash = cellCoords.x + cellCoords.y * 256 + cellCoords.z * 65536;
@@ -55,9 +55,9 @@ namespace PureDOTS.Runtime.Serialization
         /// Checks if a cell belongs to the local authority.
         /// </summary>
         [BurstCompile]
-        public static bool IsLocalCell(int3 cellCoords, byte localAuthorityId, int partitionSize)
+        public static bool IsLocalCell(in int3 cellCoords, byte localAuthorityId, int partitionSize)
         {
-            byte authority = GetAuthorityForCell(cellCoords, partitionSize);
+            byte authority = GetAuthorityForCell(in cellCoords, partitionSize);
             return authority == localAuthorityId;
         }
     }

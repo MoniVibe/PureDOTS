@@ -58,7 +58,7 @@ namespace PureDOTS.Authoring.Combat
                     var actionCount = math.min(def.actions.Count, 64);
                     for (int j = 0; j < actionCount; j++)
                     {
-                        node.Actions.Add((ushort)def.actions[j]);
+                        node.Actions.Add(def.actions[j]);
                     }
 
                     nodeArray[i] = node;

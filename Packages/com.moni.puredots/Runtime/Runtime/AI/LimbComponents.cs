@@ -55,6 +55,18 @@ namespace PureDOTS.Runtime.AI
     }
 
     /// <summary>
+    /// Command buffer entries sent from Mind ECS to control limb actions.
+    /// </summary>
+    public struct LimbCommandBuffer : IBufferElementData
+    {
+        public int LimbIndex;
+        public LimbAction Action;
+        public float3 Target;
+        public byte Priority;
+        public uint TickNumber;
+    }
+
+    /// <summary>
     /// Links a limb entity to its parent agent entity.
     /// </summary>
     public struct LimbParent : IComponentData

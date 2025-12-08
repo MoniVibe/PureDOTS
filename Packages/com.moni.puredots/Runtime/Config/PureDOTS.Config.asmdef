@@ -5,8 +5,7 @@
         "Unity.Entities",
         "Unity.Mathematics",
         "Unity.Collections",
-        "Unity.Transforms",
-        "PureDOTS.Runtime"
+        "Unity.Transforms"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -31,7 +31,7 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             // Auto-register entities with RewindableTag that don't have WorldSnapshotIncludeTag
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             foreach (var (_, entity) in SystemAPI.Query<RefRO<RewindableTag>>()
                 .WithNone<WorldSnapshotIncludeTag>()
@@ -83,7 +83,7 @@ namespace PureDOTS.Systems
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<WorldSnapshotGroup>());
             if (!query.IsEmptyIgnoreFilter)
             {
-                var groups = query.ToComponentDataArray<WorldSnapshotGroup>(Allocator.Temp);
+                var groups = query.ToComponentDataArray<WorldSnapshotGroup>(Allocator.TempJob);
                 foreach (var group in groups)
                 {
                     if (group.GroupId >= groupId)

@@ -1,4 +1,6 @@
+using Unity.Collections;
 using Unity.Mathematics;
+using Unity.Entities;
 
 namespace PureDOTS.Runtime.Combat
 {
@@ -72,7 +74,7 @@ namespace PureDOTS.Runtime.Combat
         /// <param name="v0">Muzzle velocity</param>
         /// <param name="gravity">Gravity magnitude</param>
         /// <returns>Interpolated height</returns>
-        public static float GetBallisticHeight(BlobArray<float> lut, float angle, float v0, float gravity)
+        public static float GetBallisticHeight(ref BlobArray<float> lut, float angle, float v0, float gravity)
         {
             if (lut.Length == 0)
             {
@@ -103,7 +105,7 @@ namespace PureDOTS.Runtime.Combat
         /// Gets aerodynamic coefficient for given speed band.
         /// Pre-cached per speed band in ProjectileSpec blob.
         /// </summary>
-        public static float GetAerodynamicCoeff(BlobArray<float> speedBands, BlobArray<float> coeffs, float speed)
+        public static float GetAerodynamicCoeff(ref BlobArray<float> speedBands, ref BlobArray<float> coeffs, float speed)
         {
             if (speedBands.Length == 0 || coeffs.Length == 0 || speedBands.Length != coeffs.Length)
             {

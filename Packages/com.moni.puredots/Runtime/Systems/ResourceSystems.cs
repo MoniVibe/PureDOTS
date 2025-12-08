@@ -66,6 +66,8 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(ResourceSystemGroup))]
     public partial struct ResourceGatheringSystem : ISystem
     {
+        private const uint GatherTickStride = 5; // throttle gathers (~12 Hz at 60 Hz base)
+
         private EntityQuery _gathererQuery;
         private ComponentLookup<ResourceSourceState> _sourceStateLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -99,6 +101,21 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Respect tick-domain gating (system may be disabled by TickDomainCoordinatorSystem)
+            if (!state.WorldUnmanaged.IsSystemEnabled(state.Unmanaged))
+            {
+                return;
+            }
+
+            // Ensure gatherers have periodic stride
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (entity, _) in SystemAPI.Query<Entity>().WithAll<VillagerJob, VillagerInventoryItem, VillagerFlags>().WithNone<PeriodicTickComponent>())
+            {
+                ecb.AddComponent(entity, PeriodicTickHelper.Create(GatherTickStride));
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
             _sourceStateLookup.Update(ref state);
             _transformLookup.Update(ref state);
             _resourceTypeLookup.Update(ref state);
@@ -116,6 +133,8 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(ResourceGatheringSystem))]
     public partial struct ResourceDepositSystem : ISystem
     {
+        private const uint DepositTickStride = 5; // throttle deposits (~12 Hz at 60 Hz base)
+
         private ComponentLookup<StorehouseConfig> _storehouseLookup;
         private BufferLookup<StorehouseCapacityElement> _capacityLookup;
         private BufferLookup<StorehouseInventoryItem> _storeItemsLookup;
@@ -150,6 +169,21 @@ namespace PureDOTS.Systems
             {
                 return;
             }
+
+            // Respect tick-domain gating (system may be disabled by TickDomainCoordinatorSystem)
+            if (!state.WorldUnmanaged.IsSystemEnabled(state.Unmanaged))
+            {
+                return;
+            }
+
+            // Ensure depositors have periodic stride
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (entity, _) in SystemAPI.Query<Entity>().WithAll<VillagerJobTicket, VillagerJobCarryItem>().WithNone<PeriodicTickComponent>())
+            {
+                ecb.AddComponent(entity, PeriodicTickHelper.Create(DepositTickStride));
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
 
             _storehouseLookup.Update(ref state);
             _capacityLookup.Update(ref state);
@@ -201,8 +235,14 @@ namespace PureDOTS.Systems
                 ref VillagerJobTicket ticket,
                 ref VillagerJobProgress progress,
                 ref VillagerAIState aiState,
+                ref PeriodicTickComponent periodic,
                 in LocalTransform transform)
             {
+                if (!PeriodicTickHelper.ShouldUpdate(CurrentTick, ref periodic))
+                {
+                    return;
+                }
+
                 if (carry.Length == 0)
                 {
                     return;

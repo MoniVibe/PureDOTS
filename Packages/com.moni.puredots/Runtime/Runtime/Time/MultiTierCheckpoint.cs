@@ -156,7 +156,7 @@ namespace PureDOTS.Runtime.Time
             {
                 // Compress and store
                 var previousData = GetPreviousCheckpointData(tick);
-                checkpoint.CompressedData = CheckpointCompression.Compress(data, previousData, allocator);
+                CheckpointCompression.Compress(in data, in previousData, allocator, out checkpoint.CompressedData);
                 checkpoint.IsCompressed = true;
 
                 if (previousData.IsCreated)
@@ -206,11 +206,12 @@ namespace PureDOTS.Runtime.Time
                         var previousData = GetPreviousCheckpointData(tick);
                         // Estimate decompressed size (in practice, store this metadata)
                         int estimatedSize = checkpoint.CompressedData.Length * 2;
-                        checkpoint.Data = CheckpointCompression.Decompress(
-                            checkpoint.CompressedData,
-                            previousData,
+                        CheckpointCompression.Decompress(
+                            in checkpoint.CompressedData,
+                            in previousData,
                             estimatedSize,
-                            allocator);
+                            allocator,
+                            out checkpoint.Data);
 
                         if (previousData.IsCreated)
                         {
@@ -322,10 +323,11 @@ namespace PureDOTS.Runtime.Time
                     var previousData = GetPreviousCheckpointData(tick);
 
                     // Compress
-                    checkpoint.CompressedData = CheckpointCompression.Compress(
-                        checkpoint.Data,
-                        previousData,
-                        allocator);
+                    CheckpointCompression.Compress(
+                        in checkpoint.Data,
+                        in previousData,
+                        allocator,
+                        out checkpoint.CompressedData);
                     checkpoint.IsCompressed = true;
                     checkpoint.Tier = CheckpointTier.Tier1_CompressedRAM;
 

@@ -1,12 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Runtime.InteropServices;
 using PureDOTS.Runtime.Components;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.Devtools.Scenario
 {
@@ -64,19 +70,21 @@ namespace PureDOTS.Runtime.Devtools.Scenario
 
         private static uint GetCurrentTick(World world)
         {
-            if (world.EntityManager.HasComponent<TimeState>(world.EntityManager.CreateEntityQuery(typeof(TimeState)).GetSingletonEntity()))
+            var entityManager = world.EntityManager;
+            var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>());
+            if (query.TryGetSingleton<TimeState>(out var timeState))
             {
-                var timeState = world.EntityManager.CreateEntityQuery(typeof(TimeState)).GetSingleton<TimeState>();
                 return timeState.Tick;
             }
-            return 0;
+            return 0u;
         }
 
         private static string ComputeWorldHash(World world)
         {
             // Simple hash based on entity count and component types
             // In production, this would be a proper deterministic hash
-            var entityCount = world.EntityManager.GetAllEntities().Length;
+            using var entities = world.EntityManager.GetAllEntities(Allocator.Temp);
+            var entityCount = entities.Length;
             return $"hash_{entityCount}_{DateTime.UtcNow.Ticks}";
         }
 
@@ -90,12 +98,8 @@ namespace PureDOTS.Runtime.Devtools.Scenario
             {
                 foreach (var entity in allEntities)
                 {
-                    // Skip system entities and singletons
-                    if (entityManager.HasComponent<SystemState>(entity))
-                        continue;
-
-                    var entityData = new EntityData
-                    {
+                var entityData = new EntityData
+                {
                         EntityIndex = entity.Index,
                         EntityVersion = entity.Version,
                         Components = SerializeEntityComponents(entityManager, entity),
@@ -125,11 +129,37 @@ namespace PureDOTS.Runtime.Devtools.Scenario
 
                 try
                 {
-                    var componentData = entityManager.GetComponentDataRaw(entity, componentType);
+                    if (componentType.IsZeroSized)
+                        continue;
+
+                    var managedType = componentType.GetManagedType();
+                    if (managedType == null || !managedType.IsValueType)
+                        continue;
+
+                    var typeInfo = TypeManager.GetTypeInfo(componentType.TypeIndex);
+                    var size = typeInfo.ElementSize;
+                    if (size <= 0)
+                        continue;
+
+                    var boxedValue = GetComponentDataBoxed(entityManager, entity, managedType);
+                    if (boxedValue == null)
+                        continue;
+
+                    var bytes = new byte[size];
+                    var handle = GCHandle.Alloc(boxedValue, GCHandleType.Pinned);
+                    try
+                    {
+                        Marshal.Copy(handle.AddrOfPinnedObject(), bytes, 0, size);
+                    }
+                    finally
+                    {
+                        handle.Free();
+                    }
+
                     components.Add(new ComponentData
                     {
-                        TypeName = componentType.GetManagedType().FullName,
-                        Data = Convert.ToBase64String(componentData)
+                        TypeName = managedType.FullName,
+                        Data = Convert.ToBase64String(bytes)
                     });
                 }
                 catch
@@ -142,31 +172,124 @@ namespace PureDOTS.Runtime.Devtools.Scenario
             return components;
         }
 
-        private static List<BufferData> SerializeEntityBuffers(EntityManager entityManager, Entity entity)
+        private static readonly MethodInfo s_getBufferMethod =
+            typeof(EntityManager).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .FirstOrDefault(m => m.Name == nameof(EntityManager.GetBuffer)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 1);
+
+        private static readonly MethodInfo s_getComponentDataMethod =
+            typeof(EntityManager).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .FirstOrDefault(m => m.Name == nameof(EntityManager.GetComponentData)
+                                     && m.IsGenericMethodDefinition
+                                     && m.GetParameters().Length == 1);
+
+        private static readonly MethodInfo s_getUnsafePtrMethod =
+            typeof(NativeArrayUnsafeUtility).GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .FirstOrDefault(m => m.Name == nameof(NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr)
+                && m.IsGenericMethodDefinition);
+
+        private static unsafe List<BufferData> SerializeEntityBuffers(EntityManager entityManager, Entity entity)
         {
             var buffers = new List<BufferData>();
-            var bufferTypes = entityManager.GetBufferTypes(entity);
+            var componentTypes = entityManager.GetComponentTypes(entity, Allocator.Temp);
 
-            foreach (var bufferType in bufferTypes)
+            try
             {
-                try
+                foreach (var componentType in componentTypes)
                 {
-                    var buffer = entityManager.GetBufferRaw(entity, bufferType);
-                    buffers.Add(new BufferData
+                    if (!componentType.IsBuffer)
+                        continue;
+
+                    try
                     {
-                        TypeName = bufferType.GetManagedType().FullName,
-                        ElementCount = buffer.Length,
-                        Data = Convert.ToBase64String(buffer.AsNativeArray().ToArray())
-                    });
-                }
-                catch
-                {
-                    // Skip buffers that can't be serialized
+                        var elementType = componentType.GetManagedType();
+                        if (elementType == null || !elementType.IsValueType)
+                            continue;
+
+                        var dynamicBuffer = GetDynamicBuffer(entityManager, entity, elementType);
+                        if (dynamicBuffer == null)
+                            continue;
+
+                        var bufferLength = GetBufferLength(dynamicBuffer);
+                        var nativeArray = AsNativeArray(dynamicBuffer);
+                        if (nativeArray == null)
+                            continue;
+
+                        var sizeOfElement = Marshal.SizeOf(elementType);
+                        var byteCount = checked(sizeOfElement * bufferLength);
+                        var dataBytes = new byte[byteCount];
+
+                        if (byteCount > 0)
+                        {
+                            var ptr = GetUnsafeReadOnlyPtr(nativeArray, elementType);
+                            fixed (byte* dest = dataBytes)
+                            {
+                                UnsafeUtility.MemCpy(dest, (void*)ptr, byteCount);
+                            }
+                        }
+
+                        buffers.Add(new BufferData
+                        {
+                            TypeName = elementType.FullName,
+                            ElementCount = bufferLength,
+                            Data = Convert.ToBase64String(dataBytes)
+                        });
+                    }
+                    catch
+                    {
+                        // Skip buffers that can't be serialized
+                    }
                 }
             }
+            finally
+            {
+                componentTypes.Dispose();
+            }
 
-            bufferTypes.Dispose();
             return buffers;
+        }
+
+        private static object GetDynamicBuffer(EntityManager entityManager, Entity entity, Type elementType)
+        {
+            if (s_getBufferMethod == null)
+                return null;
+
+            var generic = s_getBufferMethod.MakeGenericMethod(elementType);
+            return generic.Invoke(entityManager, new object[] { entity });
+        }
+
+        private static object GetComponentDataBoxed(EntityManager entityManager, Entity entity, Type componentType)
+        {
+            if (s_getComponentDataMethod == null)
+                return null;
+
+            var generic = s_getComponentDataMethod.MakeGenericMethod(componentType);
+            return generic.Invoke(entityManager, new object[] { entity });
+        }
+
+        private static int GetBufferLength(object dynamicBuffer)
+        {
+            var lengthProp = dynamicBuffer.GetType().GetProperty(nameof(DynamicBuffer<int>.Length));
+            if (lengthProp == null)
+                return 0;
+            return (int)lengthProp.GetValue(dynamicBuffer);
+        }
+
+        private static object AsNativeArray(object dynamicBuffer)
+        {
+            var method = dynamicBuffer.GetType().GetMethod(nameof(DynamicBuffer<int>.AsNativeArray));
+            return method?.Invoke(dynamicBuffer, null);
+        }
+
+        private static IntPtr GetUnsafeReadOnlyPtr(object nativeArray, Type elementType)
+        {
+            if (s_getUnsafePtrMethod == null)
+                return IntPtr.Zero;
+
+            var generic = s_getUnsafePtrMethod.MakeGenericMethod(elementType);
+            var result = generic.Invoke(null, new object[] { nativeArray });
+            return (IntPtr)result;
         }
 
         private static Dictionary<string, object> SerializeSingletons(World world)

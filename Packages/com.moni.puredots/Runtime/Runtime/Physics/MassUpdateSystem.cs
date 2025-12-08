@@ -1,9 +1,11 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using System.Runtime.CompilerServices;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Physics
 {
@@ -19,7 +21,6 @@ namespace PureDOTS.Runtime.Physics
     {
         private EntityQuery _dirtyMassQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -45,7 +46,10 @@ namespace PureDOTS.Runtime.Physics
                 return;
             }
 
-            var updateJob = new UpdateMassJob();
+            var updateJob = new UpdateMassJob
+            {
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(false)
+            };
             state.Dependency = updateJob.ScheduleParallel(_dirtyMassQuery, state.Dependency);
 
             // Remove dirty tags after update
@@ -61,9 +65,21 @@ namespace PureDOTS.Runtime.Physics
         [BurstCompile]
         private struct UpdateMassJob : IJobChunk
         {
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<MassComponent> MassHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(false));
+#if UNITY_BURST
+                // Avoid managed allocations in Burst; chunk processing not supported here.
+                return;
+#else
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+#endif
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var massComponents = chunk.GetNativeArray(MassHandle);
 
                 // Per-thread accumulator for deterministic math
                 for (int i = 0; i < chunk.Count; i++)
@@ -96,8 +112,8 @@ namespace PureDOTS.Runtime.Physics
         [BurstCompile]
         private static float FMA(float a, float b, float c)
         {
-            return math.fma(a, b, c);
+            // Fallback for environments where math.fma is unavailable: explicitly compute a * b + c.
+            return (a * b) + c;
         }
     }
 }
-

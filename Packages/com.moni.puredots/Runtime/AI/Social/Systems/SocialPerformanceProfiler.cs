@@ -17,12 +17,6 @@ namespace PureDOTS.Runtime.AI.Social.Systems
     [BurstCompile]
     public partial struct SocialPerformanceProfiler : ISystem
     {
-        private static readonly FixedString64Bytes TrustAverageKey = "Social.Trust.Average";
-        private static readonly FixedString64Bytes ReputationAverageKey = "Social.Reputation.Average";
-        private static readonly FixedString64Bytes MoraleAverageKey = "Social.Morale.Average";
-        private static readonly FixedString64Bytes CooperationCountKey = "Social.Cooperation.Count";
-        private static readonly FixedString64Bytes SocialMessageCountKey = "Social.Message.Count";
-
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -45,11 +39,23 @@ namespace PureDOTS.Runtime.AI.Social.Systems
     {
         private float _lastUpdateTime;
         private const float UpdateInterval = 1.0f; // 1 Hz telemetry updates
+        private FixedString64Bytes _trustAverageKey;
+        private FixedString64Bytes _reputationAverageKey;
+        private FixedString64Bytes _moraleAverageKey;
+        private FixedString64Bytes _cooperationCountKey;
+        private FixedString64Bytes _socialMessageCountKey;
 
         protected override void OnCreate()
         {
             _lastUpdateTime = 0f;
             RequireForUpdate<TelemetryStream>();
+
+            // Managed initialization keeps Burst paths free of FixedString static constructors.
+            _trustAverageKey = new FixedString64Bytes("Social.Trust.Average");
+            _reputationAverageKey = new FixedString64Bytes("Social.Reputation.Average");
+            _moraleAverageKey = new FixedString64Bytes("Social.Morale.Average");
+            _cooperationCountKey = new FixedString64Bytes("Social.Cooperation.Count");
+            _socialMessageCountKey = new FixedString64Bytes("Social.Message.Count");
         }
 
         protected override void OnUpdate()
@@ -60,18 +66,7 @@ namespace PureDOTS.Runtime.AI.Social.Systems
                 return; // Temporal batching
             }
 
-            // Get telemetry stream entity
-            if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
-            {
-                return;
-            }
-
-            if (!SystemAPI.HasBuffer<TelemetryMetric>(telemetryEntity))
-            {
-                return;
-            }
-
-            var telemetryBuffer = SystemAPI.GetBuffer<TelemetryMetric>(telemetryEntity);
+            var writer = TelemetryHub.AsParallelWriter();
 
             // Calculate averages from social components using jobs with parallel reduction
             var trustQuery = GetEntityQuery(typeof(SocialKnowledge), typeof(SocialRelationship));
@@ -101,9 +96,9 @@ namespace PureDOTS.Runtime.AI.Social.Systems
                     cooperationCount += cooperationCounts[i];
                 }
 
-                telemetryBuffer.AddMetric(SocialPerformanceProfiler.TrustAverageKey, trustSum / trustCount, TelemetryMetricUnit.Ratio);
-                telemetryBuffer.AddMetric(SocialPerformanceProfiler.ReputationAverageKey, reputationSum / trustCount, TelemetryMetricUnit.Ratio);
-                telemetryBuffer.AddMetric(SocialPerformanceProfiler.CooperationCountKey, cooperationCount, TelemetryMetricUnit.Count);
+                Enqueue(writer, _trustAverageKey, trustSum / trustCount, TelemetryMetricUnit.Ratio);
+                Enqueue(writer, _reputationAverageKey, reputationSum / trustCount, TelemetryMetricUnit.Ratio);
+                Enqueue(writer, _cooperationCountKey, cooperationCount, TelemetryMetricUnit.Count);
             }
 
             var moraleQuery = GetEntityQuery(typeof(Motivation));
@@ -121,12 +116,12 @@ namespace PureDOTS.Runtime.AI.Social.Systems
                     moraleSum += moraleSums[i];
                 }
 
-                telemetryBuffer.AddMetric(SocialPerformanceProfiler.MoraleAverageKey, moraleSum / moraleCount, TelemetryMetricUnit.Ratio);
+                Enqueue(writer, _moraleAverageKey, moraleSum / moraleCount, TelemetryMetricUnit.Ratio);
             }
 
             var messageQuery = GetEntityQuery(typeof(SocialMessage));
             var messageCount = messageQuery.CalculateEntityCount();
-            telemetryBuffer.AddMetric(SocialPerformanceProfiler.SocialMessageCountKey, messageCount, TelemetryMetricUnit.Count);
+            Enqueue(writer, _socialMessageCountKey, messageCount, TelemetryMetricUnit.Count);
 
             _lastUpdateTime = currentTime;
         }
@@ -161,6 +156,17 @@ namespace PureDOTS.Runtime.AI.Social.Systems
             MoraleSums[index] = motivation.Morale;
         }
     }
+
+    private static void Enqueue(NativeQueue<TelemetryMetric>.ParallelWriter writer, in FixedString64Bytes key, float value, TelemetryMetricUnit unit)
+    {
+        if (writer.Equals(default))
+        {
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = key, Value = value, Unit = unit });
+        }
+        else
+        {
+            writer.Enqueue(new TelemetryMetric { Key = key, Value = value, Unit = unit });
+        }
     }
 }
 

@@ -53,7 +53,7 @@ namespace PureDOTS.Systems.Construction
                     continue;
 
                 // Sort intents by urgency (descending)
-                var sortedIntents = new NativeList<IntentWithIndex>(intents.Length, Allocator.Temp);
+                var sortedIntents = new NativeList<IntentWithIndex>(intents.Length, Allocator.TempJob);
                 for (int i = 0; i < intents.Length; i++)
                 {
                     var intent = intents[i];
@@ -107,6 +107,8 @@ namespace PureDOTS.Systems.Construction
         }
     }
 }
+
+
 
 
 

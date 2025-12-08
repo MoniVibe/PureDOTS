@@ -6,6 +6,22 @@ using PureDOTS.Runtime.Components;
 
 namespace PureDOTS.Runtime.Operations
 {
+    // Precomputed role names to avoid constructing FixedStrings inside Burst code.
+    internal static class OperationRoleNames
+    {
+        public static readonly FixedString32Bytes Blockade = "BlockadePatrol";
+        public static readonly FixedString32Bytes Siege = "SiegeRing";
+        public static readonly FixedString32Bytes Occupy = "Occupier";
+        public static readonly FixedString32Bytes Protest = "ProtestCrowd";
+        public static readonly FixedString32Bytes Riot = "RiotCrowd";
+        public static readonly FixedString32Bytes Cult = "Cultist";
+        public static readonly FixedString32Bytes Funeral = "Mourner";
+        public static readonly FixedString32Bytes Festival = "Attendee";
+        public static readonly FixedString32Bytes Circus = "Performer";
+        public static readonly FixedString32Bytes Deserter = "Deserter";
+        public static readonly FixedString32Bytes Default = "Participant";
+    }
+
     /// <summary>
     /// Creates operation entities and initializes state from planner decisions.
     /// </summary>
@@ -128,20 +144,20 @@ namespace PureDOTS.Runtime.Operations
         [BurstCompile]
         private FixedString32Bytes GetDefaultRole(OperationKind kind)
         {
-            return kind switch
+            switch (kind)
             {
-                OperationKind.Blockade => new FixedString32Bytes("BlockadePatrol"),
-                OperationKind.Siege => new FixedString32Bytes("SiegeRing"),
-                OperationKind.Occupation => new FixedString32Bytes("Occupier"),
-                OperationKind.Protest => new FixedString32Bytes("ProtestCrowd"),
-                OperationKind.Riot => new FixedString32Bytes("RiotCrowd"),
-                OperationKind.CultRitual => new FixedString32Bytes("Cultist"),
-                OperationKind.Funeral => new FixedString32Bytes("Mourner"),
-                OperationKind.Festival => new FixedString32Bytes("Attendee"),
-                OperationKind.Circus => new FixedString32Bytes("Performer"),
-                OperationKind.DeserterSettlement => new FixedString32Bytes("Deserter"),
-                _ => new FixedString32Bytes("Participant")
-            };
+                case OperationKind.Blockade: return OperationRoleNames.Blockade;
+                case OperationKind.Siege: return OperationRoleNames.Siege;
+                case OperationKind.Occupation: return OperationRoleNames.Occupy;
+                case OperationKind.Protest: return OperationRoleNames.Protest;
+                case OperationKind.Riot: return OperationRoleNames.Riot;
+                case OperationKind.CultRitual: return OperationRoleNames.Cult;
+                case OperationKind.Funeral: return OperationRoleNames.Funeral;
+                case OperationKind.Festival: return OperationRoleNames.Festival;
+                case OperationKind.Circus: return OperationRoleNames.Circus;
+                case OperationKind.DeserterSettlement: return OperationRoleNames.Deserter;
+                default: return OperationRoleNames.Default;
+            }
         }
 
         [BurstCompile]

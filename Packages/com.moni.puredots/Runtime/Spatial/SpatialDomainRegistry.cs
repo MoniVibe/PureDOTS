@@ -47,9 +47,9 @@ namespace PureDOTS.Runtime.Spatial
     {
         [BurstCompile]
         public static void RegisterDomain(
-            EntityManager entityManager,
-            Entity managerEntity,
-            FixedString64Bytes domainName,
+            ref EntityManager entityManager,
+            in Entity managerEntity,
+            in FixedString64Bytes domainName,
             float cellSize)
         {
             var domainEntity = entityManager.CreateEntity();
@@ -70,9 +70,9 @@ namespace PureDOTS.Runtime.Spatial
 
         [BurstCompile]
         public static bool TryFindDomain(
-            EntityManager entityManager,
-            FixedString64Bytes domainName,
-            out Entity domainEntity)
+            ref EntityManager entityManager,
+            in FixedString64Bytes domainName,
+            ref Entity domainEntity)
         {
             domainEntity = Entity.Null;
 

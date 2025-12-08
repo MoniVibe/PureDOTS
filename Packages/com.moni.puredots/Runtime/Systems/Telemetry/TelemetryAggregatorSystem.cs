@@ -13,20 +13,54 @@ namespace PureDOTS.Runtime.Systems.Telemetry
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial class TelemetryAggregatorSystem : SystemBase
     {
+        private NativeList<TelemetryMetric> _drainBuffer;
+
         protected override void OnCreate()
         {
             RequireForUpdate<TickTimeState>();
+            TelemetryHub.Initialize();
+            _drainBuffer = new NativeList<TelemetryMetric>(Allocator.Persistent);
+        }
+
+        protected override void OnDestroy()
+        {
+            if (_drainBuffer.IsCreated)
+            {
+                _drainBuffer.Dispose();
+            }
+            TelemetryHub.Dispose();
         }
 
         protected override void OnUpdate()
         {
-            // Aggregate telemetry from local buffers
-            // In full implementation, would:
-            // 1. Collect metrics from LocalTelemetryBuffer across all systems
-            // 2. Aggregate metrics (sum, average, min, max)
-            // 3. Update global TelemetryStream singleton
-            // 4. Run on async thread for performance
+            // Early out if no telemetry stream
+            if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
+            {
+                return;
+            }
+
+            if (!SystemAPI.HasBuffer<TelemetryMetric>(telemetryEntity))
+            {
+                SystemAPI.GetEntityManager().AddBuffer<TelemetryMetric>(telemetryEntity);
+            }
+
+            var metrics = SystemAPI.GetBuffer<TelemetryMetric>(telemetryEntity);
+
+            // Drain any pending local metrics from the hub into the global buffer.
+            _drainBuffer.Clear();
+            TelemetryHub.Drain(ref _drainBuffer);
+
+            for (int i = 0; i < _drainBuffer.Length; i++)
+            {
+                metrics.Add(_drainBuffer[i]);
+            }
+
+            // Bump version/tick bookkeeping
+            if (SystemAPI.TryGetSingletonRW<TelemetryStream>(out var telemetryStream))
+            {
+                telemetryStream.ValueRW.LastTick = SystemAPI.GetSingleton<TickTimeState>().Tick;
+                telemetryStream.ValueRW.Version++;
+            }
         }
     }
 }
-

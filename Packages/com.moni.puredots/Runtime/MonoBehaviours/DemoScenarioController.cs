@@ -1,6 +1,8 @@
 using PureDOTS.Runtime;
 using Unity.Entities;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.MonoBehaviours
 {
@@ -28,25 +30,25 @@ namespace PureDOTS.Runtime.MonoBehaviours
             {
                 state.Current = DemoScenario.AllSystemsShowcase;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to AllSystemsShowcase (F1)");
+                UnityDebug.Log("[DemoScenarioController] Switched to AllSystemsShowcase (F1)");
             }
             else if (Input.GetKeyDown(KeyCode.F2))
             {
                 state.Current = DemoScenario.Space4XPhysicsOnly;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to Space4XPhysicsOnly (F2)");
+                UnityDebug.Log("[DemoScenarioController] Switched to Space4XPhysicsOnly (F2)");
             }
             else if (Input.GetKeyDown(KeyCode.F3))
             {
                 state.Current = DemoScenario.GodgamePhysicsOnly;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to GodgamePhysicsOnly (F3)");
+                UnityDebug.Log("[DemoScenarioController] Switched to GodgamePhysicsOnly (F3)");
             }
             else if (Input.GetKeyDown(KeyCode.F4))
             {
                 state.Current = DemoScenario.HandThrowSandbox;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to HandThrowSandbox (F4)");
+                UnityDebug.Log("[DemoScenarioController] Switched to HandThrowSandbox (F4)");
             }
 
             if (changed)

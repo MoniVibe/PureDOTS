@@ -1,3 +1,4 @@
+#if PUREDOTS_INPUT
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Hand;
 using PureDOTS.Systems.Input;
@@ -116,4 +117,4 @@ namespace PureDOTS.Systems
             return hasCandidate ? best : HandInputRouteResult.None;
         }
     }
-}
+#endif

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
 using Unity.Collections;
@@ -16,8 +15,7 @@ namespace PureDOTS.Runtime.Diagnostics
         /// <summary>
         /// Validates that a blob asset reference is not null and is created.
         /// </summary>
-        [Conditional("UNITY_ASSERTIONS")]
-        public static bool ValidateBlobReference<T>(BlobAssetReference<T> blobRef, out string error) where T : struct
+        public static bool ValidateBlobReference<T>(BlobAssetReference<T> blobRef, out string error) where T : unmanaged
         {
             error = null;
             if (!blobRef.IsCreated)
@@ -31,7 +29,6 @@ namespace PureDOTS.Runtime.Diagnostics
         /// <summary>
         /// Validates that a float value is finite (not NaN or infinity).
         /// </summary>
-        [Conditional("UNITY_ASSERTIONS")]
         public static bool ValidateFloat(float value, string fieldName, out string error)
         {
             error = null;
@@ -51,7 +48,6 @@ namespace PureDOTS.Runtime.Diagnostics
         /// <summary>
         /// Validates that a float3 value is finite.
         /// </summary>
-        [Conditional("UNITY_ASSERTIONS")]
         public static bool ValidateFloat3(float3 value, string fieldName, out string error)
         {
             error = null;
@@ -64,7 +60,6 @@ namespace PureDOTS.Runtime.Diagnostics
         /// <summary>
         /// Validates that a registry entry handle is valid (entity exists and has required components).
         /// </summary>
-        [Conditional("UNITY_ASSERTIONS")]
         public static bool ValidateRegistryEntry(
             Entity entity,
             EntityManager entityManager,
@@ -97,7 +92,6 @@ namespace PureDOTS.Runtime.Diagnostics
         /// <summary>
         /// Validates that an entity has a valid archetype (no broken component combinations).
         /// </summary>
-        [Conditional("UNITY_ASSERTIONS")]
         public static bool ValidateArchetype(Entity entity, EntityManager entityManager, out string error)
         {
             error = null;

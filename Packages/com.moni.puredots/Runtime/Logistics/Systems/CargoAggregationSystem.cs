@@ -55,6 +55,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
             var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
             var tick = tickTimeState.Tick;
+            var entityManager = state.EntityManager;
 
             foreach (var (loadState, loadEffect, valueState, entity) in SystemAPI.Query<
                 RefRW<CargoLoadState>,
@@ -128,24 +129,30 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 valueState.ValueRW.EscortPriority = totalValue * 0.001f; // Simple scaling, can be enhanced
 
                 // Mark mass as dirty for hierarchical aggregation
-                if (SystemAPI.HasComponent<MassComponent>(entity))
+                if (entityManager.HasComponent<MassComponent>(entity))
                 {
-                    var mass = SystemAPI.GetComponent<MassComponent>(entity);
+                    var mass = entityManager.GetComponentData<MassComponent>(entity);
                     mass.Mass = totalMass;
-                    SystemAPI.SetComponent(entity, mass);
-                    SystemAPI.AddComponent<MassDirtyTag>(entity);
-                    SystemAPI.AddComponent<CargoChangedTag>(entity);
+                    entityManager.SetComponentData(entity, mass);
                 }
                 else if (totalMass > 0f)
                 {
-                    SystemAPI.AddComponent(entity, new MassComponent
+                    entityManager.AddComponentData(entity, new MassComponent
                     {
                         Mass = totalMass,
                         CenterOfMass = float3.zero,
                         InertiaTensor = float3.zero
                     });
-                    SystemAPI.AddComponent<MassDirtyTag>(entity);
-                    SystemAPI.AddComponent<CargoChangedTag>(entity);
+                }
+
+                if (!entityManager.HasComponent<MassDirtyTag>(entity))
+                {
+                    entityManager.AddComponent<MassDirtyTag>(entity);
+                }
+
+                if (!entityManager.HasComponent<CargoChangedTag>(entity))
+                {
+                    entityManager.AddComponent<CargoChangedTag>(entity);
                 }
             }
         }

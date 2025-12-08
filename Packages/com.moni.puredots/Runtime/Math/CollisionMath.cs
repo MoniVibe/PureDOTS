@@ -72,11 +72,11 @@ namespace PureDOTS.Runtime.Math
     /// - 10³ ≤ Q < 10⁶ J/kg → Crater/partial damage
     /// - Q ≥ 10⁶ J/kg → Catastrophic disruption
     /// 
-    /// Example:
-    /// var q = CollisionMath.ComputeQ(1000f, 10000f, new float3(100f, 0f, 0f));
-    /// </summary>
-    [BurstCompile]
-    public static float ComputeQ(in CollisionData c)
+        /// Example:
+        /// var q = CollisionMath.ComputeQ(1000f, 10000f, new float3(100f, 0f, 0f));
+        /// </summary>
+        [BurstCompile]
+        public static float ComputeQ(in CollisionData c)
         {
             if (c.MassTarget <= 0f)
                 return float.MaxValue; // Infinite Q for zero-mass target
@@ -89,7 +89,7 @@ namespace PureDOTS.Runtime.Math
         /// Computes Q value from individual parameters.
         /// </summary>
         [BurstCompile]
-        public static float ComputeQ(float massProjectile, float massTarget, float3 velocity)
+        public static float ComputeQ(float massProjectile, float massTarget, in float3 velocity)
         {
             var collisionData = new CollisionData
             {
@@ -129,10 +129,10 @@ namespace PureDOTS.Runtime.Math
         /// </summary>
         [BurstCompile]
         public static void ComputeMomentumConservation(
-            float3 vA, float3 vB,
+            in float3 vA, in float3 vB,
             float mA, float mB,
-            float3 normal,
-            out float3 vAOut, out float3 vBOut)
+            in float3 normal,
+            ref float3 vAOut, ref float3 vBOut)
         {
             var totalMass = mA + mB;
             if (totalMass <= 0f)
@@ -155,17 +155,15 @@ namespace PureDOTS.Runtime.Math
         /// Prevents numeric blow-ups in extreme collisions.
         /// </summary>
         [BurstCompile]
-        public static float3 ClampVelocity(float3 velocity, float escapeVelocity, float terminalVelocity)
+        public static void ClampVelocity(ref float3 velocity, float escapeVelocity, float terminalVelocity)
         {
             var speed = math.length(velocity);
             var maxSpeed = math.max(escapeVelocity, terminalVelocity);
             
             if (speed > maxSpeed)
             {
-                return math.normalize(velocity) * maxSpeed;
+                velocity = math.normalize(velocity) * maxSpeed;
             }
-            
-            return velocity;
         }
 
         /// <summary>

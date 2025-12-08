@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -60,7 +61,12 @@ namespace PureDOTS.Runtime.Physics
                 EngineCatalog = catalogBlob,
                 MassLookup = massLookup,
                 DeltaTime = deltaTime,
-                CurrentTick = tickTimeState.Tick
+                CurrentTick = tickTimeState.Tick,
+                VelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>(false),
+                ForcesHandle = state.GetComponentTypeHandle<AppliedForces>(false),
+                FuelHandle = state.GetComponentTypeHandle<FuelConsumption>(false),
+                EngineReferenceHandle = state.GetComponentTypeHandle<EngineReference>(true),
+                EntityHandle = state.GetEntityTypeHandle()
             };
 
             state.Dependency = integrateJob.ScheduleParallel(_physicsQuery, state.Dependency);
@@ -78,13 +84,26 @@ namespace PureDOTS.Runtime.Physics
             public float DeltaTime;
             public uint CurrentTick;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
+            public ComponentTypeHandle<AppliedForces> ForcesHandle;
+            public ComponentTypeHandle<FuelConsumption> FuelHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<EngineReference> EngineReferenceHandle;
+            [ReadOnly]
+            public EntityTypeHandle EntityHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var velocities = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<PhysicsVelocity>(false));
-                var forces = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<AppliedForces>(false));
-                var fuelConsumptions = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<FuelConsumption>(false));
-                var engineRefs = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<EngineReference>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var velocities = chunk.GetNativeArray(VelocityHandle);
+                var forces = chunk.GetNativeArray(ForcesHandle);
+                var fuelConsumptions = chunk.GetNativeArray(FuelHandle);
+                var engineRefs = chunk.GetNativeArray(EngineReferenceHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {

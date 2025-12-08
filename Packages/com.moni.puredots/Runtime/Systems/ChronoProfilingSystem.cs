@@ -1,4 +1,4 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Telemetry;
@@ -6,18 +6,24 @@ using PureDOTS.Runtime.Time;
 
 namespace PureDOTS.Systems
 {
+    internal static class ChronoProfilingKeys
+    {
+        public static readonly FixedString64Bytes RealMs = "time.real_ms";
+        public static readonly FixedString64Bytes SimMs = "time.sim_ms";
+        public static readonly FixedString64Bytes Compression = "time.compression";
+        public static readonly FixedString64Bytes DriftMs = "time.drift_ms";
+    }
+
     /// <summary>
     /// Updates telemetry with time budget metrics each frame.
     /// Tracks real vs sim time, compression factor, and drift across worlds.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct ChronoProfilingSystem : ISystem
     {
         private double _lastRealTime;
         private double _lastSimTime;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _lastRealTime = 0.0;
@@ -26,9 +32,8 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
-        {
+    {
             var telemetryHandle = SystemAPI.GetSingletonRW<TelemetryStream>();
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
@@ -71,16 +76,11 @@ namespace PureDOTS.Systems
             // For now, drift is 0 for single-world
             telemetry.DriftMs = 0.0f;
 
-            // Add metrics to telemetry buffer
-            if (SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
-            {
-                var buffer = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
-                buffer.AddMetric("RealTimeMs", telemetry.RealTimeMs, TelemetryMetricUnit.DurationMilliseconds);
-                buffer.AddMetric("SimTimeMs", telemetry.SimTimeMs, TelemetryMetricUnit.DurationMilliseconds);
-                buffer.AddMetric("CompressionFactor", telemetry.CompressionFactor, TelemetryMetricUnit.Ratio);
-                buffer.AddMetric("DriftMs", telemetry.DriftMs, TelemetryMetricUnit.DurationMilliseconds);
-            }
+            // Enqueue metrics via telemetry hub (standardized keys)
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = ChronoProfilingKeys.RealMs, Value = telemetry.RealTimeMs, Unit = TelemetryMetricUnit.DurationMilliseconds });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = ChronoProfilingKeys.SimMs, Value = telemetry.SimTimeMs, Unit = TelemetryMetricUnit.DurationMilliseconds });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = ChronoProfilingKeys.Compression, Value = telemetry.CompressionFactor, Unit = TelemetryMetricUnit.Ratio });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = ChronoProfilingKeys.DriftMs, Value = telemetry.DriftMs, Unit = TelemetryMetricUnit.DurationMilliseconds });
         }
     }
 }
-

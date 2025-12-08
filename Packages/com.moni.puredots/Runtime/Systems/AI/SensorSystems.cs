@@ -57,7 +57,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessVisionJob : IJobEntity
+        public partial struct ProcessVisionJob : IJobEntity
         {
             public uint CurrentTick;
             public int Budget;
@@ -139,7 +139,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessSmellJob : IJobEntity
+        public partial struct ProcessSmellJob : IJobEntity
         {
             public uint CurrentTick;
             public int Budget;
@@ -212,7 +212,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessHearingJob : IJobEntity
+        public partial struct ProcessHearingJob : IJobEntity
         {
             public uint CurrentTick;
             public int Budget;
@@ -288,7 +288,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessRadarJob : IJobEntity
+        public partial struct ProcessRadarJob : IJobEntity
         {
             public uint CurrentTick;
             public int Budget;

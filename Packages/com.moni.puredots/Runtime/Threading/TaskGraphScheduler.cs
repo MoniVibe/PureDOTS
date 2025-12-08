@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Threading
 {
@@ -41,14 +42,9 @@ namespace PureDOTS.Runtime.Threading
     public struct TaskGraphScheduler
     {
         /// <summary>
-        /// Dependency graph: system type index -> list of dependent system type indices.
+        /// Dependency edges represented as (systemIndex, dependencyIndex).
         /// </summary>
-        private NativeHashMap<int, NativeList<int>> _dependencyGraph;
-
-        /// <summary>
-        /// Reverse dependency graph: system type index -> list of systems that depend on it.
-        /// </summary>
-        private NativeHashMap<int, NativeList<int>> _reverseDependencyGraph;
+        private NativeList<int2> _dependencyEdges;
 
         /// <summary>
         /// In-degree count for each system (number of dependencies).
@@ -58,43 +54,29 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// System type index -> system type mapping.
         /// </summary>
-        private NativeHashMap<int, Type> _typeIndexToType;
+        private Dictionary<int, Type> _typeIndexToType;
 
         /// <summary>
         /// System type -> type index mapping.
         /// </summary>
-        private NativeHashMap<Type, int> _typeToIndex;
+        private Dictionary<Type, int> _typeToIndex;
 
         private int _nextTypeIndex;
 
         public TaskGraphScheduler(Allocator allocator)
         {
-            _dependencyGraph = new NativeHashMap<int, NativeList<int>>(64, allocator);
-            _reverseDependencyGraph = new NativeHashMap<int, NativeList<int>>(64, allocator);
+            _dependencyEdges = new NativeList<int2>(64, allocator);
             _inDegree = new NativeHashMap<int, int>(64, allocator);
-            _typeIndexToType = new NativeHashMap<int, Type>(64, allocator);
-            _typeToIndex = new NativeHashMap<Type, int>(64, allocator);
+            _typeIndexToType = new Dictionary<int, Type>(64);
+            _typeToIndex = new Dictionary<Type, int>(64);
             _nextTypeIndex = 0;
         }
 
         public void Dispose()
         {
-            if (_dependencyGraph.IsCreated)
+            if (_dependencyEdges.IsCreated)
             {
-                foreach (var kvp in _dependencyGraph)
-                {
-                    kvp.Value.Dispose();
-                }
-                _dependencyGraph.Dispose();
-            }
-
-            if (_reverseDependencyGraph.IsCreated)
-            {
-                foreach (var kvp in _reverseDependencyGraph)
-                {
-                    kvp.Value.Dispose();
-                }
-                _reverseDependencyGraph.Dispose();
+                _dependencyEdges.Dispose();
             }
 
             if (_inDegree.IsCreated)
@@ -102,15 +84,22 @@ namespace PureDOTS.Runtime.Threading
                 _inDegree.Dispose();
             }
 
-            if (_typeIndexToType.IsCreated)
+            _typeIndexToType?.Clear();
+            _typeToIndex?.Clear();
+        }
+
+        private bool EdgeExists(int systemIndex, int dependencyIndex)
+        {
+            for (int i = 0; i < _dependencyEdges.Length; i++)
             {
-                _typeIndexToType.Dispose();
+                var edge = _dependencyEdges[i];
+                if (edge.x == systemIndex && edge.y == dependencyIndex)
+                {
+                    return true;
+                }
             }
 
-            if (_typeToIndex.IsCreated)
-            {
-                _typeToIndex.Dispose();
-            }
+            return false;
         }
 
         /// <summary>
@@ -123,8 +112,6 @@ namespace PureDOTS.Runtime.Threading
                 systemIndex = _nextTypeIndex++;
                 _typeToIndex[systemType] = systemIndex;
                 _typeIndexToType[systemIndex] = systemType;
-                _dependencyGraph[systemIndex] = new NativeList<int>(4, Allocator.Persistent);
-                _reverseDependencyGraph[systemIndex] = new NativeList<int>(4, Allocator.Persistent);
                 _inDegree[systemIndex] = 0;
             }
 
@@ -139,18 +126,16 @@ namespace PureDOTS.Runtime.Threading
                         depIndex = _nextTypeIndex++;
                         _typeToIndex[depType] = depIndex;
                         _typeIndexToType[depIndex] = depType;
-                        _dependencyGraph[depIndex] = new NativeList<int>(4, Allocator.Persistent);
-                        _reverseDependencyGraph[depIndex] = new NativeList<int>(4, Allocator.Persistent);
                         _inDegree[depIndex] = 0;
                     }
 
-                    // Add dependency edge: system depends on depType
-                    if (!_dependencyGraph[systemIndex].Contains(depIndex))
+                    if (EdgeExists(systemIndex, depIndex))
                     {
-                        _dependencyGraph[systemIndex].Add(depIndex);
-                        _reverseDependencyGraph[depIndex].Add(systemIndex);
-                        _inDegree[systemIndex] = _inDegree[systemIndex] + 1;
+                        continue;
                     }
+
+                    _dependencyEdges.Add(new int2(systemIndex, depIndex));
+                    _inDegree[systemIndex] = _inDegree[systemIndex] + 1;
                 }
             }
         }
@@ -160,10 +145,7 @@ namespace PureDOTS.Runtime.Threading
         /// </summary>
         public void BuildGraph(World world)
         {
-            var allSystems = new List<ComponentSystemBase>();
-            world.GetAllSystems(allSystems);
-
-            foreach (var system in allSystems)
+            foreach (var system in world.Systems)
             {
                 RegisterSystem(system.GetType());
             }
@@ -179,19 +161,21 @@ namespace PureDOTS.Runtime.Threading
             foreach (var kvp in _inDegree)
             {
                 int systemIndex = kvp.Key;
-                int inDegree = kvp.Value;
 
                 // Check if all dependencies are completed
                 bool allDepsCompleted = true;
-                if (_dependencyGraph.TryGetValue(systemIndex, out var deps))
+                for (int i = 0; i < _dependencyEdges.Length; i++)
                 {
-                    foreach (var depIndex in deps)
+                    var edge = _dependencyEdges[i];
+                    if (edge.x != systemIndex)
                     {
-                        if (!completedSystems.Contains(depIndex))
-                        {
-                            allDepsCompleted = false;
-                            break;
-                        }
+                        continue;
+                    }
+
+                    if (!completedSystems.Contains(edge.y))
+                    {
+                        allDepsCompleted = false;
+                        break;
                     }
                 }
 

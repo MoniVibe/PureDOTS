@@ -7,6 +7,12 @@ using PureDOTS.Runtime.Telemetry;
 
 namespace PureDOTS.Systems
 {
+    internal static class SystemMetricsKeys
+    {
+        public static readonly FixedString64Bytes TotalCount = "system.total_count";
+        public static readonly FixedString64Bytes TotalCostMs = "system.total_cost_ms";
+    }
+
     /// <summary>
     /// Collects metrics from all ECS systems and exports to telemetry every 5s.
     /// Automatically prunes systems with <1% contribution.
@@ -48,26 +54,19 @@ namespace PureDOTS.Systems
             var totalCost = 0f;
             var systemCount = 0;
 
-            // Export to telemetry
-            if (SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
+            // Export to telemetry via hub
+            TelemetryHub.Enqueue(new TelemetryMetric
             {
-                var telemetryBuffer = SystemAPI.GetBuffer<TelemetryMetric>(telemetryEntity);
-                
-                // Add system metrics to telemetry
-                telemetryBuffer.Add(new TelemetryMetric
-                {
-                    MetricName = "SystemMetrics_TotalSystems",
-                    Value = systemCount,
-                    Timestamp = (float)_exportTimer.Elapsed.TotalSeconds
-                });
-
-                telemetryBuffer.Add(new TelemetryMetric
-                {
-                    MetricName = "SystemMetrics_TotalCostMs",
-                    Value = totalCost,
-                    Timestamp = (float)_exportTimer.Elapsed.TotalSeconds
-                });
-            }
+                Key = SystemMetricsKeys.TotalCount,
+                Value = systemCount,
+                Unit = TelemetryMetricUnit.Count
+            });
+            TelemetryHub.Enqueue(new TelemetryMetric
+            {
+                Key = SystemMetricsKeys.TotalCostMs,
+                Value = totalCost,
+                Unit = TelemetryMetricUnit.DurationMilliseconds
+            });
         }
 
         private void PruneLowContributionSystems()

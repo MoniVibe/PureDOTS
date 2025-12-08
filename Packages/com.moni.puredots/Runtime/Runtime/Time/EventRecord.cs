@@ -7,7 +7,7 @@ namespace PureDOTS.Runtime.Time
     /// Immutable event record for deterministic replay.
     /// All world events append to a deterministic event journal.
     /// </summary>
-    public struct EventRecord : IBufferElementData
+    public unsafe struct EventRecord : IBufferElementData
     {
         /// <summary>Unique event ID (monotonically increasing).</summary>
         public ulong Id;

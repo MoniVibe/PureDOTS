@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Economy.Ownership.Aggregate
     /// Updates WorldAggregateProfile with empire-level wealth metrics.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(AggregateEconomySystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(MarketEquilibriumSystem))]
     public partial struct EmpireWealthSystem : ISystem
     {

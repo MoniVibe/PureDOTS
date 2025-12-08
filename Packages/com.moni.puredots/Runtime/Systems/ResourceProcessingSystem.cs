@@ -16,6 +16,8 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(ResourceRegistrySystem))]
     public partial struct ResourceProcessingSystem : ISystem
     {
+        private const uint ProcessingTickStride = 5; // run every 5 ticks (~12 Hz at 60 Hz base)
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -36,6 +38,12 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            // Respect tick-domain gating (system may be disabled by TickDomainCoordinatorSystem)
+            if (!state.WorldUnmanaged.IsSystemEnabled(state.Unmanaged))
+            {
+                return;
+            }
+
             var recipeSetComponent = SystemAPI.GetSingleton<ResourceRecipeSet>();
             if (!recipeSetComponent.Value.IsCreated)
             {
@@ -45,8 +53,22 @@ namespace PureDOTS.Systems
             ref var recipeSet = ref recipeSetComponent.Value.Value;
             var deltaTime = SystemAPI.Time.DeltaTime;
 
-            foreach (var (configRO, processorStateRW, inventoryRW, inventoryItems, queue) in SystemAPI.Query<RefRO<ResourceProcessorConfig>, RefRW<ResourceProcessorState>, RefRW<StorehouseInventory>, DynamicBuffer<StorehouseInventoryItem>, DynamicBuffer<ResourceProcessorQueue>>())
+            // Ensure processors have a periodic stride
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (entity, _) in SystemAPI.Query<Entity, RefRO<ResourceProcessorConfig>>().WithNone<PeriodicTickComponent>())
             {
+                ecb.AddComponent(entity, PeriodicTickHelper.Create(ProcessingTickStride));
+            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
+            foreach (var (configRO, processorStateRW, inventoryRW, inventoryItems, queue, periodic) in SystemAPI.Query<RefRO<ResourceProcessorConfig>, RefRW<ResourceProcessorState>, RefRW<StorehouseInventory>, DynamicBuffer<StorehouseInventoryItem>, DynamicBuffer<ResourceProcessorQueue>, RefRW<PeriodicTickComponent>>())
+            {
+                if (!PeriodicTickHelper.ShouldUpdate(timeState.Tick, ref periodic.ValueRW))
+                {
+                    continue;
+                }
+
                 ref var processorState = ref processorStateRW.ValueRW;
                 ref var inventory = ref inventoryRW.ValueRW;
 

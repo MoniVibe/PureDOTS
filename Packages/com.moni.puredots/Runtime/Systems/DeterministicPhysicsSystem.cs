@@ -53,11 +53,11 @@ namespace PureDOTS.Systems
             }
 
             // Process other physics bodies with RK2 integration
-            foreach (var (transform, velocity, acceleration) in SystemAPI.Query<RefRW<Unity.Transforms.LocalTransform>, RefRO<PhysicsVelocity>, RefRO<PhysicsAcceleration>>())
-            {
-                var pos = transform.ValueRO.Position;
-                var vel = velocity.ValueRO.Linear;
-                var accel = acceleration.ValueRO.Value;
+        foreach (var (transform, velocity, acceleration) in SystemAPI.Query<RefRW<Unity.Transforms.LocalTransform>, RefRO<DeterministicPhysicsVelocity>, RefRO<PhysicsAcceleration>>())
+        {
+            var pos = transform.ValueRO.Position;
+            var vel = velocity.ValueRO.Linear;
+            var accel = acceleration.ValueRO.Value;
 
                 RK2Integration.Integrate(pos, vel, accel, deltaTime, out pos, out vel);
 
@@ -79,7 +79,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Placeholder component for physics velocity.
     /// </summary>
-    public struct PhysicsVelocity : IComponentData
+    public struct DeterministicPhysicsVelocity : IComponentData
     {
         public float3 Linear;
         public float3 Angular;

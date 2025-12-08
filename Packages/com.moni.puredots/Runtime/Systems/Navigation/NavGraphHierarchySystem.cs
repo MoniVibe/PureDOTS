@@ -92,10 +92,20 @@ namespace PureDOTS.Systems.Navigation
                 transitNodeCount != hierarchy.ValueRO.TransitNodeCount)
             {
                 hierarchy.ValueRW.Version++;
+                // Mark path cache dirty on graph structure change
+                if (SystemAPI.HasSingleton<PathCacheState>())
+                {
+                    var cacheState = SystemAPI.GetSingletonRW<PathCacheState>();
+                    cacheState.ValueRW.Dirty = true;
+                }
             }
         }
     }
 }
+
+
+
+
 
 
 

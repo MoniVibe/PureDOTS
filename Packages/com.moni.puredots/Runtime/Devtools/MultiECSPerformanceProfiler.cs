@@ -3,6 +3,7 @@ using System.Text;
 using Unity.Entities;
 using Unity.Profiling;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 using PureDOTS.Runtime.Bridges;
 using PureDOTS.Runtime.Core;
 
@@ -120,7 +121,7 @@ namespace PureDOTS.Runtime.Devtools
                 report.AppendLine($"  ✓ Sync cost within target");
             }
 
-            Debug.Log(report.ToString());
+            UnityDebug.Log(report.ToString());
         }
 
         public string GetMetricsReport()

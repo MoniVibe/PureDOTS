@@ -4,7 +4,7 @@ namespace PureDOTS.Runtime.Networking
     /// Transport-agnostic interface for network communication.
     /// Plan adapter interface now; later drop in ENet, UDP, or Relay transports.
     /// </summary>
-    public interface INetTransport
+    public unsafe interface INetTransport
     {
         /// <summary>
         /// Sends data over the network.

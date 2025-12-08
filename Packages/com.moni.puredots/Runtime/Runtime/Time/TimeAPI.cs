@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Debugging;
 
 namespace PureDOTS.Runtime.Time
 {
@@ -29,14 +30,14 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for Pause()");
+                DebugLog.LogWarning("[TimeAPI] World not available for Pause()");
                 return;
             }
 
             var entityManager = world.EntityManager;
             if (!entityManager.HasComponent<RewindState>(entityManager.CreateEntityQuery(typeof(RewindState)).GetSingletonEntity()))
             {
-                Debug.LogWarning("[TimeAPI] RewindState singleton not found");
+                DebugLog.LogWarning("[TimeAPI] RewindState singleton not found");
                 return;
             }
 
@@ -65,7 +66,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for Resume()");
+                DebugLog.LogWarning("[TimeAPI] World not available for Resume()");
                 return;
             }
 
@@ -96,7 +97,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for SetSpeed()");
+                DebugLog.LogWarning("[TimeAPI] World not available for SetSpeed()");
                 return;
             }
 
@@ -127,7 +128,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for StepOneTick()");
+                DebugLog.LogWarning("[TimeAPI] World not available for StepOneTick()");
                 return;
             }
 
@@ -204,7 +205,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for CreateStasisBubble()");
+                DebugLog.LogWarning("[TimeAPI] World not available for CreateStasisBubble()");
                 return Entity.Null;
             }
 
@@ -256,7 +257,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for RewindLocalPlayerRegion()");
+                DebugLog.LogWarning("[TimeAPI] World not available for RewindLocalPlayerRegion()");
                 return;
             }
 
@@ -302,7 +303,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for BeginRewindPreview()");
+                DebugLog.LogWarning("[TimeAPI] World not available for BeginRewindPreview()");
                 return;
             }
 
@@ -329,7 +330,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for UpdateRewindPreviewSpeed()");
+                DebugLog.LogWarning("[TimeAPI] World not available for UpdateRewindPreviewSpeed()");
                 return;
             }
 
@@ -337,7 +338,7 @@ namespace PureDOTS.Runtime.Time
             // Only log occasionally to reduce spam
             if (UnityEngine.Time.frameCount % 30 == 0)
             {
-                Debug.Log($"[Space4XTimeAPI] UpdateRewindPreviewSpeed({scrubSpeed:F2})");
+                DebugLog.Log($"[Space4XTimeAPI] UpdateRewindPreviewSpeed({scrubSpeed:F2})");
             }
 #endif
 
@@ -363,7 +364,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for EndRewindScrub()");
+                DebugLog.LogWarning("[TimeAPI] World not available for EndRewindScrub()");
                 return;
             }
 
@@ -388,7 +389,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for CommitRewindFromPreview()");
+                DebugLog.LogWarning("[TimeAPI] World not available for CommitRewindFromPreview()");
                 return;
             }
 
@@ -413,7 +414,7 @@ namespace PureDOTS.Runtime.Time
             var world = GetWorld();
             if (world == null || !world.IsCreated)
             {
-                Debug.LogWarning("[TimeAPI] World not available for CancelRewindPreview()");
+                DebugLog.LogWarning("[TimeAPI] World not available for CancelRewindPreview()");
                 return;
             }
 
@@ -459,4 +460,3 @@ namespace PureDOTS.Runtime.Time
         }
     }
 }
-

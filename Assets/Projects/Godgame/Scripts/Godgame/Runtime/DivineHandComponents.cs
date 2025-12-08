@@ -1,5 +1,3 @@
-using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -21,8 +19,6 @@ namespace Godgame.Runtime
         AmountChanged = 2
     }
 
-    public struct DivineHandTag : IComponentData { }
-
     public struct DivineHandConfig : IComponentData
     {
         public float PickupRadius;
@@ -38,22 +34,6 @@ namespace Godgame.Runtime
         public int HeldCapacity;
         public float SiphonRate;
         public float DumpRate;
-    }
-
-    public struct DivineHandState : IComponentData
-    {
-        public Entity HeldEntity;
-        public float3 CursorPosition;
-        public float3 AimDirection;
-        public float3 HeldLocalOffset;
-        public HandState CurrentState;
-        public HandState PreviousState;
-        public float ChargeTimer;
-        public float CooldownTimer;
-        public ushort HeldResourceTypeIndex;
-        public int HeldAmount;
-        public int HeldCapacity;
-        public byte Flags;
     }
 
     public struct DivineHandEvent : IBufferElementData

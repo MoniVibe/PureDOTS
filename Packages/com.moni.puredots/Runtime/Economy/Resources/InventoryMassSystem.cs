@@ -84,17 +84,18 @@ namespace PureDOTS.Runtime.Economy.Resources
                     var mass = SystemAPI.GetComponent<MassComponent>(entity);
                     mass.Mass = totalMass;
                     SystemAPI.SetComponent(entity, mass);
-                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                    // mark dirty via ECB (Structural change must use ECB in Entities 1.4 with ISystem)
+                    ecb.AddComponent<MassDirtyTag>(entity);
                 }
                 else if (totalMass > 0f)
                 {
-                    SystemAPI.AddComponent(entity, new MassComponent
+                    ecb.AddComponent(entity, new MassComponent
                     {
                         Mass = totalMass,
                         CenterOfMass = float3.zero,
                         InertiaTensor = float3.zero
                     });
-                    SystemAPI.AddComponent<MassDirtyTag>(entity);
+                    ecb.AddComponent<MassDirtyTag>(entity);
                 }
             }
 

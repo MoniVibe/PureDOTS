@@ -9,6 +9,7 @@ namespace PureDOTS.Runtime.Authoring
     /// Editor-only system that watches blob manifest files and reloads BlobAssets.
     /// Supports hot-reload of RaceSpec, LimbSpec, ModuleSpec blobs without domain reload.
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial class BlobManifestWatcher : SystemBase
     {

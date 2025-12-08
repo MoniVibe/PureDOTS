@@ -78,6 +78,9 @@ This workspace contains three interconnected Unity DOTS projects:
 - `README_BRIEFING.md` - Project briefing
 - `Docs/Vision.md` - Design pillars and roadmap
 - `Docs/PUREDOTS_INTEGRATION_SPEC.md` - Integration patterns
+- `Docs/Architecture/ThreePillarECS_Architecture.md` - Three Pillar ECS overview
+- `Docs/Architecture/AgentSyncBus_Specification.md` - AgentSyncBus API and cadence
+- `Docs/Guides/MultiECS_Integration_Guide.md` - Multi-ECS integration cookbook
 - `Docs/FoundationGuidelines.md` - Coding guidelines
 
 ---
@@ -595,6 +598,12 @@ Before completing ANY task:
 | CS0246 | Type not found | Grep for type, update using or remove ref |
 | CS0618 | Obsolete API | Use `FindObjectsByType`/`FindFirstObjectByType` |
 | CreateAssetMenu warning | Attribute on non-SO | Remove attribute or inherit `ScriptableObject` |
+| CS0101 | Duplicate type from lingering stubs | Delete/`#if false` stub files when real types return |
+
+**Stub cleanup rule (canonical names):**
+- If you add a stub in the canonical namespace, mark it `// STUB: REMOVE when real <Type>` and track it (e.g., `Docs/StubTypes.md`), then delete it as soon as the real implementation lands.
+- Prefer minimal canonical files (`Detectable.cs`, `CombatLearningState.cs`, etc.) over mega `*Stubs.cs` files so they can be expanded instead of duplicated.
+- Never ship stubs alongside real types; before closing work, `grep -r "Stubs.cs"` in `com.moni.puredots` and remove or `#if false` any leftovers.
 
 ---
 

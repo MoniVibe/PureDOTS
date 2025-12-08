@@ -15,8 +15,8 @@ namespace PureDOTS.Runtime.Economy.Wealth
     {
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
         private ComponentLookup<FamilyWealth> _familyWealthLookup;
-        private static readonly FixedString64Bytes OpportunismReason = new FixedString64Bytes("opportunism");
-        private static readonly FixedString64Bytes DonationReason = new FixedString64Bytes("donation");
+        private FixedString64Bytes _opportunismReason;
+        private FixedString64Bytes _donationReason;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -25,6 +25,9 @@ namespace PureDOTS.Runtime.Economy.Wealth
             state.RequireForUpdate<RewindState>();
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
+            // Initialize FixedString fields in managed OnCreate to avoid Burst static constructors.
+            _opportunismReason = new FixedString64Bytes("opportunism");
+            _donationReason = new FixedString64Bytes("donation");
         }
 
         [BurstCompile]
@@ -58,17 +61,17 @@ namespace PureDOTS.Runtime.Economy.Wealth
             if (donorWealth.Balance < request.Amount)
             {
                 // Insufficient funds
-            state.EntityManager.RemoveComponent<DonationRequest>(donor);
-            return;
-        }
+                state.EntityManager.RemoveComponent<DonationRequest>(donor);
+                return;
+            }
 
-        // Record transaction
-        var reason = request.IsOpportunism ? OpportunismReason : DonationReason;
-        WealthTransactionSystem.RecordTransaction(
-            ref state,
-            donor,
-            request.Recipient,
-            request.Amount,
+            // Record transaction
+            var reason = request.IsOpportunism ? _opportunismReason : _donationReason;
+            WealthTransactionSystem.RecordTransaction(
+                ref state,
+                donor,
+                request.Recipient,
+                request.Amount,
                 TransactionType.Transfer,
                 reason,
                 request.Context

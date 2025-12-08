@@ -1,6 +1,7 @@
 using Godgame.Runtime;
 using PureDOTS.Input;
 using PureDOTS.Runtime.Camera;
+using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;

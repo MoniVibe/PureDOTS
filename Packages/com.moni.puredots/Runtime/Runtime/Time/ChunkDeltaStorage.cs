@@ -105,7 +105,7 @@ namespace PureDOTS.Runtime.Time
         /// <summary>
         /// Add a delta for a specific tick.
         /// </summary>
-        public void AddDelta(uint tick, ChunkDelta delta)
+        public void AddDelta(uint tick, in ChunkDelta delta)
         {
             // Prune old deltas if at capacity
             if (_deltas.Length >= _maxDeltas && _oldestTick < tick)

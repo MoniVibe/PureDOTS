@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -59,7 +60,10 @@ namespace PureDOTS.Runtime.Physics
                 MaterialLookup = materialLookup,
                 MassLookup = massLookup,
                 DeltaTime = deltaTime,
-                CurrentTick = tickTimeState.Tick
+                CurrentTick = tickTimeState.Tick,
+                StructuralHandle = state.GetComponentTypeHandle<StructuralState>(false),
+                MaterialHandle = state.GetComponentTypeHandle<MaterialId>(true),
+                EntityHandle = state.GetEntityTypeHandle()
             };
 
             state.Dependency = integrityJob.ScheduleParallel(_structuralQuery, state.Dependency);
@@ -80,11 +84,22 @@ namespace PureDOTS.Runtime.Physics
             public float DeltaTime;
             public uint CurrentTick;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<StructuralState> StructuralHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<MaterialId> MaterialHandle;
+            [ReadOnly]
+            public EntityTypeHandle EntityHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var structuralStates = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<StructuralState>(false));
-                var materialIds = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MaterialId>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var structuralStates = chunk.GetNativeArray(StructuralHandle);
+                var materialIds = chunk.GetNativeArray(MaterialHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {

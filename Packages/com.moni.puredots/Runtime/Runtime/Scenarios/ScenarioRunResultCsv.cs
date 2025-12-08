@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.Scenarios
 {
@@ -40,7 +41,7 @@ namespace PureDOTS.Runtime.Scenarios
             }
             sb.AppendLine(line);
             File.AppendAllText(path, sb.ToString());
-            Debug.Log($"ScenarioRunner: wrote CSV report to {path}");
+            UnityDebug.Log($"ScenarioRunner: wrote CSV report to {path}");
         }
 
         private static string BuildLine(in ScenarioRunResult result)

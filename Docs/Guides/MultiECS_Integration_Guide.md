@@ -552,9 +552,10 @@ mindWorld.World.Set(entity, component);
 
 ## References
 
-- `MultiECSArchitecture.md` - Architecture overview
-- `FoundationGuidelines.md` - Multi-ECS patterns (P25)
-- `TRI_PROJECT_BRIEFING.md` - Coding patterns and constraints
+- `Docs/Architecture/ThreePillarECS_Architecture.md` - Architecture overview
+- `Docs/Architecture/AgentSyncBus_Specification.md` - Bus API and invariants
+- `Docs/FoundationGuidelines.md` - Multi-ECS patterns (P25)
+- `Docs/Archive/TRI_PROJECT_BRIEFING.md` - Coding patterns and constraints
 - `AgentSyncBus.cs` - Message broker implementation
 - `AgentSyncBridgeCoordinator.cs` - Bus coordinator
 

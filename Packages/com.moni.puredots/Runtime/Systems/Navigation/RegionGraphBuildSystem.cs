@@ -101,8 +101,13 @@ namespace PureDOTS.Systems.Navigation
                 // Increment version to signal graph change
                 var hierarchyRW = SystemAPI.GetComponentRW<NavGraphHierarchy>(hierarchyEntity);
                 hierarchyRW.ValueRW.Version++;
+                // Mark path cache dirty
+                if (SystemAPI.HasSingleton<PathCacheState>())
+                {
+                    var cacheState = SystemAPI.GetSingletonRW<PathCacheState>();
+                    cacheState.ValueRW.Dirty = true;
+                }
             }
         }
     }
 }
-

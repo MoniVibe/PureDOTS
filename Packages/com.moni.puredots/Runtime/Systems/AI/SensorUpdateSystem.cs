@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;

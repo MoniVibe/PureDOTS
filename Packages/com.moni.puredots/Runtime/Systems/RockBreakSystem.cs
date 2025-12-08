@@ -1,3 +1,4 @@
+#if PUREDOTS_INPUT
 using PureDOTS.Input;
 using PureDOTS.Systems.Input;
 using Unity.Collections;
@@ -108,5 +109,5 @@ namespace PureDOTS.Systems
             // TODO: Games should add physics components, visual components, etc.
         }
     }
-}
+#endif
 

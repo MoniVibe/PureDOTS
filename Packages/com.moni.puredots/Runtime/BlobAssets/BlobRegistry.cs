@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.BlobAssets
 {
@@ -17,7 +18,7 @@ namespace PureDOTS.Runtime.BlobAssets
         {
             if (_initialized)
             {
-                Debug.LogWarning("[BlobRegistry] Already initialized, skipping.");
+            UnityEngine.Debug.LogWarning("[BlobRegistry] Already initialized, skipping.");
                 return;
             }
 
@@ -28,7 +29,7 @@ namespace PureDOTS.Runtime.BlobAssets
             // Actual blob creation happens via authoring components
             
             _initialized = true;
-            Debug.Log("[BlobRegistry] Blob registry initialized.");
+            UnityEngine.Debug.Log("[BlobRegistry] Blob registry initialized.");
         }
     }
 }

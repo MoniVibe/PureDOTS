@@ -9,7 +9,7 @@ namespace PureDOTS.Runtime.Networking
     /// Simulates network transport without actual networking.
     /// Later: replace with ENet, UDP, or Relay transports.
     /// </summary>
-    public class LocalLoopbackTransport : INetTransport
+    public unsafe class LocalLoopbackTransport : INetTransport
     {
         private readonly Queue<Packet> _sendQueue = new Queue<Packet>();
         private readonly Dictionary<int, Queue<Packet>> _channelQueues = new Dictionary<int, Queue<Packet>>();

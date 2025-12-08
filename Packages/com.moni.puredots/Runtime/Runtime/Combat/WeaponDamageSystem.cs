@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Physics;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -56,7 +57,9 @@ namespace PureDOTS.Runtime.Combat
             {
                 MaterialCatalog = catalogBlob,
                 MaterialLookup = materialLookup,
-                MassLookup = massLookup
+                MassLookup = massLookup,
+                StructuralHandle = state.GetComponentTypeHandle<StructuralState>(false),
+                MaterialHandle = state.GetComponentTypeHandle<MaterialId>(true)
             };
 
             state.Dependency = damageJob.ScheduleParallel(_damageQuery, state.Dependency);
@@ -74,15 +77,23 @@ namespace PureDOTS.Runtime.Combat
             [ReadOnly]
             public ComponentLookup<MassComponent> MassLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<StructuralState> StructuralHandle;
+
+            [ReadOnly]
+            public ComponentTypeHandle<MaterialId> MaterialHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var structuralStates = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<StructuralState>(false));
-                var materialIds = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MaterialId>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var structuralStates = chunk.GetNativeArray(ref StructuralHandle);
+                var materialIds = chunk.GetNativeArray(ref MaterialHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {
-                    var entity = entities[i];
                     var structural = structuralStates[i];
                     var materialId = materialIds[i];
 
@@ -134,7 +145,7 @@ namespace PureDOTS.Runtime.Combat
         public static float CalculateDamage(
             float kineticEnergy,
             in MaterialSpec targetMaterial,
-            in DamageModel damageModel,
+            ref DamageModel damageModel,
             MaterialCategory targetCategory)
         {
             // Base damage calculation: Damage = (KineticEnergy / TargetYieldStrength) * MaterialFlexibility

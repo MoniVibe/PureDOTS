@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Morale;
+using PureDOTS.Runtime.Systems.Events;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -39,11 +40,15 @@ namespace PureDOTS.Systems.Morale
             var deltaTime = timeState.FixedDeltaTime;
 
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            var hasEventQueue = SystemAPI.TryGetSingletonEntity<EventQueue>(out var eventQueueEntity);
+            RefRW<EventQueue>? eventQueueRef = hasEventQueue ? SystemAPI.GetComponentRW<EventQueue>(eventQueueEntity) : null;
+            DynamicBuffer<EventPayload> eventBuffer = hasEventQueue ? SystemAPI.GetBuffer<EventPayload>(eventQueueEntity) : default;
 
             // Process formations with GroupMorale (only if dirty or periodic update)
             foreach (var (formationEntity, groupMorale, bandStats, bandId, transform) in SystemAPI
                          .Query<Entity, RefRW<GroupMorale>, RefRO<BandStats>, RefRO<BandId>, RefRO<LocalTransform>>()
                          .WithAny<MoraleDirtyTag>()
+                         .WithChangeFilter<MoraleDirtyTag>()
                          .WithEntityAccess())
             {
                 var morale = groupMorale.ValueRO;
@@ -168,6 +173,20 @@ namespace PureDOTS.Systems.Morale
                             MoraleAtRout = newMorale,
                             RoutStartTick = currentTick
                         });
+                    }
+
+                    // Emit morale rout event to central queue (bounded)
+                    if (hasEventQueue && eventQueueRef.HasValue && eventBuffer.IsCreated)
+                    {
+                        var payload = new EventPayload
+                        {
+                            Source = formationEntity,
+                            Target = formationEntity,
+                            EventType = (uint)EventType.MoraleChange,
+                            Tick = currentTick,
+                            Value = newMorale
+                        };
+                        EventQueueHelpers.TryEnqueue(ref eventQueueRef.ValueRW, eventBuffer, payload);
                     }
                 }
                 else

@@ -10,6 +10,7 @@ namespace PureDOTS.Systems.AI
     /// Asynchronous sensor system that processes queued sensor packets.
     /// Treats expensive sensors (radar, smell diffusion) as async jobs for stable frame pacing.
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [BurstCompile]
     [UpdateInGroup(typeof(AISystemGroup))]
     public partial struct AsyncSensorSystem : ISystem

@@ -30,10 +30,6 @@ namespace PureDOTS.Runtime.Bridges
     /// Runs every 250ms (configurable via CognitiveTickProfile).
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(Systems.AI.VisionSystem))]
-    [UpdateAfter(typeof(Systems.AI.SmellSystem))]
-    [UpdateAfter(typeof(Systems.AI.HearingSystem))]
-    [UpdateAfter(typeof(Systems.AI.RadarSystem))]
     [UpdateBefore(typeof(BodyToMindSyncSystem))]
     public sealed partial class PerceptionBridgeSystem : SystemBase
     {
@@ -103,8 +99,8 @@ namespace PureDOTS.Runtime.Bridges
             var influenceQuery = GetEntityQuery(typeof(InfluenceFieldData), typeof(AgentSyncId));
             if (!influenceQuery.IsEmpty)
             {
-                var influenceData = influenceQuery.ToComponentDataArray<InfluenceFieldData>(Allocator.Temp);
-                var influenceSyncIds = influenceQuery.ToComponentDataArray<AgentSyncId>(Allocator.Temp);
+                var influenceData = influenceQuery.ToComponentDataArray<InfluenceFieldData>(Allocator.TempJob);
+                var influenceSyncIds = influenceQuery.ToComponentDataArray<AgentSyncId>(Allocator.TempJob);
                 
                 // Sync influence field data to Mind ECS via telemetry
                 // This enables mean-field coordination
@@ -126,7 +122,7 @@ namespace PureDOTS.Runtime.Bridges
         }
 
         [BurstCompile]
-        private struct CollectSensorReadingsJob : IJobEntity
+        private partial struct CollectSensorReadingsJob : IJobEntity
         {
             public NativeList<Percept> Percepts;
             public uint TickNumber;

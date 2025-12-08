@@ -14,25 +14,36 @@ namespace PureDOTS.Runtime.Utils
         /// Converts half to float.
         /// </summary>
         [BurstCompile]
-        public static float HalfToFloat(half h) => (float)h;
+        public static void HalfToFloat(in half h, out float result)
+        {
+            result = (float)h;
+        }
 
         /// <summary>
         /// Converts float to half.
         /// </summary>
         [BurstCompile]
-        public static half FloatToHalf(float f) => (half)f;
+        public static void FloatToHalf(float f, out half result)
+        {
+            result = (half)f;
+        }
 
         /// <summary>
         /// Converts half2 to float2.
         /// </summary>
         [BurstCompile]
-        public static float2 Half2ToFloat2(half2 h) => new float2((float)h.x, (float)h.y);
+        public static void Half2ToFloat2(in half2 h, out float2 result)
+        {
+            result = new float2((float)h.x, (float)h.y);
+        }
 
         /// <summary>
         /// Converts float2 to half2.
         /// </summary>
         [BurstCompile]
-        public static half2 Float2ToHalf2(float2 f) => new half2((half)f.x, (half)f.y);
+        public static void Float2ToHalf2(in float2 f, out half2 result)
+        {
+            result = new half2((half)f.x, (half)f.y);
+        }
     }
 }
-

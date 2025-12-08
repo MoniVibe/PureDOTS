@@ -155,8 +155,9 @@ namespace PureDOTS.Runtime.Spatial
                     var data = entities[index];
                     return new Entity
                     {
-                        Index = (int)(data & 0xFFFFFFFFUL),
-                        Version = (uint)(data >> 32)
+                        // Lower 32 bits store the entity index; mask then explicitly cast to int
+                        Index = (int)(uint)(data & 0xFFFFFFFFUL),
+                        Version = (int)(data >> 32)
                     };
                 }
             }

@@ -3,6 +3,7 @@ using System.Linq;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Recovery;
 using PureDOTS.Runtime.Time;
+using PureDOTS.Runtime.Debugging;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -82,7 +83,7 @@ namespace PureDOTS.Runtime.Recovery
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[CrashRecovery] Failed to find latest snapshot: {ex}");
+                DebugLog.LogError($"[CrashRecovery] Failed to find latest snapshot: {ex}");
             }
 
             return false;
@@ -104,10 +105,9 @@ namespace PureDOTS.Runtime.Recovery
                 }
 
                 var data = File.ReadAllBytes(snapshotPath);
-                using var buffer = new NativeList<byte>(data.Length, Allocator.Temp);
-                buffer.CopyFrom(data);
+                using var buffer = new NativeArray<byte>(data, Allocator.TempJob);
 
-                var reader = new TimeStreamReader(buffer.AsArray());
+                var reader = new TimeStreamReader(buffer);
 
                 // Read metadata
                 var tick = reader.Read<uint>();
@@ -117,7 +117,7 @@ namespace PureDOTS.Runtime.Recovery
                 // In a full implementation, would deserialize all entities and components
                 // This is a simplified version
 
-                Debug.Log($"[CrashRecovery] Loaded snapshot from tick {tick} ({entityCount} entities)");
+                DebugLog.Log($"[CrashRecovery] Loaded snapshot from tick {tick} ({entityCount} entities)");
                 return true;
             }
             catch (System.Exception ex)

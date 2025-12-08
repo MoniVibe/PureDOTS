@@ -29,9 +29,9 @@ namespace PureDOTS.Tests.Threading
         {
             using var map = ThreadRoleManager.GetRoleMap();
             
-            Assert.IsTrue(map.ContainsKey(typeof(Unity.Entities.SimulationSystemGroup)));
-            Assert.IsTrue(map.ContainsKey(typeof(Unity.Physics.Systems.PhysicsSystemGroup)));
-            Assert.IsTrue(map.ContainsKey(typeof(PureDOTS.Systems.GameplaySystemGroup)));
+            Assert.IsTrue(map.ContainsKey(TypeManager.GetSystemTypeIndex<Unity.Entities.SimulationSystemGroup>().Index));
+            Assert.IsTrue(map.ContainsKey(TypeManager.GetSystemTypeIndex<Unity.Physics.Systems.PhysicsSystemGroup>().Index));
+            Assert.IsTrue(map.ContainsKey(TypeManager.GetSystemTypeIndex<PureDOTS.Systems.GameplaySystemGroup>().Index));
         }
 
         [Test]

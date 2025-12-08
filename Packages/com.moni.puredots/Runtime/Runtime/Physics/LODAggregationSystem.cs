@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -51,7 +52,9 @@ namespace PureDOTS.Runtime.Physics
 
             var aggregateJob = new AggregateMassJob
             {
-                AggregateMap = aggregateMap.AsParallelWriter()
+                AggregateMap = aggregateMap.AsParallelWriter(),
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(true),
+                MaterialHandle = state.GetComponentTypeHandle<MaterialId>(true)
             };
 
             state.Dependency = aggregateJob.ScheduleParallel(_aggregateQuery, state.Dependency);
@@ -59,7 +62,9 @@ namespace PureDOTS.Runtime.Physics
             // Create or update mass proxies
             var proxyJob = new CreateProxyJob
             {
-                AggregateMap = aggregateMap
+                AggregateMap = aggregateMap,
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(false),
+                MaterialHandle = state.GetComponentTypeHandle<MaterialId>(true)
             };
 
             state.Dependency = proxyJob.Schedule(_aggregateQuery, state.Dependency);
@@ -74,11 +79,19 @@ namespace PureDOTS.Runtime.Physics
             [NativeDisableParallelForRestriction]
             public NativeParallelMultiHashMap<FixedString64Bytes, MassAccumulator>.ParallelWriter AggregateMap;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<MassComponent> MassHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<MaterialId> MaterialHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(true));
-                var materialIds = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MaterialId>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var massComponents = chunk.GetNativeArray(MassHandle);
+                var materialIds = chunk.GetNativeArray(MaterialHandle);
 
                 // Group by material ID within chunk
                 for (int i = 0; i < chunk.Count; i++)
@@ -89,7 +102,7 @@ namespace PureDOTS.Runtime.Physics
                     var accumulator = new MassAccumulator();
                     accumulator.Add(mass, float3.zero);
 
-                    AggregateMap.TryAdd(materialId.Value, accumulator);
+                    AggregateMap.Add(materialId.Value, accumulator);
                 }
             }
         }
@@ -100,15 +113,22 @@ namespace PureDOTS.Runtime.Physics
             [ReadOnly]
             public NativeParallelMultiHashMap<FixedString64Bytes, MassAccumulator> AggregateMap;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<MassComponent> MassHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<MaterialId> MaterialHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(false));
-                var materialIds = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MaterialId>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var massComponents = chunk.GetNativeArray(MassHandle);
+                var materialIds = chunk.GetNativeArray(MaterialHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {
-                    var entity = entities[i];
                     var materialId = materialIds[i];
 
                     if (!AggregateMap.ContainsKey(materialId.Value))

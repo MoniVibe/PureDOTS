@@ -2,6 +2,7 @@ using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Devtools;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.Devtools
 {
@@ -30,7 +31,7 @@ namespace PureDOTS.Runtime.Devtools
                 }
             }
 
-            Debug.Log($"[PerfRunner] Running benchmark for {ticks} ticks, exporting to {exportPath}");
+            UnityDebug.Log($"[PerfRunner] Running benchmark for {ticks} ticks, exporting to {exportPath}");
 
             // Run benchmark
             // In a real implementation, this would:

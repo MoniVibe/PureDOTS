@@ -1,11 +1,20 @@
 #if DEVTOOLS_ENABLED
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Devtools;
+using PureDOTS.Runtime.Telemetry;
 using Unity.Burst;
 using Unity.Entities;
 
 namespace PureDOTS.Systems.Devtools
 {
+    internal static class SpawnTelemetryKeys
+    {
+        public static readonly FixedString64Bytes Requests = "spawn.requests";
+        public static readonly FixedString64Bytes Validated = "spawn.validated";
+        public static readonly FixedString64Bytes Spawned = "spawn.spawned";
+        public static readonly FixedString64Bytes Failures = "spawn.failures";
+    }
+
     /// <summary>
     /// Updates spawn telemetry singleton with per-tick metrics.
     /// </summary>
@@ -21,6 +30,7 @@ namespace PureDOTS.Systems.Devtools
                 var entity = state.EntityManager.CreateEntity();
                 state.EntityManager.AddComponentData(entity, new SpawnTelemetry());
             }
+            state.RequireForUpdate<TelemetryStream>();
         }
 
         [BurstCompile]
@@ -47,6 +57,12 @@ namespace PureDOTS.Systems.Devtools
 
             // Count validated/spawned/failed (would need to track in systems)
             // For now, placeholder - systems would update telemetry as they process
+
+            // Emit telemetry metrics via hub
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = SpawnTelemetryKeys.Requests, Value = telemetry.ValueRO.RequestsThisTick, Unit = TelemetryMetricUnit.Count });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = SpawnTelemetryKeys.Validated, Value = telemetry.ValueRO.ValidatedThisTick, Unit = TelemetryMetricUnit.Count });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = SpawnTelemetryKeys.Spawned, Value = telemetry.ValueRO.SpawnedThisTick, Unit = TelemetryMetricUnit.Count });
+            TelemetryHub.Enqueue(new TelemetryMetric { Key = SpawnTelemetryKeys.Failures, Value = telemetry.ValueRO.FailuresThisTick, Unit = TelemetryMetricUnit.Count });
         }
     }
 }

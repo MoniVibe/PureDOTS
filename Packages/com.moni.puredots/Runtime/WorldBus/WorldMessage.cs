@@ -1,8 +1,17 @@
+using System.Runtime.InteropServices;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.WorldBus
 {
+    [StructLayout(LayoutKind.Sequential, Size = FixedBytes64.Size)]
+    public unsafe struct FixedBytes64
+    {
+        public const int Size = 64;
+        public fixed byte Buffer[Size];
+    }
+
     /// <summary>
     /// Message for cross-world communication.
     /// Routes events between ECS worlds deterministically.

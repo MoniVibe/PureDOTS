@@ -541,7 +541,12 @@ namespace PureDOTS.Runtime.Spatial
             public SpatialGridConfig Config;
             public NativeList<SpatialGridStagingEntry>.ParallelWriter Writer;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var transforms = chunk.GetNativeArray(ref TransformType);
                 var entities = chunk.GetNativeArray(EntityType);

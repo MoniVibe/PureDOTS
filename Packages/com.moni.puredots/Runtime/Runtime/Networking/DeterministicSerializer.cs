@@ -45,7 +45,8 @@ namespace PureDOTS.Runtime.Networking
             unsafe
             {
                 var size = UnsafeUtility.SizeOf<T>();
-                writer.WriteBytes((byte*)UnsafeUtility.AddressOf(ref UnsafeUtility.AsRef(component)), size);
+                var value = component; // copy to allow ref access
+                writer.WriteBytes((byte*)UnsafeUtility.AddressOf(ref value), size);
             }
         }
 
@@ -123,11 +124,13 @@ namespace PureDOTS.Runtime.Networking
             components = new NativeArray<T>(count, allocator);
             for (int i = 0; i < count; i++)
             {
-                if (!DeserializeComponent(ref reader, out components[i]))
+                if (!DeserializeComponent<T>(ref reader, out var element))
                 {
                     components.Dispose();
                     return false;
                 }
+
+                components[i] = element;
             }
 
             return true;

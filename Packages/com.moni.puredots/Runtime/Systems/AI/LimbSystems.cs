@@ -55,7 +55,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessLimbDamageJob : IJobEntity
+        public partial struct ProcessLimbDamageJob : IJobEntity
         {
             public uint CurrentTick;
 
@@ -101,18 +101,6 @@ namespace PureDOTS.Systems.AI
     }
 
     /// <summary>
-    /// Limb command buffer for activation commands from Mind ECS.
-    /// </summary>
-    public struct LimbCommandBuffer : IBufferElementData
-    {
-        public int LimbIndex;
-        public LimbAction Action;
-        public float3 Target;
-        public byte Priority;
-        public uint TickNumber;
-    }
-
-    /// <summary>
     /// Burst-compiled system that processes limb activation commands from Mind ECS.
     /// Updates LimbCapability.Active based on commands.
     /// </summary>
@@ -145,7 +133,7 @@ namespace PureDOTS.Systems.AI
         }
 
         [BurstCompile]
-        private struct ProcessLimbCommandsJob : IJobEntity
+        public partial struct ProcessLimbCommandsJob : IJobEntity
         {
             public uint CurrentTick;
 

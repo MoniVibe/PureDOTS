@@ -116,10 +116,10 @@ namespace PureDOTS.Systems.Aggregates
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
 
             // Collect potential founders
-            var entities = _potentialFounderQuery.ToEntityArray(Allocator.Temp);
-            var positions = new NativeArray<float3>(entities.Length, Allocator.Temp);
-            var alignments = new NativeArray<VillagerAlignment>(entities.Length, Allocator.Temp);
-            var goals = new NativeArray<VillagerAIState.Goal>(entities.Length, Allocator.Temp);
+            var entities = _potentialFounderQuery.ToEntityArray(Allocator.TempJob);
+            var positions = new NativeArray<float3>(entities.Length, Allocator.TempJob);
+            var alignments = new NativeArray<VillagerAlignment>(entities.Length, Allocator.TempJob);
+            var goals = new NativeArray<VillagerAIState.Goal>(entities.Length, Allocator.TempJob);
 
             for (int i = 0; i < entities.Length; i++)
             {
@@ -130,7 +130,7 @@ namespace PureDOTS.Systems.Aggregates
 
             // Find clusters of entities with compatible alignments and shared goals
             var proximityRadiusSq = FounderProximityRadius * FounderProximityRadius;
-            var processed = new NativeHashSet<int>(entities.Length, Allocator.Temp);
+            var processed = new NativeHashSet<int>(entities.Length, Allocator.TempJob);
 
             for (int i = 0; i < entities.Length; i++)
             {
@@ -139,7 +139,7 @@ namespace PureDOTS.Systems.Aggregates
                     continue;
                 }
 
-                var cluster = new NativeList<int>(Allocator.Temp);
+                var cluster = new NativeList<int>(Allocator.TempJob);
                 cluster.Add(i);
                 processed.Add(i);
 

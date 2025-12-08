@@ -1,3 +1,4 @@
+#if PUREDOTS_INPUT
 using PureDOTS.Input;
 using Unity.Entities;
 
@@ -54,6 +55,4 @@ namespace PureDOTS.Systems
         }
     }
 }
-
-
-
+#endif

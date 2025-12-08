@@ -1,7 +1,6 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
-using Unity.Blob;
 using PureDOTS.Runtime.Economy.Ownership;
 
 namespace PureDOTS.Authoring.Economy.Ownership

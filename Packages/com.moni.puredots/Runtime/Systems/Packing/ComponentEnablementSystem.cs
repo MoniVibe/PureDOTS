@@ -8,6 +8,7 @@ namespace PureDOTS.Runtime.Systems.Packing
     /// System managing component enablement for sparse packing.
     /// Uses IEnableableComponent to disable unused data (15-30% chunk compression).
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ComponentEnablementSystem : ISystem

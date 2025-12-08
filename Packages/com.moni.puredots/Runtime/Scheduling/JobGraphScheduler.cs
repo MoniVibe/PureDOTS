@@ -16,6 +16,7 @@ namespace PureDOTS.Runtime.Scheduling
         private struct SystemNode
         {
             public SystemHandle Handle;
+            public Type SystemType;
             public NativeList<ComponentType> ReadComponents;
             public NativeList<ComponentType> WriteComponents;
             public SystemBudget Budget;
@@ -24,15 +25,15 @@ namespace PureDOTS.Runtime.Scheduling
             public bool IsExecuted;
         }
 
-        private NativeList<SystemNode> _nodes;
-        private NativeHashMap<SystemHandle, int> _handleToIndex;
+        private List<SystemNode> _nodes;
+        private Dictionary<SystemHandle, int> _handleToIndex;
         private DirtyComponentTracker _dirtyTracker;
         private Allocator _allocator;
 
         public JobGraphScheduler(Allocator allocator)
         {
-            _nodes = new NativeList<SystemNode>(64, allocator);
-            _handleToIndex = new NativeHashMap<SystemHandle, int>(64, allocator);
+            _nodes = new List<SystemNode>(64);
+            _handleToIndex = new Dictionary<SystemHandle, int>(64);
             _dirtyTracker = new DirtyComponentTracker(allocator);
             _allocator = allocator;
         }
@@ -47,26 +48,32 @@ namespace PureDOTS.Runtime.Scheduling
             _handleToIndex.Clear();
 
             // Collect all systems
-            var systemList = new List<SystemHandle>();
+            var systemList = new List<(SystemHandle Handle, Type Type)>();
             foreach (var system in world.Systems)
             {
                 if (system is ComponentSystemBase)
                 {
-                    systemList.Add(system);
+                    var handle = world.GetExistingSystem(system.GetType());
+                    if (handle != SystemHandle.Null)
+                    {
+                        systemList.Add((handle, system.GetType()));
+                    }
                 }
             }
 
             // Build nodes
             for (int i = 0; i < systemList.Count; i++)
             {
-                var handle = systemList[i];
-                var system = world.GetExistingSystemManaged(handle);
+                var handle = systemList[i].Handle;
+                var systemType = systemList[i].Type;
+                var system = world.GetExistingSystemManaged(systemType);
                 
                 if (system == null) continue;
 
                 var node = new SystemNode
                 {
                     Handle = handle,
+                    SystemType = systemType,
                     ReadComponents = new NativeList<ComponentType>(8, _allocator),
                     WriteComponents = new NativeList<ComponentType>(8, _allocator),
                     Budget = GetSystemBudget(system),
@@ -79,7 +86,7 @@ namespace PureDOTS.Runtime.Scheduling
                 ExtractWriteComponents(system, ref node.WriteComponents);
 
                 _nodes.Add(node);
-                _handleToIndex.TryAdd(handle, _nodes.Length - 1);
+                _handleToIndex[handle] = _nodes.Count - 1;
             }
 
             // Build dependency edges from JobDependency attributes
@@ -92,10 +99,10 @@ namespace PureDOTS.Runtime.Scheduling
         /// </summary>
         public NativeList<SystemHandle> GetExecutionOrder()
         {
-            var executionOrder = new NativeList<SystemHandle>(_nodes.Length, _allocator);
+            var executionOrder = new NativeList<SystemHandle>(_nodes.Count, _allocator);
 
             // Reset execution flags
-            for (int i = 0; i < _nodes.Length; i++)
+            for (int i = 0; i < _nodes.Count; i++)
             {
                 var node = _nodes[i];
                 node.IsExecuted = false;
@@ -103,13 +110,13 @@ namespace PureDOTS.Runtime.Scheduling
             }
 
             // Topological sort with dirty component checking
-            var inDegree = new NativeArray<int>(_nodes.Length, Allocator.Temp);
+            var inDegree = new NativeArray<int>(_nodes.Count, Allocator.Temp);
             var queue = new NativeQueue<int>(Allocator.Temp);
 
             // Calculate in-degrees
-            for (int i = 0; i < _nodes.Length; i++)
+            for (int i = 0; i < _nodes.Count; i++)
             {
-                inDegree[i] = _nodes[i].Dependencies.Count;
+                inDegree[i] = _nodes[i].Dependencies.Length;
                 if (inDegree[i] == 0 && NeedsExecution(i))
                 {
                     queue.Enqueue(i);
@@ -125,8 +132,9 @@ namespace PureDOTS.Runtime.Scheduling
                 _nodes[current] = node;
 
                 // Update dependents
-                foreach (var dependent in node.Dependents)
+                for (int depIdx = 0; depIdx < node.Dependents.Length; depIdx++)
                 {
+                    int dependent = node.Dependents[depIdx];
                     inDegree[dependent]--;
                     if (inDegree[dependent] == 0 && NeedsExecution(dependent))
                     {
@@ -190,10 +198,10 @@ namespace PureDOTS.Runtime.Scheduling
         private void BuildDependencyEdges(World world)
         {
             // Build edges from JobDependency attributes
-            for (int i = 0; i < _nodes.Length; i++)
+            for (int i = 0; i < _nodes.Count; i++)
             {
                 var node = _nodes[i];
-                var system = world.GetExistingSystemManaged(node.Handle);
+                var system = world.GetExistingSystemManaged(node.SystemType);
                 
                 if (system == null) continue;
 
@@ -240,26 +248,21 @@ namespace PureDOTS.Runtime.Scheduling
 
         public void Dispose()
         {
-            if (_nodes.IsCreated)
+            for (int i = 0; i < _nodes.Count; i++)
             {
-                for (int i = 0; i < _nodes.Length; i++)
-                {
-                    var node = _nodes[i];
-                    if (node.ReadComponents.IsCreated)
-                        node.ReadComponents.Dispose();
-                    if (node.WriteComponents.IsCreated)
-                        node.WriteComponents.Dispose();
-                    if (node.Dependencies.IsCreated)
-                        node.Dependencies.Dispose();
-                    if (node.Dependents.IsCreated)
-                        node.Dependents.Dispose();
-                }
-                _nodes.Dispose();
+                var node = _nodes[i];
+                if (node.ReadComponents.IsCreated)
+                    node.ReadComponents.Dispose();
+                if (node.WriteComponents.IsCreated)
+                    node.WriteComponents.Dispose();
+                if (node.Dependencies.IsCreated)
+                    node.Dependencies.Dispose();
+                if (node.Dependents.IsCreated)
+                    node.Dependents.Dispose();
             }
-            if (_handleToIndex.IsCreated)
-                _handleToIndex.Dispose();
+            _nodes.Clear();
+            _handleToIndex.Clear();
             _dirtyTracker.Dispose();
         }
     }
 }
-

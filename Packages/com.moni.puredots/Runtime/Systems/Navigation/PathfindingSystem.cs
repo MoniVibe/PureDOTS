@@ -1,4 +1,6 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Caching;
+using PureDOTS.Runtime.Components.Caching;
 using PureDOTS.Runtime.Navigation;
 using Unity.Burst;
 using Unity.Collections;
@@ -18,11 +20,27 @@ namespace PureDOTS.Systems.Navigation
     [UpdateAfter(typeof(PathRequestSystem))]
     public partial struct PathfindingSystem : ISystem
     {
+        private ResultCache<byte> _pathCache;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<CacheStats>();
+            // Ensure cache state singleton exists
+            if (!SystemAPI.HasSingleton<PathCacheState>())
+            {
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new PathCacheState
+                {
+                    Version = 0,
+                    Dirty = false
+                });
+            }
+
+            // Create a modest cache for warm-path requests
+            _pathCache = new ResultCache<byte>(128, Allocator.Persistent);
         }
 
         [BurstCompile]
@@ -30,8 +48,20 @@ namespace PureDOTS.Systems.Navigation
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
+            var cacheStats = SystemAPI.GetSingletonRW<CacheStats>();
+            var cacheState = SystemAPI.GetSingletonRW<PathCacheState>();
 
-            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
+            if (rewindState.Mode != RewindMode.Record)
+            {
+                // Clear cache on rewind/playback to avoid serving stale paths
+                if (_pathCache.IsCreated)
+                {
+                    _pathCache.Clear();
+                }
+                return;
+            }
+
+            if (timeState.IsPaused)
             {
                 return;
             }
@@ -66,6 +96,14 @@ namespace PureDOTS.Systems.Navigation
             if (nodes.Length == 0 || edges.Length == 0)
             {
                 return; // Empty graph
+            }
+
+            // Invalidate cache if graph marked dirty
+            if (cacheState.ValueRO.Dirty)
+            {
+                _pathCache.Clear();
+                cacheState.ValueRW.Dirty = false;
+                cacheState.ValueRW.Version++;
             }
 
             // Process WARM path requests in priority order, respecting budget
@@ -103,6 +141,27 @@ namespace PureDOTS.Systems.Navigation
                     continue;
                 }
 
+            // Cache: build input hash (includes graph version)
+            uint inputHash = ResultCache<byte>.ComputeHash(startNode);
+            inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(goalNode));
+            inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash((int)request.ValueRO.LocomotionMode));
+            inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(request.ValueRO.StartPosition));
+            inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(request.ValueRO.GoalPosition));
+            inputHash = ResultCache<byte>.CombineHashes(inputHash, ResultCache<byte>.ComputeHash(cacheState.ValueRO.Version));
+
+            cacheStats.ValueRW.TotalLookups++;
+
+                if (_pathCache.IsCreated && _pathCache.TryGet(inputHash, out _))
+                {
+                    cacheStats.ValueRW.CacheHits++;
+                    pathState.ValueRW.Status = PathStatus.Success;
+                    pathState.ValueRW.IsValid = 1;
+                    // We don’t store path payloads; we skip recompute and keep existing pathResult/PathState as-is.
+                    continue;
+                }
+
+                cacheStats.ValueRW.CacheMisses++;
+
                 // Compute path using A*
                 ComputePath(
                     ref nodes,
@@ -138,6 +197,7 @@ namespace PureDOTS.Systems.Navigation
                     }
 
                     pathState.ValueRW.TotalCost = totalCost;
+                    _pathCache.Store(inputHash, 0);
                 }
                 else
                 {
@@ -336,6 +396,14 @@ namespace PureDOTS.Systems.Navigation
         {
             return math.length(a - b);
         }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            if (_pathCache.IsCreated)
+            {
+                _pathCache.Dispose();
+            }
+        }
     }
 }
-

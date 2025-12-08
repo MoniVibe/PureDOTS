@@ -1,3 +1,4 @@
+using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -13,7 +14,7 @@ namespace PureDOTS.Systems.Economy.Ownership.Body
     /// Calculates production from AssetSpec, updates ResourceStock buffers.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(BodyEconomySystemGroup))]
+[UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ProductionSystem : ISystem
     {
         [BurstCompile]

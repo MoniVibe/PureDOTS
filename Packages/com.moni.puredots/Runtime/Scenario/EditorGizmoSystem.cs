@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,13 +9,11 @@ namespace PureDOTS.Runtime.Scenario
     /// System for managing editor gizmos and selection in the editor world.
     /// Tracks selected entities and provides placement functionality.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct EditorGizmoSystem : ISystem
     {
         private EntityQuery _selectedEntitiesQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _selectedEntitiesQuery = state.GetEntityQuery(
@@ -24,7 +21,6 @@ namespace PureDOTS.Runtime.Scenario
                 ComponentType.ReadOnly<LocalTransform>());
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Gizmo rendering happens in MonoBehaviour layer

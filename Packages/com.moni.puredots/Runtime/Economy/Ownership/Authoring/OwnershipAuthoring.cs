@@ -1,6 +1,8 @@
+﻿#if UNITY_EDITOR
 using UnityEngine;
 using Unity.Entities;
 using PureDOTS.Runtime.Economy.Ownership;
+using OwnershipComponent = PureDOTS.Runtime.Economy.Ownership.Ownership;
 
 namespace PureDOTS.Authoring.Economy.Ownership
 {
@@ -30,7 +32,7 @@ namespace PureDOTS.Authoring.Economy.Ownership
         public override void Bake(OwnershipAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.None);
-            AddComponent(entity, new Ownership
+            AddComponent(entity, new OwnershipComponent
             {
                 Owner = authoring.OwnerEntity,
                 Share = authoring.Share,
@@ -40,3 +42,4 @@ namespace PureDOTS.Authoring.Economy.Ownership
     }
 }
 
+#endif

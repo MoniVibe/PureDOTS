@@ -41,6 +41,7 @@ namespace PureDOTS.Systems.Tactical
             foreach (var (formationEntity, formationCommand, formation, bandStats, transform) in SystemAPI
                          .Query<Entity, RefRO<FormationCommand>, RefRW<BandFormation>, RefRO<BandStats>, RefRO<LocalTransform>>()
                          .WithAny<FormationCommandDirtyTag>()
+                         .WithChangeFilter<FormationCommandDirtyTag>()
                          .WithEntityAccess())
             {
                 var command = formationCommand.ValueRO;

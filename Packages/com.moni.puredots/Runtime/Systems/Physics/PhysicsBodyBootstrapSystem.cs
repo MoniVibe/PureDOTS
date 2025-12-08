@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityPhysicsVelocity = Unity.Physics.PhysicsVelocity;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Physics
@@ -94,7 +95,7 @@ namespace PureDOTS.Systems.Physics
                 ecb.AddComponent(entity, new PhysicsCollider { Value = collider });
 
                 // Add PhysicsVelocity for kinematic bodies
-                ecb.AddComponent(entity, new PhysicsVelocity
+                ecb.AddComponent(entity, new UnityPhysicsVelocity
                 {
                     Linear = float3.zero,
                     Angular = float3.zero

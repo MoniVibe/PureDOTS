@@ -71,7 +71,7 @@ namespace PureDOTS.Runtime.Components
         public FixedString512Bytes History;
         
         /// <summary>Cultural description.</summary>
-        public FixedString256Bytes Culture;
+        public FixedString128Bytes Culture;
         
         /// <summary>Flavor text for events.</summary>
         public FixedString512Bytes FlavorText;

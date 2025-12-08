@@ -1,4 +1,6 @@
+#if PUREDOTS_AI
 using Unity.Entities;
+using PureDOTS.Runtime.Debugging;
 using UnityEngine;
 using DefaultEcs;
 
@@ -16,7 +18,7 @@ namespace PureDOTS.Runtime.Bridges
         {
             if (fromWorld == null || !fromWorld.IsCreated || toWorld == null)
             {
-                Debug.LogWarning("[CommunicationBus] Cannot connect invalid worlds.");
+                DebugLog.LogWarning("[CommunicationBus] Cannot connect invalid worlds.");
                 return;
             }
 
@@ -25,12 +27,38 @@ namespace PureDOTS.Runtime.Bridges
             var bus = AgentSyncBridgeCoordinator.GetBusFromWorld(fromWorld);
             if (bus == null)
             {
-                Debug.LogWarning($"[CommunicationBus] No AgentSyncBus found in {fromWorld.Name}");
+                DebugLog.LogWarning($"[CommunicationBus] No AgentSyncBus found in {fromWorld.Name}");
                 return;
             }
 
-            Debug.Log($"[CommunicationBus] Connected {fromWorld.Name} -> DefaultEcs World (latency: {latencySeconds}s)");
+            DebugLog.Log($"[CommunicationBus] Connected {fromWorld.Name} -> DefaultEcs World (latency: {latencySeconds}s)");
         }
     }
 }
+#else
+using Unity.Entities;
+using PureDOTS.Runtime.Debugging;
+using UnityEngine;
+
+namespace PureDOTS.Runtime.Bridges
+{
+    /// <summary>
+    /// Stubbed communication bus when AI/DefaultEcs layer is not present.
+    /// </summary>
+    public static class CommunicationBus
+    {
+        public static void Connect(World fromWorld, World toWorld, float latencySeconds = 0.1f)
+        {
+            if (fromWorld == null || !fromWorld.IsCreated)
+            {
+                DebugLog.LogWarning("[CommunicationBus] Cannot connect invalid worlds.");
+                return;
+            }
+
+            // No DefaultEcs target available; log once for visibility.
+            DebugLog.Log($"[CommunicationBus] AI layer not enabled; skipping connection from {fromWorld.Name}.");
+        }
+    }
+}
+#endif
 

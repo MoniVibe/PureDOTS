@@ -23,6 +23,11 @@ namespace Space4X.Registry
         private EntityQuery _fleetQuery;
         private EntityQuery _logisticsRouteQuery;
         private EntityQuery _anomalyQuery;
+        private EntityQuery _gridConfigQuery;
+        private EntityQuery _gridStateQuery;
+        private EntityQuery _syncStateQuery;
+        private EntityQuery _timeQuery;
+        private EntityQuery _miracleRegistryQuery;
 
         private Entity _colonyRegistryEntity;
         private Entity _fleetRegistryEntity;
@@ -54,6 +59,26 @@ namespace Space4X.Registry
                 .WithAll<Space4XAnomaly, LocalTransform, SpatialIndexedTag>()
                 .Build();
 
+            _gridConfigQuery = SystemAPI.QueryBuilder()
+                .WithAll<SpatialGridConfig>()
+                .Build();
+
+            _gridStateQuery = SystemAPI.QueryBuilder()
+                .WithAll<SpatialGridState>()
+                .Build();
+
+            _syncStateQuery = SystemAPI.QueryBuilder()
+                .WithAll<RegistrySpatialSyncState>()
+                .Build();
+
+            _timeQuery = SystemAPI.QueryBuilder()
+                .WithAll<TimeState>()
+                .Build();
+
+            _miracleRegistryQuery = SystemAPI.QueryBuilder()
+                .WithAll<MiracleRegistry>()
+                .Build();
+
             var colonyLabel = new FixedString64Bytes("Space4X Colonies");
             var fleetLabel = new FixedString64Bytes("Space4X Fleets");
             var logisticsLabel = new FixedString64Bytes("Space4X Logistics Routes");
@@ -83,14 +108,14 @@ namespace Space4X.Registry
 
         public void OnUpdate(ref SystemState state)
         {
-            var tick = SystemAPI.GetSingleton<TimeState>().Tick;
+            var tick = _timeQuery.GetSingleton<TimeState>().Tick;
 
             _residencyLookup.Update(ref state);
 
-            var hasGridConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig gridConfig);
-            var hasGridState = SystemAPI.TryGetSingleton(out SpatialGridState gridState);
+            var hasGridConfig = _gridConfigQuery.TryGetSingleton(out SpatialGridConfig gridConfig);
+            var hasGridState = _gridStateQuery.TryGetSingleton(out SpatialGridState gridState);
             var hasSpatial = hasGridConfig && hasGridState && gridConfig.CellCount > 0 && gridConfig.CellSize > 0f;
-            var hasSyncState = SystemAPI.TryGetSingleton(out RegistrySpatialSyncState syncState);
+            var hasSyncState = _syncStateQuery.TryGetSingleton(out RegistrySpatialSyncState syncState);
 
             UpdateColonyRegistry(ref state, tick, hasSpatial, gridConfig, gridState, hasSyncState, syncState);
             UpdateFleetRegistry(ref state, tick, hasSpatial, gridConfig, gridState, hasSyncState, syncState);
@@ -513,7 +538,7 @@ namespace Space4X.Registry
 
         private void UpdateMiracleSnapshot(ref SystemState state, uint tick)
         {
-            if (!SystemAPI.TryGetSingleton(out MiracleRegistry miracleRegistry))
+            if (!_miracleRegistryQuery.TryGetSingleton(out MiracleRegistry miracleRegistry))
             {
                 return;
             }

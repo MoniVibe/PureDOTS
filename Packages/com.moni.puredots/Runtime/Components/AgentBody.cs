@@ -21,7 +21,7 @@ namespace PureDOTS.Runtime.Components
     /// </summary>
     public struct IntentCommand : IComponentData
     {
-        public PureDOTS.Runtime.Bridges.IntentKind Kind;
+        public IntentKind Kind;
         public float3 TargetPosition;
         public Entity TargetEntity;
         public byte Priority;

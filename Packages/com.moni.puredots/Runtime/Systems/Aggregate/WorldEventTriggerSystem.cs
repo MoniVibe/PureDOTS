@@ -6,6 +6,12 @@ using PureDOTS.Runtime.Telemetry;
 
 namespace PureDOTS.Systems.Aggregate
 {
+    internal static class WorldEventTriggerKeys
+    {
+        public static readonly FixedString64Bytes Chaos = "world.chaos";
+        public static readonly FixedString64Bytes Harmony = "world.harmony";
+    }
+
     /// <summary>
     /// System that detects major world events (wars, miracles, biome shifts) and triggers profile spikes.
     /// Broadcasts metrics to Godgame layer (divine feedback) or Space4X (biosphere health).
@@ -52,14 +58,9 @@ namespace PureDOTS.Systems.Aggregate
             // Broadcast to telemetry stream if available
             if (SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
             {
-                if (state.EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
-                {
-                    var metrics = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
-                    metrics.AddMetric(new FixedString64Bytes("world.chaos"), profile.ValueRO.Chaos, TelemetryMetricUnit.Ratio);
-                    metrics.AddMetric(new FixedString64Bytes("world.harmony"), profile.ValueRO.Harmony, TelemetryMetricUnit.Ratio);
-                }
+                TelemetryHub.Enqueue(new TelemetryMetric { Key = WorldEventTriggerKeys.Chaos, Value = profile.ValueRO.Chaos, Unit = TelemetryMetricUnit.Ratio });
+                TelemetryHub.Enqueue(new TelemetryMetric { Key = WorldEventTriggerKeys.Harmony, Value = profile.ValueRO.Harmony, Unit = TelemetryMetricUnit.Ratio });
             }
         }
     }
 }
-

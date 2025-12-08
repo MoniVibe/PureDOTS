@@ -14,7 +14,7 @@ namespace PureDOTS.Runtime.Spatial
         /// <summary>
         /// Axis-aligned bounding boxes for each node.
         /// </summary>
-        public NativeArray<AABB> Bounds;
+        public NativeArray<MinMaxAABB> Bounds;
 
         /// <summary>
         /// Parent node indices (-1 for root nodes).
@@ -52,6 +52,8 @@ namespace PureDOTS.Runtime.Spatial
         /// </summary>
         public byte MaxDepth;
 
+        private Allocator _allocator;
+
         /// <summary>
         /// Creates a new OctreeSoA with the specified capacity.
         /// </summary>
@@ -59,14 +61,15 @@ namespace PureDOTS.Runtime.Spatial
         {
             var octree = new OctreeSoA
             {
-                Bounds = new NativeArray<AABB>(initialCapacity, allocator),
+                Bounds = new NativeArray<MinMaxAABB>(initialCapacity, allocator),
                 Parent = new NativeArray<int>(initialCapacity, allocator),
                 Children = new NativeArray<int>(initialCapacity * 8, allocator), // 8 children per node
                 Density = new NativeArray<float>(initialCapacity, allocator),
                 Level = new NativeArray<byte>(initialCapacity, allocator),
                 EntityCounts = new NativeArray<int>(initialCapacity, allocator),
                 NodeCount = 0,
-                MaxDepth = maxDepth
+                MaxDepth = maxDepth,
+                _allocator = allocator
             };
 
             // Initialize all children to -1 (empty)
@@ -153,7 +156,7 @@ namespace PureDOTS.Runtime.Spatial
         /// <summary>
         /// Adds a new node to the octree and returns its index.
         /// </summary>
-        public int AddNode(AABB bounds, int parentIndex, byte level)
+        public int AddNode(MinMaxAABB bounds, int parentIndex, byte level)
         {
             // Resize arrays if needed
             if (NodeCount >= Bounds.Length)
@@ -195,7 +198,7 @@ namespace PureDOTS.Runtime.Spatial
 
             var bounds = Bounds[nodeIndex];
             var center = bounds.Center;
-            var halfSize = bounds.Size * 0.5f;
+            var halfSize = bounds.Extents; // MinMaxAABB stores half-extents directly
             var level = (byte)(Level[nodeIndex] + 1);
 
             // Create 8 octants
@@ -214,11 +217,7 @@ namespace PureDOTS.Runtime.Spatial
             for (int i = 0; i < 8; i++)
             {
                 var octantCenter = center + octantOffsets[i] * halfSize;
-                var octantBounds = new AABB
-                {
-                    Center = octantCenter,
-                    Extents = halfSize * 0.5f
-                };
+                var octantBounds = MinMaxAABB.CreateFromCenterAndHalfExtents(octantCenter, halfSize * 0.5f);
 
                 var childIndex = AddNode(octantBounds, nodeIndex, level);
                 SetChild(nodeIndex, i, childIndex);
@@ -254,12 +253,12 @@ namespace PureDOTS.Runtime.Spatial
             var oldLevel = Level;
             var oldEntityCounts = EntityCounts;
 
-            Bounds = new NativeArray<AABB>(newCapacity, oldBounds.GetAllocator());
-            Parent = new NativeArray<int>(newCapacity, oldParent.GetAllocator());
-            Children = new NativeArray<int>(newCapacity * 8, oldChildren.GetAllocator());
-            Density = new NativeArray<float>(newCapacity, oldDensity.GetAllocator());
-            Level = new NativeArray<byte>(newCapacity, oldLevel.GetAllocator());
-            EntityCounts = new NativeArray<int>(newCapacity, oldEntityCounts.GetAllocator());
+            Bounds = new NativeArray<MinMaxAABB>(newCapacity, _allocator);
+            Parent = new NativeArray<int>(newCapacity, _allocator);
+            Children = new NativeArray<int>(newCapacity * 8, _allocator);
+            Density = new NativeArray<float>(newCapacity, _allocator);
+            Level = new NativeArray<byte>(newCapacity, _allocator);
+            EntityCounts = new NativeArray<int>(newCapacity, _allocator);
 
             // Copy old data
             for (int i = 0; i < NodeCount; i++)

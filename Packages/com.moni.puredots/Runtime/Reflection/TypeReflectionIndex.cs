@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
+using PureDOTS.Runtime.Debugging;
 using UnityEngine;
 
 namespace PureDOTS.Runtime.Reflection
@@ -32,7 +33,7 @@ namespace PureDOTS.Runtime.Reflection
                 var path = Path.Combine(Application.dataPath, "..", "Packages/com.moni.puredots/Generated/TypeReflectionIndex.json");
                 if (!File.Exists(path))
                 {
-                    Debug.LogWarning($"Type Reflection Index not found at {path}. Run PureDOTS/Generate Type Reflection Index in editor.");
+                    DebugLog.LogWarning($"Type Reflection Index not found at {path}. Run PureDOTS/Generate Type Reflection Index in editor.");
                     return false;
                 }
 
@@ -43,7 +44,7 @@ namespace PureDOTS.Runtime.Reflection
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to load Type Reflection Index: {ex}");
+                DebugLog.LogError($"Failed to load Type Reflection Index: {ex}");
                 return false;
             }
         }

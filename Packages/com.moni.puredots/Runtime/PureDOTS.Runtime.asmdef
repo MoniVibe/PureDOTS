@@ -11,9 +11,11 @@
         "Unity.InputSystem",
         "Unity.Scenes",
         "Unity.Entities.Content",
+        "Unity.Entities.Hybrid",
         "Unity.Physics",
         "PureDOTS.Config",
-        "PureDOTS.Shared"
+        "PureDOTS.Shared",
+        "DefaultEcs"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -25,4 +27,3 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
-

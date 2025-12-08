@@ -18,6 +18,7 @@ namespace PureDOTS.Systems.Ships
         private FixedString64Bytes _nominalKey;
         private FixedString64Bytes _warningKey;
         private FixedString64Bytes _breachKey;
+        private NativeQueue<TelemetryMetric>.ParallelWriter _writer;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -32,15 +33,9 @@ namespace PureDOTS.Systems.Ships
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var telemetryExists = SystemAPI.HasSingleton<TelemetryStream>();
-            DynamicBuffer<TelemetryMetric> buffer = default;
-
-            if (telemetryExists && SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
+            if (_writer.Equals(default))
             {
-                if (state.EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
-                {
-                    buffer = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
-                }
+                _writer = TelemetryHub.AsParallelWriter();
             }
 
             int nominal = 0;
@@ -62,24 +57,16 @@ namespace PureDOTS.Systems.Ships
                         break;
                 }
 
-                if (telemetryExists && buffer.IsCreated && alerts.IsCreated && alerts.Length > 0)
+                if (alerts.IsCreated && alerts.Length > 0)
                 {
                     var alert = alerts[alerts.Length - 1];
-                    buffer.Add(new TelemetryMetric
-                    {
-                        Key = _alertKey,
-                        Value = (int)alert.Status,
-                        Unit = TelemetryMetricUnit.Count
-                    });
+                    Enqueue(new TelemetryMetric { Key = _alertKey, Value = (int)alert.Status, Unit = TelemetryMetricUnit.Count });
                 }
             }
 
-            if (telemetryExists && buffer.IsCreated)
-            {
-                buffer.Add(new TelemetryMetric { Key = _nominalKey, Value = nominal, Unit = TelemetryMetricUnit.Count });
-                buffer.Add(new TelemetryMetric { Key = _warningKey, Value = warning, Unit = TelemetryMetricUnit.Count });
-                buffer.Add(new TelemetryMetric { Key = _breachKey, Value = breach, Unit = TelemetryMetricUnit.Count });
-            }
+            Enqueue(new TelemetryMetric { Key = _nominalKey, Value = nominal, Unit = TelemetryMetricUnit.Count });
+            Enqueue(new TelemetryMetric { Key = _warningKey, Value = warning, Unit = TelemetryMetricUnit.Count });
+            Enqueue(new TelemetryMetric { Key = _breachKey, Value = breach, Unit = TelemetryMetricUnit.Count });
         }
 
         private static FixedString64Bytes CreateAlertKey()
@@ -108,6 +95,18 @@ namespace PureDOTS.Systems.Ships
             FixedString64Bytes fs = default;
             fs.Append('c'); fs.Append('o'); fs.Append('m'); fs.Append('p'); fs.Append('l'); fs.Append('i'); fs.Append('a'); fs.Append('n'); fs.Append('c'); fs.Append('e'); fs.Append('.'); fs.Append('b'); fs.Append('r'); fs.Append('e'); fs.Append('a'); fs.Append('c'); fs.Append('h');
             return fs;
+        }
+
+        private void Enqueue(in TelemetryMetric metric)
+        {
+            if (_writer.Equals(default))
+            {
+                TelemetryHub.Enqueue(metric);
+            }
+            else
+            {
+                _writer.Enqueue(metric);
+            }
         }
     }
 }

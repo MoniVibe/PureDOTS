@@ -9,7 +9,6 @@ namespace PureDOTS.Runtime.Networking
     /// Systems using RewindState can call these to record component diffs each tick.
     /// Later, these diffs will be shipped over the wire to resync late clients or spectators.
     /// </summary>
-    [BurstCompile]
     public interface ISnapshotSerializable
     {
         void WriteSnapshot(ref SnapshotWriter writer);
@@ -21,7 +20,7 @@ namespace PureDOTS.Runtime.Networking
     /// No network code yet - just writes to memory buffers.
     /// </summary>
     [BurstCompile]
-    public struct SnapshotWriter
+    public unsafe struct SnapshotWriter
     {
         private NativeList<byte> _buffer;
         private bool _isCreated;
@@ -96,7 +95,7 @@ namespace PureDOTS.Runtime.Networking
     /// No network code yet - just reads from memory buffers.
     /// </summary>
     [BurstCompile]
-    public struct SnapshotReader
+    public unsafe struct SnapshotReader
     {
         private NativeArray<byte> _buffer;
         private int _position;

@@ -1,4 +1,5 @@
 using System;
+using PureDOTS.Runtime.Debugging;
 using UnityEngine;
 
 #nullable enable
@@ -34,7 +35,7 @@ namespace PureDOTS.Runtime.Hybrid
                 s_mode = value;
                 ModeChanged?.Invoke(s_mode);
 
-                Debug.Log($"[HybridControlCoordinator] Input mode switched to {s_mode}.");
+                DebugLog.Log($"[HybridControlCoordinator] Input mode switched to {s_mode}.");
             }
         }
 

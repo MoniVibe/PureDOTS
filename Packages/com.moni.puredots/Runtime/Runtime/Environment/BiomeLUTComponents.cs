@@ -41,7 +41,7 @@ namespace PureDOTS.Environment
         /// </summary>
         public BiomeType EvaluateBiome(float temperature, float moisture, float light = 50f)
         {
-            if (!TempMoistureLightMatrix.IsCreated || TempMoistureLightMatrix.Length == 0)
+            if (TempMoistureLightMatrix.Length == 0)
             {
                 return BiomeType.Unknown;
             }
@@ -67,7 +67,7 @@ namespace PureDOTS.Environment
         /// </summary>
         public BiomeType EvaluateBiomeWithChemical(float temperature, float moisture, float light, float chemical)
         {
-            if (!TempMoistureLightChemicalMatrix.IsCreated || TempMoistureLightChemicalMatrix.Length == 0)
+            if (TempMoistureLightChemicalMatrix.Length == 0)
             {
                 // Fallback to 3D LUT
                 return EvaluateBiome(temperature, moisture, light);

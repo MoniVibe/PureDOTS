@@ -230,25 +230,78 @@ namespace PureDOTS.Systems
                     continue;
                 }
 
-                // Map ResourceTypeId (int) to ResourceTypeId (FixedString64Bytes) via catalog
-                // For now, we'll need to create a mapping or use a default type
-                // This is a limitation - ResourceDeposit uses int while catalog uses FixedString64Bytes
-                // TODO: Add proper mapping or change ResourceDeposit to use FixedString64Bytes
-                
-                // For now, skip deposits that can't be mapped (would need ResourceTypeId component)
-                // Or add a helper to map int -> FixedString64Bytes via catalog
-                // For initial implementation, we'll add them with a default type index
-                
-                // Note: This requires ResourceDeposit.ResourceTypeId to match catalog indices
-                // or we need a mapping component. For now, we'll skip deposits without proper mapping.
-                // Future: Add ResourceTypeId component to rocks or create mapping system.
-                
-                // Skip for now - would need proper type mapping
-                // totalResources++;
-                // if (deposit.ValueRO.CurrentAmount > 0f)
-                // {
-                //     totalActiveResources++;
-                // }
+                // ResourceDeposit.ResourceTypeId is an index into the ResourceTypeIndex catalog.
+                var typeIndex = deposit.ValueRO.ResourceTypeId;
+                if (typeIndex < 0 || typeIndex >= catalog.Value.Ids.Length)
+                {
+#if UNITY_EDITOR
+                    if (!_loggedInitialState)
+                    {
+                        UnityEngine.Debug.LogWarning($"[ResourceRegistrySystem] Skipping ResourceDeposit {entity.Index}:{entity.Version} with invalid type index {typeIndex}.");
+                    }
+#endif
+                    continue;
+                }
+
+                var position = transform.ValueRO.Position;
+                var cellId = -1;
+                var usedResidency = false;
+
+                if (hasSpatial && _residencyLookup.HasComponent(entity))
+                {
+                    var residency = _residencyLookup[entity];
+                    if ((uint)residency.CellId < (uint)gridConfig.CellCount)
+                    {
+                        cellId = residency.CellId;
+                        resolvedCount++;
+                        usedResidency = true;
+                    }
+                }
+
+                if (!usedResidency && hasSpatial)
+                {
+                    SpatialHash.Quantize(position, gridConfig, out var coords);
+                    var flattened = SpatialHash.Flatten(in coords, in gridConfig);
+                    if ((uint)flattened < (uint)gridConfig.CellCount)
+                    {
+                        cellId = flattened;
+                        fallbackCount++;
+                    }
+                    else
+                    {
+                        unmappedCount++;
+                    }
+                }
+
+                var metadata = ResourceTypeMetadata.CreateUnknown();
+                if (_typeMetadata.IsCreated && typeIndex < _typeMetadata.Length)
+                {
+                    metadata = _typeMetadata[typeIndex];
+                }
+
+                builder.Add(new ResourceRegistryEntry
+                {
+                    ResourceTypeIndex = (ushort)typeIndex,
+                    SourceEntity = entity,
+                    Position = position,
+                    UnitsRemaining = deposit.ValueRO.CurrentAmount,
+                    ActiveTickets = 0,
+                    ClaimFlags = 0,
+                    LastMutationTick = timeState.Tick,
+                    CellId = cellId,
+                    SpatialVersion = spatialVersion,
+                    FamilyIndex = metadata.FamilyIndex,
+                    Tier = metadata.Tier,
+                    QualityTier = ResourceQualityTier.Unknown,
+                    AverageQuality = 0,
+                    KnowledgeMask = 0
+                });
+
+                totalResources++;
+                if (deposit.ValueRO.CurrentAmount > 0f)
+                {
+                    totalActiveResources++;
+                }
             }
 
             var continuity = hasSpatial

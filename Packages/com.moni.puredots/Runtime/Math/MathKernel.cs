@@ -14,21 +14,27 @@ namespace PureDOTS.Runtime.Math
     {
         // Vector operations
         [BurstCompile]
-        public static float3 NormalizeSafe(in float3 v, float epsilon = 1e-8f)
+        public static void NormalizeSafe(in float3 v, out float3 result, float epsilon = 1e-8f)
         {
             float lenSq = math.lengthsq(v);
             if (lenSq < epsilon)
-                return float3.zero;
-            return v * math.rsqrt(lenSq);
+            {
+                result = float3.zero;
+                return;
+            }
+            result = v * math.rsqrt(lenSq);
         }
 
         [BurstCompile]
-        public static float2 NormalizeSafe(in float2 v, float epsilon = 1e-8f)
+        public static void NormalizeSafe(in float2 v, out float2 result, float epsilon = 1e-8f)
         {
             float lenSq = math.lengthsq(v);
             if (lenSq < epsilon)
-                return float2.zero;
-            return v * math.rsqrt(lenSq);
+            {
+                result = float2.zero;
+                return;
+            }
+            result = v * math.rsqrt(lenSq);
         }
 
         [BurstCompile]
@@ -45,44 +51,64 @@ namespace PureDOTS.Runtime.Math
         }
 
         [BurstCompile]
-        public static float3 Lerp(in float3 a, in float3 b, float t)
+        public static void Lerp(in float3 a, in float3 b, float t, out float3 result)
         {
-            return math.lerp(a, b, t);
+            result = math.lerp(a, b, t);
         }
 
         [BurstCompile]
-        public static float3 Slerp(in float3 a, in float3 b, float t)
+        public static void Slerp(in float3 a, in float3 b, float t, out float3 result)
         {
             // Simplified slerp for unit vectors
             float dot = math.clamp(math.dot(a, b), -1f, 1f);
             float theta = math.acos(dot) * t;
-            float3 relative = NormalizeSafe(b - a * dot);
-            return a * math.cos(theta) + relative * math.sin(theta);
+            var diff = b - a * dot;
+            NormalizeSafe(in diff, out var relative);
+            result = a * math.cos(theta) + relative * math.sin(theta);
         }
 
         // Quaternion operations
         [BurstCompile]
-        public static quaternion QuaternionFromEuler(float3 euler)
+        public static void QuaternionFromEuler(in float3 euler, out quaternion result)
         {
-            return quaternion.Euler(euler);
+            result = quaternion.Euler(euler);
         }
 
         [BurstCompile]
-        public static quaternion QuaternionLookRotation(in float3 forward, in float3 up)
+        public static void QuaternionLookRotation(in float3 forward, in float3 up, out quaternion result)
         {
-            return quaternion.LookRotationSafe(forward, up);
+            result = quaternion.LookRotationSafe(forward, up);
         }
 
         [BurstCompile]
-        public static quaternion QuaternionSlerp(in quaternion a, in quaternion b, float t)
+        public static void QuaternionSlerp(in quaternion a, in quaternion b, float t, out quaternion result)
         {
-            return math.slerp(a, b, t);
+            result = math.slerp(a, b, t);
         }
 
         [BurstCompile]
-        public static float3 QuaternionToEuler(in quaternion q)
+        public static void QuaternionToEuler(in quaternion q, out float3 result)
         {
-            return math.degrees(math.quaternionToEulerAnglesXYZ(q));
+            var sinr = 2f * (q.value.w * q.value.x + q.value.y * q.value.z);
+            var cosr = 1f - 2f * (q.value.x * q.value.x + q.value.y * q.value.y);
+            var roll = math.atan2(sinr, cosr);
+
+            var sinp = 2f * (q.value.w * q.value.y - q.value.z * q.value.x);
+            float pitch;
+            if (math.abs(sinp) >= 1f)
+            {
+                pitch = math.PI / 2f * math.sign(sinp);
+            }
+            else
+            {
+                pitch = math.asin(sinp);
+            }
+
+            var siny = 2f * (q.value.w * q.value.z + q.value.x * q.value.y);
+            var cosy = 1f - 2f * (q.value.y * q.value.y + q.value.z * q.value.z);
+            var yaw = math.atan2(siny, cosy);
+
+            result = math.degrees(new float3(roll, pitch, yaw));
         }
 
         // Interpolation
@@ -116,7 +142,7 @@ namespace PureDOTS.Runtime.Math
         }
 
         [BurstCompile]
-        public static float Noise2D(float2 p, uint seed = 0)
+        public static float Noise2D(in float2 p, uint seed = 0)
         {
             // Simple 2D hash-based noise
             uint2 ip = (uint2)math.floor(p);
@@ -143,7 +169,7 @@ namespace PureDOTS.Runtime.Math
         }
 
         [BurstCompile]
-        public static float Noise3D(float3 p, uint seed = 0)
+        public static float Noise3D(in float3 p, uint seed = 0)
         {
             // Simple 3D hash-based noise
             uint3 ip = (uint3)math.floor(p);
@@ -193,14 +219,15 @@ namespace PureDOTS.Runtime.Math
         }
 
         [BurstCompile]
-        public static float3 ClampMagnitude(in float3 v, float maxLength)
+        public static void ClampMagnitude(in float3 v, float maxLength, out float3 result)
         {
             float lenSq = math.lengthsq(v);
             if (lenSq > maxLength * maxLength)
             {
-                return v * (maxLength * math.rsqrt(lenSq));
+                result = v * (maxLength * math.rsqrt(lenSq));
+                return;
             }
-            return v;
+            result = v;
         }
 
         // Angle utilities
@@ -223,25 +250,29 @@ namespace PureDOTS.Runtime.Math
 
         // Projection utilities
         [BurstCompile]
-        public static float3 Project(in float3 vector, in float3 onNormal)
+        public static void Project(in float3 vector, in float3 onNormal, out float3 result)
         {
             float lenSq = math.lengthsq(onNormal);
             if (lenSq < 1e-8f)
-                return float3.zero;
-            return onNormal * (math.dot(vector, onNormal) / lenSq);
+            {
+                result = float3.zero;
+                return;
+            }
+            result = onNormal * (math.dot(vector, onNormal) / lenSq);
         }
 
         [BurstCompile]
-        public static float3 ProjectOnPlane(in float3 vector, in float3 planeNormal)
+        public static void ProjectOnPlane(in float3 vector, in float3 planeNormal, out float3 result)
         {
-            return vector - Project(vector, planeNormal);
+            Project(in vector, in planeNormal, out var projection);
+            result = vector - projection;
         }
 
         // Reflection
         [BurstCompile]
-        public static float3 Reflect(in float3 inDirection, in float3 inNormal)
+        public static void Reflect(in float3 inDirection, in float3 inNormal, out float3 result)
         {
-            return inDirection - 2f * math.dot(inDirection, inNormal) * inNormal;
+            result = inDirection - 2f * math.dot(inDirection, inNormal) * inNormal;
         }
     }
 }

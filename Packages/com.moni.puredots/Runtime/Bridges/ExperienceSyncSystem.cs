@@ -31,7 +31,13 @@ namespace PureDOTS.Runtime.Bridges
                 return;
             }
 
-            var coordinator = World.GetExistingSystemManaged<AgentSyncBridgeCoordinator>();
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+            {
+                return;
+            }
+
+            var coordinator = world.GetExistingSystemManaged<AgentSyncBridgeCoordinator>();
             if (coordinator == null)
             {
                 return;

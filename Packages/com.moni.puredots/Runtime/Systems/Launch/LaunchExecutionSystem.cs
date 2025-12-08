@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityPhysicsVelocity = Unity.Physics.PhysicsVelocity;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Launch
@@ -19,7 +20,7 @@ namespace PureDOTS.Systems.Launch
     [UpdateAfter(typeof(LaunchRequestIntakeSystem))]
     public partial struct LaunchExecutionSystem : ISystem
     {
-        private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private ComponentLookup<UnityPhysicsVelocity> _velocityLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
@@ -28,7 +29,7 @@ namespace PureDOTS.Systems.Launch
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
 
-            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _velocityLookup = state.GetComponentLookup<UnityPhysicsVelocity>(false);
             _transformLookup = state.GetComponentLookup<LocalTransform>(false);
         }
 

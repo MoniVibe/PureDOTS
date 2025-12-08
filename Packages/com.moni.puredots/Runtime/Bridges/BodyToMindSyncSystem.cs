@@ -85,7 +85,7 @@ namespace PureDOTS.Runtime.Bridges
         }
 
         [BurstCompile]
-        private struct CollectBodyTelemetryJob : IJobEntity
+        private partial struct CollectBodyTelemetryJob : IJobEntity
         {
             public NativeList<BodyToMindMessage> Updates;
             public uint TickNumber;
@@ -93,7 +93,6 @@ namespace PureDOTS.Runtime.Bridges
             [ReadOnly] public ComponentLookup<AggregateMembership> MembershipLookup;
 
             public void Execute(
-                [EntityIndexInQuery] int index,
                 Entity entity,
                 in AgentBody agentBody,
                 in AgentSyncId syncId,

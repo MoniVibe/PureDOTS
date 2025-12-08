@@ -3,6 +3,7 @@ using System.IO;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using PureDOTS.Runtime.Components;
 
 namespace PureDOTS.Runtime.Devtools.Scenario
 {

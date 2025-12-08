@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using PureDOTS.Runtime.Time;
 
 namespace PureDOTS.Systems
@@ -11,7 +12,7 @@ namespace PureDOTS.Systems
     /// Time complexity: O(k × changedChunks), k = Δ ticks.
     /// </summary>
     [BurstCompile]
-    public struct RestoreDeltaJob : IJobEntityBatch
+    public partial struct RestoreDeltaJob : IJobEntityBatch
     {
         [ReadOnly] public NativeArray<ChunkDelta> Deltas;
         public uint TargetTick;
@@ -28,9 +29,12 @@ namespace PureDOTS.Systems
                 if (delta.Tick == TargetTick && delta.ArchetypeId == archetypeId)
                 {
                     // Apply delta to restore state
-                    var baseline = ChunkDeltaCompression.StoreBaseline(chunk, Allocator.Temp);
-                    ChunkDeltaCompression.ApplyDelta(chunk, delta, baseline);
-                    baseline.Dispose();
+                    ChunkDeltaCompression.StoreBaseline(in chunk, Allocator.Temp, out var baseline);
+                    ChunkDeltaCompression.ApplyDelta(in chunk, delta, ref baseline);
+                    if (baseline.IsCreated)
+                    {
+                        baseline.Dispose();
+                    }
                     break;
                 }
             }

@@ -9,6 +9,7 @@ namespace PureDOTS.Runtime.Systems.Scheduling
     /// Meta-scheduler that dynamically reorders systems based on impact metrics.
     /// Measures system impact and adjusts execution order for load balancing.
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct SystemSchedulerSystem : ISystem

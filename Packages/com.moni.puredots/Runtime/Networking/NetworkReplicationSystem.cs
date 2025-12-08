@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using Unity.Burst;
 using Unity.Collections;
@@ -9,6 +10,7 @@ namespace PureDOTS.Runtime.Networking
     /// Network replication system for multiplayer-ready determinism.
     /// Serializes only input events and RNG seeds; re-simulates world identically on clients.
     /// </summary>
+    [DisableAutoCreation] // Stub: disabled until implemented
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct NetworkReplicationSystem : ISystem

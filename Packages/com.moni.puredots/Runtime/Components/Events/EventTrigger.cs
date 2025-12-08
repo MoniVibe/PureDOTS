@@ -23,6 +23,7 @@ namespace PureDOTS.Runtime.Components.Events
         PerceptionUpdate = 3,
         HealthChange = 4,
         PositionChange = 5,
+        MoraleChange = 6,
         Custom = 100
     }
 }

@@ -9,7 +9,7 @@ namespace PureDOTS.Runtime.Bridges
     /// Provides singleton access to the bus for both Unity Entities and DefaultEcs systems.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
-    public sealed class AgentSyncBridgeCoordinator : ComponentSystemBase
+    public sealed partial class AgentSyncBridgeCoordinator : SystemBase
     {
         private static readonly ProfilerMarker InitializeMarker = new("AgentSyncBridgeCoordinator.Initialize");
         private static readonly ProfilerMarker UpdateMarker = new("AgentSyncBridgeCoordinator.Update");

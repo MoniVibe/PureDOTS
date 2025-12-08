@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Transforms;
@@ -28,26 +29,37 @@ namespace PureDOTS.Runtime.Combat
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
                 return;
 
+            if (_presentationQueueQuery.IsEmpty)
+                return;
+
+            var queueEntity = _presentationQueueQuery.GetSingletonEntity();
+
             // Presentation systems run at frame time, not tick time
             // This bridge reads deterministic behavior events and feeds to presentation
 
             var job = new BridgeBehaviorEventsJob
             {
-                CurrentTick = timeState.Tick
+                CurrentTick = timeState.Tick,
+                QueueEntity = queueEntity,
+                QueueLookup = state.GetBufferLookup<BehaviorEvent>()
             };
-            job.ScheduleParallel();
+            job.Schedule();
         }
 
         [BurstCompile]
+        [WithNone(typeof(PresentationCommandQueueTag))]
         partial struct BridgeBehaviorEventsJob : IJobEntity
         {
             public uint CurrentTick;
+            public Entity QueueEntity;
+            public BufferLookup<BehaviorEvent> QueueLookup;
 
             void Execute(
                 in LocalTransform transform,
-                DynamicBuffer<BehaviorEvent> behaviorEvents,
-                DynamicBuffer<BehaviorEvent> presentationQueue)
+                DynamicBuffer<BehaviorEvent> behaviorEvents)
             {
+                var presentationQueue = QueueLookup[QueueEntity];
+
                 // Copy behavior events to presentation queue
                 // Presentation layer consumes these for animation/VFX
                 for (int i = 0; i < behaviorEvents.Length; i++)

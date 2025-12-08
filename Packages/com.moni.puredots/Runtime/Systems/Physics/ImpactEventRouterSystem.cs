@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityPhysicsVelocity = Unity.Physics.PhysicsVelocity;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Physics
@@ -21,7 +22,7 @@ namespace PureDOTS.Systems.Physics
     {
         private ComponentLookup<CollisionProperties> _collisionPropsLookup;
         private ComponentLookup<PhysicsMass> _massLookup;
-        private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private ComponentLookup<UnityPhysicsVelocity> _velocityLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
         private BufferLookup<ImpactEvent> _impactEventLookup;
         private BufferLookup<PhysicsCollisionEventElement> _physicsEventLookup;
@@ -34,7 +35,7 @@ namespace PureDOTS.Systems.Physics
 
             _collisionPropsLookup = state.GetComponentLookup<CollisionProperties>(true);
             _massLookup = state.GetComponentLookup<PhysicsMass>(true);
-            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(true);
+            _velocityLookup = state.GetComponentLookup<UnityPhysicsVelocity>(true);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _impactEventLookup = state.GetBufferLookup<ImpactEvent>(false);
             _physicsEventLookup = state.GetBufferLookup<PhysicsCollisionEventElement>(true);
@@ -75,7 +76,7 @@ namespace PureDOTS.Systems.Physics
         {
             [ReadOnly] public ComponentLookup<CollisionProperties> CollisionPropsLookup;
             [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
-            [ReadOnly] public ComponentLookup<PhysicsVelocity> VelocityLookup;
+            [ReadOnly] public ComponentLookup<UnityPhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             public BufferLookup<ImpactEvent> ImpactEventLookup;
             [ReadOnly] public BufferLookup<PhysicsCollisionEventElement> PhysicsEventLookup;
@@ -143,7 +144,7 @@ namespace PureDOTS.Systems.Physics
                 var relativeVelocity = velocityA - velocityB;
 
                 // Compute Q
-                return CollisionMath.ComputeQ(massProjectile, massTarget, relativeVelocity);
+                return CollisionMath.ComputeQ(massProjectile, massTarget, in relativeVelocity);
             }
 
             [BurstCompile]

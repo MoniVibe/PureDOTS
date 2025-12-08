@@ -1,6 +1,5 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -10,36 +9,54 @@ namespace PureDOTS.Runtime.Networking
     /// Utilities for integrating rollback buffers with existing RewindState system.
     /// Provides helpers for loading snapshots, re-applying inputs, and catching up.
     /// </summary>
-    [BurstCompile]
     public static class RollbackUtilities
     {
         /// <summary>
         /// Loads a snapshot at the specified tick for rollback.
         /// Integrates with existing RewindState system.
         /// </summary>
-        [BurstCompile]
         public static void LoadSnapshotAtTick(ref SystemState state, uint targetTick)
         {
-            var rewindState = SystemAPI.GetSingletonRW<RewindState>();
-            var tickState = SystemAPI.GetSingletonRW<TickTimeState>();
+            LoadSnapshotAtTickManaged(ref state, targetTick);
+        }
+
+        private static void LoadSnapshotAtTickManaged(ref SystemState state, uint targetTick)
+        {
+            var em = state.EntityManager;
+
+            var rewindQuery = em.CreateEntityQuery(ComponentType.ReadWrite<RewindState>());
+            var tickQuery = em.CreateEntityQuery(ComponentType.ReadOnly<TickTimeState>());
+            if (rewindQuery.IsEmpty || tickQuery.IsEmpty)
+            {
+                return;
+            }
+
+            var rewindState = em.GetComponentData<RewindState>(rewindQuery.GetSingletonEntity());
+            var tickState = em.GetComponentData<TickTimeState>(tickQuery.GetSingletonEntity());
 
             // Use existing rewind system to jump to target tick
-            rewindState.ValueRW.Mode = RewindMode.Playback;
-            rewindState.ValueRW.TargetTick = targetTick;
-            rewindState.ValueRW.PlaybackTick = tickState.ValueRO.Tick;
+            rewindState.Mode = RewindMode.Playback;
+            rewindState.TargetTick = targetTick;
+            rewindState.PlaybackTick = tickState.Tick;
+
+            em.SetComponentData(rewindQuery.GetSingletonEntity(), rewindState);
         }
 
         /// <summary>
         /// Re-applies queued inputs from confirmed tick to current tick.
         /// Used for rollback catch-up after server correction.
         /// </summary>
-        [BurstCompile]
         public static void ReapplyInputs(ref SystemState state, uint confirmedTick, uint currentTick)
         {
+            ReapplyInputsManaged(ref state, confirmedTick, currentTick);
+        }
+
+        private static void ReapplyInputsManaged(ref SystemState state, uint confirmedTick, uint currentTick)
+        {
+            var em = state.EntityManager;
+
             // Find input command queue
-            var query = SystemAPI.QueryBuilder()
-                .WithAll<InputCommandQueueTag, InputCommandBuffer>()
-                .Build();
+            var query = em.CreateEntityQuery(ComponentType.ReadOnly<InputCommandQueueTag>(), ComponentType.ReadOnly<InputCommandBuffer>());
 
             if (query.IsEmpty)
             {
@@ -47,7 +64,7 @@ namespace PureDOTS.Runtime.Networking
             }
 
             var entity = query.GetSingletonEntity();
-            var commandBuffer = SystemAPI.GetBuffer<InputCommandBuffer>(entity);
+            var commandBuffer = em.GetBuffer<InputCommandBuffer>(entity);
 
             // Process commands between confirmed and current tick
             for (uint tick = confirmedTick + 1; tick <= currentTick; tick++)
@@ -68,18 +85,30 @@ namespace PureDOTS.Runtime.Networking
         /// Catches up simulation from confirmed tick to current tick.
         /// Loads snapshot, re-applies inputs, then simulates forward.
         /// </summary>
-        [BurstCompile]
         public static void CatchUpToTick(ref SystemState state, uint confirmedTick, uint currentTick)
         {
+            CatchUpToTickManaged(ref state, confirmedTick, currentTick);
+        }
+
+        private static void CatchUpToTickManaged(ref SystemState state, uint confirmedTick, uint currentTick)
+        {
             // Load snapshot at confirmed tick
-            LoadSnapshotAtTick(ref state, confirmedTick);
+            LoadSnapshotAtTickManaged(ref state, confirmedTick);
 
             // Re-apply queued inputs
-            ReapplyInputs(ref state, confirmedTick, currentTick);
+            ReapplyInputsManaged(ref state, confirmedTick, currentTick);
 
             // Transition to catch-up mode
-            var rewindState = SystemAPI.GetSingletonRW<RewindState>();
-            rewindState.ValueRW.Mode = RewindMode.CatchUp;
+            var em = state.EntityManager;
+            var rewindQuery = em.CreateEntityQuery(ComponentType.ReadWrite<RewindState>());
+            if (rewindQuery.IsEmpty)
+            {
+                return;
+            }
+
+            var rewindState = em.GetComponentData<RewindState>(rewindQuery.GetSingletonEntity());
+            rewindState.Mode = RewindMode.CatchUp;
+            em.SetComponentData(rewindQuery.GetSingletonEntity(), rewindState);
         }
     }
 }

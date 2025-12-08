@@ -17,7 +17,7 @@ namespace PureDOTS.Runtime.Time
         /// Formula: (EntityId, Tick) → uint4 key for Philox.
         /// </summary>
         [BurstCompile]
-        public static uint4 GenerateSeed(uint entityId, uint tick)
+        public static void GenerateSeed(uint entityId, uint tick, out uint4 seed)
         {
             // Combine EntityId and Tick into a deterministic uint4 seed
             // Using hash-like mixing to ensure good distribution
@@ -32,7 +32,7 @@ namespace PureDOTS.Runtime.Time
             h3 ^= h4;
             h4 ^= h1;
             
-            return new uint4(h1, h2, h3, h4);
+            seed = new uint4(h1, h2, h3, h4);
         }
 
         /// <summary>
@@ -40,11 +40,10 @@ namespace PureDOTS.Runtime.Time
         /// Deterministic: same key + counter → same output.
         /// </summary>
         [BurstCompile]
-        public static uint4 Philox(uint4 key, uint counter)
+        public static void Philox(in uint4 key, uint counter, out uint4 result)
         {
             // Simplified Philox-like RNG for deterministic replay
             // This is a lightweight implementation suitable for game simulation
-            
             uint4 state = key;
             uint c = counter;
             
@@ -73,7 +72,7 @@ namespace PureDOTS.Runtime.Time
                 c = (c << 1) | (c >> 31);
             }
             
-            return state;
+            result = state;
         }
 
         /// <summary>
@@ -100,7 +99,7 @@ namespace PureDOTS.Runtime.Time
         [BurstCompile]
         public static Random CreateFromEntityTick(uint entityId, uint tick)
         {
-            uint4 seed = GenerateSeed(entityId, tick);
+            GenerateSeed(entityId, tick, out var seed);
             // Use first component as seed for Unity.Mathematics.Random
             return new Random(seed.x);
         }
@@ -111,7 +110,7 @@ namespace PureDOTS.Runtime.Time
         [BurstCompile]
         public static Random CreateFromTick(uint tick)
         {
-            uint4 seed = GenerateSeed(0u, tick);
+            GenerateSeed(0u, tick, out var seed);
             return new Random(seed.x);
         }
 
@@ -120,11 +119,10 @@ namespace PureDOTS.Runtime.Time
         /// Counter increments each call - rewind by decrementing counter.
         /// </summary>
         [BurstCompile]
-        public static uint4 NextPhilox(ref uint4 state, ref uint counter)
+        public static void NextPhilox(ref uint4 state, ref uint counter, out uint4 rnd)
         {
-            uint4 result = Philox(state, counter);
+            Philox(in state, counter, out rnd);
             counter++;
-            return result;
         }
 
         /// <summary>
@@ -133,7 +131,7 @@ namespace PureDOTS.Runtime.Time
         [BurstCompile]
         public static float NextFloatPhilox(ref uint4 state, ref uint counter)
         {
-            uint4 r = NextPhilox(ref state, ref counter);
+            NextPhilox(ref state, ref counter, out var r);
             // Convert uint to float [0, 1)
             return (r.x & 0x7FFFFFu) / 8388608.0f;
         }
@@ -173,14 +171,23 @@ namespace PureDOTS.Runtime.Time
         /// Get or create deterministic RNG state for an entity.
         /// </summary>
         [BurstCompile]
-        public static DeterministicRNGState GetOrCreateRNGState(Entity entity, uint currentTick)
+        public static void GetOrCreateRNGState(
+            in Entity entity,
+            uint currentTick,
+            ref Unity.Collections.NativeHashMap<Entity, DeterministicRNGState> rngMap,
+            out DeterministicRNGState state)
         {
-            return new DeterministicRNGState
+            if (!rngMap.TryGetValue(entity, out state))
             {
-                Key = DeterministicRNG.GenerateSeed((uint)entity.Index, currentTick),
-                Counter = 0u,
-                BaseTick = currentTick
-            };
+                DeterministicRNG.GenerateSeed((uint)entity.Index, currentTick, out var seed);
+                state = new DeterministicRNGState
+                {
+                    Key = seed,
+                    Counter = 0u,
+                    BaseTick = currentTick
+                };
+                rngMap[entity] = state;
+            }
         }
 
         /// <summary>
@@ -212,9 +219,8 @@ namespace PureDOTS.Runtime.Time
                 // Reset to target tick
                 rngState.Counter = 0u;
                 rngState.BaseTick = targetTick;
-                rngState.Key = DeterministicRNG.GenerateSeed(
-                    DeterministicRNG.XorShift((uint)rngState.Key.x, targetTick).x,
-                    targetTick);
+                var mixedSeed = DeterministicRNG.XorShift((uint)rngState.Key.x, targetTick);
+                DeterministicRNG.GenerateSeed(mixedSeed, targetTick, out rngState.Key);
             }
             else if (rngState.Counter > 0)
             {

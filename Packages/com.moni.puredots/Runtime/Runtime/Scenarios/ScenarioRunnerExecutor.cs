@@ -11,6 +11,7 @@ using Unity.Core;
 using Unity.Entities;
 using Unity.Profiling;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.Scenarios
 {
@@ -64,7 +65,7 @@ namespace PureDOTS.Runtime.Scenarios
             {
                 var result = ExecuteScenario(in scenario);
                 WriteReport(reportPath, result);
-                Debug.Log($"ScenarioRunner: completed {scenario.ScenarioId} ({sourceLabel}) ticks={scenario.RunTicks} commands={scenario.InputCommands.Length} snapshots={result.SnapshotLogCount} frameBudgetExceeded={result.FrameTimingBudgetExceeded}");
+                UnityDebug.Log($"ScenarioRunner: completed {scenario.ScenarioId} ({sourceLabel}) ticks={scenario.RunTicks} commands={scenario.InputCommands.Length} snapshots={result.SnapshotLogCount} frameBudgetExceeded={result.FrameTimingBudgetExceeded}");
                 return result;
             }
         }
@@ -227,7 +228,7 @@ namespace PureDOTS.Runtime.Scenarios
                     timeCommand = new TimeControlCommand { Type = TimeControlCommandType.ScrubTo, UintParam = ParseUInt(command.Payload, 0) };
                     return true;
                 default:
-                    Debug.LogWarning($"ScenarioRunner: unknown command id {id}");
+                    UnityDebug.LogWarning($"ScenarioRunner: unknown command id {id}");
                     return false;
             }
         }

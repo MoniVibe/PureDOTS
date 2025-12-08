@@ -1,6 +1,8 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Time
 {
@@ -239,10 +241,13 @@ namespace PureDOTS.Runtime.Time
             // Copy payload into FixedBytes64
             unsafe
             {
-                fixed (byte* payloadPtr = record.Payload.buffer)
-                {
-                    Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyStructureToPtr(ref payload, payloadPtr);
-                }
+                int payloadSize = UnsafeUtility.SizeOf<T>();
+                int copySize = math.min(payloadSize, FixedBytes64.Size);
+
+                void* payloadPtr = UnsafeUtility.AddressOf(ref record.Payload);
+                UnsafeUtility.MemClear(payloadPtr, FixedBytes64.Size);
+                void* sourcePtr = UnsafeUtility.AddressOf(ref payload);
+                UnsafeUtility.MemCpy(payloadPtr, sourcePtr, copySize);
             }
 
             return record;
@@ -257,10 +262,13 @@ namespace PureDOTS.Runtime.Time
             T payload = default;
             unsafe
             {
-                fixed (byte* payloadPtr = record.Payload.buffer)
-                {
-                    Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyStructureFromPtr(payloadPtr, out payload);
-                }
+                int payloadSize = UnsafeUtility.SizeOf<T>();
+                int copySize = math.min(payloadSize, FixedBytes64.Size);
+                void* targetPtr = UnsafeUtility.AddressOf(ref payload);
+
+                var payloadBytes = record.Payload;
+                void* payloadPtr = UnsafeUtility.AddressOf(ref payloadBytes);
+                UnsafeUtility.MemCpy(targetPtr, payloadPtr, copySize);
             }
             return payload;
         }

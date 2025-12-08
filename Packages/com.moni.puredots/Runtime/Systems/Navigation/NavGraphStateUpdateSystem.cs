@@ -38,8 +38,6 @@ namespace PureDOTS.Systems.Navigation
             // 3. Query war/conflict entities and apply NavEdgeState to affected edges
             // 4. Remove expired NavEdgeState components (ExpirationTick < current tick)
 
-            // For now, this is a placeholder that can be extended when operations systems are implemented
-
             // Clean up expired edge states
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
             foreach (var (edgeState, entity) in SystemAPI.Query<RefRO<NavEdgeState>>().WithEntityAccess())
@@ -48,12 +46,22 @@ namespace PureDOTS.Systems.Navigation
                     edgeState.ValueRO.ExpirationTick < timeState.Tick)
                 {
                     ecb.RemoveComponent<NavEdgeState>(entity);
+                    // Invalidate path cache on graph mutation
+                    if (SystemAPI.HasSingleton<PathCacheState>())
+                    {
+                        var cacheState = SystemAPI.GetSingletonRW<PathCacheState>();
+                        cacheState.ValueRW.Dirty = true;
+                    }
                 }
             }
             ecb.Playback(state.EntityManager);
         }
     }
 }
+
+
+
+
 
 
 

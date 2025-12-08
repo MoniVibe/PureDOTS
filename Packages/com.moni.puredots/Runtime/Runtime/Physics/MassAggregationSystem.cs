@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -13,9 +14,8 @@ namespace PureDOTS.Runtime.Physics
     /// Aggregates mass from child entities (cargo, inventory items) into parent entities (ships, containers).
     /// Uses IJobChunk with NativeParallelMultiHashMap for concurrent summation.
     /// </summary>
-    [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(InventoryMassSystem))]
+[BurstCompile]
+[UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct MassAggregationSystem : ISystem
     {
         private EntityQuery _massQuery;
@@ -60,7 +60,11 @@ namespace PureDOTS.Runtime.Physics
             {
                 AccumulatorMap = accumulatorMap.AsParallelWriter(),
                 TransformLookup = state.GetComponentLookup<LocalTransform>(true),
-                MassLookup = state.GetComponentLookup<MassComponent>(true)
+                MassLookup = state.GetComponentLookup<MassComponent>(true),
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(true),
+                TransformHandle = state.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle = state.GetComponentTypeHandle<Parent>(true),
+                EntityHandle = state.GetEntityTypeHandle()
             };
 
             state.Dependency = accumulateJob.ScheduleParallel(_massQuery, state.Dependency);
@@ -69,7 +73,9 @@ namespace PureDOTS.Runtime.Physics
             var reduceJob = new ReduceMassJob
             {
                 AccumulatorMap = accumulatorMap,
-                MassLookup = state.GetComponentLookup<MassComponent>(false)
+                MassLookup = state.GetComponentLookup<MassComponent>(false),
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(false),
+                EntityHandle = state.GetEntityTypeHandle()
             };
 
             state.Dependency = reduceJob.Schedule(_parentQuery, state.Dependency);
@@ -90,12 +96,25 @@ namespace PureDOTS.Runtime.Physics
             [ReadOnly]
             public ComponentLookup<MassComponent> MassLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<MassComponent> MassHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<LocalTransform> TransformHandle;
+            [ReadOnly]
+            public ComponentTypeHandle<Parent> ParentHandle;
+            [ReadOnly]
+            public EntityTypeHandle EntityHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(true));
-                var transforms = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<LocalTransform>(true));
-                var parents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<Parent>(true));
-                var entities = chunk.GetEntityArray();
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var massComponents = chunk.GetNativeArray(MassHandle);
+                var transforms = chunk.GetNativeArray(TransformHandle);
+                var parents = chunk.GetNativeArray(ParentHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {
@@ -120,7 +139,7 @@ namespace PureDOTS.Runtime.Physics
                     var accumulator = new MassAccumulator();
                     accumulator.Add(mass, worldPos);
 
-                    AccumulatorMap.TryAdd(parent.Value, accumulator);
+                    AccumulatorMap.Add(parent.Value, accumulator);
                 }
             }
         }
@@ -133,10 +152,19 @@ namespace PureDOTS.Runtime.Physics
 
             public ComponentLookup<MassComponent> MassLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public ComponentTypeHandle<MassComponent> MassHandle;
+            [ReadOnly]
+            public EntityTypeHandle EntityHandle;
+
+            void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var entities = chunk.GetEntityArray();
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(false));
+                ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+            }
+
+            private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var massComponents = chunk.GetNativeArray(MassHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {

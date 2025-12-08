@@ -1,8 +1,9 @@
 using System.IO;
-using Unity.Entities;
 using Unity.Collections;
+using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Scenarios;
+using PureDOTS.Runtime.Debugging;
 
 namespace PureDOTS.Runtime.Scenario
 {
@@ -20,7 +21,7 @@ namespace PureDOTS.Runtime.Scenario
             
             if (!File.Exists(fullPath))
             {
-                Debug.LogWarning($"[ScenarioRunner] Scenario file not found at {fullPath}");
+                DebugLog.LogWarning($"[ScenarioRunner] Scenario file not found at {fullPath}");
                 return false;
             }
 
@@ -30,20 +31,20 @@ namespace PureDOTS.Runtime.Scenario
                 
                 if (!PureDOTS.Runtime.Scenarios.ScenarioRunner.TryParse(json, out var data, out var parseError))
                 {
-                    Debug.LogError($"[ScenarioRunner] Failed to parse scenario JSON: {parseError}");
+                    DebugLog.LogError($"[ScenarioRunner] Failed to parse scenario JSON: {parseError}");
                     return false;
                 }
 
                 if (!PureDOTS.Runtime.Scenarios.ScenarioRunner.TryBuild(data, Allocator.Temp, out var scenario, out var buildError))
                 {
-                    Debug.LogError($"[ScenarioRunner] Failed to build scenario: {buildError}");
+                    DebugLog.LogError($"[ScenarioRunner] Failed to build scenario: {buildError}");
                     return false;
                 }
 
                 // Apply scenario to world
                 ApplyScenario(world, scenario);
                 
-                Debug.Log($"[ScenarioRunner] Loaded scenario '{scenario.ScenarioId}' with {scenario.EntityCounts.Length} entity types");
+                DebugLog.Log($"[ScenarioRunner] Loaded scenario '{scenario.ScenarioId}' with {scenario.EntityCounts.Length} entity types");
                 
                 scenario.EntityCounts.Dispose();
                 scenario.InputCommands.Dispose();
@@ -52,7 +53,7 @@ namespace PureDOTS.Runtime.Scenario
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[ScenarioRunner] Failed to load scenario from {fullPath}: {ex.Message}");
+                DebugLog.LogError($"[ScenarioRunner] Failed to load scenario from {fullPath}: {ex.Message}");
                 return false;
             }
         }
@@ -66,7 +67,7 @@ namespace PureDOTS.Runtime.Scenario
             for (int i = 0; i < scenario.EntityCounts.Length; i++)
             {
                 var entityCount = scenario.EntityCounts[i];
-                Debug.Log($"[ScenarioRunner] Would spawn {entityCount.Count} entities of type '{entityCount.RegistryId}'");
+                DebugLog.Log($"[ScenarioRunner] Would spawn {entityCount.Count} entities of type '{entityCount.RegistryId}'");
                 // TODO: Look up prefab from registry and spawn entities
             }
         }

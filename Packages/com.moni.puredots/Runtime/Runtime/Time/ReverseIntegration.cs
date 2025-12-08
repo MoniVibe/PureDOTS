@@ -17,44 +17,44 @@ namespace PureDOTS.Runtime.Time
         /// Integrate position forward using velocity.
         /// </summary>
         [BurstCompile]
-        public static float3 IntegratePositionForward(float3 position, float3 velocity, float dt)
+        public static void IntegratePositionForward(in float3 position, in float3 velocity, float dt, out float3 result)
         {
-            return position + velocity * dt;
+            result = position + velocity * dt;
         }
 
         /// <summary>
         /// Integrate position backward using stored velocity history.
         /// </summary>
         [BurstCompile]
-        public static float3 IntegratePositionBackward(float3 position, float3 velocityAtPreviousTick, float dt)
+        public static void IntegratePositionBackward(in float3 position, in float3 velocityAtPreviousTick, float dt, out float3 result)
         {
-            return position - velocityAtPreviousTick * dt;
+            result = position - velocityAtPreviousTick * dt;
         }
 
         /// <summary>
         /// Integrate rotation forward using angular velocity.
         /// </summary>
         [BurstCompile]
-        public static quaternion IntegrateRotationForward(quaternion rotation, float3 angularVelocity, float dt)
+        public static void IntegrateRotationForward(in quaternion rotation, in float3 angularVelocity, float dt, out quaternion result)
         {
             // Simplified rotation integration
             float3 axis = math.normalize(angularVelocity);
             float angle = math.length(angularVelocity) * dt;
             quaternion deltaRotation = quaternion.AxisAngle(axis, angle);
-            return math.mul(rotation, deltaRotation);
+            result = math.mul(rotation, deltaRotation);
         }
 
         /// <summary>
         /// Integrate rotation backward using stored angular velocity history.
         /// </summary>
         [BurstCompile]
-        public static quaternion IntegrateRotationBackward(quaternion rotation, float3 angularVelocityAtPreviousTick, float dt)
+        public static void IntegrateRotationBackward(in quaternion rotation, in float3 angularVelocityAtPreviousTick, float dt, out quaternion result)
         {
             // Reverse rotation integration
             float3 axis = math.normalize(angularVelocityAtPreviousTick);
             float angle = math.length(angularVelocityAtPreviousTick) * dt;
             quaternion deltaRotation = quaternion.AxisAngle(axis, -angle); // Negative angle for reverse
-            return math.mul(rotation, deltaRotation);
+            result = math.mul(rotation, deltaRotation);
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace PureDOTS.Runtime.Time
             float totalTime = ticksToRewind * dt;
 
             // Apply reverse integration
-            position = IntegratePositionBackward(position, velocity, totalTime);
+            IntegratePositionBackward(in position, in velocity, totalTime, out position);
             actualRewoundTick = targetTick;
 
             return true;
@@ -182,7 +182,7 @@ namespace PureDOTS.Runtime.Time
             float totalTime = ticksToRewind * dt;
 
             // Apply reverse integration
-            rotation = IntegrateRotationBackward(rotation, angularVelocity, totalTime);
+            IntegrateRotationBackward(in rotation, in angularVelocity, totalTime, out rotation);
             actualRewoundTick = targetTick;
 
             return true;

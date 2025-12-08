@@ -38,7 +38,7 @@ namespace PureDOTS.Systems
 #endif
 
             // Create an ECB on the stack for this frame
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             int commandCount = 0;
             // Process commands

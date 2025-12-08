@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Time
@@ -46,56 +47,6 @@ namespace PureDOTS.Runtime.Time
     }
 
     /// <summary>
-    /// Burst-compiled job for temporal culling.
-    /// </summary>
-    [BurstCompile]
-    public struct TemporalCullingJob
-    {
-        [ReadOnly] public NativeArray<ChunkDelta> AllDeltas;
-        [ReadOnly] public TemporalCullingFrustum Frustum;
-        [ReadOnly] public TemporalCullingRegion Region;
-        public uint ScrubTick;
-        public uint PrefetchWindow;
-        public NativeList<ChunkDelta> VisibleDeltas;
-
-        public void Execute(ArchetypeChunk chunk)
-        {
-            // Determine if chunk is visible
-            bool isVisible = IsChunkVisible(chunk);
-
-            if (!isVisible)
-            {
-                return;
-            }
-
-            // Collect deltas for visible chunks in prefetch window
-            uint minTick = ScrubTick > PrefetchWindow ? ScrubTick - PrefetchWindow : 0u;
-            uint maxTick = ScrubTick + PrefetchWindow;
-
-            for (int i = 0; i < AllDeltas.Length; i++)
-            {
-                var delta = AllDeltas[i];
-                if (delta.Tick >= minTick && delta.Tick <= maxTick)
-                {
-                    int archetypeId = chunk.Archetype.ArchetypeTypeIndex.Value;
-                    if (delta.ArchetypeId == archetypeId)
-                    {
-                        VisibleDeltas.Add(delta);
-                    }
-                }
-            }
-        }
-
-        [BurstCompile]
-        private bool IsChunkVisible(ArchetypeChunk chunk)
-        {
-            // Simplified visibility check - in practice, check chunk bounds against frustum/region
-            // For now, assume all chunks are visible if no specific culling data
-            return true;
-        }
-    }
-
-    /// <summary>
     /// Prefetch job for temporal data.
     /// </summary>
     [BurstCompile]
@@ -132,73 +83,54 @@ namespace PureDOTS.Runtime.Time
         /// Get visible chunks for current scrub position.
         /// </summary>
         [BurstCompile]
-        public static NativeList<ChunkDelta> GetVisibleDeltas(
+        public static void GetVisibleDeltas(
             ref SystemState state,
             uint scrubTick,
             uint prefetchWindow,
-            NativeArray<ChunkDelta> allDeltas,
-            Allocator allocator)
+            in NativeArray<ChunkDelta> allDeltas,
+            Allocator allocator,
+            out NativeList<ChunkDelta> visibleDeltas)
         {
-            var visibleDeltas = new NativeList<ChunkDelta>(allDeltas.Length / 10, allocator);
+            visibleDeltas = new NativeList<ChunkDelta>(allDeltas.Length / 10, allocator);
 
-            // Get culling frustum/region if available
-            TemporalCullingFrustum frustum = default;
-            TemporalCullingRegion region = default;
-            bool hasFrustum = SystemAPI.TryGetSingleton<TemporalCullingFrustum>(out frustum);
-            bool hasRegion = SystemAPI.TryGetSingleton<TemporalCullingRegion>(out region);
+            // Get culling frustum/region if available (keep SystemAPI out of static helpers)
+            var frustumQuery = state.GetEntityQuery(ComponentType.ReadOnly<TemporalCullingFrustum>());
+            var regionQuery = state.GetEntityQuery(ComponentType.ReadOnly<TemporalCullingRegion>());
+            bool hasFrustum = frustumQuery.TryGetSingleton(out TemporalCullingFrustum frustum);
+            bool hasRegion = regionQuery.TryGetSingleton(out TemporalCullingRegion region);
+            _ = hasFrustum;
+            _ = hasRegion;
 
-            if (!hasFrustum && !hasRegion)
+            uint minTick = scrubTick > prefetchWindow ? scrubTick - prefetchWindow : 0u;
+            uint maxTick = scrubTick + prefetchWindow;
+
+            for (int i = 0; i < allDeltas.Length; i++)
             {
-                // No culling - return all deltas in prefetch window
-                uint minTick = scrubTick > prefetchWindow ? scrubTick - prefetchWindow : 0u;
-                uint maxTick = scrubTick + prefetchWindow;
-
-                for (int i = 0; i < allDeltas.Length; i++)
+                var delta = allDeltas[i];
+                if (delta.Tick < minTick || delta.Tick > maxTick)
                 {
-                    var delta = allDeltas[i];
-                    if (delta.Tick >= minTick && delta.Tick <= maxTick)
-                    {
-                        visibleDeltas.Add(delta);
-                    }
+                    continue;
                 }
 
-                return visibleDeltas;
+                // TODO: once chunk bounds are tracked, incorporate frustum/region checks.
+                // For now, temporal window is the primary filter.
+                visibleDeltas.Add(delta);
             }
 
-            // Apply culling
-            var query = state.GetEntityQuery();
-            var chunks = query.ToArchetypeChunkArray(Allocator.Temp);
-
-            var cullingJob = new TemporalCullingJob
-            {
-                AllDeltas = allDeltas,
-                Frustum = frustum,
-                Region = region,
-                ScrubTick = scrubTick,
-                PrefetchWindow = prefetchWindow,
-                VisibleDeltas = visibleDeltas
-            };
-
-            for (int i = 0; i < chunks.Length; i++)
-            {
-                cullingJob.Execute(chunks[i]);
-            }
-
-            chunks.Dispose();
-            return visibleDeltas;
         }
 
         /// <summary>
         /// Prefetch deltas for ±N ticks around current position.
         /// </summary>
         [BurstCompile]
-        public static NativeList<ChunkDelta> PrefetchDeltas(
+        public static void PrefetchDeltas(
             uint currentTick,
             uint prefetchWindow,
-            NativeArray<ChunkDelta> sourceDeltas,
-            Allocator allocator)
+            in NativeArray<ChunkDelta> sourceDeltas,
+            Allocator allocator,
+            out NativeList<ChunkDelta> prefetched)
         {
-            var prefetched = new NativeList<ChunkDelta>(sourceDeltas.Length / 5, allocator);
+            prefetched = new NativeList<ChunkDelta>(sourceDeltas.Length / 5, allocator);
 
             var prefetchJob = new TemporalPrefetchJob
             {
@@ -209,7 +141,6 @@ namespace PureDOTS.Runtime.Time
             };
 
             prefetchJob.Execute();
-            return prefetched;
         }
     }
 }

@@ -1,6 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
-using PureDOTS.Runtime.Bridges;
+using PureDOTS.Shared;
 
 namespace PureDOTS.Runtime.Components
 {

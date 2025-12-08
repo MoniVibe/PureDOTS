@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Economy.Ownership.Aggregate
     /// Batches per commodity type, smooths prices galaxy-wide.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(AggregateEconomySystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct MarketEquilibriumSystem : ISystem
     {
         private uint _lastUpdateTick;

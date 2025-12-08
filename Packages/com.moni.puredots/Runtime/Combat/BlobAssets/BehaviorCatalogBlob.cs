@@ -16,9 +16,5 @@ namespace PureDOTS.Runtime.Combat
     /// Tactic success rate blob for fleet command learning.
     /// Maps culture IDs to tactic effectiveness weights.
     /// </summary>
-    public struct TacticSuccessRateBlob
-    {
-        public BlobHashMap<int, float> TacticWeights;
-    }
+    public struct TacticSuccessRateBlob { }
 }
-

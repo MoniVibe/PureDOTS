@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using PureDOTS.Runtime.Registry;
 using Unity.Collections;
 using Unity.Entities;
@@ -65,6 +66,7 @@ namespace PureDOTS.Runtime.Spatial
     /// 
     /// See also: <see cref="HierarchicalSpatialGridGuide.md"/>, <see cref="SpatialGridMigration"/>
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public struct SpatialGridConfig : IComponentData
     {
         public float CellSize; // Legacy single-level cell size (used when HierarchicalLevels.Length == 0)
@@ -75,7 +77,8 @@ namespace PureDOTS.Runtime.Spatial
         public byte ProviderId;
 
         // Hierarchical grid support
-        public bool IsHierarchical; // If true, use HierarchicalLevels; otherwise use legacy CellSize
+        public byte IsHierarchicalByte; // 0 = legacy, 1 = hierarchical
+        public bool IsHierarchical => IsHierarchicalByte != 0;
         public FixedList512Bytes<HierarchicalLevelConfig> HierarchicalLevels; // Per-level configurations
 
         // Adaptive subdivision thresholds
@@ -431,7 +434,23 @@ namespace PureDOTS.Runtime.Spatial
         public ulong MortonKey; // Space-filling curve index for cache coherence
 
         public readonly bool IsEmpty => !Entities.IsCreated || Entities.Length == 0;
-        public readonly float Volume => Bounds.IsValid ? Bounds.Size.x * Bounds.Size.y * Bounds.Size.z : 0f;
+        private static bool IsBoundsValid(in AABB bounds)
+        {
+            return math.all(bounds.Max >= bounds.Min) && math.all(math.isfinite(bounds.Max)) && math.all(math.isfinite(bounds.Min));
+        }
+        public readonly float Volume
+        {
+            get
+            {
+                if (!IsBoundsValid(in Bounds))
+                {
+                    return 0f;
+                }
+
+                var size = Bounds.Max - Bounds.Min;
+                return math.abs(size.x * size.y * size.z);
+            }
+        }
         public readonly float EntityDensity => Volume > 0f && Entities.IsCreated ? Entities.Length / Volume : 0f;
     }
 

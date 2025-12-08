@@ -15,9 +15,9 @@ namespace PureDOTS.Runtime.Scenario
         /// </summary>
         [BurstCompile]
         public static void WriteToJson(
-            in ScenarioParameters parameters,
-            NativeArray<Entity> entities,
-            FixedString512Bytes outputPath)
+            ref ScenarioParameters parameters,
+            in NativeArray<Entity> entities,
+            in FixedString512Bytes outputPath)
         {
             // Simplified: In a real implementation, this would:
             // 1. Serialize parameters and entities to JSON

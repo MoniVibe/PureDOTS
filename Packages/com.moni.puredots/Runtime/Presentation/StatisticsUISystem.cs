@@ -1,8 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using PureDOTS.Runtime.Telemetry;
-using PureDOTS.Systems.Telemetry;
 using UnityEngine;
 
 namespace PureDOTS.Runtime.Presentation

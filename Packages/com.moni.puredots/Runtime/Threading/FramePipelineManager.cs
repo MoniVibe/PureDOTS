@@ -18,7 +18,6 @@ namespace PureDOTS.Runtime.Threading
     /// Triple-buffered frame pipeline manager.
     /// While frame N simulates, frame N-1 renders, and frame N+1 preloads.
     /// </summary>
-    [BurstCompile]
     public struct FramePipelineManager
     {
         private NativeStream _renderBuffer;
@@ -59,7 +58,6 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// Gets the buffer for the current phase.
         /// </summary>
-        [BurstCompile]
         public NativeStream GetCurrentBuffer()
         {
             return _currentPhase switch
@@ -74,7 +72,6 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// Gets the buffer for a specific phase.
         /// </summary>
-        [BurstCompile]
         public NativeStream GetBuffer(FramePhase phase)
         {
             return phase switch
@@ -89,7 +86,6 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// Advances to the next frame, rotating buffers.
         /// </summary>
-        [BurstCompile]
         public void AdvanceFrame()
         {
             _frameIndex++;
@@ -101,13 +97,11 @@ namespace PureDOTS.Runtime.Threading
         /// <summary>
         /// Gets the current frame phase.
         /// </summary>
-        [BurstCompile]
         public FramePhase CurrentPhase => _currentPhase;
 
         /// <summary>
         /// Gets the current frame index.
         /// </summary>
-        [BurstCompile]
         public int FrameIndex => _frameIndex;
     }
 }

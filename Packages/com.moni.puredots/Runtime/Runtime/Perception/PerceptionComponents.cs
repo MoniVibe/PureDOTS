@@ -36,6 +36,99 @@ namespace PureDOTS.Runtime.Perception
         All = 0xFFFFFFFF
     }
 
+    [System.Flags]
+    public enum DetectionMask : byte
+    {
+        None = 0,
+        Sight = 1 << 0,
+        Sound = 1 << 1,
+        Smell = 1 << 2,
+        Proximity = 1 << 3,
+        All = Sight | Sound | Smell | Proximity
+    }
+
+    public enum DetectionType : byte
+    {
+        Proximity = 0,
+        Sight = 1,
+        Sound = 2
+    }
+
+    public enum DetectableCategory : byte
+    {
+        Neutral = 0,
+        Ally = 1,
+        Enemy = 2
+    }
+
+    public struct Detectable : IComponentData
+    {
+        public DetectableCategory Category;
+        public byte ThreatLevel;
+        public float Visibility;
+        public float Audibility;
+        public byte Flags;
+    }
+
+    public struct SensorConfig : IComponentData
+    {
+        public float Range;
+        public float FieldOfView;
+        public float UpdateInterval;
+        public DetectionMask DetectionMask;
+        public byte MaxTrackedTargets;
+
+        public static SensorConfig Default => new SensorConfig
+        {
+            Range = 30f,
+            FieldOfView = 120f,
+            UpdateInterval = 0.2f,
+            DetectionMask = DetectionMask.All,
+            MaxTrackedTargets = 8
+        };
+
+        public static SensorConfig Omnidirectional(float range)
+        {
+            return new SensorConfig
+            {
+                Range = range,
+                FieldOfView = 360f,
+                UpdateInterval = 0.2f,
+                DetectionMask = DetectionMask.All,
+                MaxTrackedTargets = 8
+            };
+        }
+    }
+
+    public struct SensorState : IComponentData
+    {
+        public uint LastUpdateTick;
+        public byte CurrentDetectionCount;
+        public byte HighestThreat;
+        public Entity HighestThreatEntity;
+        public Entity NearestEntity;
+        public float NearestDistance;
+    }
+
+    public struct DetectedEntity : IBufferElementData
+    {
+        public Entity Target;
+        public float Distance;
+        public float3 Direction;
+        public DetectionType DetectionType;
+        public float Confidence;
+        public uint DetectedAtTick;
+        public byte ThreatLevel;
+        public sbyte Relationship;
+    }
+
+    public struct SensorPacket : IComponentData
+    {
+        public Entity Source;
+        public int SensorId;
+        public DetectionMask Mask;
+    }
+
     /// <summary>
     /// Per-entity sensor capability configuration.
     /// Extends SensorConfig with channel-based detection.

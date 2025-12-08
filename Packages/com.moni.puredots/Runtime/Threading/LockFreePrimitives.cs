@@ -26,7 +26,8 @@ namespace PureDOTS.Runtime.Threading
             [BurstCompile]
             public bool Get()
             {
-                return Interlocked.Read(ref _value) != 0;
+                // Use CompareExchange as an atomic read for int
+                return Interlocked.CompareExchange(ref _value, 0, 0) != 0;
             }
 
             [BurstCompile]
@@ -62,7 +63,8 @@ namespace PureDOTS.Runtime.Threading
             [BurstCompile]
             public int Get()
             {
-                return Interlocked.Read(ref _value);
+                // Use CompareExchange as an atomic read for int
+                return Interlocked.CompareExchange(ref _value, 0, 0);
             }
 
             [BurstCompile]

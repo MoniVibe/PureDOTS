@@ -101,7 +101,7 @@ namespace PureDOTS.Runtime.Spatial
             });
 
             // Update config
-            config.IsHierarchical = true;
+            config.IsHierarchicalByte = 1;
             config.HierarchicalLevels = levels;
             config.UpperDensityThreshold = 100.0f;
             config.LowerDensityThreshold = 10.0f;

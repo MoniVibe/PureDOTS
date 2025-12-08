@@ -47,7 +47,8 @@ namespace PureDOTS.Systems
 
             // Output scenario JSON
             FixedString512Bytes outputPath = "Scenarios/GeneratedScenario.json";
-            ScenarioOutput.WriteToJson(parameters, entities.AsArray(), outputPath);
+            var entityArray = entities.AsArray();
+            ScenarioOutput.WriteToJson(ref parameters, in entityArray, in outputPath);
 
             entities.Dispose();
             state.Enabled = false; // Run once

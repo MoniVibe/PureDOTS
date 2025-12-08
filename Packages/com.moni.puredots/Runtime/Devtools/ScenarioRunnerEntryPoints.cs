@@ -4,7 +4,9 @@ using System.Text;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
+using Unity.Entities;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Runtime.Devtools
 {
@@ -26,33 +28,33 @@ namespace PureDOTS.Runtime.Devtools
 
             if (string.IsNullOrWhiteSpace(scenarioPath))
             {
-                Debug.LogWarning("ScenarioRunner: missing --scenario <path>");
+                UnityDebug.LogWarning("ScenarioRunner: missing --scenario <path>");
                 return;
             }
 
             if (!File.Exists(scenarioPath))
             {
-                Debug.LogError($"ScenarioRunner: scenario not found at {scenarioPath}");
+                UnityDebug.LogError($"ScenarioRunner: scenario not found at {scenarioPath}");
                 return;
             }
 
             var json = File.ReadAllText(scenarioPath);
             if (!ScenarioRunner.TryParse(json, out var data, out var parseError))
             {
-                Debug.LogError($"ScenarioRunner: failed to parse JSON: {parseError}");
+                UnityDebug.LogError($"ScenarioRunner: failed to parse JSON: {parseError}");
                 return;
             }
 
             if (!ScenarioRunner.TryBuild(data, Allocator.Temp, out var scenario, out var buildError))
             {
-                Debug.LogError($"ScenarioRunner: failed to build scenario: {buildError}");
+                UnityDebug.LogError($"ScenarioRunner: failed to build scenario: {buildError}");
                 return;
             }
 
             using (scenario)
             {
                 var summary = $"ScenarioRunner: loaded {scenario.ScenarioId} seed={scenario.Seed} ticks={scenario.RunTicks} entities={scenario.EntityCounts.Length} commands={scenario.InputCommands.Length}";
-                Debug.Log(summary);
+                UnityDebug.Log(summary);
 
                 if (!string.IsNullOrWhiteSpace(reportPath))
                 {
@@ -78,11 +80,11 @@ namespace PureDOTS.Runtime.Devtools
 
             if (string.IsNullOrWhiteSpace(scenarioArg))
             {
-                Debug.LogWarning("ScaleTest: missing --scenario <name or path>");
-                Debug.Log("Available scale scenarios:");
-                Debug.Log("  Scale: scale_baseline_10k, scale_stress_100k, scale_extreme_1m");
-                Debug.Log("  Sanity: scale_mini_lod_demo, scale_mini_aggregate_demo");
-                Debug.Log("  Game Demos: scenario_space_demo_01, scenario_god_demo_01");
+                UnityDebug.LogWarning("ScaleTest: missing --scenario <name or path>");
+                UnityDebug.Log("Available scale scenarios:");
+                UnityDebug.Log("  Scale: scale_baseline_10k, scale_stress_100k, scale_extreme_1m");
+                UnityDebug.Log("  Sanity: scale_mini_lod_demo, scale_mini_aggregate_demo");
+                UnityDebug.Log("  Game Demos: scenario_space_demo_01, scenario_god_demo_01");
                 return;
             }
 
@@ -90,7 +92,7 @@ namespace PureDOTS.Runtime.Devtools
             var scenarioPath = ResolveScenarioPath(scenarioArg);
             if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
             {
-                Debug.LogError($"ScaleTest: scenario not found: {scenarioArg}");
+                UnityDebug.LogError($"ScaleTest: scenario not found: {scenarioArg}");
                 return;
             }
 
@@ -105,29 +107,29 @@ namespace PureDOTS.Runtime.Devtools
             var json = File.ReadAllText(scenarioPath);
             if (!ScenarioRunner.TryParse(json, out var data, out var parseError))
             {
-                Debug.LogError($"ScaleTest: failed to parse JSON: {parseError}");
+                UnityDebug.LogError($"ScaleTest: failed to parse JSON: {parseError}");
                 return;
             }
 
             if (!ScenarioRunner.TryBuild(data, Allocator.Temp, out var scenario, out var buildError))
             {
-                Debug.LogError($"ScaleTest: failed to build scenario: {buildError}");
+                UnityDebug.LogError($"ScaleTest: failed to build scenario: {buildError}");
                 return;
             }
 
             using (scenario)
             {
-                Debug.Log($"[ScaleTest] Starting: {scenario.ScenarioId}");
-                Debug.Log($"[ScaleTest] Target tick time: {targetTickTimeMs}ms");
-                Debug.Log($"[ScaleTest] Ticks to run: {scenario.RunTicks}");
-                Debug.Log($"[ScaleTest] Entity counts: {scenario.EntityCounts.Length} types");
-                Debug.Log($"[ScaleTest] Debug flags: LOD={enableLodDebug}, Aggregate={enableAggregateDebug}");
+                UnityDebug.Log($"[ScaleTest] Starting: {scenario.ScenarioId}");
+                UnityDebug.Log($"[ScaleTest] Target tick time: {targetTickTimeMs}ms");
+                UnityDebug.Log($"[ScaleTest] Ticks to run: {scenario.RunTicks}");
+                UnityDebug.Log($"[ScaleTest] Entity counts: {scenario.EntityCounts.Length} types");
+                UnityDebug.Log($"[ScaleTest] Debug flags: LOD={enableLodDebug}, Aggregate={enableAggregateDebug}");
 
                 // Log entity breakdown
                 for (int i = 0; i < scenario.EntityCounts.Length; i++)
                 {
                     var ec = scenario.EntityCounts[i];
-                    Debug.Log($"[ScaleTest]   {ec.RegistryId}: {ec.Count}");
+                    UnityDebug.Log($"[ScaleTest]   {ec.RegistryId}: {ec.Count}");
                 }
 
                 // Create metrics config for this run
@@ -145,7 +147,7 @@ namespace PureDOTS.Runtime.Devtools
 
                 // Generate metrics report
                 var report = GenerateScaleTestReport(scenario, targetTickTimeMs, metricsConfig);
-                Debug.Log(report);
+                UnityDebug.Log(report);
 
                 if (!string.IsNullOrWhiteSpace(metricsPath))
                 {
@@ -157,7 +159,7 @@ namespace PureDOTS.Runtime.Devtools
                     }
 
                     File.WriteAllText(metricsPath, report);
-                    Debug.Log($"[ScaleTest] Report written to: {metricsPath}");
+                    UnityDebug.Log($"[ScaleTest] Report written to: {metricsPath}");
                 }
             }
         }
@@ -183,24 +185,24 @@ namespace PureDOTS.Runtime.Devtools
         /// </summary>
         public static void ListScaleScenarios()
         {
-            Debug.Log("[ScaleTest] Available scale test scenarios:");
-            Debug.Log("");
-            Debug.Log("  Scale Tests:");
-            Debug.Log("    - scale_baseline_10k     : 10k entities, target 60 FPS");
-            Debug.Log("    - scale_stress_100k      : 100k entities, target 30 FPS");
-            Debug.Log("    - scale_extreme_1m       : 1M+ entities, target 10 FPS");
-            Debug.Log("");
-            Debug.Log("  Sanity Demos:");
-            Debug.Log("    - scale_mini_lod_demo       : 2k test entities with LOD components");
-            Debug.Log("    - scale_mini_aggregate_demo : 5 aggregates with 200 members");
-            Debug.Log("");
-            Debug.Log("  Game Demos:");
-            Debug.Log("    - scenario_space_demo_01    : Space4X demo (carriers/crafts/asteroids/fleets)");
-            Debug.Log("    - scenario_god_demo_01      : Godgame demo (villagers/resources/villages)");
-            Debug.Log("");
-            Debug.Log("Usage:");
-            Debug.Log("  -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \\");
-            Debug.Log("    --scenario <name> --metrics <output.json> [--enable-lod-debug] [--enable-aggregate-debug]");
+            UnityDebug.Log("[ScaleTest] Available scale test scenarios:");
+            UnityDebug.Log("");
+            UnityDebug.Log("  Scale Tests:");
+            UnityDebug.Log("    - scale_baseline_10k     : 10k entities, target 60 FPS");
+            UnityDebug.Log("    - scale_stress_100k      : 100k entities, target 30 FPS");
+            UnityDebug.Log("    - scale_extreme_1m       : 1M+ entities, target 10 FPS");
+            UnityDebug.Log("");
+            UnityDebug.Log("  Sanity Demos:");
+            UnityDebug.Log("    - scale_mini_lod_demo       : 2k test entities with LOD components");
+            UnityDebug.Log("    - scale_mini_aggregate_demo : 5 aggregates with 200 members");
+            UnityDebug.Log("");
+            UnityDebug.Log("  Game Demos:");
+            UnityDebug.Log("    - scenario_space_demo_01    : Space4X demo (carriers/crafts/asteroids/fleets)");
+            UnityDebug.Log("    - scenario_god_demo_01      : Godgame demo (villagers/resources/villages)");
+            UnityDebug.Log("");
+            UnityDebug.Log("Usage:");
+            UnityDebug.Log("  -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \\");
+            UnityDebug.Log("    --scenario <name> --metrics <output.json> [--enable-lod-debug] [--enable-aggregate-debug]");
         }
 
         private static string ResolveScenarioPath(string scenarioArg)
@@ -329,30 +331,30 @@ namespace PureDOTS.Runtime.Devtools
 
             if (string.IsNullOrWhiteSpace(scenarioPath))
             {
-                Debug.LogWarning("LoadScenarioV2: missing --scenario <path>");
+                UnityDebug.LogWarning("LoadScenarioV2: missing --scenario <path>");
                 return;
             }
 
             if (!File.Exists(scenarioPath))
             {
-                Debug.LogError($"LoadScenarioV2: scenario not found at {scenarioPath}");
+                UnityDebug.LogError($"LoadScenarioV2: scenario not found at {scenarioPath}");
                 return;
             }
 
             var world = World.DefaultGameObjectInjectionWorld;
             if (world == null || !world.IsCreated)
             {
-                Debug.LogError("LoadScenarioV2: no active world found");
+                UnityDebug.LogError("LoadScenarioV2: no active world found");
                 return;
             }
 
             if (!PureDOTS.Runtime.Devtools.Scenario.ScenarioLoaderV2.Load(scenarioPath, world, out var error))
             {
-                Debug.LogError($"LoadScenarioV2: failed to load scenario: {error}");
+                UnityDebug.LogError($"LoadScenarioV2: failed to load scenario: {error}");
                 return;
             }
 
-            Debug.Log($"LoadScenarioV2: successfully loaded scenario from {scenarioPath}");
+            UnityDebug.Log($"LoadScenarioV2: successfully loaded scenario from {scenarioPath}");
         }
     }
 }

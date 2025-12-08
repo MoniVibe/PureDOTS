@@ -11,7 +11,7 @@ namespace PureDOTS.Debugging
     /// Displays performance counters, budgets, and warnings in debug builds.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct NavPerformanceDebugSystem : ISystem
     {
         [BurstCompile]
@@ -61,4 +61,3 @@ namespace PureDOTS.Debugging
         }
     }
 }
-

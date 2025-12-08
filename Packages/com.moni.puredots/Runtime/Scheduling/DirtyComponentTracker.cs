@@ -33,12 +33,6 @@ namespace PureDOTS.Runtime.Scheduling
         }
 
         [BurstCompile]
-        public bool IsDirty(ComponentType.ReadOnly componentType)
-        {
-            return _dirtyComponents.Contains(componentType);
-        }
-
-        [BurstCompile]
         public void Clear()
         {
             _dirtyComponents.Clear();

@@ -57,11 +57,11 @@ namespace PureDOTS.Runtime.Math
         /// Used for macro regime visual effects.
         /// </summary>
         [BurstCompile]
-        public static float3 ComputeAtmosphereColorShift(float atmosphereLossPercentage)
+        public static void ComputeAtmosphereColorShift(float atmosphereLossPercentage, out float3 result)
         {
             // Shift toward red/orange as atmosphere is lost
             var shift = atmosphereLossPercentage;
-            return new float3(shift * 0.5f, -shift * 0.3f, -shift * 0.2f);
+            result = new float3(shift * 0.5f, -shift * 0.3f, -shift * 0.2f);
         }
 
         /// <summary>

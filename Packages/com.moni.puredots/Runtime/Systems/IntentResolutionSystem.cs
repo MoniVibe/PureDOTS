@@ -146,8 +146,6 @@ namespace PureDOTS.Systems
                 TickNumber = intentCmd.TickNumber
             };
             ProcessIntent(ref transform, bufferIntent, currentTick);
-            }
         }
     }
 }
-

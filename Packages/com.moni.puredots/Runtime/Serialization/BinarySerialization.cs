@@ -23,9 +23,10 @@ namespace PureDOTS.Runtime.Serialization
 
             unsafe
             {
+                var copy = value;
                 UnsafeUtility.MemCpy(
                     (byte*)output.GetUnsafePtr() + startIndex,
-                    UnsafeUtility.AddressOf(ref UnsafeUtility.AsRef(in value)),
+                    UnsafeUtility.AddressOf(ref copy),
                     size
                 );
             }

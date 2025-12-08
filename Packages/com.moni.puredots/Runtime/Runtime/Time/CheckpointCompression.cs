@@ -15,17 +15,19 @@ namespace PureDOTS.Runtime.Time
         /// Compress data using run-length encoding + XOR delta.
         /// </summary>
         [BurstCompile]
-        public static unsafe NativeArray<byte> Compress(
-            NativeArray<byte> data,
-            NativeArray<byte> previousData,
-            Allocator allocator)
+        public static unsafe void Compress(
+            in NativeArray<byte> data,
+            in NativeArray<byte> previousData,
+            Allocator allocator,
+            out NativeArray<byte> compressed)
         {
             if (!data.IsCreated || data.Length == 0)
             {
-                return default;
+                compressed = default;
+                return;
             }
 
-            var compressed = new NativeList<byte>(data.Length / 2, allocator);
+            var compressedList = new NativeList<byte>(data.Length / 2, allocator);
 
             byte* dataPtr = (byte*)data.GetUnsafePtr();
             byte* prevPtr = previousData.IsCreated ? (byte*)previousData.GetUnsafePtr() : null;
@@ -52,38 +54,40 @@ namespace PureDOTS.Runtime.Time
                 if (runLength > 3 || delta == 0)
                 {
                     // Encode run: [0xFF, delta, length]
-                    compressed.Add(0xFF);
-                    compressed.Add(delta);
-                    compressed.Add((byte)runLength);
+                    compressedList.Add(0xFF);
+                    compressedList.Add(delta);
+                    compressedList.Add((byte)runLength);
                 }
                 else
                 {
                     // Encode literal bytes
                     for (int j = 0; j < runLength; j++)
                     {
-                        compressed.Add(delta);
+                        compressedList.Add(delta);
                     }
                 }
 
                 i += runLength;
             }
 
-            return compressed.AsArray();
+            compressed = compressedList.AsArray();
         }
 
         /// <summary>
         /// Decompress data using run-length decoding + XOR delta.
         /// </summary>
         [BurstCompile]
-        public static unsafe NativeArray<byte> Decompress(
-            NativeArray<byte> compressed,
-            NativeArray<byte> previousData,
+        public static unsafe void Decompress(
+            in NativeArray<byte> compressed,
+            in NativeArray<byte> previousData,
             int outputLength,
-            Allocator allocator)
+            Allocator allocator,
+            out NativeArray<byte> output)
         {
             if (!compressed.IsCreated || compressed.Length == 0)
             {
-                return default;
+                output = default;
+                return;
             }
 
             var decompressed = new NativeArray<byte>(outputLength, allocator, NativeArrayOptions.UninitializedMemory);
@@ -119,7 +123,7 @@ namespace PureDOTS.Runtime.Time
                 }
             }
 
-            return decompressed;
+            output = decompressed;
         }
 
         /// <summary>

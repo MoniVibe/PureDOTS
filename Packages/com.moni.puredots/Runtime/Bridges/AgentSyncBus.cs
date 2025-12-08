@@ -150,23 +150,6 @@ namespace PureDOTS.Runtime.Bridges
     }
 
     /// <summary>
-    /// Intent kinds that can be issued by the cognitive layer.
-    /// </summary>
-    public enum IntentKind : byte
-    {
-        None = 0,
-        Move = 1,
-        Attack = 2,
-        Harvest = 3,
-        Defend = 4,
-        Patrol = 5,
-        UseAbility = 6,
-        Interact = 7,
-        Rest = 8,
-        Flee = 9
-    }
-
-    /// <summary>
     /// Flags for BodyToMindMessage indicating which fields changed.
     /// </summary>
     public static class BodyToMindFlags
@@ -197,6 +180,11 @@ namespace PureDOTS.Runtime.Bridges
         private readonly Dictionary<AgentGuid, Dictionary<ConsensusTier, byte>> _clusterConsensusCache; // Cluster -> Tier -> Last resolved value
         private readonly Dictionary<AgentGuid, Dictionary<AgentGuid, SocialMessage>> _lastSocialMessageState; // Sender -> Receiver -> Last message
 
+        // Persistent batch containers (reused to avoid allocations)
+        private readonly List<AggregateIntentMessage> _aggregateIntentBatch;
+        private readonly List<ConsensusOutcomeMessage> _consensusOutcomeBatch;
+        private readonly Dictionary<AgentGuid, Dictionary<ConsensusTier, List<ConsensusVoteMessage>>> _consensusVoteGrouped;
+
         public AgentSyncBus()
         {
             _mindToBodyQueue = new Queue<MindToBodyMessage>();
@@ -212,6 +200,11 @@ namespace PureDOTS.Runtime.Bridges
             _lastBodyToMindState = new Dictionary<AgentGuid, BodyToMindMessage>();
             _clusterConsensusCache = new Dictionary<AgentGuid, Dictionary<ConsensusTier, byte>>();
             _lastSocialMessageState = new Dictionary<AgentGuid, Dictionary<AgentGuid, SocialMessage>>();
+            
+            // Initialize persistent batch containers
+            _aggregateIntentBatch = new List<AggregateIntentMessage>(128);
+            _consensusOutcomeBatch = new List<ConsensusOutcomeMessage>(128);
+            _consensusVoteGrouped = new Dictionary<AgentGuid, Dictionary<ConsensusTier, List<ConsensusVoteMessage>>>(32);
         }
 
         /// <summary>
@@ -350,12 +343,12 @@ namespace PureDOTS.Runtime.Bridges
         /// </summary>
         public List<AggregateIntentMessage> DequeueAggregateIntentBatch()
         {
-            var batch = new List<AggregateIntentMessage>(_aggregateIntentQueue.Count);
+            _aggregateIntentBatch.Clear();
             while (_aggregateIntentQueue.Count > 0)
             {
-                batch.Add(_aggregateIntentQueue.Dequeue());
+                _aggregateIntentBatch.Add(_aggregateIntentQueue.Dequeue());
             }
-            return batch;
+            return _aggregateIntentBatch;
         }
 
         /// <summary>
@@ -372,26 +365,35 @@ namespace PureDOTS.Runtime.Bridges
         /// </summary>
         public Dictionary<AgentGuid, Dictionary<ConsensusTier, List<ConsensusVoteMessage>>> DequeueConsensusVoteBatch()
         {
-            var grouped = new Dictionary<AgentGuid, Dictionary<ConsensusTier, List<ConsensusVoteMessage>>>();
+            // Clear nested dictionaries and lists, but keep structure
+            foreach (var clusterDict in _consensusVoteGrouped.Values)
+            {
+                foreach (var tierList in clusterDict.Values)
+                {
+                    tierList.Clear();
+                }
+                clusterDict.Clear();
+            }
+            _consensusVoteGrouped.Clear();
             
             while (_consensusVoteQueue.Count > 0)
             {
                 var vote = _consensusVoteQueue.Dequeue();
                 
-                if (!grouped.ContainsKey(vote.ClusterGuid))
+                if (!_consensusVoteGrouped.ContainsKey(vote.ClusterGuid))
                 {
-                    grouped[vote.ClusterGuid] = new Dictionary<ConsensusTier, List<ConsensusVoteMessage>>();
+                    _consensusVoteGrouped[vote.ClusterGuid] = new Dictionary<ConsensusTier, List<ConsensusVoteMessage>>();
                 }
                 
-                if (!grouped[vote.ClusterGuid].ContainsKey(vote.Tier))
+                if (!_consensusVoteGrouped[vote.ClusterGuid].ContainsKey(vote.Tier))
                 {
-                    grouped[vote.ClusterGuid][vote.Tier] = new List<ConsensusVoteMessage>();
+                    _consensusVoteGrouped[vote.ClusterGuid][vote.Tier] = new List<ConsensusVoteMessage>();
                 }
                 
-                grouped[vote.ClusterGuid][vote.Tier].Add(vote);
+                _consensusVoteGrouped[vote.ClusterGuid][vote.Tier].Add(vote);
             }
             
-            return grouped;
+            return _consensusVoteGrouped;
         }
 
         /// <summary>
@@ -414,12 +416,12 @@ namespace PureDOTS.Runtime.Bridges
         /// </summary>
         public List<ConsensusOutcomeMessage> DequeueConsensusOutcomeBatch()
         {
-            var batch = new List<ConsensusOutcomeMessage>(_consensusOutcomeQueue.Count);
+            _consensusOutcomeBatch.Clear();
             while (_consensusOutcomeQueue.Count > 0)
             {
-                batch.Add(_consensusOutcomeQueue.Dequeue());
+                _consensusOutcomeBatch.Add(_consensusOutcomeQueue.Dequeue());
             }
-            return batch;
+            return _consensusOutcomeBatch;
         }
 
         /// <summary>
@@ -503,6 +505,19 @@ namespace PureDOTS.Runtime.Bridges
             _lastBodyToMindState.Clear();
             _clusterConsensusCache.Clear();
             _lastSocialMessageState.Clear();
+            
+            // Clear persistent batch containers
+            _aggregateIntentBatch.Clear();
+            _consensusOutcomeBatch.Clear();
+            foreach (var clusterDict in _consensusVoteGrouped.Values)
+            {
+                foreach (var tierList in clusterDict.Values)
+                {
+                    tierList.Clear();
+                }
+                clusterDict.Clear();
+            }
+            _consensusVoteGrouped.Clear();
         }
 
         public int MindToBodyQueueCount => _mindToBodyQueue.Count;

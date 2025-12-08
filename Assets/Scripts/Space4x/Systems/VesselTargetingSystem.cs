@@ -30,7 +30,7 @@ namespace Space4X.Systems
             _resourceEntriesLookup = state.GetBufferLookup<ResourceRegistryEntry>(true);
 
             _resourceRegistryQuery = SystemAPI.QueryBuilder()
-                .WithAll<ResourceRegistry, ResourceRegistryEntry>()
+                .WithAll<ResourceRegistry>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -143,4 +143,3 @@ namespace Space4X.Systems
         }
     }
 }
-

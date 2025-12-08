@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Components;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace PureDOTS.Runtime.WorldBus
 {
@@ -39,7 +40,7 @@ namespace PureDOTS.Runtime.WorldBus
             ref WorldBus bus,
             byte sourceWorld,
             byte targetWorld,
-            FixedBytes64 payload,
+            in FixedBytes64 payload,
             uint tick,
             byte messageType)
         {

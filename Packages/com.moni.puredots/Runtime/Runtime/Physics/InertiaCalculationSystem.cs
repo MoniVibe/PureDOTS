@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -53,27 +54,44 @@ namespace PureDOTS.Runtime.Physics
             var calculateJob = new CalculateInertiaJob
             {
                 TransformLookup = transformLookup,
-                MassLookup = massLookup
+                MassLookup = massLookup,
+                MassHandle = state.GetComponentTypeHandle<MassComponent>(false),
+                TransformHandle = state.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle = state.GetComponentTypeHandle<Parent>(true),
+                EntityHandle = state.GetEntityTypeHandle()
             };
 
             state.Dependency = calculateJob.ScheduleParallel(_compositeQuery, state.Dependency);
         }
 
         [BurstCompile]
-        private struct CalculateInertiaJob : IJobChunk
-        {
-            [ReadOnly]
-            public ComponentLookup<LocalTransform> TransformLookup;
-
-            [ReadOnly]
-            public ComponentLookup<MassComponent> MassLookup;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            private struct CalculateInertiaJob : IJobChunk
             {
-                var massComponents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<MassComponent>(false));
-                var transforms = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<LocalTransform>(true));
-                var parents = chunk.GetNativeArray(ref chunk.GetRequiredComponentTypeHandle<Parent>(true));
-                var entities = chunk.GetEntityArray();
+                [ReadOnly]
+                public ComponentLookup<LocalTransform> TransformLookup;
+
+                [ReadOnly]
+                public ComponentLookup<MassComponent> MassLookup;
+
+                public ComponentTypeHandle<MassComponent> MassHandle;
+                [ReadOnly]
+                public ComponentTypeHandle<LocalTransform> TransformHandle;
+                [ReadOnly]
+                public ComponentTypeHandle<Parent> ParentHandle;
+                [ReadOnly]
+                public EntityTypeHandle EntityHandle;
+
+                void IJobChunk.Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+                {
+                    ExecuteChunk(chunk, unfilteredChunkIndex, useEnabledMask, chunkEnabledMask);
+                }
+
+                private void ExecuteChunk(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+                {
+                var massComponents = chunk.GetNativeArray(MassHandle);
+                var transforms = chunk.GetNativeArray(TransformHandle);
+                var parents = chunk.GetNativeArray(ParentHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
 
                 for (int i = 0; i < chunk.Count; i++)
                 {

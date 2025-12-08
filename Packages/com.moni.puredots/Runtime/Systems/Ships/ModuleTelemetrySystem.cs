@@ -17,6 +17,7 @@ namespace PureDOTS.Systems.Ships
         private FixedString64Bytes _degradedKey;
         private FixedString64Bytes _failedKey;
         private FixedString64Bytes _queueKey;
+        private NativeQueue<TelemetryMetric>.ParallelWriter _writer;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -30,13 +31,11 @@ namespace PureDOTS.Systems.Ships
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
-            if (!state.EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
+            if (_writer.Equals(default))
             {
-                return;
+                _writer = TelemetryHub.AsParallelWriter();
             }
 
-            var buffer = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
             int degraded = 0;
             int failed = 0;
             int queued = 0;
@@ -48,9 +47,9 @@ namespace PureDOTS.Systems.Ships
                 queued += tickets.Length;
             }
 
-            buffer.AddMetric(_degradedKey, degraded, TelemetryMetricUnit.Count);
-            buffer.AddMetric(_failedKey, failed, TelemetryMetricUnit.Count);
-            buffer.AddMetric(_queueKey, queued, TelemetryMetricUnit.Count);
+            EnqueueMetric(_degradedKey, degraded);
+            EnqueueMetric(_failedKey, failed);
+            EnqueueMetric(_queueKey, queued);
         }
 
         private static FixedString64Bytes CreateDegradedKey()
@@ -72,6 +71,19 @@ namespace PureDOTS.Systems.Ships
             FixedString64Bytes key = default;
             key.Append('s'); key.Append('p'); key.Append('a'); key.Append('c'); key.Append('e'); key.Append('4'); key.Append('x'); key.Append('.'); key.Append('m'); key.Append('o'); key.Append('d'); key.Append('u'); key.Append('l'); key.Append('e'); key.Append('s'); key.Append('.'); key.Append('r'); key.Append('e'); key.Append('p'); key.Append('a'); key.Append('i'); key.Append('r'); key.Append('.'); key.Append('q'); key.Append('u'); key.Append('e'); key.Append('u'); key.Append('e');
             return key;
+        }
+
+        private void EnqueueMetric(in FixedString64Bytes key, float value)
+        {
+            var metric = new TelemetryMetric { Key = key, Value = value, Unit = TelemetryMetricUnit.Count };
+            if (_writer.Equals(default))
+            {
+                TelemetryHub.Enqueue(metric);
+            }
+            else
+            {
+                _writer.Enqueue(metric);
+            }
         }
     }
 }

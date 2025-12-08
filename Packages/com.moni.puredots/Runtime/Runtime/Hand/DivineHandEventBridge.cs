@@ -2,6 +2,7 @@ using System;
 using PureDOTS.Runtime.Components;
 using Unity.Collections;
 using Unity.Entities;
+using PureDOTS.Runtime.Debugging;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -113,7 +114,7 @@ namespace PureDOTS.Runtime.Hand
                             onHandStateChanged?.Invoke(evt.FromState, evt.ToState);
                             if (logEvents)
                             {
-                                Debug.Log($"[HandEvent] State {evt.FromState} -> {evt.ToState}", this);
+                                DebugLog.Log($"[HandEvent] State {evt.FromState} -> {evt.ToState}");
                             }
                             break;
 
@@ -123,7 +124,7 @@ namespace PureDOTS.Runtime.Hand
                             if (logEvents)
                             {
                                 string label = evt.ResourceTypeIndex == DivineHandConstants.NoResourceType ? "None" : evt.ResourceTypeIndex.ToString();
-                                Debug.Log($"[HandEvent] Resource Type => {label}", this);
+                                DebugLog.Log($"[HandEvent] Resource Type => {label}");
                             }
                             break;
 
@@ -132,7 +133,7 @@ namespace PureDOTS.Runtime.Hand
                             onHandAmountChanged?.Invoke(evt.Amount, evt.Capacity);
                             if (logEvents)
                             {
-                                Debug.Log($"[HandEvent] Amount {evt.Amount}/{evt.Capacity}", this);
+                                DebugLog.Log($"[HandEvent] Amount {evt.Amount}/{evt.Capacity}");
                             }
                             break;
                     }

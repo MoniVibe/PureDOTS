@@ -336,11 +336,4 @@ namespace PureDOTS.Systems
     [ThreadRole(ThreadRoleType.RenderingIO)]
     public partial class PureDotsPresentationSystemGroup : ComponentSystemGroup { }
 
-    /// <summary>
-    /// [DEPRECATED] Old PresentationSystemGroup - use Unity.Entities.PresentationSystemGroup or PureDotsPresentationSystemGroup instead.
-    /// This type is kept for compatibility but should not be used in new code.
-    /// </summary>
-    [System.Obsolete("Use Unity.Entities.PresentationSystemGroup or PureDOTS.Systems.PureDotsPresentationSystemGroup instead. See Docs/FoundationGuidelines.md for policy.")]
-    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
-    public partial class PresentationSystemGroup : ComponentSystemGroup { }
 }

@@ -10,7 +10,7 @@ namespace PureDOTS.Debugging
     /// Displays relation/econ/social performance counters and budget warnings in a debug overlay.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct RelationPerformanceDebugSystem : ISystem
     {
         [BurstCompile]

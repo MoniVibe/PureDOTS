@@ -181,7 +181,7 @@ namespace PureDOTS.Runtime.Combat
     /// </summary>
     public struct TargetPacket
     {
-        public FixedList8Bytes<Entity> Targets;
+        public FixedList64Bytes<Entity> Targets;
         public byte Count;
     }
 

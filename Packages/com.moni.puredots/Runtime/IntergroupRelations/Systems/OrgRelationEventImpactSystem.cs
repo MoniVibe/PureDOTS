@@ -10,12 +10,10 @@ namespace PureDOTS.Runtime.IntergroupRelations
     /// Applies event deltas to organization relations.
     /// Updates Attitude/Trust/Fear/Respect/Dependence and toggles treaties based on event outcomes.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(OrgRelationInitSystem))]
     public partial struct OrgRelationEventImpactSystem : ISystem
     {
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
@@ -106,6 +104,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
             relation.ValueRW.Treaties &= ~evt.TreatyFlagsToRemove;
         }
 
+        [BurstDiscard]
         private static Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
         {
             var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));

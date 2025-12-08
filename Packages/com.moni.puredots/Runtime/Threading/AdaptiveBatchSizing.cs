@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Threading
 {
@@ -62,21 +63,22 @@ namespace PureDOTS.Runtime.Threading
         /// Schedules a parallel job with adaptive batch sizing.
         /// </summary>
         public static JobHandle ScheduleAdaptive<T>(
-            ref T job,
+            T job,
             EntityQuery query,
             ref SystemState state,
-            in ThreadingConfig config) where T : struct, IJobEntity
+            in ThreadingConfig config) where T : unmanaged, IJobEntity
         {
             int entityCount = query.CalculateEntityCount();
             int threadCount = config.SimulationThreadCount;
-            int batchCount = CalculateAdaptiveBatchCount(
+            CalculateAdaptiveBatchCount(
                 entityCount,
                 threadCount,
                 config.MicroTaskThresholdMs / math.max(entityCount, 1),
                 config.MicroTaskThresholdMs,
                 config.DefaultBatchCount);
 
-            return job.ScheduleParallel(query, batchCount, state.Dependency);
+            // IJobEntity scheduling in Entities 1.4 accepts (query, dependency) without batch override.
+            return IJobEntityExtensions.ScheduleParallel(job, query, state.Dependency);
         }
     }
 }
