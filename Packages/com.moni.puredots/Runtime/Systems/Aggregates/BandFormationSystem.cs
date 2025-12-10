@@ -154,7 +154,9 @@ namespace PureDOTS.Systems.Aggregates
 
                 // Roll formation probability
                 var formationChance = CalculateFormationProbability(entities, cluster, timeState.Tick);
-                var random = new Random((uint)(timeState.Tick + i * 31));
+                var seed = (uint)(timeState.Tick + i * 31 + 1);
+                if (seed == 0) seed = 1;
+                var random = new Random(seed);
 
                 if (random.NextFloat() > formationChance)
                 {

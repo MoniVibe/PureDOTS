@@ -1,3 +1,5 @@
+#if PUREDOTS_DEMO
+
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.IntergroupRelations;
@@ -146,4 +148,6 @@ namespace PureDOTS.Systems.IntergroupRelations
     /// </summary>
     public struct OrgRelationInitCompleteTag : IComponentData { }
 }
+
+#endif
 

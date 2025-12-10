@@ -1,54 +1,56 @@
 /// <summary>
-/// PureDOTS Demo Assembly - Public API Documentation
-/// 
+/// PureDOTS Demo Assembly - DEMO-ONLY SYSTEMS FOR TESTING
+///
+/// IMPORTANT: This assembly contains DEMO-ONLY systems that are disabled by default.
+/// They are provided solely for testing and validation of PureDOTS infrastructure.
+/// Real games should NOT use these systems in production.
+///
+/// DEMO SYSTEMS ARE DISABLED BY DEFAULT:
+/// All demo systems have [DisableAutoCreation] and only run when the "demo" profile
+/// is explicitly activated via PURE_DOTS_BOOTSTRAP_PROFILE=demo environment variable
+/// or SystemRegistry.OverrideActiveProfile().
+///
+/// RENDERING PATH FOR REAL GAMES:
+/// ==============================
+/// Real games should implement their own rendering pipeline:
+///
+/// 1. Define game-specific RenderKey components (e.g., Space4XRenderKey, GodgameRenderKey)
+/// 2. Create RenderCatalogAuthoring/Baker that populates render data
+/// 3. Implement ApplyRenderCatalogSystem that assigns MaterialMeshInfo based on RenderKeys
+/// 4. Use game-specific RenderMeshArrays with proper mesh/material indices
+///
+/// DO NOT use the demo rendering systems (SharedRenderBootstrap, AssignVisualsSystem, etc.)
+/// in real game scenes. They are examples only.
+///
 /// OVERVIEW:
 /// This assembly provides game-agnostic demo systems and components that host games
 /// (Godgame, Space4x) can reference to get visual ECS validation and simple demo behaviors.
-/// 
+///
 /// NAMESPACES:
-/// 
-/// - PureDOTS.Demo.Orbit: Orbit demo systems and components
-/// - PureDOTS.Demo.Village: Village demo systems and components
-/// - PureDOTS.Demo.Rendering: Shared rendering utilities (RenderMeshArraySingleton, DemoMeshIndices)
-/// 
-/// ORBIT DEMO (PureDOTS.Demo.Orbit):
-/// 
+///
+/// - PureDOTS.Demo.Orbit: Orbit demo systems and components (DEMO ONLY)
+/// - PureDOTS.Demo.Village: Village demo systems and components (DEMO ONLY)
+/// - PureDOTS.Demo.Rendering: Shared rendering utilities for demos (EXAMPLE ONLY)
+///
+/// ORBIT DEMO (PureDOTS.Demo.Orbit) - DEMO ONLY:
+///
 /// Systems:
-/// - OrbitCubeSystem: Spawns a huge 10-unit debug cube at (0,1,0) in bright magenta,
-///   plus 4 colored orbiting cubes (red, green, blue, yellow) around the center.
-///   Updates cube positions each frame to demonstrate ECS motion.
-///   Runs in SimulationSystemGroup.
-///   Logs: "[OrbitCubeSystem] World '{World.Name}': spawned X orbit cubes (including big debug cube)."
-/// 
+/// - OrbitCubeSystem: [DisableAutoCreation] Spawns debug cubes. Only runs in demo profile.
+///
 /// Components:
 /// - OrbitCubeTag: Tag component marking orbit cube entities
 /// - OrbitCube: Orbital motion parameters (radius, angular speed, angle, height)
-/// 
-/// VILLAGE DEMO (PureDOTS.Demo.Village):
-/// 
+///
+/// VILLAGE DEMO (PureDOTS.Demo.Village) - DEMO ONLY:
+///
 /// Systems:
-/// - VillageDemoBootstrapSystem: Creates 10 homes, 10 workplaces, and 10 villagers in a strip layout.
-///   Homes positioned at (x, 0, 0), workplaces at (x, 0, 10) where x ranges from -9 to 9.
-///   Villagers start at their home positions.
-///   Runs in InitializationSystemGroup, after SharedRenderBootstrap.
-///   Logs: "[VillageDemoBootstrapSystem] World '{World.Name}': spawned V Villagers, H Homes, W Works."
-/// 
-/// - VillageVisualSetupSystem: Adds render components (MaterialMeshInfo, RenderMeshArray) to village entities.
-///   Requires VillageWorldTag to be present in the world.
-///   Runs in InitializationSystemGroup, after VillageDemoBootstrapSystem.
-/// 
-/// - VillagerWalkLoopSystem: Moves villagers back and forth between home and work positions.
-///   Phase 0: going to work, Phase 1: going home.
-///   Speed: 2 units/second.
-///   Runs in SimulationSystemGroup.
-/// 
-/// - VillageDebugSystem: Logs counts of villagers, homes, and works once per world.
-///   Provides visibility into demo entity spawning.
-///   Runs in SimulationSystemGroup.
-///   Logs: "[VillageDebugSystem] World '{World.Name}': Villages: {villageCount}, Villagers: {villagerCount}, Homes: {homeCount}, Works: {workCount}"
-/// 
+/// - VillageDemoBootstrapSystem: [DisableAutoCreation] Creates demo entities. Only runs in demo profile.
+/// - VillageVisualSetupSystem: [DisableAutoCreation] Sets up demo visuals. Only runs in demo profile.
+/// - VillagerWalkLoopSystem: [DisableAutoCreation] Moves villagers. Only runs in demo profile.
+/// - VillageDebugSystem: [DisableAutoCreation] Logs counts. Only runs in demo profile.
+///
 /// Components:
-/// - VillageWorldTag: World-level tag to enable VillageVisualSetupSystem
+/// - VillageWorldTag: World-level tag to enable demo village systems
 /// - VillageTag: Marks village aggregate entities (homes, workplaces)
 /// - VillagerTag: Marks villager entities
 /// - HomeLot: Position marker for village home structures (float3 Position)
@@ -56,44 +58,29 @@
 /// - VillagerHome: Stores a villager's home position (float3 Position)
 /// - VillagerWork: Stores a villager's work position (float3 Position)
 /// - VillagerState: Tracks villager phase (byte Phase; 0=going to work, 1=going home)
-/// 
-/// RENDERING UTILITIES (PureDOTS.Demo.Rendering):
-/// 
-/// - DemoMeshIndices: Static class with mesh index constants:
-///   - VillageGroundMeshIndex (0): Ground/terrain mesh
-///   - VillageHomeMeshIndex (1): Home structures mesh
-///   - VillageWorkMeshIndex (2): Workplace structures mesh
-///   - VillageVillagerMeshIndex (3): Villagers and orbit cubes mesh
-///   - DemoMaterialIndex (0): Demo material (typically Simple Lit shader)
-/// 
-/// - RenderMeshArraySingleton: Shared component that holds the RenderMeshArray for demo entities.
-///   Host games must populate this singleton with meshes at the indices defined in DemoMeshIndices.
-/// 
-/// - SharedRenderBootstrap: Bootstrap system that initializes the RenderMeshArraySingleton.
-///   Runs in InitializationSystemGroup, after TimeSystemGroup.
-/// 
-/// REQUIREMENTS:
-/// 
-/// - RenderMeshArraySingleton must be set up with meshes at DemoMeshIndices:
-///   - Index 0: VillageGroundMeshIndex (ground/terrain)
-///   - Index 1: VillageHomeMeshIndex (home structures)
-///   - Index 2: VillageWorkMeshIndex (workplace structures)
-///   - Index 3: VillageVillagerMeshIndex (villagers and orbit cubes)
-/// - Material index 0: DemoMaterialIndex (typically Simple Lit shader)
-/// 
-/// USAGE:
-/// 
-/// To use Orbit demo:
-/// - Add com.moni.puredots package.
-/// - Ensure a bootstrap that creates a RenderMeshArraySingleton (SharedRenderBootstrap).
-/// - Ensure at least one system updates in the default world (OrbitCubeSystem is marked with WorldSystemFilter for default worlds).
-/// 
-/// To use Village demo:
-/// - Same as Orbit demo, plus any world filter attributes so VillageDemoBootstrapSystem,
-///   VillageVisualSetupSystem, VillagerWalkLoopSystem run automatically in default worlds.
-/// - Add VillageWorldTag to world entity if using VillageVisualSetupSystem.
-/// 
-/// All systems include debug logging with world names and entity counts for troubleshooting.
+///
+/// RENDERING UTILITIES (PureDOTS.Demo.Rendering) - EXAMPLE ONLY:
+///
+/// IMPORTANT: These are examples for testing. Real games should implement their own rendering.
+///
+/// - DemoMeshIndices: Static class with mesh index constants (example only)
+/// - RenderMeshArraySingleton: Shared component for demo rendering (example only)
+/// - SharedRenderBootstrap: [DisableAutoCreation] Demo bootstrap. Only runs in demo profile.
+/// - UniversalDebugRenderSetupSystem: [DisableAutoCreation] Auto-assigns render components. Only runs in demo profile.
+/// - VisualProfileBootstrapSystem: [DisableAutoCreation] Demo visual catalog. Only runs in demo profile.
+/// - AssignVisualsSystem: [DisableAutoCreation] Demo render assignment. Only runs in demo profile.
+///
+/// REQUIREMENTS FOR DEMO USAGE:
+///
+/// To activate demo systems (for testing only):
+/// 1. Set environment variable: PURE_DOTS_BOOTSTRAP_PROFILE=demo
+/// 2. Or call: SystemRegistry.OverrideActiveProfile(SystemRegistry.BuiltinProfiles.Demo.Id)
+/// 3. Populate RenderMeshArraySingleton with meshes at DemoMeshIndices
+///
+/// USAGE FOR TESTING ONLY:
+///
+/// Demo systems are for infrastructure validation, not game development.
+/// Use them to verify PureDOTS systems work, then implement proper game-specific systems.
 /// </summary>
 namespace PureDOTS.Demo
 {

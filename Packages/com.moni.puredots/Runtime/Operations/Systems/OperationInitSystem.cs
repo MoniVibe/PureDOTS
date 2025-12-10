@@ -9,14 +9,12 @@ namespace PureDOTS.Runtime.Operations
     /// <summary>
     /// Creates operation entities and initializes state from planner decisions.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(OperationPlannerSystem))]
     public partial struct OperationInitSystem : ISystem
     {
         private ComponentLookup<OrgPersona> _personaLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -25,7 +23,6 @@ namespace PureDOTS.Runtime.Operations
             _personaLookup = state.GetComponentLookup<OrgPersona>(true);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
@@ -110,7 +107,6 @@ namespace PureDOTS.Runtime.Operations
             }
         }
 
-        [BurstCompile]
         private bool HasActiveOperation(SystemState state, Entity org)
         {
             foreach (var operation in SystemAPI.Query<RefRO<Operation>>()
@@ -125,26 +121,24 @@ namespace PureDOTS.Runtime.Operations
             return false;
         }
 
-        [BurstCompile]
         private FixedString32Bytes GetDefaultRole(OperationKind kind)
         {
-            return kind switch
+            switch (kind)
             {
-                OperationKind.Blockade => new FixedString32Bytes("BlockadePatrol"),
-                OperationKind.Siege => new FixedString32Bytes("SiegeRing"),
-                OperationKind.Occupation => new FixedString32Bytes("Occupier"),
-                OperationKind.Protest => new FixedString32Bytes("ProtestCrowd"),
-                OperationKind.Riot => new FixedString32Bytes("RiotCrowd"),
-                OperationKind.CultRitual => new FixedString32Bytes("Cultist"),
-                OperationKind.Funeral => new FixedString32Bytes("Mourner"),
-                OperationKind.Festival => new FixedString32Bytes("Attendee"),
-                OperationKind.Circus => new FixedString32Bytes("Performer"),
-                OperationKind.DeserterSettlement => new FixedString32Bytes("Deserter"),
-                _ => new FixedString32Bytes("Participant")
-            };
+                case OperationKind.Blockade: return new FixedString32Bytes("BlockadePatrol");
+                case OperationKind.Siege: return new FixedString32Bytes("SiegeRing");
+                case OperationKind.Occupation: return new FixedString32Bytes("Occupier");
+                case OperationKind.Protest: return new FixedString32Bytes("ProtestCrowd");
+                case OperationKind.Riot: return new FixedString32Bytes("RiotCrowd");
+                case OperationKind.CultRitual: return new FixedString32Bytes("Cultist");
+                case OperationKind.Funeral: return new FixedString32Bytes("Mourner");
+                case OperationKind.Festival: return new FixedString32Bytes("Attendee");
+                case OperationKind.Circus: return new FixedString32Bytes("Performer");
+                case OperationKind.DeserterSettlement: return new FixedString32Bytes("Deserter");
+                default: return new FixedString32Bytes("Participant");
+            }
         }
 
-        [BurstCompile]
         private void InitializeKindSpecificParams(
             EntityCommandBuffer ecb,
             Entity operationEntity,
@@ -195,4 +189,3 @@ namespace PureDOTS.Runtime.Operations
         }
     }
 }
-

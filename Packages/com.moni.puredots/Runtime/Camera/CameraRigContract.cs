@@ -84,44 +84,6 @@ namespace PureDOTS.Runtime.Camera
         }
 
         /// <summary>
-        /// ALTERNATIVE PATTERN - Using BW2StyleCameraController
-        ///
-        /// For games that want B&W2 style camera behavior out of the box.
-        /// </summary>
-        public static class Bw2CameraSetup
-        {
-            /// <summary>
-            /// In your scene setup code or prefab:
-            /// 1. Create GameObject with Camera component
-            /// 2. Add BW2StyleCameraController
-            /// 3. Add CameraRigApplier
-            /// 4. Add BW2CameraInputBridge
-            /// 5. Configure terrain mask and sensitivities
-            ///
-            /// The BW2StyleCameraController will:
-            /// - Handle LMB pan, MMB orbit, scroll zoom
-            /// - Publish CameraRigState to CameraRigService
-            /// - CameraRigApplier will apply it automatically
-            /// </summary>
-            public static void SetupBw2Camera(GameObject cameraRig)
-            {
-                // Add required components
-                cameraRig.AddComponent<UnityEngine.Camera>();
-                var controller = cameraRig.AddComponent<BW2StyleCameraController>();
-                cameraRig.AddComponent<CameraRigApplier>();
-                cameraRig.AddComponent<BW2CameraInputBridge>();
-
-                // Configure for your game
-                controller.GroundMask = LayerMask.GetMask("Terrain");
-                controller.PanScale = 1.0f;
-                controller.ZoomSpeed = 6f;
-                // ... other settings
-
-                // Done! Controller handles input and publishes state automatically
-            }
-        }
-
-        /// <summary>
         /// CONTRACT SUMMARY
         ///
         /// Game Code Responsibilities:

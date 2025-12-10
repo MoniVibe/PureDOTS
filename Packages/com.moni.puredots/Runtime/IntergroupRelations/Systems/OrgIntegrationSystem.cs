@@ -16,6 +16,15 @@ namespace PureDOTS.Runtime.IntergroupRelations
     [UpdateAfter(typeof(OrgOwnershipSystem))]
     public partial struct OrgIntegrationSystem : ISystem
     {
+        private EntityQuery _relationQuery;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<TimeState>();
+            _relationQuery = state.GetEntityQuery(ComponentType.ReadOnly<OrgRelation>(), ComponentType.ReadOnly<OrgRelationTag>());
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
@@ -39,7 +48,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     if (ownership.Share >= 1f && SystemAPI.Exists(ownership.OwnerOrg))
                     {
                         // Check if integration process is active
-                        var relation = GetRelation(ref state, ownership.OwnerOrg, orgEntity);
+                        var relation = GetRelation(ownership.OwnerOrg, orgEntity);
                         if (relation.HasValue && 
                             (relation.Value.Treaties & OrgTreatyFlags.IntegrationProcess) != 0)
                         {
@@ -77,7 +86,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 }
 
                 // Update relation to Integrated
-                var relationEntity = FindRelationEntity(ref state, ownerOrg.Value, orgEntity);
+                var relationEntity = FindRelationEntity(ownerOrg.Value, orgEntity);
                 if (relationEntity.HasValue && SystemAPI.HasComponent<OrgRelation>(relationEntity.Value))
                 {
                     var relation = SystemAPI.GetComponentRW<OrgRelation>(relationEntity.Value);
@@ -145,10 +154,9 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static OrgRelation? GetRelation(ref SystemState state, Entity orgA, Entity orgB)
+        private OrgRelation? GetRelation(Entity orgA, Entity orgB)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
-            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var relations = _relationQuery.ToComponentDataArray<OrgRelation>(Allocator.Temp);
             
             for (int i = 0; i < relations.Length; i++)
             {
@@ -157,21 +165,18 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
                     relations.Dispose();
-                    query.Dispose();
                     return relation;
                 }
             }
             
             relations.Dispose();
-            query.Dispose();
             return null;
         }
 
-        private static Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
+        private Entity? FindRelationEntity(Entity orgA, Entity orgB)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
-            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
-            var entities = query.ToEntityArray(Allocator.Temp);
+            var relations = _relationQuery.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var entities = _relationQuery.ToEntityArray(Allocator.Temp);
             
             for (int i = 0; i < relations.Length; i++)
             {
@@ -182,16 +187,13 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var result = entities[i];
                     relations.Dispose();
                     entities.Dispose();
-                    query.Dispose();
                     return result;
                 }
             }
             
             relations.Dispose();
             entities.Dispose();
-            query.Dispose();
             return null;
         }
     }
 }
-

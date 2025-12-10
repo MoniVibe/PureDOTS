@@ -50,15 +50,15 @@ namespace PureDOTS.Systems
             // Handle rewind state machine
             switch (rewindState.Mode)
             {
-                case RewindMode.Record:
+                case RewindMode.Play:
                     HandleRecordMode(ref state, ref tickTimeState);
                     break;
 
-                case RewindMode.Playback:
+                case RewindMode.Rewind:
                     HandlePlaybackMode(ref state, ref rewindState, ref tickTimeState);
                     break;
 
-                case RewindMode.CatchUp:
+                case RewindMode.Step:
                     HandleCatchUpMode(ref state, ref rewindState, ref tickTimeState);
                     break;
             }
@@ -129,7 +129,7 @@ namespace PureDOTS.Systems
                         break;
 
                     case TimeControlCommandType.StartRewind:
-                        if (rewindState.Mode == RewindMode.Record)
+                        if (rewindState.Mode == RewindMode.Play)
                         {
                             var maxDepth = ResolveRewindHorizonTicks(tickTimeState);
                             uint minTick = tickTimeState.Tick > maxDepth ? tickTimeState.Tick - maxDepth : 0u;
@@ -139,16 +139,16 @@ namespace PureDOTS.Systems
                         break;
 
                     case TimeControlCommandType.StopRewind:
-                        if (rewindState.Mode == RewindMode.Playback)
+                        if (rewindState.Mode == RewindMode.Rewind)
                         {
                             StopRewind(ref rewindState, ref tickTimeState);
                         }
                         break;
 
                     case TimeControlCommandType.ScrubTo:
-                        if (rewindState.Mode == RewindMode.Playback)
+                        if (rewindState.Mode == RewindMode.Rewind)
                         {
-                            rewindState.TargetTick = cmd.UintParam;
+                            rewindState.TargetTick = (int)cmd.UintParam;
                         }
                         break;
 
@@ -192,7 +192,8 @@ namespace PureDOTS.Systems
             // Pause normal simulation during playback
             tickTimeState.IsPaused = true;
             tickTimeState.IsPlaying = false;
-            tickTimeState.TargetTick = rewindState.TargetTick;
+            uint targetTick = (uint)math.max(0, rewindState.TargetTick);
+            tickTimeState.TargetTick = targetTick;
             tickTimeState.Tick = rewindState.PlaybackTick;
 
             // Add PlaybackGuardTag to all rewindable entities
@@ -217,20 +218,20 @@ namespace PureDOTS.Systems
                 _playbackAccumulator -= tickInterval;
 
                 // Move playback tick toward target
-                if (rewindState.PlaybackTick < rewindState.TargetTick)
+                if (rewindState.PlaybackTick < targetTick)
                 {
                     rewindState.PlaybackTick++;
                 }
-                else if (rewindState.PlaybackTick > rewindState.TargetTick)
+                else if (rewindState.PlaybackTick > targetTick)
                 {
                     rewindState.PlaybackTick--;
                 }
                 else
                 {
                     // Reached target, transition to catch-up mode
-                    rewindState.Mode = RewindMode.CatchUp;
-                    tickTimeState.Tick = rewindState.TargetTick;
-                    tickTimeState.TargetTick = rewindState.TargetTick;
+                    rewindState.Mode = RewindMode.Step;
+                    tickTimeState.Tick = targetTick;
+                    tickTimeState.TargetTick = targetTick;
                     _playbackAccumulator = 0f;
                     break;
                 }
@@ -251,7 +252,7 @@ namespace PureDOTS.Systems
             uint currentTick = rewindState.StartTick;
 
             // Advance up to 6 ticks per frame to catch up
-            int catchUpSteps = math.min(6, (int)(currentTick - tickTimeState.Tick));
+            int catchUpSteps = math.min(6, (int)math.max(0, currentTick - (uint)tickTimeState.Tick));
 
             for (int i = 0; i < catchUpSteps; i++)
             {
@@ -261,7 +262,7 @@ namespace PureDOTS.Systems
             // Check if caught up
             if (tickTimeState.Tick >= currentTick)
             {
-                rewindState.Mode = RewindMode.Record;
+                rewindState.Mode = RewindMode.Play;
                 tickTimeState.IsPaused = false;
                 tickTimeState.IsPlaying = true;
                 tickTimeState.TargetTick = tickTimeState.Tick;
@@ -289,9 +290,9 @@ namespace PureDOTS.Systems
 
         private void StartRewind(ref RewindState rewindState, ref TickTimeState tickTimeState, uint targetTick)
         {
-            rewindState.Mode = RewindMode.Playback;
+            rewindState.Mode = RewindMode.Rewind;
             rewindState.StartTick = tickTimeState.Tick;
-            rewindState.TargetTick = targetTick;
+            rewindState.TargetTick = (int)targetTick;
             rewindState.PlaybackTick = tickTimeState.Tick;
             tickTimeState.IsPaused = true;
             tickTimeState.IsPlaying = false;
@@ -305,12 +306,12 @@ namespace PureDOTS.Systems
             // Transition to catch-up or directly to record
             if (rewindState.PlaybackTick < rewindState.StartTick)
             {
-                rewindState.Mode = RewindMode.CatchUp;
+                rewindState.Mode = RewindMode.Step;
                 tickTimeState.Tick = rewindState.PlaybackTick;
             }
             else
             {
-                rewindState.Mode = RewindMode.Record;
+                rewindState.Mode = RewindMode.Play;
                 tickTimeState.IsPaused = false;
                 tickTimeState.IsPlaying = true;
                 tickTimeState.TargetTick = tickTimeState.Tick;

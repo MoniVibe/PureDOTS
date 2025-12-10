@@ -9,7 +9,7 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Central registry for DOTS systems so we can deterministically control world creation.
     /// </summary>
-    public static class SystemRegistry
+    public static partial class SystemRegistry
     {
         private const string EnvironmentProfileKey = "PURE_DOTS_BOOTSTRAP_PROFILE";
 
@@ -78,6 +78,11 @@ namespace PureDOTS.Systems
                 return headlessProfile;
             }
 
+            if (s_profiles.TryGetValue(BuiltinProfiles.GameWorldId, out var gameProfile))
+            {
+                return gameProfile;
+            }
+
             return s_profiles[BuiltinProfiles.DefaultId];
         }
 
@@ -143,6 +148,64 @@ namespace PureDOTS.Systems
                     typeof(SpatialSystemGroup),
                     typeof(GameplaySystemGroup)
                 }));
+
+            // Demo profile: includes all default systems PLUS demo systems for testing
+            RegisterProfile(new BootstrapWorldProfile(
+                BuiltinProfiles.DemoId,
+                "Demo World",
+                defaultFilter,
+                additionalFilter: type =>
+                {
+                    // Include demo systems that start with "PureDOTS.Demo."
+                    if (type.FullName != null && type.FullName.StartsWith("PureDOTS.Demo."))
+                        return true;
+
+                    // Include Hybrid systems for demo purposes
+                    if (type.FullName != null && type.FullName.StartsWith("PureDOTS.Hybrid."))
+                        return true;
+
+                    // Use default filter for all other systems
+                    return true;
+                }));
+
+            RegisterProfile(new BootstrapWorldProfile(
+                BuiltinProfiles.GameWorldId,
+                "Game World",
+                defaultFilter,
+                additionalFilter: type =>
+                {
+                    var fullName = type.FullName;
+                    if (string.IsNullOrWhiteSpace(fullName))
+                        return false;
+
+                    // Exclude all demo and hybrid systems by namespace
+                    if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
+                        return false;
+                    if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
+                        return false;
+                    if (fullName.StartsWith("PureDOTS.Systems.Hybrid.", StringComparison.Ordinal))
+                        return false;
+
+                    // Exclude any legacy demo seeds that use ".Demo." in their namespace
+                    if (fullName.Contains(".Demo.", StringComparison.Ordinal))
+                        return false;
+
+                    // Exclude economy/presentation bootstraps that leak blobs (not needed for current slice)
+                    if (fullName == "PureDOTS.Runtime.Economy.Production.ProductionRecipeBootstrapSystem")
+                        return false;
+                    if (fullName == "PureDOTS.Runtime.Economy.Wealth.WealthTierSpecBootstrapSystem")
+                        return false;
+                    if (fullName == "PureDOTS.Runtime.Economy.Resources.ItemSpecBootstrapSystem")
+                        return false;
+                    if (fullName == "PureDOTS.Systems.PresentationBindingSampleBootstrapSystem")
+                        return false;
+
+                    // Exclude engine render sanity/demo rendering systems
+                    if (fullName == "PureDOTS.Rendering.RenderSanitySystem")
+                        return false;
+
+                    return true;
+                }));
         }
 
         public static class BuiltinProfiles
@@ -150,10 +213,14 @@ namespace PureDOTS.Systems
             public const string DefaultId = "default";
             public const string HeadlessId = "headless";
             public const string ReplayId = "replay";
+            public const string GameWorldId = "gameworld";
+            public const string DemoId = "demo";
 
             public static BootstrapWorldProfile Default => s_profiles[DefaultId];
             public static BootstrapWorldProfile Headless => s_profiles[HeadlessId];
             public static BootstrapWorldProfile Replay => s_profiles[ReplayId];
+            public static BootstrapWorldProfile GameWorld => s_profiles[GameWorldId];
+            public static BootstrapWorldProfile Demo => s_profiles[DemoId];
         }
     }
 }

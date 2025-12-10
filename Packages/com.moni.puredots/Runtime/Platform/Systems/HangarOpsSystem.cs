@@ -15,10 +15,22 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct HangarOpsSystem : ISystem
     {
+        private EntityQuery _craftWithAssignmentQuery;
+        private BufferLookup<HangarAssignment> _assignmentLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+
+            _craftWithAssignmentQuery = SystemAPI
+                .QueryBuilder()
+                .WithAll<PlatformKind, HangarAssignment>()
+                .Build();
+
+            state.RequireForUpdate(_craftWithAssignmentQuery);
+
+            _assignmentLookup = state.GetBufferLookup<HangarAssignment>(false);
         }
 
         [BurstCompile]
@@ -26,6 +38,7 @@ namespace PureDOTS.Systems.Platform
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            _assignmentLookup.Update(ref state);
             var hangarBayLookup = SystemAPI.GetBufferLookup<HangarBay>(false);
             var assignmentLookup = SystemAPI.GetBufferLookup<HangarAssignment>(false);
 
@@ -136,12 +149,15 @@ namespace PureDOTS.Systems.Platform
         }
 
         [BurstCompile]
-        private static void CheckOrphanedCraft(ref SystemState state, ref EntityCommandBuffer ecb)
+        private void CheckOrphanedCraft(ref SystemState state, ref EntityCommandBuffer ecb)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(PlatformKind));
-            var entities = query.ToEntityArray(Allocator.Temp);
-            var kinds = query.ToComponentDataArray<PlatformKind>(Allocator.Temp);
+            if (_craftWithAssignmentQuery.IsEmptyIgnoreFilter)
+                return;
 
+            var em = state.EntityManager;
+
+            var entities = _craftWithAssignmentQuery.ToEntityArray(Allocator.Temp);
+            var kinds = _craftWithAssignmentQuery.ToComponentDataArray<PlatformKind>(Allocator.Temp);
             for (int idx = 0; idx < entities.Length; idx++)
             {
                 var entity = entities[idx];
@@ -152,19 +168,19 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
-                if (!state.EntityManager.HasComponent<HangarAssignment>(entity))
+                if (!_assignmentLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var assignmentBuffer = state.EntityManager.GetBuffer<HangarAssignment>(entity);
+                var assignmentBuffer = _assignmentLookup[entity];
                 if (assignmentBuffer.Length == 0)
                 {
                     continue;
                 }
                 var assignment = assignmentBuffer[0];
                 
-                if (!state.EntityManager.Exists(assignment.SubPlatform))
+                if (!em.Exists(assignment.SubPlatform))
                 {
                     kind.Flags |= PlatformFlags.IsDisposable;
                     ecb.SetComponent(entity, kind);
@@ -173,7 +189,6 @@ namespace PureDOTS.Systems.Platform
 
             entities.Dispose();
             kinds.Dispose();
-            query.Dispose();
         }
     }
 }

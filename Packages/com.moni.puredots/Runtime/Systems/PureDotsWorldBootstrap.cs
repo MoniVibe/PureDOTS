@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Unity.Entities;
 using Unity.Profiling;
 using UnityEngine;
@@ -49,32 +52,113 @@ namespace PureDOTS.Systems
 
                 using (MaterializeGroupsMarker.Auto())
                 {
-                    var cameraInputGroup = world.GetOrCreateSystemManaged<CameraInputSystemGroup>();
-                    var cameraPhaseGroup = world.GetOrCreateSystemManaged<CameraPhaseGroup>();
-                    var environmentGroup = world.GetOrCreateSystemManaged<EnvironmentSystemGroup>();
-                    var spatialGroup = world.GetOrCreateSystemManaged<SpatialSystemGroup>();
-                    var gameplayGroup = world.GetOrCreateSystemManaged<GameplaySystemGroup>();
-                    var transportPhaseGroup = world.GetOrCreateSystemManaged<TransportPhaseGroup>();
-                    var historyPhaseGroup = world.GetOrCreateSystemManaged<HistoryPhaseGroup>();
-
+                    // Only create system groups that are actually needed based on the profile
+                    // Core infrastructure groups - always needed
                     world.GetOrCreateSystemManaged<TimeSystemGroup>();
-                    world.GetOrCreateSystemManaged<VillagerSystemGroup>();
-                    world.GetOrCreateSystemManaged<ResourceSystemGroup>();
-                    world.GetOrCreateSystemManaged<PowerSystemGroup>();
-                    world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
-                    world.GetOrCreateSystemManaged<CombatSystemGroup>();
+
+                    // Check if profile includes systems that would use specific groups
+                    bool hasCameraSystems = systems.Contains(typeof(CameraInputSystemGroup)) ||
+                                           systems.Contains(typeof(CameraPhaseGroup)) ||
+                                           HasSystemsInNamespace(systems, "PureDOTS.Camera");
+
+                    bool hasEnvironmentSystems = systems.Contains(typeof(EnvironmentSystemGroup)) ||
+                                               HasSystemsInNamespace(systems, "PureDOTS.Environment");
+
+                    bool hasSpatialSystems = systems.Contains(typeof(SpatialSystemGroup)) ||
+                                           HasSystemsInNamespace(systems, "PureDOTS.Spatial");
+
+                    bool hasGameplaySystems = systems.Contains(typeof(GameplaySystemGroup)) ||
+                                            HasSystemsInNamespace(systems, "PureDOTS.Gameplay");
+
+                    bool hasVillagerSystems = systems.Contains(typeof(VillagerSystemGroup)) ||
+                                            HasSystemsInNamespace(systems, "PureDOTS.Villager");
+
+                    bool hasResourceSystems = systems.Contains(typeof(ResourceSystemGroup)) ||
+                                            HasSystemsInNamespace(systems, "PureDOTS.Resource");
+
+                    bool hasPowerSystems = systems.Contains(typeof(PowerSystemGroup)) ||
+                                         HasSystemsInNamespace(systems, "PureDOTS.Power");
+
+                    bool hasMiracleSystems = systems.Contains(typeof(MiracleEffectSystemGroup)) ||
+                                           HasSystemsInNamespace(systems, "PureDOTS.Miracle");
+
+                    bool hasCombatSystems = systems.Contains(typeof(CombatSystemGroup)) ||
+                                          HasSystemsInNamespace(systems, "PureDOTS.Combat");
+
+                    bool hasTransportSystems = systems.Contains(typeof(TransportPhaseGroup)) ||
+                                             HasSystemsInNamespace(systems, "PureDOTS.Transport");
+
+                    bool hasHistorySystems = systems.Contains(typeof(HistorySystemGroup)) ||
+                                           systems.Contains(typeof(HistoryPhaseGroup)) ||
+                                           HasSystemsInNamespace(systems, "PureDOTS.History");
+
+                    // Create groups conditionally based on profile
+                    ComponentSystemGroup cameraInputGroup = null, cameraPhaseGroup = null,
+                                        environmentGroup = null, spatialGroup = null,
+                                        gameplayGroup = null, transportPhaseGroup = null,
+                                        historyPhaseGroup = null;
+
+                    if (hasCameraSystems)
+                    {
+                        cameraInputGroup = world.GetOrCreateSystemManaged<CameraInputSystemGroup>();
+                        cameraPhaseGroup = world.GetOrCreateSystemManaged<CameraPhaseGroup>();
+                    }
+
+                    if (hasEnvironmentSystems)
+                    {
+                        environmentGroup = world.GetOrCreateSystemManaged<EnvironmentSystemGroup>();
+                    }
+
+                    if (hasSpatialSystems)
+                    {
+                        spatialGroup = world.GetOrCreateSystemManaged<SpatialSystemGroup>();
+                    }
+
+                    if (hasGameplaySystems)
+                    {
+                        gameplayGroup = world.GetOrCreateSystemManaged<GameplaySystemGroup>();
+                    }
+
+                    if (hasTransportSystems)
+                    {
+                        transportPhaseGroup = world.GetOrCreateSystemManaged<TransportPhaseGroup>();
+                    }
+
+                    if (hasHistorySystems)
+                    {
+                        historyPhaseGroup = world.GetOrCreateSystemManaged<HistoryPhaseGroup>();
+                        world.GetOrCreateSystemManaged<HistorySystemGroup>();
+                    }
+
+                    // Always create core simulation groups that might be needed
+                    if (hasVillagerSystems)
+                        world.GetOrCreateSystemManaged<VillagerSystemGroup>();
+
+                    if (hasResourceSystems)
+                        world.GetOrCreateSystemManaged<ResourceSystemGroup>();
+
+                    if (hasPowerSystems)
+                        world.GetOrCreateSystemManaged<PowerSystemGroup>();
+
+                    if (hasMiracleSystems)
+                        world.GetOrCreateSystemManaged<MiracleEffectSystemGroup>();
+
+                    if (hasCombatSystems)
+                        world.GetOrCreateSystemManaged<CombatSystemGroup>();
+
+                    // Always create groups that provide essential infrastructure
                     world.GetOrCreateSystemManaged<HandSystemGroup>();
                     world.GetOrCreateSystemManaged<VegetationSystemGroup>();
                     world.GetOrCreateSystemManaged<ConstructionSystemGroup>();
-                    world.GetOrCreateSystemManaged<HistorySystemGroup>();
 
-                    cameraInputGroup.SortSystems();
-                    cameraPhaseGroup.SortSystems();
-                    environmentGroup.SortSystems();
-                    spatialGroup.SortSystems();
-                    transportPhaseGroup.SortSystems();
-                    gameplayGroup.SortSystems();
-                    historyPhaseGroup.SortSystems();
+                    // Sort groups that were created
+                    cameraInputGroup?.SortSystems();
+                    cameraPhaseGroup?.SortSystems();
+                    environmentGroup?.SortSystems();
+                    spatialGroup?.SortSystems();
+                    transportPhaseGroup?.SortSystems();
+                    gameplayGroup?.SortSystems();
+                    historyPhaseGroup?.SortSystems();
                 }
 
                 ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);
@@ -107,6 +191,16 @@ namespace PureDOTS.Systems
                     presentationGroup.SortSystems();
                 }
             }
+        }
+
+        private static bool HasSystemsInNamespace(IReadOnlyList<Type> systems, string namespacePrefix)
+        {
+            foreach (var systemType in systems)
+            {
+                if (systemType?.Namespace?.StartsWith(namespacePrefix) == true)
+                    return true;
+            }
+            return false;
         }
     }
 }

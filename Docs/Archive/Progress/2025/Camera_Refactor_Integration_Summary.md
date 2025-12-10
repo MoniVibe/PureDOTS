@@ -44,7 +44,7 @@ Key files:
 ---
 
 ## Shared Components & Instrumentation
-- `Packages/com.moni.puredots/Runtime/Runtime/Camera/CameraRigState.cs` defines a shared struct and interface for Mono controllers.
+- `Packages/com.moni.puredots/Runtime/Camera/CameraRigState.cs` defines a shared struct and interface for Mono controllers.
 - Both bridges expose `MaxSampleRateHz`, `SampleRateHz`, and `LastSampleDeltaTime` for diagnostics; defaults are tuned for ≥140 Hz.
 - Controllers set `Space4XCameraInputFlags`/DOTS equivalents to `MovementHandled = RotationHandled = true`, ensuring ECS never replays stale snapshots.
 

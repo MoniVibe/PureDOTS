@@ -22,8 +22,7 @@
 - Added comment explaining lazy initialization pattern
 
 **Files Modified:**
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Camera/CameraRigService.cs`
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Runtime/Camera/CameraRigService.cs`
+- `PureDOTS/Packages/com.moni.puredots/Runtime/Camera/CameraRigService.cs` (canonical location)
 
 ### 3. PureDotsWorldBootstrap.cs
 **Problem:** `ICustomBootstrap.Initialize()` could run during domain reload, creating worlds when Unity is compiling.

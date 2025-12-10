@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -8,24 +7,20 @@ namespace PureDOTS.Runtime.Economy.Wealth
     /// Bootstraps the WealthTierSpec catalog singleton with default tiers.
     /// Creates a default catalog if none exists.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct WealthTierSpecBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
             state.Enabled = false; // Only run once
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // No-op after initial bootstrap
         }
 
-        [BurstCompile]
         private static void EnsureCatalog(ref SystemState state)
         {
             var query = state.EntityManager.CreateEntityQuery(typeof(WealthTierSpecCatalog));

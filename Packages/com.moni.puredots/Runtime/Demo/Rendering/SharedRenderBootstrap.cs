@@ -1,4 +1,6 @@
+#if PUREDOTS_DEMO
 using Unity.Entities;
+using Unity.Rendering;
 
 namespace PureDOTS.Demo.Rendering
 {
@@ -35,40 +37,30 @@ namespace PureDOTS.Demo.Rendering
     }
 
     /// <summary>
-    /// Singleton component that holds the shared render mesh array for demo entities.
-    /// Host games must populate this singleton with meshes at the indices defined in DemoMeshIndices.
+    /// DEMO-ONLY: Bootstrap system that initializes shared render mesh array for demo systems.
+    /// This is an example implementation for testing PureDOTS demo functionality.
+    ///
+    /// IMPORTANT: Real games should NOT use this system. Instead:
+    /// - Use game-specific RenderKey components
+    /// - Implement RenderCatalogAuthoring/Baker for your game's render data
+    /// - Use ApplyRenderCatalogSystem to assign render components
+    ///
+    /// Only runs when PureDOTS demo profile is active.
     /// </summary>
-    [System.Serializable]
-    public struct RenderMeshArraySingleton : ISharedComponentData, System.IEquatable<RenderMeshArraySingleton>
-    {
-        public Unity.Rendering.RenderMeshArray Value;
-
-        public bool Equals(RenderMeshArraySingleton other)
-        {
-            return Value == other.Value;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is RenderMeshArraySingleton other && Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            return Value != null ? Value.GetHashCode() : 0;
-        }
-    }
-
-    /// <summary>
-    /// Bootstrap system that initializes the shared render mesh array singleton.
-    /// Provides stable indices for demo meshes (cubes/capsules with Simple Lit materials).
-    /// Host games should populate the RenderMeshArray with appropriate meshes at DemoMeshIndices.
-    /// </summary>
+    [DisableAutoCreation]
     [Unity.Entities.UpdateInGroup(typeof(Unity.Entities.InitializationSystemGroup))]
     public partial struct SharedRenderBootstrap : Unity.Entities.ISystem
     {
         public void OnCreate(ref Unity.Entities.SystemState state)
         {
+            // Only run in demo worlds
+            var activeProfile = PureDOTS.Systems.SystemRegistry.ResolveActiveProfile();
+            if (activeProfile.Id != PureDOTS.Systems.SystemRegistry.BuiltinProfiles.Demo.Id)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             // Create an empty RenderMeshArray that will be populated by host game setup
             var renderMeshArray = new Unity.Rendering.RenderMeshArray
             {
@@ -83,7 +75,7 @@ namespace PureDOTS.Demo.Rendering
                 Value = renderMeshArray
             });
 
-            UnityEngine.Debug.Log($"[SharedRenderBootstrap] RenderMeshArray singleton created in world: {state.WorldUnmanaged.Name}. Shader: Universal Render Pipeline/Simple Lit");
+            UnityEngine.Debug.Log($"[SharedRenderBootstrap] DEMO RenderMeshArray singleton created in world: {state.WorldUnmanaged.Name}. This is for demo purposes only.");
         }
 
         public void OnUpdate(ref Unity.Entities.SystemState state)
@@ -92,4 +84,6 @@ namespace PureDOTS.Demo.Rendering
         }
     }
 }
+
+#endif
 

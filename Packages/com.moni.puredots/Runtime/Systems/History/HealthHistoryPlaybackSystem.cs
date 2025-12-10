@@ -28,13 +28,13 @@ namespace PureDOTS.Systems.History
             {
                 return;
             }
-            if (rewindState.Mode != RewindMode.Playback)
+            if (rewindState.Mode != RewindMode.Rewind)
             {
                 return;
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint targetTick = rewindState.TargetTick;
+            uint targetTick = (uint)math.max(0, rewindState.TargetTick);
 
             // Playback health history for entities with VillagerNeeds
             foreach (var (needsRef, historyBuffer, entity) in SystemAPI.Query<RefRW<VillagerNeeds>, DynamicBuffer<HealthHistorySample>>()

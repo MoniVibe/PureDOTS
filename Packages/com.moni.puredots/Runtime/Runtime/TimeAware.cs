@@ -326,9 +326,10 @@ namespace PureDOTS.Runtime.Time
         {
             return mode switch
             {
-                RewindMode.Record => TimeAwareExecutionPhase.Record,
-                RewindMode.CatchUp => TimeAwareExecutionPhase.CatchUp,
-                RewindMode.Playback => TimeAwareExecutionPhase.Playback,
+                RewindMode.Play => TimeAwareExecutionPhase.Record,
+                RewindMode.Paused => TimeAwareExecutionPhase.None,
+                RewindMode.Rewind => TimeAwareExecutionPhase.Playback,
+                RewindMode.Step => TimeAwareExecutionPhase.Record,
                 _ => TimeAwareExecutionPhase.None
             };
         }

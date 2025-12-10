@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems
 {
@@ -36,7 +37,7 @@ namespace PureDOTS.Systems
                 IsPlaying = (byte)(tickState.IsPlaying ? 1 : 0),
                 IsPaused = (byte)(tickState.IsPaused ? 1 : 0),
                 RewindMode = rewindState.Mode,
-                RewindTargetTick = rewindState.TargetTick,
+                RewindTargetTick = (uint)math.max(0, rewindState.TargetTick),
                 RewindPlaybackTick = rewindState.PlaybackTick
             };
 

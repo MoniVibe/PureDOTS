@@ -8,24 +8,21 @@ namespace PureDOTS.Runtime.Economy.Production
     /// Bootstraps the ProductionRecipe catalog singleton with default recipes.
     /// Creates a default catalog if none exists.
     /// </summary>
-    [BurstCompile]
+    // [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct ProductionRecipeBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
             state.Enabled = false; // Only run once
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // No-op after initial bootstrap
         }
 
-        [BurstCompile]
         private static void EnsureCatalog(ref SystemState state)
         {
             var query = state.EntityManager.CreateEntityQuery(typeof(ProductionRecipeCatalog));

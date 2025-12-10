@@ -68,17 +68,18 @@ namespace PureDOTS.Debugging
             var rewindState = _rewindQuery.GetSingleton<RewindState>();
             switch (rewindState.Mode)
             {
-                case RewindMode.Record:
-                    _modeString.Append("Record");
+                case RewindMode.Play:
+                    _modeString.Append("Play");
                     break;
-                case RewindMode.Playback:
-                    _modeString.Append("Playback");
+                case RewindMode.Paused:
+                    _modeString.Append("Paused");
+                    break;
+                case RewindMode.Rewind:
+                    _modeString.Append("Rewind");
                     _playbackTick = rewindState.PlaybackTick;
                     break;
-                case RewindMode.CatchUp:
-                    _modeString.Append("CatchUp");
-                    _caughtUp = true;
-                    _playbackTick = rewindState.PlaybackTick;
+                case RewindMode.Step:
+                    _modeString.Append("Step");
                     break;
                 default:
                     _modeString.Append("Unknown");

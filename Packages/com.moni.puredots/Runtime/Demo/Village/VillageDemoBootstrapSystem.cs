@@ -1,8 +1,10 @@
+#if PUREDOTS_DEMO
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using PureDOTS.Demo.Rendering;
 
 namespace PureDOTS.Demo.Village
 {
@@ -11,6 +13,7 @@ namespace PureDOTS.Demo.Village
     /// Spawns 10 homes, 10 workplaces, and 10 villagers in a strip layout.
     /// </summary>
     [BurstCompile]
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(PureDOTS.Demo.Rendering.SharedRenderBootstrap))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor)]
@@ -64,6 +67,7 @@ namespace PureDOTS.Demo.Village
                     ecb.AddComponent(home, new HomeLot    { Position = homePos });
                     ecb.AddComponent(home, LocalTransform.FromPosition(homePos));
                     ecb.AddComponent(home, new VillageTag());
+                    ecb.AddComponent(home, new VisualProfile { Id = VisualProfileId.DebugHome });
                     homeCount++;
                     villageCount++;
                 }
@@ -74,6 +78,7 @@ namespace PureDOTS.Demo.Village
                     ecb.AddComponent(work, new WorkLot    { Position = workPos });
                     ecb.AddComponent(work, LocalTransform.FromPosition(workPos));
                     ecb.AddComponent(work, new VillageTag());
+                    ecb.AddComponent(work, new VisualProfile { Id = VisualProfileId.DebugWork });
                     workCount++;
                     villageCount++;
                 }
@@ -86,14 +91,22 @@ namespace PureDOTS.Demo.Village
                     ecb.AddComponent(villager, new VillagerWork  { Position = workPos });
                     ecb.AddComponent(villager, new VillagerState { Phase    = 0 });
                     ecb.AddComponent(villager, LocalTransform.FromPosition(homePos));
+                    ecb.AddComponent(villager, new VisualProfile { Id = VisualProfileId.DebugVillager });
                 }
             }
 
             ecb.Playback(em);
             ecb.Dispose();
 
+            // Ensure visual systems can run by providing the world-level tag singleton.
+            if (!SystemAPI.HasSingleton<VillageWorldTag>())
+            {
+                var worldTagEntity = em.CreateEntity();
+                em.AddComponent<VillageWorldTag>(worldTagEntity);
+            }
+
             UnityEngine.Debug.Log($"[VillageDemoBootstrapSystem] World '{state.WorldUnmanaged.Name}': spawned {villagerCount} Villagers, {homeCount} Homes, {workCount} Works.");
         }
     }
 }
-
+#endif

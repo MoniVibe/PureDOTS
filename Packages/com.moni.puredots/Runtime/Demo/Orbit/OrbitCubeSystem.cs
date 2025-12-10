@@ -1,3 +1,4 @@
+#if PUREDOTS_DEMO
 using Unity.Burst;
 using Unity.Entities;
 
@@ -29,3 +30,4 @@ namespace PureDOTS.Demo.Orbit
         }
     }
 }
+#endif

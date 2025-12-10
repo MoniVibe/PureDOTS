@@ -24,6 +24,7 @@ namespace PureDOTS.Systems.Combat
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<HazardGridSingleton>();
         }
 
         [BurstCompile]
@@ -42,14 +43,17 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
 
-            // Find or create hazard grid
+            // Find or create hazard grid (single owner)
             HazardGrid grid;
             Entity gridEntity;
             bool gridExists = false;
-            if (SystemAPI.TryGetSingleton(out HazardGridSingleton gridSingleton) &&
-                SystemAPI.HasComponent<HazardGrid>(gridSingleton.GridEntity))
+
+            var singletonEntity = SystemAPI.GetSingletonEntity<HazardGridSingleton>();
+            var singleton = SystemAPI.GetComponent<HazardGridSingleton>(singletonEntity);
+
+            if (singleton.GridEntity != Entity.Null && SystemAPI.HasComponent<HazardGrid>(singleton.GridEntity))
             {
-                gridEntity = gridSingleton.GridEntity;
+                gridEntity = singleton.GridEntity;
                 grid = SystemAPI.GetComponent<HazardGrid>(gridEntity);
                 gridExists = true;
             }
@@ -64,16 +68,7 @@ namespace PureDOTS.Systems.Combat
                     Risk = default
                 };
                 ecb.AddComponent(gridEntity, grid);
-
-                if (SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out var singletonEntity))
-                {
-                    ecb.SetComponent(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
-                }
-                else
-                {
-                    var newSingletonEntity = ecb.CreateEntity();
-                    ecb.AddComponent(newSingletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
-                }
+                ecb.SetComponent(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
             }
 
             // Get hazard slices buffer

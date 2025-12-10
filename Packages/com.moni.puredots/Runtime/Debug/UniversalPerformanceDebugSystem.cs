@@ -9,11 +9,10 @@ namespace PureDOTS.Debugging
     /// <summary>
     /// Displays universal performance counters and budget warnings across all domains in a debug overlay.
     /// </summary>
-    [BurstCompile]
+    // [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial struct UniversalPerformanceDebugSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<UniversalPerformanceBudget>();
@@ -21,7 +20,6 @@ namespace PureDOTS.Debugging
             state.RequireForUpdate<DebugDisplayData>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var budget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
@@ -33,28 +31,70 @@ namespace PureDOTS.Debugging
             text.Append("=== Universal Performance ===\n");
             
             // Perception
-            text.Append($"Perception: {counters.PerceptionChecksThisTick}/{budget.MaxPerceptionChecksPerTick}\n");
+            text.Append("Perception: ");
+            text.Append(counters.PerceptionChecksThisTick);
+            text.Append("/");
+            text.Append(budget.MaxPerceptionChecksPerTick);
+            text.Append("\n");
             
             // Combat
-            text.Append($"Combat: {counters.CombatOperationsThisTick}/{budget.MaxCombatOperationsPerTick}\n");
-            text.Append($"Target Selection: {counters.TargetSelectionsThisTick}/{budget.MaxTargetSelectionsPerTick}\n");
+            text.Append("Combat: ");
+            text.Append(counters.CombatOperationsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxCombatOperationsPerTick);
+            text.Append("\n");
+            text.Append("Target Selection: ");
+            text.Append(counters.TargetSelectionsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxTargetSelectionsPerTick);
+            text.Append("\n");
             
             // AI Layers
-            text.Append($"Tactical: {counters.TacticalDecisionsThisTick}/{budget.MaxTacticalDecisionsPerTick}\n");
-            text.Append($"Operational: {counters.OperationalDecisionsThisTick}/{budget.MaxOperationalDecisionsPerTick}\n");
-            text.Append($"Strategic: {counters.StrategicDecisionsThisTick}/{budget.MaxStrategicDecisionsPerTick}\n");
+            text.Append("Tactical: ");
+            text.Append(counters.TacticalDecisionsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxTacticalDecisionsPerTick);
+            text.Append("\n");
+            text.Append("Operational: ");
+            text.Append(counters.OperationalDecisionsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxOperationalDecisionsPerTick);
+            text.Append("\n");
+            text.Append("Strategic: ");
+            text.Append(counters.StrategicDecisionsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxStrategicDecisionsPerTick);
+            text.Append("\n");
             
             // Jobs
-            text.Append($"Job Reassignments: {counters.JobReassignmentsThisTick}/{budget.MaxJobReassignmentsPerTick}\n");
+            text.Append("Job Reassignments: ");
+            text.Append(counters.JobReassignmentsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxJobReassignmentsPerTick);
+            text.Append("\n");
             
             // World Sim
-            text.Append($"Cell Updates: {counters.CellUpdatesThisTick}/{budget.MaxCellUpdatesPerTick}\n");
-            text.Append($"World Sim: {counters.WorldSimOperationsThisTick}/{budget.MaxWorldSimOperationsPerTick}\n");
+            text.Append("Cell Updates: ");
+            text.Append(counters.CellUpdatesThisTick);
+            text.Append("/");
+            text.Append(budget.MaxCellUpdatesPerTick);
+            text.Append("\n");
+            text.Append("World Sim: ");
+            text.Append(counters.WorldSimOperationsThisTick);
+            text.Append("/");
+            text.Append(budget.MaxWorldSimOperationsPerTick);
+            text.Append("\n");
             
             // Aggregated
-            text.Append($"Total Warm: {counters.TotalWarmOperationsThisTick}\n");
-            text.Append($"Total Cold: {counters.TotalColdOperationsThisTick}\n");
-            text.Append($"Operations Dropped: {counters.TotalOperationsDroppedThisTick}\n");
+            text.Append("Total Warm: ");
+            text.Append(counters.TotalWarmOperationsThisTick);
+            text.Append("\n");
+            text.Append("Total Cold: ");
+            text.Append(counters.TotalColdOperationsThisTick);
+            text.Append("\n");
+            text.Append("Operations Dropped: ");
+            text.Append(counters.TotalOperationsDroppedThisTick);
+            text.Append("\n");
 
             // Warn if budgets exceeded
             if (counters.PerceptionChecksThisTick >= budget.MaxPerceptionChecksPerTick ||
@@ -70,4 +110,3 @@ namespace PureDOTS.Debugging
         }
     }
 }
-

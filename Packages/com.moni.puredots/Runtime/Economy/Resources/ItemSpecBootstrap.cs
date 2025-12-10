@@ -8,24 +8,20 @@ namespace PureDOTS.Runtime.Economy.Resources
     /// Bootstraps the ItemSpec catalog singleton with default items.
     /// Creates a default catalog if none exists.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct ItemSpecBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
             state.Enabled = false; // Only run once
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // No-op after initial bootstrap
         }
 
-        [BurstCompile]
         private static void EnsureCatalog(ref SystemState state)
         {
             var query = state.EntityManager.CreateEntityQuery(typeof(ItemSpecCatalog));
@@ -43,10 +39,12 @@ namespace PureDOTS.Runtime.Economy.Resources
             var items = new NativeList<ItemSpecBlob>(32, Allocator.Temp);
             
             // Food items
+            var grain = new FixedString64Bytes("grain");
+            var grainName = new FixedString64Bytes("Grain");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("grain"),
-                Name = new FixedString64Bytes("Grain"),
+                ItemId = grain,
+                Name = grainName,
                 Category = ItemCategory.Food,
                 MassPerUnit = 0.5f,
                 VolumePerUnit = 0.001f,
@@ -59,10 +57,12 @@ namespace PureDOTS.Runtime.Economy.Resources
                 BaseDurability = 0f
             });
 
+            var bread = new FixedString64Bytes("bread");
+            var breadName = new FixedString64Bytes("Bread");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("bread"),
-                Name = new FixedString64Bytes("Bread"),
+                ItemId = bread,
+                Name = breadName,
                 Category = ItemCategory.Food,
                 MassPerUnit = 0.3f,
                 VolumePerUnit = 0.0005f,
@@ -76,10 +76,12 @@ namespace PureDOTS.Runtime.Economy.Resources
             });
 
             // Raw materials
+            var ironOre = new FixedString64Bytes("iron_ore");
+            var ironOreName = new FixedString64Bytes("Iron Ore");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("iron_ore"),
-                Name = new FixedString64Bytes("Iron Ore"),
+                ItemId = ironOre,
+                Name = ironOreName,
                 Category = ItemCategory.Raw,
                 MassPerUnit = 5.0f,
                 VolumePerUnit = 0.002f,
@@ -92,10 +94,12 @@ namespace PureDOTS.Runtime.Economy.Resources
                 BaseDurability = 1.0f
             });
 
+            var wood = new FixedString64Bytes("wood");
+            var woodName = new FixedString64Bytes("Wood");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("wood"),
-                Name = new FixedString64Bytes("Wood"),
+                ItemId = wood,
+                Name = woodName,
                 Category = ItemCategory.Raw,
                 MassPerUnit = 0.8f,
                 VolumePerUnit = 0.001f,
@@ -109,10 +113,12 @@ namespace PureDOTS.Runtime.Economy.Resources
             });
 
             // Processed materials
+            var ironIngot = new FixedString64Bytes("iron_ingot");
+            var ironIngotName = new FixedString64Bytes("Iron Ingot");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("iron_ingot"),
-                Name = new FixedString64Bytes("Iron Ingot"),
+                ItemId = ironIngot,
+                Name = ironIngotName,
                 Category = ItemCategory.Processed,
                 MassPerUnit = 5.0f,
                 VolumePerUnit = 0.001f,
@@ -126,10 +132,12 @@ namespace PureDOTS.Runtime.Economy.Resources
             });
 
             // Tools
+            var hammer = new FixedString64Bytes("hammer");
+            var hammerName = new FixedString64Bytes("Hammer");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("hammer"),
-                Name = new FixedString64Bytes("Hammer"),
+                ItemId = hammer,
+                Name = hammerName,
                 Category = ItemCategory.Tool,
                 MassPerUnit = 2.0f,
                 VolumePerUnit = 0.001f,
@@ -143,10 +151,12 @@ namespace PureDOTS.Runtime.Economy.Resources
             });
 
             // Weapons
+            var sword = new FixedString64Bytes("sword");
+            var swordName = new FixedString64Bytes("Sword");
             items.Add(new ItemSpecBlob
             {
-                ItemId = new FixedString64Bytes("sword"),
-                Name = new FixedString64Bytes("Sword"),
+                ItemId = sword,
+                Name = swordName,
                 Category = ItemCategory.Weapon,
                 MassPerUnit = 2.5f,
                 VolumePerUnit = 0.002f,
@@ -175,4 +185,3 @@ namespace PureDOTS.Runtime.Economy.Resources
         }
     }
 }
-

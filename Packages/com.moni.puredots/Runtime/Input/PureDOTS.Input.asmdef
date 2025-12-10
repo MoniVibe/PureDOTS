@@ -6,7 +6,8 @@
         "Unity.Entities",
         "Unity.Mathematics",
         "Unity.Collections",
-        "PureDOTS.Runtime"
+        "PureDOTS.Runtime",
+        "PureDOTS.Camera"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

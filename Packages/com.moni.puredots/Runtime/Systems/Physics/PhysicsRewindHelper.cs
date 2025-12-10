@@ -67,9 +67,10 @@ namespace PureDOTS.Systems.Physics
         {
             return rewindState.Mode switch
             {
-                RewindMode.Record => PhysicsMode.Normal,
-                RewindMode.Playback => PhysicsMode.Disabled,
-                RewindMode.CatchUp => PhysicsMode.Settling,
+                RewindMode.Play => PhysicsMode.Normal,
+                RewindMode.Paused => PhysicsMode.Normal,
+                RewindMode.Rewind => PhysicsMode.Disabled,
+                RewindMode.Step => PhysicsMode.Normal,
                 _ => PhysicsMode.Normal
             };
         }

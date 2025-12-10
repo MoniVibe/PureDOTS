@@ -7,6 +7,7 @@ namespace PureDOTS.Systems.Hybrid
     /// <summary>
     /// Lightweight input listener that lets designers cycle between control modes at runtime.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct HybridControlToggleSystem : ISystem
     {

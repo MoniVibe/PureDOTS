@@ -14,30 +14,6 @@ namespace PureDOTS.Systems.Time
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // If a RewindState already exists, do nothing.
-            if (SystemAPI.TryGetSingleton<RewindState>(out _))
-            {
-                state.Enabled = false;
-                return;
-            }
-
-            var entity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponentData(entity, new RewindState
-            {
-                Mode = RewindMode.Idle,
-                CurrentTick = 0,
-                TargetTick = 0,
-                PlaybackSpeed = 1f,
-                StartTick = 0,
-                PlaybackTick = 0,
-                PlaybackTicksPerSecond = 60f,
-                ScrubDirection = ScrubDirection.None,
-                ScrubSpeedMultiplier = 1f,
-                RewindWindowTicks = 0,
-                ActiveTrack = default
-            });
-
-            // Disable after seeding; no per-frame work required.
             state.Enabled = false;
         }
 

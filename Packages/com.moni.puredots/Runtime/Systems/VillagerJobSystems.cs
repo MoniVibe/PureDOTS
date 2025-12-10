@@ -119,7 +119,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VillagerJobEventStream>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<BeginFixedStepSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -138,7 +138,7 @@ namespace PureDOTS.Systems
             deliveryBuffer.Clear();
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginFixedStepSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbSingleton = SystemAPI.GetSingletonRW<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             // Add missing VillagerJobTicket components (parallelized)

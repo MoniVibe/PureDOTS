@@ -4,17 +4,21 @@ namespace PureDOTS.Runtime.Components
 {
     /// <summary>
     /// Defines the current mode of the rewind system.
+    /// Canonical baseline: Play / Paused / Rewind / Step.
+    /// Legacy aliases remain for compatibility.
     /// </summary>
     public enum RewindMode : byte
     {
-        /// <summary>Normal forward simulation, recording history.</summary>
-        Record = 0,
-        /// <summary>Playing back recorded history (rewinding).</summary>
-        Playback = 1,
-        /// <summary>Rapidly catching up from playback to current time.</summary>
-        CatchUp = 2,
-        /// <summary>System idle, no recording or playback active.</summary>
-        Idle = 3
+        Play = 0,
+        Paused = 1,
+        Rewind = 2,
+        Step = 3,
+
+        // Legacy aliases (mapped to canonical values)
+        Record = Play,
+        Playback = Rewind,
+        CatchUp = Rewind,
+        Idle = Paused
     }
 
     /// <summary>
@@ -45,32 +49,38 @@ namespace PureDOTS.Runtime.Components
 
     /// <summary>
     /// Singleton component tracking the global rewind/playback state.
-    /// The RewindCoordinatorSystem is the authoritative writer for this component.
+    /// Baseline fields support play/pause/rewind/step and minimal history settings.
+    /// Legacy fields are retained for compatibility.
     /// </summary>
     public struct RewindState : IComponentData
     {
-        /// <summary>Current rewind mode (Record, Playback, CatchUp, Idle).</summary>
+        // Canonical baseline
         public RewindMode Mode;
-        /// <summary>Current simulation tick (may differ from TickTimeState during playback).</summary>
-        public uint CurrentTick;
-        /// <summary>Target tick for rewind operations.</summary>
-        public uint TargetTick;
-        /// <summary>Playback speed multiplier during rewind.</summary>
+        public int CurrentTick;
+        public int TargetTick;
+        public float TickDuration;
+        public int MaxHistoryTicks;
+        public byte PendingStepTicks;
+
+        // Legacy fields (kept to avoid breaking existing call sites; may be deprecated)
         public float PlaybackSpeed;
-        /// <summary>Tick at which rewind was initiated.</summary>
         public uint StartTick;
-        /// <summary>Current tick during playback iteration.</summary>
         public uint PlaybackTick;
-        /// <summary>Rate of playback in ticks per second.</summary>
         public float PlaybackTicksPerSecond;
-        /// <summary>Current scrub direction.</summary>
         public ScrubDirection ScrubDirection;
-        /// <summary>Speed multiplier for scrubbing.</summary>
         public float ScrubSpeedMultiplier;
-        /// <summary>Window of ticks available for rewind (based on history).</summary>
         public uint RewindWindowTicks;
-        /// <summary>Which track we're currently scrubbing (for track-based rewinds).</summary>
         public RewindTrackId ActiveTrack;
+    }
+
+    /// <summary>
+    /// Configuration for seeding RewindState at bootstrap.
+    /// </summary>
+    public struct RewindConfig : IComponentData
+    {
+        public float TickDuration;
+        public int MaxHistoryTicks;
+        public RewindMode InitialMode;
     }
 
     /// <summary>

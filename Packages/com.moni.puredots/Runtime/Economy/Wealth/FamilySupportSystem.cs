@@ -9,14 +9,12 @@ namespace PureDOTS.Runtime.Economy.Wealth
     /// Handles intra-family wealth transfers (richer members help poorer).
     /// Triggered by wealth tier differences, alignment/purity modifiers, relationship strength.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct FamilySupportSystem : ISystem
     {
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
         private ComponentLookup<FamilyWealth> _familyWealthLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -24,7 +22,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) ||
@@ -50,7 +47,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
             }
         }
 
-        [BurstCompile]
         private void ProcessFamilySupport(ref SystemState state, Entity donor, FamilySupportRequest request)
         {
             if (!_villagerWealthLookup.HasComponent(donor))
@@ -67,13 +63,14 @@ namespace PureDOTS.Runtime.Economy.Wealth
             }
 
             // Record transaction
+            var reason = new FixedString64Bytes("family_support");
             WealthTransactionSystem.RecordTransaction(
                 ref state,
                 donor,
                 request.Recipient,
                 request.Amount,
                 TransactionType.Transfer,
-                new FixedString64Bytes("family_support"),
+                reason,
                 request.Context
             );
 
@@ -93,4 +90,3 @@ namespace PureDOTS.Runtime.Economy.Wealth
         public FixedString128Bytes Context;
     }
 }
-

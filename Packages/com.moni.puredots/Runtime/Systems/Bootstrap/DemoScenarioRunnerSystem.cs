@@ -1,3 +1,5 @@
+#if PUREDOTS_DEMO
+
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
@@ -734,4 +736,6 @@ namespace PureDOTS.Systems.Bootstrap
         }
     }
 }
+
+#endif
 

@@ -9,8 +9,6 @@
         "Unity.InputSystem",
         "Unity.Collections",
         "PureDOTS.Runtime",
-        "PureDOTS.Systems",
-        "PureDOTS.Input",
         "PureDOTS.Config"
     ],
     "includePlatforms": [],

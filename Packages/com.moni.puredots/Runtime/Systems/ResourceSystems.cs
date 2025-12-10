@@ -180,14 +180,14 @@ namespace PureDOTS.Systems
                 ResourceCatalog = resourceCatalog.Catalog
             };
 
-            state.Dependency = depositJob.ScheduleParallel(state.Dependency);
+            state.Dependency = depositJob.Schedule(state.Dependency);
         }
 
         [BurstCompile]
         public partial struct DepositResourcesJob : IJobEntity
         {
             [ReadOnly] public ComponentLookup<StorehouseConfig> StorehouseLookup;
-            public BufferLookup<StorehouseCapacityElement> CapacityLookup;
+            [ReadOnly] public BufferLookup<StorehouseCapacityElement> CapacityLookup;
             public BufferLookup<StorehouseInventoryItem> StoreItemsLookup;
             public ComponentLookup<StorehouseInventory> StoreInventoryLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;

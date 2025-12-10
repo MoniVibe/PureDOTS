@@ -36,10 +36,7 @@ namespace PureDOTS.Systems
             var timeStateHandle = SystemAPI.GetSingletonRW<TimeState>();
             ref var tickState = ref tickStateHandle.ValueRW;
             ref var timeState = ref timeStateHandle.ValueRW;
-            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewind))
-            {
-                return;
-            }
+            var rewind = SystemAPI.GetSingleton<RewindState>();
             var scalars = SystemAPI.GetSingleton<SimulationScalars>();
             var overrides = SystemAPI.GetSingleton<SimulationOverrides>();
 

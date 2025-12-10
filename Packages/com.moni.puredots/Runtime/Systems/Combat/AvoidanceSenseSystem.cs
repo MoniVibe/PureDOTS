@@ -25,6 +25,7 @@ namespace PureDOTS.Systems.Combat
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<HazardGridSingleton>();
         }
 
         [BurstCompile]
@@ -36,8 +37,8 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<HazardGridSingleton>(out var gridSingleton) ||
-                !SystemAPI.HasComponent<HazardGrid>(gridSingleton.GridEntity))
+            var gridSingleton = SystemAPI.GetSingleton<HazardGridSingleton>();
+            if (!SystemAPI.HasComponent<HazardGrid>(gridSingleton.GridEntity))
             {
                 return;
             }

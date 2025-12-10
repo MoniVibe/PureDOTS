@@ -1,3 +1,4 @@
+#if PUREDOTS_DEMO
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -65,4 +66,5 @@ namespace PureDOTS.Demo.Village
         public byte Phase;
     }
 }
+#endif
 

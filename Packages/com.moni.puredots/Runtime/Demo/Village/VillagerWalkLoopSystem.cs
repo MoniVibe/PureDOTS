@@ -1,3 +1,4 @@
+#if PUREDOTS_DEMO
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -13,6 +14,7 @@ namespace PureDOTS.Demo.Village
     /// Phase 1: going home
     /// </summary>
     [BurstCompile]
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor)]
     public partial struct VillagerWalkLoopSystem : ISystem
@@ -88,4 +90,5 @@ namespace PureDOTS.Demo.Village
         public void OnDestroy(ref SystemState state) { }
     }
 }
+#endif
 

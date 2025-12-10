@@ -1,3 +1,4 @@
+#if PUREDOTS_DEMO
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -11,6 +12,7 @@ namespace PureDOTS.Demo.Village
     /// Runs once per world to provide visibility into demo entity spawning.
     /// </summary>
     [BurstCompile]
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor)]
     public partial struct VillageDebugSystem : ISystem
@@ -71,4 +73,5 @@ namespace PureDOTS.Demo.Village
         }
     }
 }
+#endif
 

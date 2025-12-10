@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 #endif
 
-namespace PureDOTS.Runtime.Camera
+namespace PureDOTS.Input
 {
     /// <summary>
     /// Captures high-frequency BW2 camera input once per frame and exposes a deterministic snapshot.
@@ -99,3 +99,4 @@ namespace PureDOTS.Runtime.Camera
         }
     }
 }
+

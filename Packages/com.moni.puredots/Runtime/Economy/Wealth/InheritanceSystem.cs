@@ -9,7 +9,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
     /// Handles wealth transfer on entity death via inheritance rules.
     /// Reads inheritance rules from data catalog and distributes wealth to heirs.
     /// </summary>
-    [BurstCompile]
+    // [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct InheritanceSystem : ISystem
     {
@@ -17,7 +17,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
         private ComponentLookup<FamilyWealth> _familyWealthLookup;
         private BufferLookup<WealthTransaction> _transactionBufferLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -26,7 +25,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
             _transactionBufferLookup = state.GetBufferLookup<WealthTransaction>(false);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) ||
@@ -53,7 +51,6 @@ namespace PureDOTS.Runtime.Economy.Wealth
             }
         }
 
-        [BurstCompile]
         private void ProcessInheritance(ref SystemState state, Entity deceased, InheritancePending inheritance)
         {
             if (!_villagerWealthLookup.HasComponent(deceased))

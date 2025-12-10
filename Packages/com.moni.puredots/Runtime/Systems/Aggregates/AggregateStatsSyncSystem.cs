@@ -62,31 +62,33 @@ namespace PureDOTS.Systems.Aggregates
             _needsLookup.Update(ref state);
 
             // Sync Band stats from members
-            new SyncBandStatsJob
+            var bandHandle = new SyncBandStatsJob
             {
                 AlignmentLookup = _alignmentLookup,
                 MoodLookup = _moodLookup,
                 AttributesLookup = _attributesLookup,
                 NeedsLookup = _needsLookup
-            }.Schedule();
+            }.ScheduleParallel(state.Dependency);
 
             // Sync Guild stats from members
-            new SyncGuildStatsJob
+            var guildHandle = new SyncGuildStatsJob
             {
                 AlignmentLookup = _alignmentLookup,
                 MoodLookup = _moodLookup,
                 AttributesLookup = _attributesLookup,
                 SkillSetLookup = _skillSetLookup
-            }.Schedule();
+            }.ScheduleParallel(bandHandle);
 
             // Sync Village stats from residents
-            new SyncVillageStatsJob
+            var villageHandle = new SyncVillageStatsJob
             {
                 AlignmentLookup = _alignmentLookup,
                 MoodLookup = _moodLookup,
                 AttributesLookup = _attributesLookup,
                 NeedsLookup = _needsLookup
-            }.Schedule();
+            }.ScheduleParallel(guildHandle);
+
+            state.Dependency = villageHandle;
         }
 
         [BurstCompile]

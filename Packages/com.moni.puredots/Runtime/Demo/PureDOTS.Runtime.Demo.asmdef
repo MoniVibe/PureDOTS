@@ -5,6 +5,7 @@
         "PureDOTS.Runtime",
         "Unity.Burst",
         "Unity.Entities",
+        "Unity.Entities.Hybrid",
         "Unity.Mathematics",
         "Unity.Transforms",
         "Unity.Collections",

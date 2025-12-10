@@ -38,7 +38,10 @@ namespace PureDOTS.Tests.Playmode
                 IsPaused = false
             });
 
-            var rewindEntity = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<RewindState>()).GetSingletonEntity();
+            var rewindQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<RewindState>());
+            var rewindEntity = rewindQuery.CalculateEntityCount() == 0
+                ? _entityManager.CreateEntity(typeof(RewindState))
+                : rewindQuery.GetSingletonEntity();
             var rewindState = _entityManager.GetComponentData<RewindState>(rewindEntity);
             rewindState.Mode = RewindMode.Record;
             _entityManager.SetComponentData(rewindEntity, rewindState);

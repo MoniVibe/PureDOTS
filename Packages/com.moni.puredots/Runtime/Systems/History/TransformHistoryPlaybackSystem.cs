@@ -29,13 +29,13 @@ namespace PureDOTS.Systems.History
             {
                 return;
             }
-            if (rewindState.Mode != RewindMode.Playback)
+            if (rewindState.Mode != RewindMode.Rewind)
             {
                 return;
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint targetTick = rewindState.TargetTick;
+            uint targetTick = (uint)math.max(0, rewindState.TargetTick);
 
             // Playback transform history for demo-important entities
             foreach (var (transformRef, historyBuffer, entity) in SystemAPI.Query<RefRW<LocalTransform>, DynamicBuffer<PositionHistorySample>>()

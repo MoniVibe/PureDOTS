@@ -1,3 +1,5 @@
+#if PUREDOTS_DEMO
+
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -15,4 +17,6 @@ namespace PureDOTS.Demo.Orbit
         public float Angle;         // current angle in radians
     }
 }
+
+#endif
 
