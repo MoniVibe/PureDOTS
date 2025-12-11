@@ -1,8 +1,10 @@
 #if UNITY_EDITOR
+using System.Diagnostics;
 using System.IO;
 using PureDOTS.Runtime.Devtools;
 using UnityEditor;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace PureDOTS.Editor.Performance
 {
@@ -87,40 +89,20 @@ namespace PureDOTS.Editor.Performance
             Debug.Log($"[ScaleTest] Running scenario: {scenarioFileName}");
             Debug.Log($"[ScaleTest] Report will be written to: {reportPath}");
 
-            // Read and parse scenario
-            var json = File.ReadAllText(scenarioPath);
-            if (!PureDOTS.Runtime.Scenarios.ScenarioRunner.TryParse(json, out var data, out var parseError))
+            try
             {
-                Debug.LogError($"[ScaleTest] Failed to parse scenario: {parseError}");
-                return;
-            }
+                var sw = Stopwatch.StartNew();
+                var result = PureDOTS.Runtime.Scenarios.ScenarioRunnerExecutor.RunFromFile(scenarioPath, reportPath);
+                sw.Stop();
 
-            if (!PureDOTS.Runtime.Scenarios.ScenarioRunner.TryBuild(data, Unity.Collections.Allocator.Temp, out var scenario, out var buildError))
-            {
-                Debug.LogError($"[ScaleTest] Failed to build scenario: {buildError}");
-                return;
-            }
+                var msPerTick = result.RunTicks > 0 ? sw.Elapsed.TotalMilliseconds / result.RunTicks : 0d;
 
-            using (scenario)
-            {
-                Debug.Log($"[ScaleTest] Scenario: {scenario.ScenarioId}");
-                Debug.Log($"[ScaleTest] Ticks: {scenario.RunTicks}");
-                Debug.Log($"[ScaleTest] Entity types: {scenario.EntityCounts.Length}");
-
-                // Log entity breakdown
-                int totalEntities = 0;
-                for (int i = 0; i < scenario.EntityCounts.Length; i++)
-                {
-                    var ec = scenario.EntityCounts[i];
-                    totalEntities += ec.Count;
-                    Debug.Log($"[ScaleTest]   {ec.RegistryId}: {ec.Count}");
-                }
-                Debug.Log($"[ScaleTest] Total entities: {totalEntities}");
-
-                // Generate report
-                var report = GenerateReport(scenario, scenarioFileName);
-                File.WriteAllText(reportPath, report);
+                Debug.Log($"[ScaleTest] Completed {result.RunTicks} ticks in {sw.Elapsed.TotalSeconds:0.###}s ({msPerTick:0.###} ms/tick). ScenarioId={result.ScenarioId}, seed={result.Seed}, logs={result.CommandLogCount + result.SnapshotLogCount}");
                 Debug.Log($"[ScaleTest] Report written to: {reportPath}");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[ScaleTest] Failed to run scenario {scenarioFileName}: {ex.Message}");
             }
         }
 

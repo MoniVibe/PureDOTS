@@ -1,3 +1,23 @@
+# Stub Types (Intentional/Legacy)
+
+List of stub/compat placeholders currently kept to unblock compilation. Replace with real implementations or remove when upstream features land.
+
+| File | Purpose | Status |
+| --- | --- | --- |
+| Packages/com.moni.puredots/Runtime/Systems/Input/SelectionSystemStub.cs | Placeholder for selection flow | Pending real selection pipeline |
+| Packages/com.moni.puredots/Runtime/Systems/Combat/FleetCommandSystemStub.cs | Fleet command hook stub | Pending real fleet command systems |
+| Packages/com.moni.puredots/Runtime/Systems/Spatial/SpatialBuildSystemStub.cs | Spatial build placeholder | Pending spatial build implementation |
+| Packages/com.moni.puredots/Runtime/Systems/SystemGroups/SystemGroupStubs.cs | Group placeholders | Keep until groups are defined |
+| Packages/com.moni.puredots/Runtime/Components/Events/EventStubs.cs | Event placeholder types | Replace with real event schema |
+| Packages/com.moni.puredots/Runtime/Components/Perception/PerceptionStubs.cs | Perception placeholder types | Replace with perception data/components |
+| Packages/com.moni.puredots/Runtime/Components/Combat/CombatStateStubs.cs | Combat state placeholders | Replace with combat state components |
+| Packages/com.moni.puredots/Runtime/Operations/ConceptStubComponents.cs | Operations concept stubs | Replace with real operations data |
+| Packages/com.moni.puredots/Runtime/Logistics/Components/LogisticsStubComponents.cs | Logistics placeholder data | Replace with logistics components |
+| Packages/com.moni.puredots/Runtime/Runtime/Systems/CoreStubSystems.cs | Core system placeholders | Remove when real systems exist |
+| Packages/com.moni.puredots/Runtime/Runtime/Time/TimeMultiplayerStubs.cs | Multiplayer time placeholder | Replace with multiplayer time impl |
+| Packages/com.moni.puredots/Runtime/Physics/CameraPhysicsStubs.cs | Camera physics placeholder | Replace with real camera physics or remove |
+| Packages/com.moni.puredots/Runtime/Runtime/MetaRegistryStubs.cs | Meta registry placeholder | Replace when registry finalized |
+| Packages/com.moni.puredots/Runtime/Systems/MetaRegistryStubSystems.cs | Meta registry systems placeholder | Remove when registry finalized |
 # Stub Types Tracking
 
 **Last Updated**: 2025-12-10

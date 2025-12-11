@@ -1,3 +1,4 @@
+#if TRI_ENABLE_INTERGROUP_RELATIONS
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -34,7 +35,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 var entity = entities[i];
                 var relation = SystemAPI.GetComponent<OrgRelation>(entity);
 
-                // Check if policy state exists, create if not
                 if (!SystemAPI.HasComponent<OrgPolicyState>(entity))
                 {
                     state.EntityManager.AddComponent<OrgPolicyState>(entity);
@@ -42,7 +42,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
 
                 var policy = SystemAPI.GetComponentRW<OrgPolicyState>(entity);
 
-                // Compute interaction masks from relation kind and treaties
                 var maskAtoB = ComputeInteractionMask(relation.Kind, relation.Treaties, true);
                 var maskBtoA = ComputeInteractionMask(relation.Kind, relation.Treaties, false);
 
@@ -56,7 +55,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
         {
             OrgInteractionMask mask = 0;
 
-            // Base permissions from relation kind
             switch (kind)
             {
                 case OrgRelationKind.Allied:
@@ -71,24 +69,21 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     break;
 
                 case OrgRelationKind.Rival:
-                    mask |= OrgInteractionMask.AllowTrade; // Limited trade still possible
+                    mask |= OrgInteractionMask.AllowTrade;
                     break;
 
                 case OrgRelationKind.Hostile:
-                    mask |= OrgInteractionMask.AllowEspionage; // Only espionage allowed
+                    mask |= OrgInteractionMask.AllowEspionage;
                     break;
 
                 case OrgRelationKind.Shunned:
-                    // No interactions allowed
                     break;
 
                 case OrgRelationKind.Sanctioned:
-                    // Trade blocked
                     break;
 
                 case OrgRelationKind.Vassal:
                 case OrgRelationKind.Overlord:
-                    // Asymmetric permissions
                     if (kind == OrgRelationKind.Overlord && isAtoB)
                     {
                         mask |= OrgInteractionMask.AllowTrade | OrgInteractionMask.AllowMilitary | 
@@ -101,14 +96,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     break;
 
                 case OrgRelationKind.Integrated:
-                    // Full permissions
                     mask |= OrgInteractionMask.AllowTrade | OrgInteractionMask.AllowMigration | 
                             OrgInteractionMask.AllowMarriage | OrgInteractionMask.AllowEmbassy | 
                             OrgInteractionMask.AllowMilitary | OrgInteractionMask.AllowAid;
                     break;
             }
 
-            // Apply treaty flags
             if ((treaties & OrgTreatyFlags.TradeAgreement) != 0)
                 mask |= OrgInteractionMask.AllowTrade;
 
@@ -134,4 +127,27 @@ namespace PureDOTS.Runtime.IntergroupRelations
         }
     }
 }
+#else
+using Unity.Burst;
+using Unity.Entities;
 
+namespace PureDOTS.Runtime.IntergroupRelations
+{
+    // [TRI-STUB] Disabled in MVP baseline.
+    [BurstCompile]
+    public partial struct OrgPolicyComputeSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            return;
+        }
+    }
+}
+#endif

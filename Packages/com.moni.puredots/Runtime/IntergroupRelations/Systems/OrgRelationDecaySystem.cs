@@ -1,3 +1,4 @@
+#if TRI_ENABLE_INTERGROUP_RELATIONS
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,8 +17,8 @@ namespace PureDOTS.Runtime.IntergroupRelations
     [UpdateAfter(typeof(OrgRelationInitSystem))]
     public partial struct OrgRelationDecaySystem : ISystem
     {
-        private const float DECAY_RATE_PER_TICK = 0.0001f; // Adjust based on tick rate
-        private const uint DECAY_CHECK_INTERVAL = 100; // Check every 100 ticks
+        private const float DECAY_RATE_PER_TICK = 0.0001f;
+        private const uint DECAY_CHECK_INTERVAL = 100;
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
@@ -31,32 +32,25 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 .WithAll<OrgRelationTag>()
                 .WithEntityAccess())
             {
-                // Only decay periodically
                 if (currentTick - relation.ValueRO.LastUpdateTick < DECAY_CHECK_INTERVAL)
                     continue;
 
-                // Get org personas for decay rate calculation
                 float decayRate = DECAY_RATE_PER_TICK;
                 
                 if (SystemAPI.HasComponent<OrgPersona>(relation.ValueRO.OrgA))
                 {
                     var personaA = SystemAPI.GetComponent<OrgPersona>(relation.ValueRO.OrgA);
-                    // Vengeful orgs decay slower (lower decay rate)
-                    // Forgiving orgs decay faster (higher decay rate)
-                    float vengefulFactor = 1f - personaA.VengefulForgiving; // Invert: forgiving = higher factor
-                    decayRate *= (0.5f + vengefulFactor * 0.5f); // Range: 0.5x to 1.0x
+                    float vengefulFactor = 1f - personaA.VengefulForgiving;
+                    decayRate *= (0.5f + vengefulFactor * 0.5f);
                 }
 
-                // Compute baseline attitude (from initial relation or neutral)
-                float baselineAttitude = 0f; // Neutral baseline
+                float baselineAttitude = 0f;
                 
-                // Decay toward baseline
                 float attitudeDelta = relation.ValueRO.Attitude - baselineAttitude;
                 float decayAmount = attitudeDelta * decayRate * DECAY_CHECK_INTERVAL;
                 
                 relation.ValueRW.Attitude = math.clamp(relation.ValueRO.Attitude - decayAmount, -100f, 100f);
                 
-                // Also decay trust/fear/respect slightly
                 relation.ValueRW.Trust = math.clamp(relation.ValueRO.Trust - 0.001f * DECAY_CHECK_INTERVAL, 0f, 1f);
                 relation.ValueRW.Fear = math.clamp(relation.ValueRO.Fear - 0.001f * DECAY_CHECK_INTERVAL, 0f, 1f);
                 relation.ValueRW.Respect = math.clamp(relation.ValueRO.Respect - 0.001f * DECAY_CHECK_INTERVAL, 0f, 1f);
@@ -66,4 +60,27 @@ namespace PureDOTS.Runtime.IntergroupRelations
         }
     }
 }
+#else
+using Unity.Burst;
+using Unity.Entities;
 
+namespace PureDOTS.Runtime.IntergroupRelations
+{
+    // [TRI-STUB] Disabled in MVP baseline.
+    [BurstCompile]
+    public partial struct OrgRelationDecaySystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            return;
+        }
+    }
+}
+#endif

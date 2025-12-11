@@ -1,3 +1,4 @@
+#if TRI_ENABLE_INTERGROUP_RELATIONS
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -15,6 +16,16 @@ namespace PureDOTS.Runtime.IntergroupRelations
     [UpdateAfter(typeof(OrgRelationInitSystem))]
     public partial struct OrgRelationEventImpactSystem : ISystem
     {
+        private EntityQuery _orgRelationQuery;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _orgRelationQuery = state.GetEntityQuery(
+                ComponentType.ReadOnly<OrgRelation>(),
+                ComponentType.ReadOnly<OrgRelationTag>());
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
@@ -23,16 +34,13 @@ namespace PureDOTS.Runtime.IntergroupRelations
             
             var currentTick = timeState.Tick;
 
-            // Process all relation events
             foreach (var (relationEvent, entity) in SystemAPI.Query<RefRO<OrgRelationEvent>>()
                 .WithEntityAccess())
             {
-                // Find the relation entity for this org pair
                 Entity? relationEntity = FindRelationEntity(ref state, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg);
                 
                 if (!relationEntity.HasValue)
                 {
-                    // Relation doesn't exist yet, create it first
                     var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
                     relationEntity = CreateRelationEntity(ref state, ecbSingleton, relationEvent.ValueRO.SourceOrg, relationEvent.ValueRO.TargetOrg, currentTick);
                 }
@@ -41,23 +49,19 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 {
                     var relation = SystemAPI.GetComponentRW<OrgRelation>(relationEntity.Value);
 
-                    // Apply deltas with persona-based modifiers
                     ApplyEventDeltas(ref relation, relationEvent.ValueRO, ref state);
 
-                    // Update relation kind based on new attitude
                     relation.ValueRW.Kind = DetermineRelationKind(relation.ValueRO.Attitude);
 
                     relation.ValueRW.LastUpdateTick = currentTick;
                 }
 
-                // Remove event component after processing
                 state.EntityManager.RemoveComponent<OrgRelationEvent>(entity);
             }
         }
 
         private static void ApplyEventDeltas(ref RefRW<OrgRelation> relation, OrgRelationEvent evt, ref SystemState state)
         {
-            // Get source org persona for modifier calculation
             float personaModifier = 1f;
             var personaLookup = state.GetComponentLookup<OrgPersona>(true);
             personaLookup.Update(ref state);
@@ -65,52 +69,44 @@ namespace PureDOTS.Runtime.IntergroupRelations
             {
                 var persona = personaLookup[evt.SourceOrg];
                 
-                // Vengeful orgs amplify negative events, forgiving orgs reduce them
                 if (evt.AttitudeDelta < 0f)
                 {
-                    personaModifier = 0.5f + persona.VengefulForgiving * 0.5f; // 0.5x to 1.0x
+                    personaModifier = 0.5f + persona.VengefulForgiving * 0.5f;
                 }
                 else
                 {
-                    personaModifier = 1f - persona.VengefulForgiving * 0.3f; // 0.7x to 1.0x
+                    personaModifier = 1f - persona.VengefulForgiving * 0.3f;
                 }
             }
 
-            // Apply attitude delta with persona modifier
             relation.ValueRW.Attitude = math.clamp(
                 relation.ValueRO.Attitude + evt.AttitudeDelta * personaModifier, 
                 -100f, 100f);
 
-            // Apply trust delta
             relation.ValueRW.Trust = math.clamp(
                 relation.ValueRO.Trust + evt.TrustDelta, 
                 0f, 1f);
 
-            // Apply fear delta
             relation.ValueRW.Fear = math.clamp(
                 relation.ValueRO.Fear + evt.FearDelta, 
                 0f, 1f);
 
-            // Apply respect delta
             relation.ValueRW.Respect = math.clamp(
                 relation.ValueRO.Respect + evt.RespectDelta, 
                 0f, 1f);
 
-            // Apply dependence delta
             relation.ValueRW.Dependence = math.clamp(
                 relation.ValueRO.Dependence + evt.DependenceDelta, 
                 0f, 1f);
 
-            // Update treaties
             relation.ValueRW.Treaties |= evt.TreatyFlagsToAdd;
             relation.ValueRW.Treaties &= ~evt.TreatyFlagsToRemove;
         }
 
-        private static Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
+        private Entity? FindRelationEntity(ref SystemState state, Entity orgA, Entity orgB)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
-            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
-            var entities = query.ToEntityArray(Allocator.Temp);
+            var relations = _orgRelationQuery.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var entities = _orgRelationQuery.ToEntityArray(Allocator.Temp);
             
             for (int i = 0; i < relations.Length; i++)
             {
@@ -121,14 +117,12 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var result = entities[i];
                     relations.Dispose();
                     entities.Dispose();
-                    query.Dispose();
                     return result;
                 }
             }
             
             relations.Dispose();
             entities.Dispose();
-            query.Dispose();
             return null;
         }
 
@@ -139,7 +133,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
             var relationEntity = ecb.CreateEntity();
             ecb.AddComponent(relationEntity, new OrgRelationTag());
 
-            // Initialize with neutral baseline
             ecb.AddComponent(relationEntity, new OrgRelation
             {
                 OrgA = orgA,
@@ -172,4 +165,27 @@ namespace PureDOTS.Runtime.IntergroupRelations
         }
     }
 }
+#else
+using Unity.Burst;
+using Unity.Entities;
 
+namespace PureDOTS.Runtime.IntergroupRelations
+{
+    // [TRI-STUB] Disabled in MVP baseline.
+    [BurstCompile]
+    public partial struct OrgRelationEventImpactSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            return;
+        }
+    }
+}
+#endif

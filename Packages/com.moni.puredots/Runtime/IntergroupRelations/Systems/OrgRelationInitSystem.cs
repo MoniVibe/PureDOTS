@@ -1,3 +1,4 @@
+#if TRI_ENABLE_INTERGROUP_RELATIONS
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Collections;
@@ -23,6 +24,16 @@ namespace PureDOTS.Runtime.IntergroupRelations
     [UpdateAfter(typeof(OrgAlignmentUpdateSystem))]
     public partial struct OrgRelationInitSystem : ISystem
     {
+        private EntityQuery _orgRelationQuery;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _orgRelationQuery = state.GetEntityQuery(
+                ComponentType.ReadOnly<OrgRelation>(),
+                ComponentType.ReadOnly<OrgRelationTag>());
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
@@ -33,7 +44,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 .CreateCommandBuffer(state.WorldUnmanaged);
             var currentTick = timeState.Tick;
 
-            // Find all org pairs that need relations initialized
             var orgs = SystemAPI.QueryBuilder()
                 .WithAll<OrgTag, OrgId>()
                 .Build()
@@ -46,19 +56,15 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var orgA = orgs[i];
                     var orgB = orgs[j];
 
-                    // Check if relation already exists
                     if (RelationExists(ref state, orgA, orgB))
                         continue;
 
-                    // Check if they should interact (proximity, shared parent, etc.)
                     if (!ShouldCreateRelation(state, orgA, orgB))
                         continue;
 
-                    // Create relation entity
                     var relationEntity = ecb.CreateEntity();
                     ecb.AddComponent(relationEntity, new OrgRelationTag());
 
-                    // Compute baseline values
                     var baseline = ComputeBaselineRelation(ref state, orgA, orgB);
 
                     ecb.AddComponent(relationEntity, new OrgRelation
@@ -79,11 +85,9 @@ namespace PureDOTS.Runtime.IntergroupRelations
             }
         }
 
-        private static bool RelationExists(ref SystemState state, Entity orgA, Entity orgB)
+        private bool RelationExists(ref SystemState state, Entity orgA, Entity orgB)
         {
-            // Check if relation entity exists for this pair
-            var query = state.EntityManager.CreateEntityQuery(typeof(OrgRelation), typeof(OrgRelationTag));
-            var relations = query.ToComponentDataArray<OrgRelation>(Allocator.Temp);
+            var relations = _orgRelationQuery.ToComponentDataArray<OrgRelation>(Allocator.Temp);
             
             for (int i = 0; i < relations.Length; i++)
             {
@@ -92,20 +96,16 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     (relation.OrgA == orgB && relation.OrgB == orgA))
                 {
                     relations.Dispose();
-                    query.Dispose();
                     return true;
                 }
             }
             
             relations.Dispose();
-            query.Dispose();
             return false;
         }
 
         private static bool ShouldCreateRelation(SystemState state, Entity orgA, Entity orgB)
         {
-            // For now, create relations for all org pairs
-            // In production, add proximity checks, shared parent checks, etc.
             return true;
         }
 
@@ -121,23 +121,18 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 ? alignmentLookup[orgB] 
                 : new VillagerAlignment();
 
-            // Compute alignment compatibility (reuse formulas from Entity_Relations_And_Interactions.md)
             float moralDelta = ComputeMoralAxisDelta(alignmentA.MoralAxis, alignmentB.MoralAxis);
             float orderDelta = ComputeOrderAxisDelta(alignmentA.OrderAxis, alignmentB.OrderAxis);
             float purityDelta = ComputePurityAxisDelta(alignmentA.PurityAxis, alignmentB.PurityAxis);
 
             float alignmentCompatibility = moralDelta + orderDelta + purityDelta;
 
-            // Base attitude from alignment compatibility
             float baseAttitude = math.clamp(alignmentCompatibility, -100f, 100f);
 
-            // Base trust from alignment strength similarity
             float trust = math.clamp((alignmentA.AlignmentStrength + alignmentB.AlignmentStrength) / 2f, 0f, 1f);
 
-            // Base fear from relative power (simplified - use alignment strength as proxy)
             float fear = math.clamp(math.abs(alignmentA.AlignmentStrength - alignmentB.AlignmentStrength), 0f, 1f);
 
-            // Base respect from alignment similarity
             float respect = math.clamp(1f - (math.abs(alignmentA.MoralAxis - alignmentB.MoralAxis) + 
                                              math.abs(alignmentA.OrderAxis - alignmentB.OrderAxis) +
                                              math.abs(alignmentA.PurityAxis - alignmentB.PurityAxis)) / 600f, 0f, 1f);
@@ -178,7 +173,6 @@ namespace PureDOTS.Runtime.IntergroupRelations
                 return 15f - (delta * 0.1f);
             if (bothChaotic)
             {
-                // Chaotic unpredictable - use hash-based random
                 var hash = math.hash(new uint2((uint)order1, (uint)order2));
                 var rng = new Unity.Mathematics.Random(hash);
                 return rng.NextFloat(-10f, 10f);
@@ -231,4 +225,27 @@ namespace PureDOTS.Runtime.IntergroupRelations
         }
     }
 }
+#else
+using Unity.Burst;
+using Unity.Entities;
 
+namespace PureDOTS.Runtime.IntergroupRelations
+{
+    // [TRI-STUB] Disabled in MVP baseline.
+    [BurstCompile]
+    public partial struct OrgRelationInitSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            return;
+        }
+    }
+}
+#endif
