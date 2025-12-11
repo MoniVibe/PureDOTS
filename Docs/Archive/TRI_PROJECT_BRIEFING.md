@@ -12,7 +12,7 @@ This workspace contains three interconnected Unity DOTS projects:
 | Project | Path | Purpose |
 |---------|------|---------|
 | **PureDOTS** | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` | Shared DOTS framework package |
-| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` | Carrier-first 4X strategy game |
+| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X` | Carrier-first 4X strategy game |
 | **Godgame** | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` | Divine intervention god-game simulation |
 
 ### Architecture Pattern
@@ -73,18 +73,39 @@ This workspace contains three interconnected Unity DOTS projects:
 
 **Patterns (group/individual):** Pattern evaluation lives in `Packages/com.moni.puredots/Runtime/Systems/Patterns/PatternSystem.cs`, writing `GroupPatternModifiers` + `ActivePatternTag`. Pattern IDs are enums (`Runtime/Patterns/PatternComponents.cs`) to keep Burst happy—avoid FixedString construction in static contexts. Demo patterns: HardworkingVillage, ChaoticBand, OverstressedGroup.
 
+### ECS Architecture: Body/Mind/Aggregate Worlds
+
+**Canonical Truth**: We only use one ECS: Unity.Entities 1.4.
+
+All "Mind ECS", "Body ECS", and "Aggregate ECS" in TRI are architectural slices we define inside our own codebase, not separate packages.
+
+They are implemented as distinct Worlds + SystemGroups running on top of the same com.unity.entities runtime:
+
+- **Body ECS** – canonical deterministic sim world (time/rewind, spatial grid, registries, core sim loops).
+- **Mind ECS** – thinking/planning/what-if world (goals, planning, evaluation, AgentSyncBus, etc.).
+- **Aggregate ECS** – higher-level aggregates: bands, fleets, empires, dynasties, regional summaries, etc.
+
+All three live inside our local framework com.moni.puredots and the game projects that reference it (Godgame, Space4X).
+
+**There is nothing to install from Package Manager called "Mind ECS", "Body ECS", or "Aggregate ECS".**
+
+If you are looking for them, you are looking for namespaces, bootstraps, and system groups in com.moni.puredots, not for extra packages.
+
 ### Key Documentation
 
 - `README_BRIEFING.md` - Project briefing
 - `Docs/Vision.md` - Design pillars and roadmap
 - `Docs/PUREDOTS_INTEGRATION_SPEC.md` - Integration patterns
+- `Docs/Architecture/ThreePillarECS_Architecture.md` - Three Pillar ECS overview
+- `Docs/Architecture/AgentSyncBus_Specification.md` - AgentSyncBus API and cadence
+- `Docs/Guides/MultiECS_Integration_Guide.md` - Multi-ECS integration cookbook
 - `Docs/FoundationGuidelines.md` - Coding guidelines
 
 ---
 
 ## Space4X Game
 
-**Location**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4x`
+**Location**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4X`
 
 ### Game Vision
 
@@ -508,10 +529,10 @@ Camera controllers, input bridges, and presentation rigs belong in their respect
 
 If you find camera controller files in PureDOTS workspace paths like:
 - `Assets/Projects/Space4X/Scripts/...`
-- `Assets/Scripts/Space4x/Camera/...`
+- `Assets/Scripts/Space4X/Camera/...`
 
 **These are likely development artifacts that should be moved or removed.** Check the actual project directories:
-- **Space4X**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4x`
+- **Space4X**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4X`
 - **Godgame**: `C:\Users\Moni\Documents\claudeprojects\unity\Godgame`
 
 ### **Proper Camera Architecture**
@@ -524,7 +545,7 @@ PureDOTS Framework (Shared)
 └── CameraRigState.cs           ✅ Shared types
 
 Space4X Game Project
-└── Assets/Scripts/Space4x/
+└── Assets/Scripts/Space4X/
     ├── Camera/
     │   ├── Space4XCameraController.cs    ✅ Game-specific
     │   └── Space4XCameraInputBridge.cs  ✅ Game-specific
@@ -595,6 +616,13 @@ Before completing ANY task:
 | CS0246 | Type not found | Grep for type, update using or remove ref |
 | CS0618 | Obsolete API | Use `FindObjectsByType`/`FindFirstObjectByType` |
 | CreateAssetMenu warning | Attribute on non-SO | Remove attribute or inherit `ScriptableObject` |
+| CS0101 | Duplicate type from lingering stubs | Delete/`#if false` stub files when real types return |
+| RewindState duplicate | Multiple bootstrap paths created another singleton | Only RewindBootstrapSystem seeds RewindState from RewindConfig; remove manual AddComponentData |
+
+**Stub cleanup rule (canonical names):**
+- If you add a stub in the canonical namespace, mark it `// STUB: REMOVE when real <Type>` and track it (e.g., `Docs/StubTypes.md`), then delete it as soon as the real implementation lands.
+- Prefer minimal canonical files (`Detectable.cs`, `CombatLearningState.cs`, etc.) over mega `*Stubs.cs` files so they can be expanded instead of duplicated.
+- Never ship stubs alongside real types; before closing work, `grep -r "Stubs.cs"` in `com.moni.puredots` and remove or `#if false` any leftovers.
 
 ---
 
@@ -615,7 +643,7 @@ Before completing ANY task:
 |----------|------|
 | Unity Root | `C:\Users\Moni\Documents\claudeprojects\unity\TRI_PROJECT_BRIEFING.md` |
 | PureDOTS | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS\TRI_PROJECT_BRIEFING.md` |
-| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x\TRI_PROJECT_BRIEFING.md` |
+| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X\TRI_PROJECT_BRIEFING.md` |
 | Godgame | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame\TRI_PROJECT_BRIEFING.md` |
 
 **When updating this document:**
@@ -623,7 +651,7 @@ Before completing ANY task:
 2. Copy to all other locations:
 ```bash
 cp PureDOTS/TRI_PROJECT_BRIEFING.md ../TRI_PROJECT_BRIEFING.md
-cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Space4x/TRI_PROJECT_BRIEFING.md
+cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Space4X/TRI_PROJECT_BRIEFING.md
 cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Godgame/TRI_PROJECT_BRIEFING.md
 ```
 
@@ -734,7 +762,7 @@ grep -r "TypeName" --include="*.cs" | grep -v "//"
 | Project | Path |
 |---------|------|
 | PureDOTS | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` |
-| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` |
+| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X` |
 | Godgame | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` |
 | PureDOTS Package | `PureDOTS/Packages/com.moni.puredots` |
 
@@ -751,3 +779,313 @@ The three projects form a cohesive ecosystem:
 All projects share coding patterns, the PureDOTS package, and architectural principles. Follow the critical DOTS patterns to avoid compile errors that block parallel development.
 
 **Full documentation**: Each project's `Docs/` folder contains detailed orientation and progress tracking.
+
+error fixing:
+Error-hunt pipeline for agents
+
+Have your agents follow this exact loop per project (PureDOTS → Space4X → Godgame):
+
+Step A: Get a clean error list
+
+Trigger a full compile (enter play mode or force a domain reload).
+
+Export all compiler errors (not warnings) into a single text file per project:
+
+PureDOTS/Docs/ErrorLog_PureDOTS.txt
+
+Space4X/Docs/ErrorLog_Space4X.txt
+
+Godgame/Docs/ErrorLog_Godgame.txt
+
+Step B: Classify by error pattern, not by file
+
+Use the quick-reference table + P0–P17 sections in the brief to classify every error into buckets:
+
+Foreach mutation / buffer misuse (CS1654/CS1657) → P1
+
+Blob access / ref issues (EA0001/EA0009) → P1, P4
+
+Enum/byte conversion (CS0266) → P2
+
+ref readonly / C#12 features (CS1031) → P3
+
+Buffer element vs component (CS0411) → P5
+
+Baker / authoring inheritance (CS0311) → P6
+
+Burst parameter passing (BC1064 etc.) → P7
+
+Managed string use in Burst (BC1016) → P8, P13
+
+Missing using / namespace (CS0103, CS0234, CS0246) → P9, P10
+
+Obsolete Unity APIs (CS0618) → P11
+
+CreateAssetMenu on non-SO → P12
+
+SystemAPI in static context (EA0004/EA0006) → P14
+
+Bool in blittable struct with function pointer (BC1063) → P15
+
+Then fix errors by bucket, applying the same patch pattern everywhere. That way you never “invent” ad-hoc fixes system by system.
+
+3. Concrete fix patterns (what your agents should actually do)
+3.1. Buffers & foreach mutation (P1)
+
+Symptom:
+CS1654: Cannot modify members of '...' because it is a 'foreach iteration variable'
+
+Mandatory fix pattern:
+
+// Before
+foreach (var elem in buffer)
+{
+    elem.Value += delta;  // ❌
+}
+
+// After
+for (int i = 0; i < buffer.Length; i++)
+{
+    var elem = buffer[i];
+    elem.Value += delta;
+    buffer[i] = elem;
+}
+
+
+Apply this globally to every DynamicBuffer<T> mutation in systems and jobs.
+
+3.2. Blob refs & Burst rules (P1, P4, P8, P13)
+
+Symptoms:
+
+EA0001/EA0009 around blob access.
+
+BC1016 around FixedStrings / .ToString() in Burst systems.
+
+Fix pattern:
+
+// Always:
+ref var specCatalog = ref blobRef.Value;   // ❌ var = blobRef.Value;
+
+// Helper methods:
+static bool TryGetSpec(ref SpecBlob spec, int id, out SomeSpec result)
+{
+    // Use ref spec, never by value
+}
+
+
+For strings and descriptions in Burst systems:
+
+Move all FixedString literals to static readonly fields outside of the Burst-compiled type.
+
+Replace enum .ToString() in Burst with a switch returning pre-made FixedString constants.
+
+static readonly FixedString64Bytes GoalIdle  = "Idle";
+static readonly FixedString64Bytes GoalWork  = "Work";
+
+static FixedString64Bytes DescribeGoal(Goal goal)
+{
+    return goal switch
+    {
+        Goal.Idle => GoalIdle,
+        Goal.Work => GoalWork,
+        _ => default
+    };
+}
+
+
+Then call DescribeGoal from Burst systems instead of constructing FixedStrings directly.
+
+3.3. Query tags & SGQC001 (Entities source generator)
+
+Symptom:
+SGQC001: WithAll<T>() is not supported. WithAll<T>() may only be invoked on types that implement IComponentData, ... or UnityEngine.Object.
+
+Why: You’re calling WithAll<SomeTag>() where SomeTag is not an IComponentData, IBufferElementData, IAspect or UnityEngine.Object.
+
+Fix pattern (no guessing names):
+
+For gameplay tags used in queries, always define them as empty IComponentData tags:
+
+public struct SomeGameplayTag : IComponentData {}
+
+
+If a type is a pure simulation concept (no fields or only a few scalar fields) and you query it in WithAll/WithNone/WithAny, move it to IComponentData or wrap it in a thin IComponentData tag used only for filtering; keep richer data in a separate component if needed.
+
+Ensure its namespace matches the using in the system; if necessary, adjust using imports rather than duplicating types.
+
+Then rebuild – this usually wipes a whole cluster of SGQC001s.
+
+3.4. Buffer element vs component confusion (P5)
+
+Symptom:
+CS0411: The type arguments for method 'DynamicBuffer<T>' cannot be inferred...
+or “<Type> does not implement IBufferElementData”.
+
+Fix pattern:
+
+Every type used in DynamicBuffer<T> must implement IBufferElementData.
+
+// Before
+public struct PlannedAction
+{
+    public int Id;
+    public float Score;
+}
+
+// After
+public struct PlannedActionElement : IBufferElementData
+{
+    public int Id;
+    public float Score;
+}
+
+
+Rename the buffer type to *Element to keep things obvious.
+
+Update all buffer usages to use the new type.
+
+3.5. Authoring/Baker errors (P6, P12)
+
+Symptoms:
+
+CS0311: MyBaker : Baker<T> where T is not a MonoBehaviour.
+
+CreateAssetMenu warnings on non-ScriptableObject types.
+
+Fix pattern:
+
+// Authoring:
+public class SomethingAuthoring : MonoBehaviour
+{
+    // Serialized fields only
+}
+
+public class SomethingBaker : Baker<SomethingAuthoring>
+{
+    public override void Bake(SomethingAuthoring authoring)
+    {
+        var entity = GetEntity(TransformUsageFlags.Dynamic);
+        AddComponent(entity, new SomethingComponent { ... });
+    }
+}
+
+
+If the data is meant to live as assets (catalogs, specs): use ScriptableObject with [CreateAssetMenu].
+
+If it’s a scene component: MonoBehaviour without [CreateAssetMenu].
+
+3.6. SystemAPI usage & static helpers (P14)
+
+Symptom:
+EA0004/EA0006: SystemAPI.* can only be used in a system's OnCreate/OnUpdate...
+
+Fix pattern:
+
+Never call SystemAPI in static helpers.
+
+Keep SystemAPI calls inside OnCreate, OnDestroy, OnUpdate instance methods.
+
+For helpers:
+
+// Helper uses SystemState and queries:
+static bool TryGetTime(ref SystemState state, out TimeState time)
+{
+    var q = state.GetEntityQuery(ComponentType.ReadOnly<TimeState>());
+    return q.TryGetSingleton(out time);
+}
+
+
+Then call TryGetTime from OnUpdate.
+
+3.7. Bool + Burst function pointers (P15)
+
+Symptom:
+BC1063: 'bool' is not blittable in calli / similar.
+
+Fix pattern:
+
+For structs passed through Burst function pointers, change bool fields to byte or mark with [MarshalAs(UnmanagedType.U1)] as listed in the brief.
+
+Prefer using byte flags for configs to keep everything trivially blittable.
+
+3.8. C# version compatibility (P3)
+
+Symptoms:
+
+ref readonly local usage, records, or other C# 12 syntax.
+
+Fix pattern:
+
+Replace ref readonly locals with ref locals + in parameters.
+
+No records; stick to struct + interfaces.
+
+4. PureDOTS-specific cleanup that unblocks both games
+
+The brief explicitly calls out some known violators in PureDOTS (e.g. description helpers, spell effect code, what-if systems) that break Burst rules. These are high-value to fix because both games rely on them. 
+
+TRI_PROJECT_BRIEFING
+
+Have an agent:
+
+Open the systems mentioned under P15 and P13 in the brief.
+
+Apply:
+
+FixedString fixes (static readonly constants, no .ToString() in Burst paths).
+
+Bool/byte alignment for configs.
+
+Rebuild PureDOTS until:
+
+No Burst compile errors in Packages/com.moni.puredots.
+
+No stub types left that mask real implementations.
+
+This gives you a clean, deterministic core for both games.
+
+5. Game-side AI systems: “fix, don’t bypass” strategy
+
+For both Space4X and Godgame, treat systems as follows:
+
+5.1. For every AI system that currently fails to compile
+
+Make sure all components it uses exist in PureDOTS (Body ECS) with complete definitions:
+
+“Needs” component.
+
+“Task/Job/Order” state component(s).
+
+“Motion/Position” or equivalent.
+
+If a field is currently “design-only” and never read, implement a minimal real field, don’t comment it out.
+
+Where the logic is too ambitious right now (e.g. full GOAP/plans), keep the system enabled but gate heavy logic with simple component flags or config values:
+
+if (!config.AISimulationEnabled)
+    return; // ai system still exists, it just short-circuits cleanly
+
+
+or
+
+if (!SystemAPI.HasComponent<SomePrerequisite>(entity))
+    continue;
+
+
+This keeps the system structurally correct and ready for expansion, without having to remove it.
+
+5.2. For runtime “no singleton / no registry” errors
+
+Whenever a system assumes a singleton or registry exists:
+
+Ensure the singleton/registry is created in a single bootstrap flow:
+
+One config (authoring / asset).
+
+One bootstrap system that seeds the runtime component or singleton from that config.
+
+Remove extra manual EntityManager.AddComponentData paths that double-seed things like TimeState / RewindState.
+
+This generally fixes a lot of “nothing moves / nothing updates / sanity systems complaining” issues.
+Any non-per-frame or non-hot systems may be de-bursted.

@@ -12,7 +12,7 @@ This workspace contains three interconnected Unity DOTS projects:
 | Project | Path | Purpose |
 |---------|------|---------|
 | **PureDOTS** | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` | Shared DOTS framework package |
-| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` | Carrier-first 4X strategy game |
+| **Space4X** | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X` | Carrier-first 4X strategy game |
 | **Godgame** | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` | Divine intervention god-game simulation |
 
 ### Architecture Pattern
@@ -105,7 +105,7 @@ If you are looking for them, you are looking for namespaces, bootstraps, and sys
 
 ## Space4X Game
 
-**Location**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4x`
+**Location**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4X`
 
 ### Game Vision
 
@@ -529,10 +529,10 @@ Camera controllers, input bridges, and presentation rigs belong in their respect
 
 If you find camera controller files in PureDOTS workspace paths like:
 - `Assets/Projects/Space4X/Scripts/...`
-- `Assets/Scripts/Space4x/Camera/...`
+- `Assets/Scripts/Space4X/Camera/...`
 
 **These are likely development artifacts that should be moved or removed.** Check the actual project directories:
-- **Space4X**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4x`
+- **Space4X**: `C:\Users\Moni\Documents\claudeprojects\unity\Space4X`
 - **Godgame**: `C:\Users\Moni\Documents\claudeprojects\unity\Godgame`
 
 ### **Proper Camera Architecture**
@@ -545,7 +545,7 @@ PureDOTS Framework (Shared)
 └── CameraRigState.cs           ✅ Shared types
 
 Space4X Game Project
-└── Assets/Scripts/Space4x/
+└── Assets/Scripts/Space4X/
     ├── Camera/
     │   ├── Space4XCameraController.cs    ✅ Game-specific
     │   └── Space4XCameraInputBridge.cs  ✅ Game-specific
@@ -643,7 +643,7 @@ Before completing ANY task:
 |----------|------|
 | Unity Root | `C:\Users\Moni\Documents\claudeprojects\unity\TRI_PROJECT_BRIEFING.md` |
 | PureDOTS | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS\TRI_PROJECT_BRIEFING.md` |
-| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x\TRI_PROJECT_BRIEFING.md` |
+| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X\TRI_PROJECT_BRIEFING.md` |
 | Godgame | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame\TRI_PROJECT_BRIEFING.md` |
 
 **When updating this document:**
@@ -651,7 +651,7 @@ Before completing ANY task:
 2. Copy to all other locations:
 ```bash
 cp PureDOTS/TRI_PROJECT_BRIEFING.md ../TRI_PROJECT_BRIEFING.md
-cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Space4x/TRI_PROJECT_BRIEFING.md
+cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Space4X/TRI_PROJECT_BRIEFING.md
 cp PureDOTS/TRI_PROJECT_BRIEFING.md ../Godgame/TRI_PROJECT_BRIEFING.md
 ```
 
@@ -762,7 +762,7 @@ grep -r "TypeName" --include="*.cs" | grep -v "//"
 | Project | Path |
 |---------|------|
 | PureDOTS | `C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS` |
-| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4x` |
+| Space4X | `C:\Users\Moni\Documents\claudeprojects\unity\Space4X` |
 | Godgame | `C:\Users\Moni\Documents\claudeprojects\unity\Godgame` |
 | PureDOTS Package | `PureDOTS/Packages/com.moni.puredots` |
 
@@ -793,7 +793,7 @@ Export all compiler errors (not warnings) into a single text file per project:
 
 PureDOTS/Docs/ErrorLog_PureDOTS.txt
 
-Space4x/Docs/ErrorLog_Space4X.txt
+Space4X/Docs/ErrorLog_Space4X.txt
 
 Godgame/Docs/ErrorLog_Godgame.txt
 
@@ -1088,4 +1088,4 @@ One bootstrap system that seeds the runtime component or singleton from that con
 Remove extra manual EntityManager.AddComponentData paths that double-seed things like TimeState / RewindState.
 
 This generally fixes a lot of “nothing moves / nothing updates / sanity systems complaining” issues.
-any non-per frame or hot systems may be de-bursted.
+Any non-per-frame or non-hot systems may be de-bursted.
