@@ -8,8 +8,7 @@ namespace PureDOTS.Systems
     /// Runs early in the time group so subsequent systems can safely append.
     /// </summary>
     [UpdateInGroup(typeof(TimeSystemGroup))]
-    [UpdateAfter(typeof(TimeSettingsConfigSystem))]
-    [UpdateBefore(typeof(RewindCoordinatorSystem))]
+    // Removed invalid UpdateAfter/Before: TimeSettingsConfigSystem and RewindCoordinatorSystem use OrderFirst, so ordering is handled by the group's composition.
     public partial struct TimeLogConfigSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

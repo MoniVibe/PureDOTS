@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Save
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct AutosaveSystem : ISystem
     {
         [BurstCompile]

@@ -13,7 +13,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerSystemGroup))]
-    [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
+    // Removed invalid UpdateAfter: VillagerJobAssignmentSystem runs in WarmPathSystemGroup.
     public partial struct VillageWorkforceDemandSystem : ISystem
     {
         private ComponentLookup<VillagerAlignment> _alignmentLookup;

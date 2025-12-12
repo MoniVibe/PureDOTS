@@ -16,11 +16,17 @@ namespace PureDOTS.Systems.Combat
     [UpdateAfter(typeof(DamageApplicationSystem))]
     public partial struct DeathSystem : ISystem
     {
+        private ComponentLookup<DeathSavingThrow> _deathSavingThrowLookup;
+        private BufferLookup<Injury> _injuryBuffers;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+
+            _deathSavingThrowLookup = state.GetComponentLookup<DeathSavingThrow>(isReadOnly: true);
+            _injuryBuffers = state.GetBufferLookup<Injury>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -38,15 +44,15 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var deathSaveLookup = state.GetComponentLookup<DeathSavingThrow>(true);
-            var injuryBufferLookup = state.GetBufferLookup<Injury>(true);
+            _deathSavingThrowLookup.Update(ref state);
+            _injuryBuffers.Update(ref state);
 
             new ProcessDeathEventsJob
             {
                 CurrentTick = currentTick,
                 Ecb = ecb,
-                DeathSavingThrowLookup = deathSaveLookup,
-                InjuryBuffers = injuryBufferLookup
+                DeathSavingThrowLookup = _deathSavingThrowLookup,
+                InjuryBuffers = _injuryBuffers
             }.ScheduleParallel();
         }
 
@@ -114,12 +120,13 @@ namespace PureDOTS.Systems.Combat
 
                             // Roll for permanent injury
                             float injuryRoll = DeterministicRandom(entity.Index + 1000, CurrentTick);
-                        if (injuryRoll < 0.3f) // 30% chance of permanent injury
-                        {
-                            ApplyPermanentInjury(in entity, entityInQueryIndex, CurrentTick, in Ecb, in InjuryBuffers);
+                            if (injuryRoll < 0.3f) // 30% chance of permanent injury
+                            {
+                                ApplyPermanentInjury(in entity, entityInQueryIndex, CurrentTick, in Ecb, in InjuryBuffers);
+                            }
+                            continue;
                         }
                     }
-                }
                 }
 
                 // Clear processed death events

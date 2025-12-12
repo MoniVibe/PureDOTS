@@ -53,7 +53,7 @@ namespace PureDOTS.Runtime.Operations
                 operation.ValueRW.LastUpdateTick = currentTick;
 
                 // Update grievance level from relations
-                UpdateGrievanceLevel(ref protestParams.ValueRW, op, state);
+                UpdateGrievanceLevel(ref protestParams.ValueRW, op, ref state);
 
                 // Grow crowd size over time
                 GrowCrowdSize(ref protestParams.ValueRW, progress.ValueRO, participants);
@@ -89,10 +89,10 @@ namespace PureDOTS.Runtime.Operations
         private void UpdateGrievanceLevel(
             ref ProtestRiotParams protestParams,
             Operation operation,
-            SystemState state)
+            ref SystemState state)
         {
             // Get relation between initiator and target
-            OrgRelation relation = GetRelation(state, operation.InitiatorOrg, operation.TargetOrg);
+            OrgRelation relation = GetRelation(ref state, operation.InitiatorOrg, operation.TargetOrg);
 
             // Grievance = low attitude + low trust
             float attitudeGrievance = math.max(0f, -relation.Attitude / 100f);
@@ -103,7 +103,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private OrgRelation GetRelation(SystemState state, Entity orgA, Entity orgB)
+        private OrgRelation GetRelation(ref SystemState state, Entity orgA, Entity orgB)
         {
             foreach (var relation in SystemAPI.Query<RefRO<OrgRelation>>()
                 .WithAll<OrgRelationTag>())

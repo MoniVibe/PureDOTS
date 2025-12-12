@@ -23,12 +23,19 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct ProjectileEffectExecutionSystem : ISystem
     {
+        private BufferLookup<DamageEvent> _damageBufferLookup;
+        private BufferLookup<BuffApplicationRequest> _buffRequestBufferLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ProjectileEntity>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _damageBufferLookup = state.GetBufferLookup<DamageEvent>();
+            _buffRequestBufferLookup = state.GetBufferLookup<BuffApplicationRequest>();
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -57,9 +64,9 @@ namespace PureDOTS.Systems.Combat
             // Optional: get physics world for AoE overlap queries
             var hasPhysicsWorld = SystemAPI.TryGetSingleton<PhysicsWorldSingleton>(out var physicsWorld);
 
-            var damageBufferLookup = state.GetBufferLookup<DamageEvent>();
-            var buffRequestBufferLookup = state.GetBufferLookup<BuffApplicationRequest>();
-            var transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _damageBufferLookup.Update(ref state);
+            _buffRequestBufferLookup.Update(ref state);
+            _transformLookup.Update(ref state);
 
             var job = new ProjectileEffectExecutionJob
             {
@@ -70,14 +77,10 @@ namespace PureDOTS.Systems.Combat
                 SpatialConfig = hasSpatialGrid ? spatialConfig : default,
                 HasPhysicsWorld = hasPhysicsWorld,
                 PhysicsWorld = hasPhysicsWorld ? physicsWorld : default,
-                DamageBuffers = damageBufferLookup,
-                BuffRequestBuffers = buffRequestBufferLookup,
-                TransformLookup = transformLookup
+                DamageBuffers = _damageBufferLookup,
+                BuffRequestBuffers = _buffRequestBufferLookup,
+                TransformLookup = _transformLookup
             };
-
-            damageBufferLookup.Update(ref state);
-            buffRequestBufferLookup.Update(ref state);
-            transformLookup.Update(ref state);
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
         }

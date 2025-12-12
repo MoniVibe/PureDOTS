@@ -7,6 +7,7 @@ namespace PureDOTS.Runtime
     /// Helper class for computing collision damage based on material properties.
     /// Centralizes damage calculation logic so it can be easily tuned or changed later.
     /// </summary>
+    [BurstCompile]
     public static class CollisionDamage
     {
         /// <summary>
@@ -61,4 +62,3 @@ namespace PureDOTS.Runtime
         }
     }
 }
-

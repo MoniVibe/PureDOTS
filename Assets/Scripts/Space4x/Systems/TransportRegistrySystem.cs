@@ -53,6 +53,7 @@ namespace Space4X.Systems
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var hasSpatialConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig spatialConfig);

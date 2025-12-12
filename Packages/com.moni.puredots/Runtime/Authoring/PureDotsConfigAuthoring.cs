@@ -18,6 +18,7 @@ namespace PureDOTS.Authoring
     {
         public override void Bake(PureDotsConfigAuthoring authoring)
         {
+            Debug.Log($"[PureDotsConfigBaker] Baking started for {authoring.name}");
             if (authoring.config == null)
             {
                 Debug.LogWarning("PureDotsConfigAuthoring has no config asset assigned.", authoring);

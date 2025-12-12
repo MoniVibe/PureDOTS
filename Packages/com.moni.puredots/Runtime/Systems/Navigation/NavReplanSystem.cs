@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -10,7 +11,7 @@ namespace PureDOTS.Systems.Navigation
     /// Handles cases where entities discover blocked routes and need to replan.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(NavKnowledgeGraphBuilderSystem))]
     public partial struct NavReplanSystem : ISystem
     {
@@ -90,6 +91,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

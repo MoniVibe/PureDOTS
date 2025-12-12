@@ -105,8 +105,8 @@ namespace PureDOTS.Systems.AI
     /// Respects budget and uses spatial hashing for efficient queries.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(WarmPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    [UpdateInGroup(typeof(AISystemGroup))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct AISensorUpdateSystem : ISystem
     {
         private EntityQuery _sensorQuery;
@@ -159,6 +159,7 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _villagerLookup.Update(ref state);
             _resourceLookup.Update(ref state);
             _storehouseLookup.Update(ref state);

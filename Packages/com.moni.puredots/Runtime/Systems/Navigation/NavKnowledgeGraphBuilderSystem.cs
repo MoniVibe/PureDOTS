@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -10,7 +11,7 @@ namespace PureDOTS.Systems.Navigation
     /// When KnownFacts system exists, entities route using their world model (which can be stale or wrong).
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(NavGraphStateUpdateSystem))]
     public partial struct NavKnowledgeGraphBuilderSystem : ISystem
     {
@@ -43,6 +44,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

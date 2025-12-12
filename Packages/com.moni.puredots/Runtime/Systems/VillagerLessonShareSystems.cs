@@ -58,7 +58,7 @@ namespace PureDOTS.Systems
     }
 
     [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
-    [UpdateBefore(typeof(VillagerJobExecutionSystem))]
+    // Removed invalid UpdateBefore: VillagerJobExecutionSystem runs in HotPathSystemGroup; cross-group ordering must be handled via group composition.
     public partial struct VillagerMentorLessonShareSystem : ISystem
     {
         private ComponentLookup<VillagerKnowledge> _knowledgeLookup;
@@ -121,7 +121,7 @@ namespace PureDOTS.Systems
     }
 
     [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
-    [UpdateBefore(typeof(VillagerJobExecutionSystem))]
+    // Removed invalid UpdateBefore: VillagerJobExecutionSystem runs in HotPathSystemGroup; cross-group ordering must be handled via group composition.
     public partial struct VillagerSquadLessonShareSystem : ISystem
     {
         private ComponentLookup<VillagerKnowledge> _knowledgeLookup;

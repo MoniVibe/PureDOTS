@@ -378,7 +378,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(WarmPathSystemGroup))]
-    [UpdateAfter(typeof(VillagerJobRequestSystem))]
+    // Removed invalid UpdateAfter: VillagerJobRequestSystem runs in VillagerJobFixedStepGroup.
     public partial struct VillagerJobAssignmentSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -712,7 +712,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HotPathSystemGroup))]
-    [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
+    // Removed invalid UpdateAfter: VillagerJobAssignmentSystem runs in WarmPathSystemGroup.
     public partial struct VillagerJobExecutionSystem : ISystem
     {
         private ComponentLookup<ResourceSourceState> _resourceStateLookup;
@@ -1215,7 +1215,7 @@ namespace PureDOTS.Systems
 
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
-    [UpdateAfter(typeof(VillagerJobExecutionSystem))]
+    // Removed invalid UpdateAfter: VillagerJobExecutionSystem runs in HotPathSystemGroup; cross-group ordering must be handled by group scheduling.
     public partial struct VillagerJobDeliverySystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -1904,7 +1904,7 @@ namespace PureDOTS.Systems
 
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
-    [UpdateAfter(typeof(VillagerJobAssignmentSystem))]
+    // Removed invalid UpdateAfter: VillagerJobAssignmentSystem executes in WarmPathSystemGroup; cross-group ordering is managed by group scheduling.
     public partial struct VillagerJobDiagnosticsSystem : ISystem
     {
         private EntityQuery _jobQuery;

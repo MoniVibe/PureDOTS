@@ -29,6 +29,10 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
     public partial struct CoreSingletonBootstrapSystem : ISystem
     {
+        private static BlobAssetReference<ResourceTypeIndexBlob> s_ResourceTypeIndexBlob;
+        private static BlobAssetReference<KnowledgeLessonEffectBlob> s_KnowledgeLessonCatalogBlob;
+        private static BlobAssetReference<ResourceRecipeSetBlob> s_ResourceRecipeSetBlob;
+
         public void OnCreate(ref SystemState state)
         {
             EnsureSingletons(state.EntityManager);
@@ -54,57 +58,23 @@ namespace PureDOTS.Systems
 
         public void OnDestroy(ref SystemState state)
         {
-            // Dispose ResourceRecipeSet blobs
-            foreach (var recipeSet in SystemAPI.Query<RefRW<ResourceRecipeSet>>())
+            if (s_ResourceTypeIndexBlob.IsCreated)
             {
-                ref var blob = ref recipeSet.ValueRW.Value;
-                if (blob.IsCreated)
-                {
-                    blob.Dispose();
-                    blob = default;
-                }
+                s_ResourceTypeIndexBlob.Dispose();
+                s_ResourceTypeIndexBlob = default;
             }
 
-            // Dispose ResourceTypeIndex blobs
-            foreach (var typeIndex in SystemAPI.Query<RefRW<ResourceTypeIndex>>())
+            if (s_KnowledgeLessonCatalogBlob.IsCreated)
             {
-                ref var blob = ref typeIndex.ValueRW.Catalog;
-                if (blob.IsCreated)
-                {
-                    blob.Dispose();
-                    blob = default;
-                }
+                s_KnowledgeLessonCatalogBlob.Dispose();
+                s_KnowledgeLessonCatalogBlob = default;
             }
 
-            // Dispose KnowledgeLessonEffectCatalog blobs
-            foreach (var lessonCatalog in SystemAPI.Query<RefRW<KnowledgeLessonEffectCatalog>>())
+            if (s_ResourceRecipeSetBlob.IsCreated)
             {
-                ref var blob = ref lessonCatalog.ValueRW.Blob;
-                if (blob.IsCreated)
-                {
-                    blob.Dispose();
-                    blob = default;
-                }
+                s_ResourceRecipeSetBlob.Dispose();
+                s_ResourceRecipeSetBlob = default;
             }
-
-            // TODO: Re-enable when Narrative namespace is accessible
-            // Dispose NarrativeRegistrySingleton blobs
-            // foreach (var narrativeRegistry in SystemAPI.Query<RefRW<PureDOTS.Runtime.Narrative.NarrativeRegistrySingleton>>())
-            // {
-            //     ref var eventBlob = ref narrativeRegistry.ValueRW.EventRegistry;
-            //     if (eventBlob.IsCreated)
-            //     {
-            //         eventBlob.Dispose();
-            //         eventBlob = default;
-            //     }
-            //
-            //     ref var situationBlob = ref narrativeRegistry.ValueRW.SituationRegistry;
-            //     if (situationBlob.IsCreated)
-            //     {
-            //         situationBlob.Dispose();
-            //         situationBlob = default;
-            //     }
-            // }
         }
 
         public static void EnsureSingletons(EntityManager entityManager)
@@ -345,6 +315,9 @@ namespace PureDOTS.Systems
             EnsureRegistry<AreaEffectRegistry, AreaEffectRegistryEntry>(entityManager, RegistryKind.AreaEffect, "AreaEffectRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
             EnsureRegistry<CultureAlignmentRegistry, CultureAlignmentRegistryEntry>(entityManager, RegistryKind.CultureAlignment, "CultureAlignmentRegistry", RegistryHandleFlags.SupportsSpatialQueries | RegistryHandleFlags.SupportsAIQueries);
 
+            // EnsureResourceTypeIndex(entityManager);
+            // EnsureResourceRecipeSet(entityManager);
+
             EnsureAICommandQueue(entityManager);
 
             EnsureSpatialGridSingleton(entityManager);
@@ -365,8 +338,8 @@ namespace PureDOTS.Systems
 
             EnsureFlowFieldConfig(entityManager);
             EnsureTerrainVersion(entityManager);
-            EnsureResourceTypeIndex(entityManager);
-            EnsureResourceRecipeSet(entityManager);
+            // EnsureResourceTypeIndex(entityManager);
+            // EnsureResourceRecipeSet(entityManager);
             EnsurePhysicsConfig(entityManager);
             // TODO: Re-enable when Narrative namespace is accessible
             // EnsureNarrativeRegistry(entityManager);
@@ -866,9 +839,12 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var blobRef = KnowledgeLessonEffectDefaults.CreateDefaultCatalog();
+            if (!s_KnowledgeLessonCatalogBlob.IsCreated)
+            {
+                s_KnowledgeLessonCatalogBlob = KnowledgeLessonEffectDefaults.CreateDefaultCatalog();
+            }
             var entity = entityManager.CreateEntity(typeof(KnowledgeLessonEffectCatalog));
-            entityManager.SetComponentData(entity, new KnowledgeLessonEffectCatalog { Blob = blobRef });
+            entityManager.SetComponentData(entity, new KnowledgeLessonEffectCatalog { Blob = s_KnowledgeLessonCatalogBlob });
         }
 
         private static void EnsureSkillXpCurveConfig(EntityManager entityManager)
@@ -891,16 +867,18 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var builder = new BlobBuilder(Allocator.Temp);
-            ref var root = ref builder.ConstructRoot<ResourceTypeIndexBlob>();
-            builder.Allocate(ref root.Ids, 0);
-            builder.Allocate(ref root.DisplayNames, 0);
-            builder.Allocate(ref root.Colors, 0);
-            var blob = builder.CreateBlobAssetReference<ResourceTypeIndexBlob>(Allocator.Persistent);
-            builder.Dispose();
+            if (!s_ResourceTypeIndexBlob.IsCreated)
+            {
+                using var builder = new BlobBuilder(Allocator.Temp);
+                ref var root = ref builder.ConstructRoot<ResourceTypeIndexBlob>();
+                builder.Allocate(ref root.Ids, 0);
+                builder.Allocate(ref root.DisplayNames, 0);
+                builder.Allocate(ref root.Colors, 0);
+                s_ResourceTypeIndexBlob = builder.CreateBlobAssetReference<ResourceTypeIndexBlob>(Allocator.Persistent);
+            }
 
             var entity = entityManager.CreateEntity(typeof(ResourceTypeIndex));
-            entityManager.SetComponentData(entity, new ResourceTypeIndex { Catalog = blob });
+            entityManager.SetComponentData(entity, new ResourceTypeIndex { Catalog = s_ResourceTypeIndexBlob });
         }
 
         private static void EnsureResourceRecipeSet(EntityManager entityManager)
@@ -911,15 +889,17 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var builder = new BlobBuilder(Allocator.Temp);
-            ref var root = ref builder.ConstructRoot<ResourceRecipeSetBlob>();
-            builder.Allocate(ref root.Families, 0);
-            builder.Allocate(ref root.Recipes, 0);
-            var blob = builder.CreateBlobAssetReference<ResourceRecipeSetBlob>(Allocator.Persistent);
-            builder.Dispose();
+            if (!s_ResourceRecipeSetBlob.IsCreated)
+            {
+                using var builder = new BlobBuilder(Allocator.Temp);
+                ref var root = ref builder.ConstructRoot<ResourceRecipeSetBlob>();
+                builder.Allocate(ref root.Families, 0);
+                builder.Allocate(ref root.Recipes, 0);
+                s_ResourceRecipeSetBlob = builder.CreateBlobAssetReference<ResourceRecipeSetBlob>(Allocator.Persistent);
+            }
 
             var entity = entityManager.CreateEntity(typeof(ResourceRecipeSet));
-            entityManager.SetComponentData(entity, new ResourceRecipeSet { Value = blob });
+            entityManager.SetComponentData(entity, new ResourceRecipeSet { Value = s_ResourceRecipeSetBlob });
         }
 
         private static void EnsurePhysicsConfig(EntityManager entityManager)
@@ -1196,29 +1176,33 @@ namespace PureDOTS.Systems
         /// </summary>
         private static void EnsureSingleAudioListener()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
+
             var audioListeners = Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
-            
             if (audioListeners.Length == 0)
             {
-                UnityEngine.Debug.LogWarning("[Bootstrap] No AudioListener found in scene. Audio will not work.");
                 return;
             }
 
             if (audioListeners.Length == 1)
             {
-                // Perfect - exactly one listener
                 if (!audioListeners[0].enabled)
                 {
                     audioListeners[0].enabled = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                     UnityEngine.Debug.Log($"[Bootstrap] Enabled AudioListener on {audioListeners[0].gameObject.name}");
+#endif
                 }
                 return;
             }
 
-            // Multiple listeners found - disable all except the first one
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             UnityEngine.Debug.LogWarning($"[Bootstrap] Found {audioListeners.Length} AudioListeners in scene. Unity requires exactly one. Disabling extras.");
-            
-            // Keep the first one enabled (or prefer MainCamera if available)
+#endif
+
             AudioListener activeListener = null;
             foreach (var listener in audioListeners)
             {
@@ -1228,25 +1212,27 @@ namespace PureDOTS.Systems
                     break;
                 }
             }
-            
-            // If no MainCamera listener, use the first one
+
             if (activeListener == null)
             {
                 activeListener = audioListeners[0];
             }
 
-            // Disable all others
             foreach (var listener in audioListeners)
             {
                 if (listener == activeListener)
                 {
                     listener.enabled = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                     UnityEngine.Debug.Log($"[Bootstrap] Keeping AudioListener enabled on {listener.gameObject.name}");
+#endif
                 }
                 else
                 {
                     listener.enabled = false;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                     UnityEngine.Debug.Log($"[Bootstrap] Disabled AudioListener on {listener.gameObject.name}");
+#endif
                 }
             }
         }

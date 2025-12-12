@@ -106,6 +106,8 @@ namespace PureDOTS.Systems
     {
         private EntityQuery _vegetationQuery;
         private TimeAwareController _controller;
+        private ComponentLookup<RainCloudState> _rainCloudStateLookup;
+        private BufferLookup<RainCloudMoistureHistory> _rainHistoryLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -119,6 +121,8 @@ namespace PureDOTS.Systems
             _controller = new TimeAwareController(
                 TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
                 TimeAwareExecutionOptions.SkipWhenPaused);
+            _rainCloudStateLookup = state.GetComponentLookup<RainCloudState>(false);
+            _rainHistoryLookup = state.GetBufferLookup<RainCloudMoistureHistory>(false);
         }
 
         private struct RainCloudCache
@@ -235,29 +239,29 @@ namespace PureDOTS.Systems
                 health.ValueRW = healthRef;
             }
 
-            var rainCloudStateLookup = state.GetComponentLookup<RainCloudState>(false);
-            var rainHistoryLookup = state.GetBufferLookup<RainCloudMoistureHistory>(false);
+            _rainCloudStateLookup.Update(ref state);
+            _rainHistoryLookup.Update(ref state);
             uint tick = context.Time.Tick;
 
             for (int i = 0; i < cloudCache.Length; i++)
             {
                 float used = usage[i];
-                if (!rainCloudStateLookup.HasComponent(cloudCache[i].Entity))
+                if (!_rainCloudStateLookup.HasComponent(cloudCache[i].Entity))
                 {
                     continue;
                 }
 
-                var stateRef = rainCloudStateLookup[cloudCache[i].Entity];
+                var stateRef = _rainCloudStateLookup[cloudCache[i].Entity];
                 if (stateRef.MoistureRemaining > 0f)
                 {
                     stateRef.MoistureRemaining = math.max(0f, stateRef.MoistureRemaining - used);
                 }
 
-                rainCloudStateLookup[cloudCache[i].Entity] = stateRef;
+                _rainCloudStateLookup[cloudCache[i].Entity] = stateRef;
 
-                if (rainHistoryLookup.HasBuffer(cloudCache[i].Entity))
+                if (_rainHistoryLookup.HasBuffer(cloudCache[i].Entity))
                 {
-                    var history = rainHistoryLookup[cloudCache[i].Entity];
+                    var history = _rainHistoryLookup[cloudCache[i].Entity];
                     history.Add(new RainCloudMoistureHistory
                     {
                         Tick = tick,

@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Navigation
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HotPathSystemGroup))]
-    [UpdateAfter(typeof(GroupNavPlannerSystem))]
+    // Removed invalid UpdateAfter: GroupNavPlannerSystem runs in ColdPath; data is consumed next tick.
     public partial struct FormationSteeringSystem : ISystem
     {
         [BurstCompile]

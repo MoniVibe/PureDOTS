@@ -13,6 +13,7 @@ namespace PureDOTS.Systems
     /// Helps scene authors spot missing <c>PureDotsConfigAuthoring</c> / <c>SpatialPartitionAuthoring</c> wiring without
     /// waiting for downstream systems to throw <see cref="InvalidOperationException"/>.
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct BootstrapDiagnosticsSystem : ISystem
     {

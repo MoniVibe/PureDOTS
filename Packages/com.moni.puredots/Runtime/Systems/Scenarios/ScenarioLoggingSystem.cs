@@ -10,7 +10,7 @@ namespace PureDOTS.Systems.Scenarios
     /// Runs once during initialization to report scenario metadata.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
+    // Removed invalid UpdateAfter: CoreSingletonBootstrapSystem lives in TimeSystemGroup, so cross-group ordering must be handled at the group level.
     public partial struct ScenarioLoggingSystem : ISystem
     {
         private EntityQuery _scenarioQuery;
@@ -63,4 +63,3 @@ namespace PureDOTS.Systems.Scenarios
         }
     }
 }
-

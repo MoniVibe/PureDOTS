@@ -85,6 +85,7 @@ namespace Space4X.Registry
         {
             var tick = SystemAPI.GetSingleton<TimeState>().Tick;
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var hasGridConfig = SystemAPI.TryGetSingleton(out SpatialGridConfig gridConfig);

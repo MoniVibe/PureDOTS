@@ -15,9 +15,13 @@ namespace PureDOTS.Systems.Platform
     [UpdateAfter(typeof(PlatformHitResolutionSystem))]
     public partial struct PlatformSegmentDestructionSystem : ISystem
     {
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<PlatformSegmentState>();
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
         }
 
         [BurstCompile]
@@ -25,18 +29,17 @@ namespace PureDOTS.Systems.Platform
         {
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            segmentStatesLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
 
             foreach (var (transform, entity) in SystemAPI.Query<
                 RefRO<LocalTransform>>().WithEntityAccess())
             {
-                if (!segmentStatesLookup.HasBuffer(entity))
+                if (!_segmentStatesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var segmentStates = segmentStatesLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
                 bool needsUpdate = false;
 
                 for (int i = 0; i < segmentStates.Length; i++)

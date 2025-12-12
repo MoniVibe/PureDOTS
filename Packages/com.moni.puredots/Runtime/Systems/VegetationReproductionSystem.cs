@@ -20,6 +20,7 @@ namespace PureDOTS.Systems
     public partial struct VegetationReproductionSystem : ISystem
     {
         private EntityQuery _vegetationQuery;
+        private ComponentLookup<VegetationProduction> _productionLookup;
         private static readonly ProfilerMarker s_UpdateVegetationReproductionMarker = 
             new ProfilerMarker("VegetationReproductionSystem.Update");
 
@@ -37,6 +38,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VegetationSpeciesLookup>();
             state.RequireForUpdate<VegetationSpawnCommandQueue>();
             state.RequireForUpdate(_vegetationQuery);
+            _productionLookup = state.GetComponentLookup<VegetationProduction>(true);
         }
 
         [BurstCompile]
@@ -79,8 +81,7 @@ namespace PureDOTS.Systems
 
                 var spawnCommands = new NativeQueue<VegetationSpawnCommand>(Allocator.TempJob);
 
-                var productionLookup = state.GetComponentLookup<VegetationProduction>(true);
-                productionLookup.Update(ref state);
+                _productionLookup.Update(ref state);
 
                 var job = new UpdateVegetationReproductionJob
                 {
@@ -88,7 +89,7 @@ namespace PureDOTS.Systems
                     CurrentTick = timeState.Tick,
                     SpeciesCatalogBlob = speciesLookup.CatalogBlob,
                     SpawnCommands = spawnCommands.AsParallelWriter(),
-                    ProductionLookup = productionLookup
+                    ProductionLookup = _productionLookup
                 };
 
                 state.Dependency = job.ScheduleParallel(state.Dependency);

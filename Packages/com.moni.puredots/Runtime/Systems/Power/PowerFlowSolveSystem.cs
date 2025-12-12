@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Power
     /// Supply status solving periodically.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    [UpdateInGroup(typeof(PowerSystemGroup))]
     [UpdateAfter(typeof(PowerNetworkBuildSystem))]
     public partial struct PowerFlowSolveSystem : ISystem
     {

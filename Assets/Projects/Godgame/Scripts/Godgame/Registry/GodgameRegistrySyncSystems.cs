@@ -49,6 +49,9 @@ namespace Godgame.Registry
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            state.CompleteDependency();
+            state.EntityManager.CompleteDependencyBeforeRO<VillagerAIState>();
+
             _villagerMirrorLookup.Update(ref state);
             _availabilityLookup.Update(ref state);
             _needsLookup.Update(ref state);

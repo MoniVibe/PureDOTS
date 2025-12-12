@@ -70,16 +70,14 @@ namespace PureDOTS.Authoring.Buffs
             for (int i = 0; i < authoring.buffs.Count; i++)
             {
                 var src = authoring.buffs[i];
-                var entry = new BuffEntry
-                {
-                    BuffId = new FixedString64Bytes(src.buffId),
-                    DisplayName = new FixedString64Bytes(src.displayName),
-                    Category = src.category,
-                    Stacking = src.stacking,
-                    MaxStacks = (byte)math.clamp(src.maxStacks, 1, 255),
-                    BaseDuration = math.max(0f, src.baseDuration),
-                    TickInterval = math.max(0f, src.tickInterval)
-                };
+                ref var entry = ref buffArray[i];
+                entry.BuffId = new FixedString64Bytes(src.buffId);
+                entry.DisplayName = new FixedString64Bytes(src.displayName);
+                entry.Category = src.category;
+                entry.Stacking = src.stacking;
+                entry.MaxStacks = (byte)math.clamp(src.maxStacks, 1, 255);
+                entry.BaseDuration = math.max(0f, src.baseDuration);
+                entry.TickInterval = math.max(0f, src.tickInterval);
 
                 // Bake stat modifiers
                 var modifiers = bb.Allocate(ref entry.StatModifiers, src.statModifiers.Count);
@@ -104,7 +102,6 @@ namespace PureDOTS.Authoring.Buffs
                     };
                 }
 
-                buffArray[i] = entry;
             }
 
             var blob = bb.CreateBlobAssetReference<BuffDefinitionBlob>(Allocator.Persistent);

@@ -11,7 +11,7 @@ namespace PureDOTS.Systems.Input
     /// Uses Unity Physics for raycasts (non-Burst) and spatial grid for box queries when available.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(CopyInputToEcsSystem))]
+    // Removed invalid UpdateAfter: CopyInputToEcsSystem runs in CameraInputSystemGroup; Simulation systems already execute afterward.
     public partial struct SelectionSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

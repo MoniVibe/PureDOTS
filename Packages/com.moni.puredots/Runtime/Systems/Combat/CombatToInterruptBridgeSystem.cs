@@ -12,7 +12,7 @@ namespace PureDOTS.Systems.Combat
     /// Emits interrupts when targets are selected/lost, under attack, etc.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     [UpdateAfter(typeof(TargetSelectionSystem))]
     public partial struct CombatToInterruptBridgeSystem : ISystem
     {

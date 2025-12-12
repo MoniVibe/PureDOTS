@@ -14,7 +14,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HistorySystemGroup))]
-    [UpdateBefore(typeof(TimeHistoryRecordSystem))]
+    // Removed invalid UpdateBefore: TimeHistoryRecordSystem runs in WarmPathSystemGroup.
     public partial struct TimeHistoryPlaybackSystem : ISystem
     {
         [BurstCompile]

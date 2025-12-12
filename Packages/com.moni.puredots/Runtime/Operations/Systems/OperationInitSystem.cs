@@ -45,7 +45,7 @@ namespace PureDOTS.Runtime.Operations
                 }
 
                 // Check if initiator already has an active operation
-                if (HasActiveOperation(state, req.InitiatorOrg))
+                if (HasActiveOperation(ref state, req.InitiatorOrg))
                 {
                     ecb.DestroyEntity(requestEntity);
                     continue;
@@ -107,7 +107,7 @@ namespace PureDOTS.Runtime.Operations
             }
         }
 
-        private bool HasActiveOperation(SystemState state, Entity org)
+        private bool HasActiveOperation(ref SystemState state, Entity org)
         {
             foreach (var operation in SystemAPI.Query<RefRO<Operation>>()
                 .WithAll<OperationTag>())

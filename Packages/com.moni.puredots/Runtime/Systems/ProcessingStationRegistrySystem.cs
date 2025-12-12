@@ -55,6 +55,7 @@ namespace PureDOTS.Systems
 
             _queueLookup.Update(ref state);
             _processorStateLookup.Update(ref state);
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var expectedCount = math.max(8, _stationQuery.CalculateEntityCount());

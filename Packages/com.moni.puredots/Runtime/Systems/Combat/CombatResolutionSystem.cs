@@ -16,11 +16,18 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(HitDetectionSystem))]
     public partial struct CombatResolutionSystem : ISystem
     {
+        private EntityStorageInfoLookup _entityLookup;
+        private ComponentLookup<Health> _healthLookup;
+        private ComponentLookup<CombatStats> _combatStatsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _entityLookup = state.GetEntityStorageInfoLookup();
+            _healthLookup = state.GetComponentLookup<Health>(true);
+            _combatStatsLookup = state.GetComponentLookup<CombatStats>(true);
         }
 
         [BurstCompile]
@@ -38,18 +45,20 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var entityLookup = state.GetEntityStorageInfoLookup();
-            var healthLookup = state.GetComponentLookup<Health>(true);
-            var combatStatsLookup = state.GetComponentLookup<CombatStats>(true);
+            _entityLookup.Update(ref state);
+            _healthLookup.Update(ref state);
+            _combatStatsLookup.Update(ref state);
 
-            new ProcessCombatJob
+            var jobHandle = new ProcessCombatJob
             {
                 CurrentTick = currentTick,
                 Ecb = ecb,
-                EntityLookup = entityLookup,
-                HealthLookup = healthLookup,
-                CombatStatsLookup = combatStatsLookup
-            }.ScheduleParallel();
+                EntityLookup = _entityLookup,
+                HealthLookup = _healthLookup,
+                CombatStatsLookup = _combatStatsLookup
+            }.ScheduleParallel(state.Dependency);
+
+            state.Dependency = jobHandle;
         }
 
         [BurstCompile]

@@ -61,7 +61,7 @@ namespace PureDOTS.Runtime.Operations
                 // Apply relation impacts when discovered
                 if (ritualParams.ValueRO.IsDiscovered == 1)
                 {
-                    ApplyDiscoveryImpacts(state, op, ref progress.ValueRW, ritualParams.ValueRO);
+                    ApplyDiscoveryImpacts(ref state, op, ref progress.ValueRW, ritualParams.ValueRO);
                 }
 
                 // Complete ritual and grant outcomes
@@ -131,7 +131,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void ApplyDiscoveryImpacts(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             ref OperationProgress progress,
             CultRitualParams ritualParams)

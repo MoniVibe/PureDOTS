@@ -15,6 +15,10 @@ namespace PureDOTS.Systems.Mobility
     [UpdateAfter(typeof(MobilityNetworkSystem))]
     public partial struct MobilityPathSystem : ISystem
     {
+        private ComponentLookup<MobilityPathRequest> _requestLookup;
+        private ComponentLookup<MobilityPathResult> _resultLookup;
+        private BufferLookup<MobilityPathWaypoint> _pathLookup;
+
         private struct PathRequestEntry : System.IComparable<PathRequestEntry>
         {
             public Entity Entity;
@@ -37,6 +41,10 @@ namespace PureDOTS.Systems.Mobility
         {
             state.RequireForUpdate<MobilityNetwork>();
             state.RequireForUpdate<TimeState>();
+
+            _requestLookup = state.GetComponentLookup<MobilityPathRequest>(isReadOnly: true);
+            _resultLookup = state.GetComponentLookup<MobilityPathResult>(isReadOnly: false);
+            _pathLookup = state.GetBufferLookup<MobilityPathWaypoint>(isReadOnly: false);
         }
 
         [BurstCompile]
@@ -102,12 +110,9 @@ namespace PureDOTS.Systems.Mobility
                 NativeSortExtension.Sort(requestQueue.AsArray());
             }
 
-            var requestLookup = state.GetComponentLookup<MobilityPathRequest>(isReadOnly: true);
-            var resultLookup = state.GetComponentLookup<MobilityPathResult>(isReadOnly: false);
-            var pathLookup = state.GetBufferLookup<MobilityPathWaypoint>(isReadOnly: false);
-            requestLookup.Update(ref state);
-            resultLookup.Update(ref state);
-            pathLookup.Update(ref state);
+            _requestLookup.Update(ref state);
+            _resultLookup.Update(ref state);
+            _pathLookup.Update(ref state);
 
             using var openList = new NativeList<int>(waypoints.Length, state.WorldUpdateAllocator);
             using var scratchPath = new NativeList<int>(waypoints.Length, state.WorldUpdateAllocator);
@@ -115,14 +120,14 @@ namespace PureDOTS.Systems.Mobility
             for (int i = 0; i < requestQueue.Length; i++)
             {
                 var entry = requestQueue[i];
-                if (!requestLookup.HasComponent(entry.Entity) || !resultLookup.HasComponent(entry.Entity) || !pathLookup.HasBuffer(entry.Entity))
+                if (!_requestLookup.HasComponent(entry.Entity) || !_resultLookup.HasComponent(entry.Entity) || !_pathLookup.HasBuffer(entry.Entity))
                 {
                     continue;
                 }
 
-                var req = requestLookup[entry.Entity];
-                var result = resultLookup[entry.Entity];
-                var path = pathLookup[entry.Entity];
+                var req = _requestLookup[entry.Entity];
+                var result = _resultLookup[entry.Entity];
+                var path = _pathLookup[entry.Entity];
 
                 if (!waypointExists.Contains(req.FromWaypointId) || !waypointExists.Contains(req.ToWaypointId))
                 {
@@ -130,7 +135,7 @@ namespace PureDOTS.Systems.Mobility
                     result.EstimatedCost = 0f;
                     result.HopCount = 0;
                     result.LastUpdateTick = timeState.Tick;
-                    resultLookup[entry.Entity] = result;
+                    _resultLookup[entry.Entity] = result;
                     path.Clear();
                     continue;
                 }
@@ -153,7 +158,7 @@ namespace PureDOTS.Systems.Mobility
                     result.EstimatedCost = cost;
                     result.HopCount = 0;
                     result.LastUpdateTick = timeState.Tick;
-                    resultLookup[entry.Entity] = result;
+                    _resultLookup[entry.Entity] = result;
                     path.Clear();
                     continue;
                 }
@@ -162,7 +167,7 @@ namespace PureDOTS.Systems.Mobility
                 result.EstimatedCost = cost;
                 result.HopCount = path.Length;
                 result.LastUpdateTick = timeState.Tick;
-                resultLookup[entry.Entity] = result;
+                _resultLookup[entry.Entity] = result;
 
                 if (interceptionBuffer.IsCreated)
                 {

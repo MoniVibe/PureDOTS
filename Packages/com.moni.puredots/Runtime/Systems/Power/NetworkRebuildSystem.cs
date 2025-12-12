@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Power
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct NetworkRebuildSystem : ISystem
     {
         [BurstCompile]

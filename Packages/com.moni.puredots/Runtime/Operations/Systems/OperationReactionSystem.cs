@@ -52,13 +52,13 @@ namespace PureDOTS.Runtime.Operations
                     continue;
 
                 // Find radicals/extremists in the target location
-                ProcessRadicalResponses(state, op, ref progress.ValueRW, currentTick);
+                ProcessRadicalResponses(ref state, op, ref progress.ValueRW, currentTick);
             }
         }
 
         [BurstCompile]
         private void ProcessRadicalResponses(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             ref OperationProgress progress,
             uint currentTick)

@@ -12,7 +12,7 @@ namespace PureDOTS.Systems
     /// Handles phase transitions, world freezing, and preview tick scrubbing.
     /// Processes TimeControlCommand entities created by TimeAPI.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(TimeSystemGroup))]
     public partial struct RewindControlSystem : ISystem
     {
         [BurstCompile]

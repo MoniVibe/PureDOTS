@@ -16,6 +16,8 @@ namespace PureDOTS.Systems
     public partial struct VillagerVillageMembershipSystem : ISystem
     {
         private EntityQuery _villageQuery;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
+        private BufferLookup<VillageResidentEntry> _residentBufferLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -26,6 +28,8 @@ namespace PureDOTS.Systems
                 .WithAll<VillageResidentEntry>()
                 .Build();
             state.RequireForUpdate(_villageQuery);
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
+            _residentBufferLookup = state.GetBufferLookup<VillageResidentEntry>(false);
         }
 
         [BurstCompile]
@@ -34,8 +38,8 @@ namespace PureDOTS.Systems
             var villages = _villageQuery.ToEntityArray(state.WorldUpdateAllocator);
             var villageIds = _villageQuery.ToComponentDataArray<PureDOTS.Runtime.Village.VillageId>(state.WorldUpdateAllocator);
             var stats = _villageQuery.ToComponentDataArray<VillageStats>(state.WorldUpdateAllocator);
-            var alignments = state.GetComponentLookup<VillagerAlignment>(true);
-            var residentBufferLookup = state.GetBufferLookup<VillageResidentEntry>(false);
+            _alignmentLookup.Update(ref state);
+            _residentBufferLookup.Update(ref state);
 
             for (int i = 0; i < villages.Length; i++)
             {
@@ -43,17 +47,17 @@ namespace PureDOTS.Systems
                 var villageStat = stats[i];
                 var loyalty = math.clamp(villageStat.Cohesion / 100f, 0f, 1f);
                 float sympathy = 0f;
-                if (alignments.HasComponent(villageEntity))
+                if (_alignmentLookup.HasComponent(villageEntity))
                 {
-                    sympathy = alignments[villageEntity].IntegrityNormalized;
+                    sympathy = _alignmentLookup[villageEntity].IntegrityNormalized;
                 }
 
-                if (!residentBufferLookup.HasBuffer(villageEntity))
+                if (!_residentBufferLookup.HasBuffer(villageEntity))
                 {
                     continue;
                 }
 
-                var residents = residentBufferLookup[villageEntity];
+                var residents = _residentBufferLookup[villageEntity];
                 for (int r = residents.Length - 1; r >= 0; r--)
                 {
                     var resident = residents[r];

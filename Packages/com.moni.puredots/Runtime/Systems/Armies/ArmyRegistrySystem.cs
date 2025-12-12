@@ -38,6 +38,7 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var tick = SystemAPI.GetSingleton<TimeState>().Tick;
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var expected = math.max(1, _armyQuery.CalculateEntityCount());

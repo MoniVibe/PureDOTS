@@ -20,12 +20,15 @@ namespace PureDOTS.Systems.Combat
     [UpdateInGroup(typeof(CombatSystemGroup))]
     public partial struct ProjectileCollisionSystem : ISystem
     {
+        private BufferLookup<PlayEffectRequest> _impactFxBufferLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ProjectileEntity>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _impactFxBufferLookup = state.GetBufferLookup<PlayEffectRequest>();
         }
 
         [BurstCompile]
@@ -55,7 +58,7 @@ namespace PureDOTS.Systems.Combat
 
             // Get presentation request hub for impact FX
             var hasPresentationHub = SystemAPI.TryGetSingletonEntity<PresentationRequestHub>(out var hubEntity);
-            var impactFxBufferLookup = state.GetBufferLookup<PlayEffectRequest>();
+            _impactFxBufferLookup.Update(ref state);
 
             var job = new ProjectileCollisionJob
             {
@@ -64,10 +67,9 @@ namespace PureDOTS.Systems.Combat
                 Ecb = ecb,
                 HasPresentationHub = hasPresentationHub,
                 HubEntity = hasPresentationHub ? hubEntity : Entity.Null,
-                ImpactFxBuffers = impactFxBufferLookup
+                ImpactFxBuffers = _impactFxBufferLookup
             };
 
-            impactFxBufferLookup.Update(ref state);
             state.Dependency = job.ScheduleParallel(state.Dependency);
         }
 

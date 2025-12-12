@@ -15,11 +15,16 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct PlatformLoadoutValidationSystem : ISystem
     {
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HullDefRegistry>();
             state.RequireForUpdate<ModuleDefRegistry>();
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
         }
 
         [BurstCompile]
@@ -36,15 +41,13 @@ namespace PureDOTS.Systems.Platform
             ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
             ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            moduleSlotsLookup.Update(ref state);
-            segmentStatesLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
 
             foreach (var (hullRef, entity) in SystemAPI.Query<
                 RefRO<PlatformHullRef>>().WithEntityAccess())
             {
-                if (!moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                if (!_moduleSlotsLookup.HasBuffer(entity) || !_segmentStatesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
@@ -55,8 +58,8 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
-                var moduleSlots = moduleSlotsLookup[entity];
-                var segmentStates = segmentStatesLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
                 if (hullDef.SegmentCount == 0)
                 {

@@ -16,11 +16,20 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct PlatformHitResolutionSystem : ISystem
     {
+        private BufferLookup<PlatformHitEvent> _hitEventsLookup;
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+        private BufferLookup<PlatformArcInstance> _arcInstancesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HullDefRegistry>();
             state.RequireForUpdate<ModuleDefRegistry>();
+            _hitEventsLookup = state.GetBufferLookup<PlatformHitEvent>(false);
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            _arcInstancesLookup = state.GetBufferLookup<PlatformArcInstance>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -37,34 +46,32 @@ namespace PureDOTS.Systems.Platform
             ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
             ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
-            var hitEventBufferLookup = SystemAPI.GetBufferLookup<PlatformHitEvent>(false);
-            hitEventBufferLookup.Update(ref state);
-
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            var arcInstancesLookup = state.GetBufferLookup<PlatformArcInstance>(true);
-            moduleSlotsLookup.Update(ref state);
-            segmentStatesLookup.Update(ref state);
-            arcInstancesLookup.Update(ref state);
+            _hitEventsLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
+            _arcInstancesLookup.Update(ref state);
 
             foreach (var (transform, hullRef, entity) in SystemAPI.Query<
                 RefRO<LocalTransform>,
                 RefRO<PlatformHullRef>>().WithEntityAccess())
             {
-                if (!hitEventBufferLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity) || !arcInstancesLookup.HasBuffer(entity))
+                if (!_hitEventsLookup.HasBuffer(entity) ||
+                    !_moduleSlotsLookup.HasBuffer(entity) ||
+                    !_segmentStatesLookup.HasBuffer(entity) ||
+                    !_arcInstancesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var hitEvents = hitEventBufferLookup[entity];
+                var hitEvents = _hitEventsLookup[entity];
                 if (hitEvents.Length == 0)
                 {
                     continue;
                 }
 
-                var moduleSlots = moduleSlotsLookup[entity];
-                var segmentStates = segmentStatesLookup[entity];
-                var arcInstances = arcInstancesLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
+                var arcInstances = _arcInstancesLookup[entity];
 
                 var hullId = hullRef.ValueRO.HullId;
                 if (hullId < 0 || hullId >= hullRegistryBlob.Hulls.Length)

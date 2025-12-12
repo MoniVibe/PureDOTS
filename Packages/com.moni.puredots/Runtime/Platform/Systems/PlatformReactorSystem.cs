@@ -14,10 +14,15 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct PlatformReactorSystem : ISystem
     {
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ModuleDefRegistry>();
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(isReadOnly: true);
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(isReadOnly: false);
         }
 
         [BurstCompile]
@@ -32,23 +37,21 @@ namespace PureDOTS.Systems.Platform
 
             ref var moduleRegistryBlob = ref moduleRegistry.Registry.Value;
 
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            moduleSlotsLookup.Update(ref state);
-            segmentStatesLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
 
             foreach (var (_, entity) in SystemAPI.Query<RefRO<PlatformTag>>()
                 .WithAll<PlatformModuleSlot>()
                 .WithAll<PlatformSegmentState>()
                 .WithEntityAccess())
             {
-                if (!moduleSlotsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                if (!_moduleSlotsLookup.HasBuffer(entity) || !_segmentStatesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var moduleSlots = moduleSlotsLookup[entity];
-                var segmentStates = segmentStatesLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
 
                 UpdateReactorFlags(
                     ref segmentStates,

@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Mobility
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(MobilityNetworkBootstrapSystem))]
+    // Removed invalid UpdateAfter: MobilityNetworkBootstrapSystem executes in InitializationSystemGroup, so cross-group ordering isn't supported.
     public partial struct MobilityNetworkSystem : ISystem
     {
         [BurstCompile]

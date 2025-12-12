@@ -15,7 +15,7 @@ namespace PureDOTS.Systems.Navigation
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(NavGraphHierarchySystem))]
-    [UpdateBefore(typeof(PathfindingSystem))]
+    // Removed invalid UpdateBefore: PathfindingSystem runs in WarmPathSystemGroup.
     public partial struct MultiModalRoutePlannerSystem : ISystem
     {
         [BurstCompile]

@@ -1,5 +1,8 @@
 using PureDOTS.Input;
 using Unity.Entities;
+#if UNITY_EDITOR
+using UnityEngine;
+#endif
 
 namespace PureDOTS.Systems
 {
@@ -38,6 +41,9 @@ namespace PureDOTS.Systems
         private void ProcessSaveLoadCommand(ref SystemState state, SaveLoadCommandEvent command)
         {
             const string quickSaveSlot = "quick.sav";
+#if UNITY_EDITOR
+            UnityEngine.Debug.Log($"[SaveLoadSystem] Received {command.Kind} targeting slot '{quickSaveSlot}'.");
+#endif
 
             switch (command.Kind)
             {
@@ -54,6 +60,10 @@ namespace PureDOTS.Systems
         }
     }
 }
+
+
+
+
 
 
 

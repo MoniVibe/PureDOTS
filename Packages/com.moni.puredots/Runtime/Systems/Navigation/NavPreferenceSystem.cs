@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Armies;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -12,7 +13,7 @@ namespace PureDOTS.Systems.Navigation
     /// Civilian caravans, military couriers, raiders, etc. get different preference profiles.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
     [UpdateBefore(typeof(PathRequestSystem))]
     public partial struct NavPreferenceSystem : ISystem
     {
@@ -70,6 +71,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

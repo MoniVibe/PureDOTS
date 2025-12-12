@@ -15,11 +15,14 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct LoadoutValidationSystem : ISystem
     {
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HullDefRegistry>();
             state.RequireForUpdate<ModuleDefRegistry>();
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
         }
 
         [BurstCompile]
@@ -35,17 +38,16 @@ namespace PureDOTS.Systems.Platform
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(false);
-            moduleSlotsLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
 
             foreach (var (hullRef, kind, entity) in SystemAPI.Query<RefRO<PlatformHullRef>, RefRO<PlatformKind>>().WithEntityAccess())
             {
-                if (!moduleSlotsLookup.HasBuffer(entity))
+                if (!_moduleSlotsLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var moduleSlots = moduleSlotsLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
                 var hullId = hullRef.ValueRO.HullId;
                 ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
                 
@@ -86,22 +88,20 @@ namespace PureDOTS.Systems.Platform
             var moduleCount = 0;
             var validSlotIndices = new NativeHashSet<short>(16, Allocator.Temp);
             var validCellIndices = new NativeHashSet<int>(16, Allocator.Temp);
-            var needsUpdate = false;
 
             for (int i = 0; i < moduleSlots.Length; i++)
             {
                 var slot = moduleSlots[i];
                 
-                if (slot.ModuleId < 0 || slot.ModuleId >= moduleRegistry.Modules.Length)
-                {
-                    if (slot.State != ModuleSlotState.Destroyed)
+                    if (slot.ModuleId < 0 || slot.ModuleId >= moduleRegistry.Modules.Length)
                     {
-                        slot.State = ModuleSlotState.Offline;
-                        moduleSlots[i] = slot;
-                        needsUpdate = true;
+                        if (slot.State != ModuleSlotState.Destroyed)
+                        {
+                            slot.State = ModuleSlotState.Offline;
+                            moduleSlots[i] = slot;
+                        }
+                        continue;
                     }
-                    continue;
-                }
 
                 ref var moduleDef = ref moduleRegistry.Modules[slot.ModuleId];
                 var isValid = true;
@@ -152,7 +152,6 @@ namespace PureDOTS.Systems.Platform
                     {
                         slot.State = ModuleSlotState.Offline;
                         moduleSlots[i] = slot;
-                        needsUpdate = true;
                     }
                     continue;
                 }
@@ -177,14 +176,6 @@ namespace PureDOTS.Systems.Platform
                     {
                         stats.HangarCapacity += ExtractHangarCapacity(ref moduleDef.CapabilityPayload);
                     }
-                }
-            }
-
-            if (hullDef.LayoutMode == PlatformLayoutMode.MassOnly)
-            {
-                if (totalMass > hullDef.MassCapacity || moduleCount > hullDef.MaxModuleCount)
-                {
-                    needsUpdate = true;
                 }
             }
 

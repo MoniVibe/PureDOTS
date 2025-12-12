@@ -14,12 +14,15 @@ namespace PureDOTS.Runtime.Economy.Policies
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct TaxCollectionSystem : ISystem
     {
+        private FixedString64Bytes _incomeTaxReason;
+        private FixedString64Bytes _businessTaxReason;
+        private FixedString128Bytes _taxCollectionChannel;
+
         private ComponentLookup<TaxPolicy> _taxPolicyLookup;
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
         private ComponentLookup<BusinessBalance> _businessBalanceLookup;
         private ComponentLookup<VillageTreasury> _villageTreasuryLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -27,6 +30,10 @@ namespace PureDOTS.Runtime.Economy.Policies
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _businessBalanceLookup = state.GetComponentLookup<BusinessBalance>(false);
             _villageTreasuryLookup = state.GetComponentLookup<VillageTreasury>(false);
+
+            _incomeTaxReason = "income_tax";
+            _businessTaxReason = "business_tax";
+            _taxCollectionChannel = "tax_collection";
         }
 
         [BurstCompile]
@@ -83,8 +90,8 @@ namespace PureDOTS.Runtime.Economy.Policies
                         treasury,
                         taxAmount,
                         TransactionType.Expense,
-                        new FixedString64Bytes("income_tax"),
-                        new FixedString128Bytes("tax_collection")
+                        _incomeTaxReason,
+                        _taxCollectionChannel
                     );
                 }
             }
@@ -103,8 +110,8 @@ namespace PureDOTS.Runtime.Economy.Policies
                         treasury,
                         taxAmount,
                         TransactionType.Expense,
-                        new FixedString64Bytes("business_tax"),
-                        new FixedString128Bytes("tax_collection")
+                        _businessTaxReason,
+                        _taxCollectionChannel
                     );
                 }
             }

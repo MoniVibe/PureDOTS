@@ -21,6 +21,10 @@ namespace PureDOTS.Systems
     public partial struct VegetationDecaySystem : ISystem
     {
         private EntityQuery _decayableQuery;
+        private ComponentLookup<VegetationProduction> _productionLookup;
+        private ComponentLookup<VegetationParent> _parentLookup;
+        private ComponentLookup<VegetationReproduction> _reproductionLookup;
+        private ComponentLookup<TimeBubbleMembership> _bubbleMembershipLookup;
         private static readonly ProfilerMarker s_UpdateVegetationDecayMarker = 
             new ProfilerMarker("VegetationDecaySystem.Update");
 
@@ -40,6 +44,10 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VegetationSpeciesLookup>();
             state.RequireForUpdate<VegetationSpawnCommandQueue>();
             state.RequireForUpdate(_decayableQuery);
+            _productionLookup = state.GetComponentLookup<VegetationProduction>(true);
+            _parentLookup = state.GetComponentLookup<VegetationParent>(true);
+            _reproductionLookup = state.GetComponentLookup<VegetationReproduction>(false);
+            _bubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(true);
         }
 
         [BurstCompile]
@@ -88,8 +96,10 @@ namespace PureDOTS.Systems
 
                 var spawnCommands = new NativeQueue<VegetationSpawnCommand>(Allocator.TempJob);
 
-                var productionLookup = state.GetComponentLookup<VegetationProduction>(true);
-                productionLookup.Update(ref state);
+                _productionLookup.Update(ref state);
+                _parentLookup.Update(ref state);
+                _reproductionLookup.Update(ref state);
+                _bubbleMembershipLookup.Update(ref state);
 
                 var job = new UpdateVegetationDecayJob
                 {
@@ -98,12 +108,12 @@ namespace PureDOTS.Systems
                     Ecb = ecb.AsParallelWriter(),
                     SpeciesCatalogBlob = speciesLookup.CatalogBlob,
                     SpawnCommands = spawnCommands.AsParallelWriter(),
-                    ParentLookup = state.GetComponentLookup<VegetationParent>(true),
-                    ReproductionLookup = state.GetComponentLookup<VegetationReproduction>(false),
-                    ProductionLookup = productionLookup,
+                    ParentLookup = _parentLookup,
+                    ReproductionLookup = _reproductionLookup,
+                    ProductionLookup = _productionLookup,
                     TickTimeState = tickTimeState,
                     TimeState = timeState,
-                    BubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(true)
+                    BubbleMembershipLookup = _bubbleMembershipLookup
                 };
 
                 state.Dependency = job.ScheduleParallel(state.Dependency);

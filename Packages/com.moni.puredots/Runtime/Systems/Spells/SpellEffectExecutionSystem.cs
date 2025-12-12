@@ -16,7 +16,7 @@ namespace PureDOTS.Systems.Spells
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [UpdateAfter(typeof(CombatSystemGroup))]
+    // Removed invalid UpdateAfter: CombatSystemGroup runs under PhysicsSystemGroup.
     public partial struct SpellEffectExecutionSystem : ISystem
     {
         private BufferLookup<ActiveBuff> _activeBuffLookup;

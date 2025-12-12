@@ -55,17 +55,17 @@ namespace PureDOTS.Runtime.Operations
                 if (outcome == OperationState.Ended)
                 {
                     // Finalize operation
-                    FinalizeOperation(state, op, progress.ValueRO, ref operation.ValueRW, ecb, currentTick);
+                    FinalizeOperation(ref state, op, progress.ValueRO, ref operation.ValueRW, ecb, currentTick);
 
                     // Check for transformation into another operation
-                    CheckTransformation(state, op, progress.ValueRO, ecb, currentTick);
+                    CheckTransformation(ref state, op, progress.ValueRO, ecb, currentTick);
                 }
             }
         }
 
         [BurstCompile]
         private void FinalizeOperation(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             OperationProgress progress,
             ref Operation operationRW,
@@ -73,7 +73,7 @@ namespace PureDOTS.Runtime.Operations
             uint currentTick)
         {
             // Update relations based on outcome
-            UpdateRelations(state, operation, progress, ecb, currentTick);
+            UpdateRelations(ref state, operation, progress, ecb, currentTick);
 
             // Mark operation as ended
             operationRW.State = OperationState.Ended;
@@ -87,7 +87,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void UpdateRelations(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             OperationProgress progress,
             EntityCommandBuffer ecb,
@@ -215,7 +215,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void CheckTransformation(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             OperationProgress progress,
             EntityCommandBuffer ecb,
@@ -233,7 +233,7 @@ namespace PureDOTS.Runtime.Operations
                     // Successful siege may transform into occupation
                     if (progress.SuccessMetric > 0.8f)
                     {
-                        TransformToOccupation(state, operation, ecb, currentTick);
+                        TransformToOccupation(ref state, operation, ecb, currentTick);
                     }
                     break;
 
@@ -247,7 +247,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void TransformToOccupation(
-            SystemState state,
+            ref SystemState state,
             Operation originalOperation,
             EntityCommandBuffer ecb,
             uint currentTick)

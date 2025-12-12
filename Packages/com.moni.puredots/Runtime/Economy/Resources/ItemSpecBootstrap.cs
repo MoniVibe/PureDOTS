@@ -11,6 +11,8 @@ namespace PureDOTS.Runtime.Economy.Resources
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct ItemSpecBootstrapSystem : ISystem
     {
+        private static BlobAssetReference<ItemSpecCatalogBlob> s_ItemCatalogBlob;
+
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
@@ -22,17 +24,40 @@ namespace PureDOTS.Runtime.Economy.Resources
             // No-op after initial bootstrap
         }
 
+        public void OnDestroy(ref SystemState state)
+        {
+            DisposeCatalog(ref state);
+        }
+
         private static void EnsureCatalog(ref SystemState state)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(ItemSpecCatalog));
-            if (query.CalculateEntityCount() > 0)
+            Entity existingEntity = Entity.Null;
+            var hasExistingEntity = false;
+            using (var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ItemSpecCatalog>()))
             {
-                query.Dispose();
+                if (query.TryGetSingleton(out ItemSpecCatalog existing))
+                {
+                    existingEntity = query.GetSingletonEntity();
+                    hasExistingEntity = true;
+                    if (!s_ItemCatalogBlob.IsCreated && existing.Catalog.IsCreated)
+                    {
+                        s_ItemCatalogBlob = existing.Catalog;
+                    }
+                    if (s_ItemCatalogBlob.IsCreated)
+                    {
+                        state.EntityManager.SetComponentData(existingEntity, new ItemSpecCatalog { Catalog = s_ItemCatalogBlob });
+                        return;
+                    }
+                }
+            }
+
+            if (s_ItemCatalogBlob.IsCreated)
+            {
+                AssignCatalogToEntity(existingEntity, hasExistingEntity, ref state);
                 return;
             }
-            query.Dispose();
 
-            var builder = new BlobBuilder(Allocator.Temp);
+            using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<ItemSpecCatalogBlob>();
 
             // Create default items
@@ -177,11 +202,57 @@ namespace PureDOTS.Runtime.Economy.Resources
 
             items.Dispose();
 
-            var blob = builder.CreateBlobAssetReference<ItemSpecCatalogBlob>(Allocator.Persistent);
-            builder.Dispose();
+            s_ItemCatalogBlob = builder.CreateBlobAssetReference<ItemSpecCatalogBlob>(Allocator.Persistent);
+            var catalogComponent = new ItemSpecCatalog { Catalog = s_ItemCatalogBlob };
 
-            var entity = state.EntityManager.CreateEntity(typeof(ItemSpecCatalog));
-            state.EntityManager.SetComponentData(entity, new ItemSpecCatalog { Catalog = blob });
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(ItemSpecCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
+        }
+
+        private static void DisposeCatalog(ref SystemState state)
+        {
+            using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ItemSpecCatalog>());
+            if (query.TryGetSingleton(out ItemSpecCatalog catalog))
+            {
+                var entity = query.GetSingletonEntity();
+                catalog.Catalog = default;
+                if (state.EntityManager.Exists(entity))
+                {
+                    state.EntityManager.SetComponentData(entity, catalog);
+                }
+            }
+
+            if (s_ItemCatalogBlob.IsCreated)
+            {
+                s_ItemCatalogBlob.Dispose();
+                s_ItemCatalogBlob = default;
+            }
+        }
+
+        private static void AssignCatalogToEntity(Entity existingEntity, bool hasExistingEntity, ref SystemState state)
+        {
+            if (!s_ItemCatalogBlob.IsCreated)
+            {
+                return;
+            }
+
+            var catalogComponent = new ItemSpecCatalog { Catalog = s_ItemCatalogBlob };
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(ItemSpecCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
         }
     }
 }

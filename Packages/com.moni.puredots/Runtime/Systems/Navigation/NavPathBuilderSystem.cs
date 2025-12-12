@@ -10,7 +10,7 @@ namespace PureDOTS.Systems.Navigation
     /// Refines high-level segments (MoveRegion, UseTransport) into local grid paths where needed.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(MultiModalRoutePlannerSystem))]
     public partial struct NavPathBuilderSystem : ISystem
     {
@@ -52,6 +52,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

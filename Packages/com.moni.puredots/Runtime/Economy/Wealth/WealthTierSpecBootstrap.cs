@@ -10,6 +10,8 @@ namespace PureDOTS.Runtime.Economy.Wealth
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct WealthTierSpecBootstrapSystem : ISystem
     {
+        private static BlobAssetReference<WealthTierSpecCatalogBlob> s_WealthCatalogBlob;
+
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
@@ -21,17 +23,40 @@ namespace PureDOTS.Runtime.Economy.Wealth
             // No-op after initial bootstrap
         }
 
+        public void OnDestroy(ref SystemState state)
+        {
+            DisposeCatalog(ref state);
+        }
+
         private static void EnsureCatalog(ref SystemState state)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(WealthTierSpecCatalog));
-            if (!query.IsEmptyIgnoreFilter)
+            Entity existingEntity = Entity.Null;
+            var hasExistingEntity = false;
+            using (var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WealthTierSpecCatalog>()))
             {
-                query.Dispose();
+                if (query.TryGetSingleton(out WealthTierSpecCatalog existing))
+                {
+                    existingEntity = query.GetSingletonEntity();
+                    hasExistingEntity = true;
+                    if (!s_WealthCatalogBlob.IsCreated && existing.Catalog.IsCreated)
+                    {
+                        s_WealthCatalogBlob = existing.Catalog;
+                    }
+                    if (s_WealthCatalogBlob.IsCreated)
+                    {
+                        state.EntityManager.SetComponentData(existingEntity, new WealthTierSpecCatalog { Catalog = s_WealthCatalogBlob });
+                        return;
+                    }
+                }
+            }
+
+            if (s_WealthCatalogBlob.IsCreated)
+            {
+                AssignCatalogToEntity(existingEntity, hasExistingEntity, ref state);
                 return;
             }
-            query.Dispose();
 
-            var builder = new BlobBuilder(Allocator.Temp);
+            using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<WealthTierSpecCatalogBlob>();
 
             // Create default wealth tiers
@@ -105,12 +130,57 @@ namespace PureDOTS.Runtime.Economy.Wealth
 
             tiers.Dispose();
 
-            var blob = builder.CreateBlobAssetReference<WealthTierSpecCatalogBlob>(Allocator.Persistent);
-            builder.Dispose();
+            s_WealthCatalogBlob = builder.CreateBlobAssetReference<WealthTierSpecCatalogBlob>(Allocator.Persistent);
+            var catalogComponent = new WealthTierSpecCatalog { Catalog = s_WealthCatalogBlob };
 
-            var entity = state.EntityManager.CreateEntity(typeof(WealthTierSpecCatalog));
-            state.EntityManager.SetComponentData(entity, new WealthTierSpecCatalog { Catalog = blob });
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(WealthTierSpecCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
+        }
+
+        private static void DisposeCatalog(ref SystemState state)
+        {
+            using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<WealthTierSpecCatalog>());
+            if (query.TryGetSingleton(out WealthTierSpecCatalog catalog))
+            {
+                var entity = query.GetSingletonEntity();
+                catalog.Catalog = default;
+                if (state.EntityManager.Exists(entity))
+                {
+                    state.EntityManager.SetComponentData(entity, catalog);
+                }
+            }
+
+            if (s_WealthCatalogBlob.IsCreated)
+            {
+                s_WealthCatalogBlob.Dispose();
+                s_WealthCatalogBlob = default;
+            }
+        }
+
+        private static void AssignCatalogToEntity(Entity existingEntity, bool hasExistingEntity, ref SystemState state)
+        {
+            if (!s_WealthCatalogBlob.IsCreated)
+            {
+                return;
+            }
+
+            var catalogComponent = new WealthTierSpecCatalog { Catalog = s_WealthCatalogBlob };
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(WealthTierSpecCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
         }
     }
 }
-

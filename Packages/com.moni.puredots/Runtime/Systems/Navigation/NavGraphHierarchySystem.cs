@@ -10,7 +10,7 @@ namespace PureDOTS.Systems.Navigation
     /// Links LocalGrid, RegionGraph, and TransitGraph entities.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(RegionGraphBuildSystem))]
     [UpdateAfter(typeof(TransitGraphBuildSystem))]
     public partial struct NavGraphHierarchySystem : ISystem
@@ -95,6 +95,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

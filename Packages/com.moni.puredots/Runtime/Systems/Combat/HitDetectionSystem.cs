@@ -18,11 +18,20 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct HitDetectionSystem : ISystem
     {
+        private EntityStorageInfoLookup _entityLookup;
+        private ComponentLookup<CombatStats> _combatStatsLookup;
+        private ComponentLookup<Weapon> _weaponLookup;
+        private ComponentLookup<BuffStatCache> _buffLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _entityLookup = state.GetEntityStorageInfoLookup();
+            _combatStatsLookup = state.GetComponentLookup<CombatStats>(true);
+            _weaponLookup = state.GetComponentLookup<Weapon>(true);
+            _buffLookup = state.GetComponentLookup<BuffStatCache>(true);
         }
 
         [BurstCompile]
@@ -37,19 +46,21 @@ namespace PureDOTS.Systems.Combat
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var currentTick = timeState.Tick;
 
-            var entityLookup = state.GetEntityStorageInfoLookup();
-            var combatStatsLookup = state.GetComponentLookup<CombatStats>(true);
-            var weaponLookup = state.GetComponentLookup<Weapon>(true);
-            var buffLookup = state.GetComponentLookup<BuffStatCache>(true);
+            _entityLookup.Update(ref state);
+            _combatStatsLookup.Update(ref state);
+            _weaponLookup.Update(ref state);
+            _buffLookup.Update(ref state);
 
-            new ProcessAttacksJob
+            var jobHandle = new ProcessAttacksJob
             {
                 CurrentTick = currentTick,
-                EntityLookup = entityLookup,
-                CombatStatsLookup = combatStatsLookup,
-                WeaponLookup = weaponLookup,
-                BuffLookup = buffLookup
-            }.ScheduleParallel();
+                EntityLookup = _entityLookup,
+                CombatStatsLookup = _combatStatsLookup,
+                WeaponLookup = _weaponLookup,
+                BuffLookup = _buffLookup
+            }.ScheduleParallel(state.Dependency);
+
+            state.Dependency = jobHandle;
         }
 
         [BurstCompile]

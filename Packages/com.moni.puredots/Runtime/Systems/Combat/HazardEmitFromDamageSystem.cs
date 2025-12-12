@@ -24,6 +24,8 @@ namespace PureDOTS.Systems.Combat
         // Instance fields for Burst-compatible FixedString patterns (initialized in OnCreate)
         private FixedString32Bytes _reactorIdPattern;
         private FixedString32Bytes _engineIdPattern;
+        private BufferLookup<HazardSlice> _sliceBufferLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
 
         public void OnCreate(ref SystemState state)
         {
@@ -33,6 +35,8 @@ namespace PureDOTS.Systems.Combat
             // Initialize FixedString patterns here (OnCreate is not Burst-compiled)
             _reactorIdPattern = new FixedString32Bytes("reactor");
             _engineIdPattern = new FixedString32Bytes("engine");
+            _sliceBufferLookup = state.GetBufferLookup<HazardSlice>();
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -59,19 +63,16 @@ namespace PureDOTS.Systems.Combat
 
             var sliceBuffer = SystemAPI.GetBuffer<HazardSlice>(sliceBufferEntity);
 
-            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-            transformLookup.Update(ref state);
-
-            var sliceBufferLookup = state.GetBufferLookup<HazardSlice>();
-            sliceBufferLookup.Update(ref state);
+            _transformLookup.Update(ref state);
+            _sliceBufferLookup.Update(ref state);
 
             var job = new HazardEmitFromDamageJob
             {
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
                 SliceBufferEntity = sliceBufferEntity,
-                SliceBufferLookup = sliceBufferLookup,
-                TransformLookup = transformLookup,
+                SliceBufferLookup = _sliceBufferLookup,
+                TransformLookup = _transformLookup,
                 ReactorIdPattern = _reactorIdPattern,
                 EngineIdPattern = _engineIdPattern
             };

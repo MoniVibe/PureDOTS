@@ -120,6 +120,11 @@ namespace PureDOTS.Systems.Miracles
             float rainRadius = 15f;
             float moistureIncrease = 0.3f;
 
+            if (rainRadius <= 0f || moistureIncrease <= 0f)
+            {
+                return;
+            }
+
             // Find environment cells within radius and increase moisture
             // For demo, we'll use a simple spatial query or update EnvCellDynamic if available
             // This is a simplified version - full implementation would query the environment grid

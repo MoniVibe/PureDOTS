@@ -154,60 +154,6 @@ namespace PureDOTS.Tests
         }
 
         [Test]
-        public void LegacyMigrationSystem_ConvertsVillageAlignment()
-        {
-            var village = _entityManager.CreateEntity(typeof(VillageAlignmentState));
-            _entityManager.SetComponentData(village, new VillageAlignmentState
-            {
-                LawChaos = 0.4f,
-                Materialism = -0.3f,
-                Integrity = 0.2f
-            });
-
-            UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
-
-            Assert.IsFalse(_entityManager.HasComponent<VillageAlignmentState>(village));
-            Assert.IsTrue(_entityManager.HasComponent<VillagerAlignment>(village));
-
-            var alignment = _entityManager.GetComponentData<VillagerAlignment>(village);
-            Assert.AreEqual(30, alignment.MoralAxis);
-            Assert.AreEqual(40, alignment.OrderAxis);
-            Assert.AreEqual(20, alignment.PurityAxis);
-        }
-
-        [Test]
-        public void LegacyMigrationSystem_ConvertsGuildAlignment()
-        {
-            var guild = _entityManager.CreateEntity(typeof(GuildAlignment));
-            _entityManager.SetComponentData(guild, new GuildAlignment
-            {
-                MoralAxis = -40,
-                OrderAxis = 60,
-                PurityAxis = -10,
-                Outlook1 = 1,
-                Outlook2 = 2,
-                Outlook3 = 3,
-                IsFanatic = true
-            });
-
-            UpdateSystem<LegacyAggregateAlignmentMigrationSystem>();
-
-            Assert.IsFalse(_entityManager.HasComponent<GuildAlignment>(guild));
-            Assert.IsTrue(_entityManager.HasComponent<VillagerAlignment>(guild));
-            Assert.IsTrue(_entityManager.HasComponent<GuildOutlookSet>(guild));
-
-            var alignment = _entityManager.GetComponentData<VillagerAlignment>(guild);
-            Assert.AreEqual(-40, alignment.MoralAxis);
-            Assert.AreEqual(60, alignment.OrderAxis);
-            Assert.AreEqual(-10, alignment.PurityAxis);
-
-            var outlooks = _entityManager.GetComponentData<GuildOutlookSet>(guild);
-            Assert.AreEqual(1, outlooks.Outlook1);
-            Assert.AreEqual(2, outlooks.Outlook2);
-            Assert.AreEqual(3, outlooks.Outlook3);
-            Assert.IsTrue(outlooks.IsFanatic);
-        }
-
         private void UpdateSystem<T>() where T : unmanaged, ISystem
         {
             var handle = _world.GetOrCreateSystem<T>();

@@ -9,7 +9,7 @@ namespace PureDOTS.Systems.Mining
     /// </summary>
 #if UNITY_EDITOR
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateBefore(typeof(BeginInitializationEntityCommandBufferSystem.Singleton))]
+    // Removed invalid UpdateBefore: the target was an ECB singleton, not a system; default initialization order is sufficient.
     public partial struct MiningDiagnosticsBootstrapSystem : ISystem
     {
         [BurstCompile]
@@ -48,6 +48,10 @@ namespace PureDOTS.Systems.Mining
     }
 #endif
 }
+
+
+
+
 
 
 

@@ -15,11 +15,14 @@ namespace PureDOTS.Systems.Buffs
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     public partial struct BuffApplicationSystem : ISystem
     {
+        private ComponentLookup<BuffStatCache> _buffStatCacheLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _buffStatCacheLookup = state.GetComponentLookup<BuffStatCache>(true);
         }
 
         [BurstCompile]
@@ -47,22 +50,24 @@ namespace PureDOTS.Systems.Buffs
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var buffStatCacheLookup = state.GetComponentLookup<BuffStatCache>();
+            _buffStatCacheLookup.Update(ref state);
 
-            new ProcessBuffRequestsJob
+            var buffHandle = new ProcessBuffRequestsJob
             {
                 Catalog = catalogRef.Blob,
                 CurrentTick = currentTick,
                 Ecb = ecb,
-                BuffStatCacheLookup = buffStatCacheLookup
-            }.ScheduleParallel();
+                BuffStatCacheLookup = _buffStatCacheLookup
+            }.ScheduleParallel(state.Dependency);
 
             // Process dispel requests
-            new ProcessDispelRequestsJob
+            var dispelHandle = new ProcessDispelRequestsJob
             {
                 CurrentTick = currentTick,
                 Ecb = ecb
-            }.ScheduleParallel();
+            }.ScheduleParallel(buffHandle);
+
+            state.Dependency = dispelHandle;
         }
 
         [BurstCompile]
@@ -73,7 +78,7 @@ namespace PureDOTS.Systems.Buffs
 
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
-            public ComponentLookup<BuffStatCache> BuffStatCacheLookup;
+            [ReadOnly] public ComponentLookup<BuffStatCache> BuffStatCacheLookup;
 
             void Execute(
                 Entity entity,

@@ -26,6 +26,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
         private ComponentLookup<ResourceDeposit> _resourceDepositLookup;
         private NativeArray<ResourceTypeMetadata> _typeMetadata;
+        private EntityQuery _recipeSetQuery;
         private bool _loggedInitialState;
 
         [BurstCompile]
@@ -54,6 +55,7 @@ namespace PureDOTS.Systems
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
             _resourceDepositLookup = state.GetComponentLookup<ResourceDeposit>(true);
             _typeMetadata = default;
+            _recipeSetQuery = state.GetEntityQuery(ComponentType.ReadOnly<ResourceRecipeSet>());
             _loggedInitialState = false;
         }
 
@@ -94,6 +96,7 @@ namespace PureDOTS.Systems
             EnsureTypeMetadata(ref state, catalog);
 
             _reservationLookup.Update(ref state);
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
             _resourceDepositLookup.Update(ref state);
             var resourceSourceEntityCount = _resourceQuery.CalculateEntityCount();
@@ -291,7 +294,14 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var recipeSet = SystemAPI.GetSingleton<ResourceRecipeSet>().Value;
+            using var recipeSetEntities = _recipeSetQuery.ToEntityArray(Allocator.Temp);
+            if (recipeSetEntities.Length != 1)
+            {
+                UnityEngine.Debug.LogError($"[ResourceRegistrySystem] Expected exactly 1 ResourceRecipeSet singleton, found {recipeSetEntities.Length}. Resource metadata will not be initialized.");
+                return;
+            }
+
+            var recipeSet = state.EntityManager.GetComponentData<ResourceRecipeSet>(recipeSetEntities[0]).Value;
             if (!recipeSet.IsCreated)
             {
                 return;

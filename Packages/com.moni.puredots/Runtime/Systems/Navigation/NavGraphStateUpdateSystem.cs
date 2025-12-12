@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Navigation;
+using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -10,7 +11,7 @@ namespace PureDOTS.Systems.Navigation
     /// Updates edge states based on dynamic world conditions.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(NavGraphHierarchySystem))]
     public partial struct NavGraphStateUpdateSystem : ISystem
     {
@@ -57,6 +58,10 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
+
+
+
+
 
 
 

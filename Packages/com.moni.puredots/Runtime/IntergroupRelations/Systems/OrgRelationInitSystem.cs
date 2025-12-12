@@ -25,6 +25,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
     public partial struct OrgRelationInitSystem : ISystem
     {
         private EntityQuery _orgRelationQuery;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -32,6 +33,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
             _orgRelationQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<OrgRelation>(),
                 ComponentType.ReadOnly<OrgRelationTag>());
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
         }
 
         [BurstCompile]
@@ -39,6 +41,8 @@ namespace PureDOTS.Runtime.IntergroupRelations
         {
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
                 return;
+            
+            _alignmentLookup.Update(ref state);
             
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
@@ -65,7 +69,7 @@ namespace PureDOTS.Runtime.IntergroupRelations
                     var relationEntity = ecb.CreateEntity();
                     ecb.AddComponent(relationEntity, new OrgRelationTag());
 
-                    var baseline = ComputeBaselineRelation(ref state, orgA, orgB);
+                    var baseline = ComputeBaselineRelation(in _alignmentLookup, orgA, orgB);
 
                     ecb.AddComponent(relationEntity, new OrgRelation
                     {
@@ -109,11 +113,11 @@ namespace PureDOTS.Runtime.IntergroupRelations
             return true;
         }
 
-        private static BaselineRelation ComputeBaselineRelation(ref SystemState state, Entity orgA, Entity orgB)
+        private static BaselineRelation ComputeBaselineRelation(
+            in ComponentLookup<VillagerAlignment> alignmentLookup,
+            Entity orgA,
+            Entity orgB)
         {
-            var alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
-            alignmentLookup.Update(ref state);
-            
             var alignmentA = alignmentLookup.HasComponent(orgA) 
                 ? alignmentLookup[orgA] 
                 : new VillagerAlignment();

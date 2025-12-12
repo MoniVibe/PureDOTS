@@ -94,7 +94,7 @@ namespace PureDOTS.Systems.Aggregates
         [BurstCompile]
         public partial struct SyncBandStatsJob : IJobEntity
         {
-            public ComponentLookup<VillagerAlignment> AlignmentLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<VillagerAlignment> AlignmentLookup;
             [ReadOnly] public ComponentLookup<VillagerMood> MoodLookup;
             [ReadOnly] public ComponentLookup<VillagerAttributes> AttributesLookup;
             [ReadOnly] public ComponentLookup<VillagerNeeds> NeedsLookup;
@@ -179,7 +179,7 @@ namespace PureDOTS.Systems.Aggregates
         [BurstCompile]
         public partial struct SyncGuildStatsJob : IJobEntity
         {
-            public ComponentLookup<VillagerAlignment> AlignmentLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<VillagerAlignment> AlignmentLookup;
             [ReadOnly] public ComponentLookup<VillagerMood> MoodLookup;
             [ReadOnly] public ComponentLookup<VillagerAttributes> AttributesLookup;
             [ReadOnly] public ComponentLookup<SkillSet> SkillSetLookup;

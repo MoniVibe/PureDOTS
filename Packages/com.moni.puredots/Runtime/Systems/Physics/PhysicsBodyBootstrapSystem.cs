@@ -135,18 +135,16 @@ namespace PureDOTS.Systems.Physics
 
     /// <summary>
     /// System group for physics-related systems.
-    /// Runs before the main physics simulation group.
+    /// Runs at the start of the main physics simulation group.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(Unity.Physics.Systems.PhysicsSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Physics.Systems.PhysicsSystemGroup), OrderFirst = true)]
     public partial class PhysicsPreSyncSystemGroup : ComponentSystemGroup { }
 
     /// <summary>
     /// System group for post-physics event processing.
-    /// Runs after the main physics simulation group.
+    /// Runs at the end of the main physics simulation group.
     /// </summary>
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(Unity.Physics.Systems.PhysicsSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Physics.Systems.PhysicsSystemGroup), OrderLast = true)]
     public partial class PhysicsPostEventSystemGroup : ComponentSystemGroup { }
 }
 

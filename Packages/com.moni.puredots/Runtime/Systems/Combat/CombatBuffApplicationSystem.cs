@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Buffs;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Systems.Combat
@@ -16,11 +17,14 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(HitDetectionSystem))]
     public partial struct CombatBuffApplicationSystem : ISystem
     {
+        private ComponentLookup<BuffStatCache> _buffStatCacheLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _buffStatCacheLookup = state.GetComponentLookup<BuffStatCache>(true);
         }
 
         [BurstCompile]
@@ -35,21 +39,23 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var buffCacheLookup = state.GetComponentLookup<BuffStatCache>();
+            _buffStatCacheLookup.Update(ref state);
 
             // Ensure entities in combat have BuffStatCache if they have active buffs
-            new EnsureBuffCacheJob
+            var jobHandle = new EnsureBuffCacheJob
             {
                 Ecb = ecb,
-                BuffStatCacheLookup = buffCacheLookup
-            }.ScheduleParallel();
+                BuffStatCacheLookup = _buffStatCacheLookup
+            }.ScheduleParallel(state.Dependency);
+
+            state.Dependency = jobHandle;
         }
 
         [BurstCompile]
         public partial struct EnsureBuffCacheJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter Ecb;
-            public ComponentLookup<BuffStatCache> BuffStatCacheLookup;
+            [ReadOnly] public ComponentLookup<BuffStatCache> BuffStatCacheLookup;
 
             void Execute(
                 Entity entity,

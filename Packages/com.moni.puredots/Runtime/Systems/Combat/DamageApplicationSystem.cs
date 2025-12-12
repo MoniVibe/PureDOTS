@@ -18,11 +18,20 @@ namespace PureDOTS.Systems.Combat
     [UpdateInGroup(typeof(CombatSystemGroup))]
     public partial struct DamageApplicationSystem : ISystem
     {
+        private ComponentLookup<BuffStatCache> _buffLookup;
+        private ComponentLookup<ArmorValue> _armorLookup;
+        private ComponentLookup<Resistance> _resistanceLookup;
+        private ComponentLookup<Shield> _shieldLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _buffLookup = state.GetComponentLookup<BuffStatCache>(true);
+            _armorLookup = state.GetComponentLookup<ArmorValue>(true);
+            _resistanceLookup = state.GetComponentLookup<Resistance>(true);
+            _shieldLookup = state.GetComponentLookup<Shield>(false);
         }
 
         [BurstCompile]
@@ -40,25 +49,27 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var buffLookup = state.GetComponentLookup<BuffStatCache>(true);
-            var armorLookup = state.GetComponentLookup<ArmorValue>(true);
-            var resistanceLookup = state.GetComponentLookup<Resistance>(true);
-            var shieldLookup = state.GetComponentLookup<Shield>();
+            _buffLookup.Update(ref state);
+            _armorLookup.Update(ref state);
+            _resistanceLookup.Update(ref state);
+            _shieldLookup.Update(ref state);
 
-            new ProcessDamageEventsJob
+            var damageHandle = new ProcessDamageEventsJob
             {
                 CurrentTick = currentTick,
                 Ecb = ecb,
-                BuffLookup = buffLookup,
-                ArmorLookup = armorLookup,
-                ResistanceLookup = resistanceLookup,
-                ShieldLookup = shieldLookup
-            }.ScheduleParallel();
+                BuffLookup = _buffLookup,
+                ArmorLookup = _armorLookup,
+                ResistanceLookup = _resistanceLookup,
+                ShieldLookup = _shieldLookup
+            }.ScheduleParallel(state.Dependency);
 
-            new ProcessHealEventsJob
+            var healHandle = new ProcessHealEventsJob
             {
                 CurrentTick = currentTick
-            }.ScheduleParallel();
+            }.ScheduleParallel(damageHandle);
+
+            state.Dependency = healHandle;
         }
 
         [BurstCompile]

@@ -17,12 +17,16 @@ namespace PureDOTS.Systems
     public partial struct VillageOutlookBootstrapSystem : ISystem
     {
         private EntityQuery _villageQuery;
+        private ComponentLookup<VillagerAlignment> _alignmentLookup;
+        private ComponentLookup<VillageOutlook> _outlookLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _villageQuery = state.GetEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Village.VillageId>());
             state.RequireForUpdate(_villageQuery);
+            _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(true);
+            _outlookLookup = state.GetComponentLookup<VillageOutlook>();
         }
 
         [BurstCompile]
@@ -71,20 +75,20 @@ namespace PureDOTS.Systems
                 }
             }
 
-            var alignments = state.GetComponentLookup<VillagerAlignment>(true);
-            var outlooks = state.GetComponentLookup<VillageOutlook>();
+            _alignmentLookup.Update(ref state);
+            _outlookLookup.Update(ref state);
 
             foreach (var (villageId, entity) in SystemAPI.Query<RefRO<PureDOTS.Runtime.Village.VillageId>>().WithEntityAccess())
             {
-                if (!outlooks.HasComponent(entity))
+                if (!_outlookLookup.HasComponent(entity))
                 {
                     continue;
                 }
 
                 var flags = VillageOutlookFlags.None;
-                if (alignments.HasComponent(entity))
+                if (_alignmentLookup.HasComponent(entity))
                 {
-                    var alignment = alignments[entity];
+                    var alignment = _alignmentLookup[entity];
                     if (alignment.MaterialismNormalized > 0.25f)
                     {
                         flags |= VillageOutlookFlags.Materialistic;
@@ -103,9 +107,9 @@ namespace PureDOTS.Systems
                     }
                 }
 
-                var outlook = outlooks[entity];
+                var outlook = _outlookLookup[entity];
                 outlook.Flags = flags;
-                outlooks[entity] = outlook;
+                _outlookLookup[entity] = outlook;
             }
         }
 

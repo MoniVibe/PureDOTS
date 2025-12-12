@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.WorldSim
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct GlobalClimateSystem : ISystem
     {
         [BurstCompile]

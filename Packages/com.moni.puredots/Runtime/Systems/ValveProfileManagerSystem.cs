@@ -10,7 +10,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
+    // Removed invalid UpdateAfter: CoreSingletonBootstrapSystem runs in TimeSystemGroup; cross-group order must be set at group composition.
     public partial struct ValveProfileManagerSystem : ISystem
     {
         [BurstCompile]

@@ -5,6 +5,7 @@ using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Systems.Performance;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Systems.Villager
@@ -52,7 +53,7 @@ namespace PureDOTS.Systems.Villager
                 return;
             }
 
-            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+            var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             // Process villagers that need schedule evaluation
             foreach (var (needs, cadence, importance, entity) in
@@ -97,6 +98,7 @@ namespace PureDOTS.Systems.Villager
             }
 
             ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }

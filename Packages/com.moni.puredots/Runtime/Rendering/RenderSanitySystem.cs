@@ -2,6 +2,9 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Rendering;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace PureDOTS.Rendering
 {
@@ -11,7 +14,7 @@ namespace PureDOTS.Rendering
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.Default)]
+    [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
     public partial struct RenderSanitySystem : ISystem
     {
         private EntityQuery _materialMeshInfoQuery;
@@ -26,18 +29,24 @@ namespace PureDOTS.Rendering
             _renderKeyQuery = state.GetEntityQuery(ComponentType.ReadOnly<RenderKey>());
         }
 
+
         public void OnUpdate(ref SystemState state)
         {
-            if (!Application.isPlaying)
-                return;
+#if UNITY_EDITOR
+            var diagnosticsEnabled = RenderSanityDebugSettings.LogsEnabled;
+#else
+            const bool diagnosticsEnabled = false;
+#endif
 
             if (_renderKeyQuery.IsEmptyIgnoreFilter)
             {
-                if (!_warnedNoKeys)
+#if UNITY_EDITOR
+                if (diagnosticsEnabled && !_warnedNoKeys)
                 {
                     Debug.LogWarning("[PureDOTS.Rendering] No RenderKey entities found; render pipeline is idle.");
                     _warnedNoKeys = true;
                 }
+#endif
                 _warned = false;
                 return;
             }
@@ -55,11 +64,13 @@ namespace PureDOTS.Rendering
 
             if (visibleSimEntities == 0)
             {
-                if (!_warnedNoVisible)
+#if UNITY_EDITOR
+                if (diagnosticsEnabled && !_warnedNoVisible)
                 {
                     Debug.LogError("[PureDOTS.Rendering] RenderKey entities exist but none are marked visible (RenderFlags.Visible == 0).");
                     _warnedNoVisible = true;
                 }
+#endif
                 return;
             }
 
@@ -76,4 +87,55 @@ namespace PureDOTS.Rendering
             Debug.LogWarning("[PureDOTS.Rendering] Visible RenderKey entities detected but no MaterialMeshInfo present. Check ApplyRenderCatalogSystem and render bootstrap.");
         }
     }
+
+#if UNITY_EDITOR
+    static class RenderSanityDebugSettings
+    {
+        const string MenuPath = "PureDOTS/Debug/Rendering/Enable Render Sanity Logs";
+        const string EditorPrefKey = "PureDOTS.Rendering.RenderSanity.EnableLogs";
+
+        static bool _initialized;
+        static bool _enabled;
+
+        static void EnsureInitialized()
+        {
+            if (_initialized)
+                return;
+
+            _enabled = EditorPrefs.GetBool(EditorPrefKey, false);
+            Menu.SetChecked(MenuPath, _enabled);
+            _initialized = true;
+        }
+
+        public static bool LogsEnabled
+        {
+            get
+            {
+                EnsureInitialized();
+                return _enabled;
+            }
+            set
+            {
+                EnsureInitialized();
+                _enabled = value;
+                EditorPrefs.SetBool(EditorPrefKey, value);
+                Menu.SetChecked(MenuPath, value);
+            }
+        }
+
+        [MenuItem(MenuPath)]
+        static void ToggleLogs()
+        {
+            LogsEnabled = !LogsEnabled;
+        }
+
+        [MenuItem(MenuPath, true)]
+        static bool ValidateToggle()
+        {
+            EnsureInitialized();
+            Menu.SetChecked(MenuPath, _enabled);
+            return true;
+        }
+    }
+#endif
 }

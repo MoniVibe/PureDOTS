@@ -16,7 +16,7 @@ namespace PureDOTS.Systems.Social
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(RelationPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: RelationPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct PoliticalDecisionSystem : ISystem
     {
         [BurstCompile]

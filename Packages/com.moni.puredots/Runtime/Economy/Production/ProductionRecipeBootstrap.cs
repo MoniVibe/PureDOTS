@@ -8,10 +8,11 @@ namespace PureDOTS.Runtime.Economy.Production
     /// Bootstraps the ProductionRecipe catalog singleton with default recipes.
     /// Creates a default catalog if none exists.
     /// </summary>
-    // [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct ProductionRecipeBootstrapSystem : ISystem
     {
+        private static BlobAssetReference<ProductionRecipeCatalogBlob> s_RecipeCatalogBlob;
+
         public void OnCreate(ref SystemState state)
         {
             EnsureCatalog(ref state);
@@ -23,17 +24,40 @@ namespace PureDOTS.Runtime.Economy.Production
             // No-op after initial bootstrap
         }
 
+        public void OnDestroy(ref SystemState state)
+        {
+            DisposeCatalog(ref state);
+        }
+
         private static void EnsureCatalog(ref SystemState state)
         {
-            var query = state.EntityManager.CreateEntityQuery(typeof(ProductionRecipeCatalog));
-            if (query.CalculateEntityCount() > 0)
+            Entity existingEntity = Entity.Null;
+            var hasExistingEntity = false;
+            using (var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ProductionRecipeCatalog>()))
             {
-                query.Dispose();
+                if (query.TryGetSingleton(out ProductionRecipeCatalog existing))
+                {
+                    existingEntity = query.GetSingletonEntity();
+                    hasExistingEntity = true;
+                    if (!s_RecipeCatalogBlob.IsCreated && existing.Catalog.IsCreated)
+                    {
+                        s_RecipeCatalogBlob = existing.Catalog;
+                    }
+                    if (s_RecipeCatalogBlob.IsCreated)
+                    {
+                        state.EntityManager.SetComponentData(existingEntity, new ProductionRecipeCatalog { Catalog = s_RecipeCatalogBlob });
+                        return;
+                    }
+                }
+            }
+
+            if (s_RecipeCatalogBlob.IsCreated)
+            {
+                AssignCatalogToEntity(existingEntity, hasExistingEntity, ref state);
                 return;
             }
-            query.Dispose();
 
-            var builder = new BlobBuilder(Allocator.Temp);
+            using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<ProductionRecipeCatalogBlob>();
 
             // Create recipe data structures
@@ -140,12 +164,57 @@ namespace PureDOTS.Runtime.Economy.Production
             }
             recipeData.Dispose();
 
-            var blob = builder.CreateBlobAssetReference<ProductionRecipeCatalogBlob>(Allocator.Persistent);
-            builder.Dispose();
+            s_RecipeCatalogBlob = builder.CreateBlobAssetReference<ProductionRecipeCatalogBlob>(Allocator.Persistent);
+            var catalogComponent = new ProductionRecipeCatalog { Catalog = s_RecipeCatalogBlob };
 
-            var entity = state.EntityManager.CreateEntity(typeof(ProductionRecipeCatalog));
-            state.EntityManager.SetComponentData(entity, new ProductionRecipeCatalog { Catalog = blob });
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(ProductionRecipeCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
+        }
+
+        private static void DisposeCatalog(ref SystemState state)
+        {
+            using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ProductionRecipeCatalog>());
+            if (query.TryGetSingleton(out ProductionRecipeCatalog catalog))
+            {
+                var entity = query.GetSingletonEntity();
+                catalog.Catalog = default;
+                if (state.EntityManager.Exists(entity))
+                {
+                    state.EntityManager.SetComponentData(entity, catalog);
+                }
+            }
+
+            if (s_RecipeCatalogBlob.IsCreated)
+            {
+                s_RecipeCatalogBlob.Dispose();
+                s_RecipeCatalogBlob = default;
+            }
+        }
+
+        private static void AssignCatalogToEntity(Entity existingEntity, bool hasExistingEntity, ref SystemState state)
+        {
+            if (!s_RecipeCatalogBlob.IsCreated)
+            {
+                return;
+            }
+
+            var catalogComponent = new ProductionRecipeCatalog { Catalog = s_RecipeCatalogBlob };
+            if (hasExistingEntity && state.EntityManager.Exists(existingEntity))
+            {
+                state.EntityManager.SetComponentData(existingEntity, catalogComponent);
+            }
+            else
+            {
+                var entity = state.EntityManager.CreateEntity(typeof(ProductionRecipeCatalog));
+                state.EntityManager.SetComponentData(entity, catalogComponent);
+            }
         }
     }
 }
-

@@ -10,7 +10,7 @@ namespace PureDOTS.Systems.Ships
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
+    // Removed invalid UpdateAfter: CoreSingletonBootstrapSystem executes in TimeSystemGroup; ordering is handled at group composition.
     public partial struct CarrierModuleBootstrapSystem : ISystem
     {
         [BurstCompile]

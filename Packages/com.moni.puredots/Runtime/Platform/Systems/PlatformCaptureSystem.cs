@@ -23,11 +23,18 @@ namespace PureDOTS.Systems.Platform
     [UpdateAfter(typeof(PlatformBoardingResolutionSystem))]
     public partial struct PlatformCaptureSystem : ISystem
     {
+        private BufferLookup<SegmentControl> _segmentControlsLookup;
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HullDefRegistry>();
             state.RequireForUpdate<ModuleDefRegistry>();
+            _segmentControlsLookup = state.GetBufferLookup<SegmentControl>(isReadOnly: true);
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(isReadOnly: true);
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -46,12 +53,9 @@ namespace PureDOTS.Systems.Platform
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            var segmentControlsLookup = state.GetBufferLookup<SegmentControl>(true);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(true);
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
-            segmentControlsLookup.Update(ref state);
-            segmentStatesLookup.Update(ref state);
-            moduleSlotsLookup.Update(ref state);
+            _segmentControlsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
 
             foreach (var (hullRef, boardingState, entity) in SystemAPI.Query<
                 RefRO<PlatformHullRef>,
@@ -68,14 +72,16 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
-                if (!segmentControlsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity))
+                if (!_segmentControlsLookup.HasBuffer(entity) ||
+                    !_segmentStatesLookup.HasBuffer(entity) ||
+                    !_moduleSlotsLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var segmentControls = segmentControlsLookup[entity];
-                var segmentStates = segmentStatesLookup[entity];
-                var moduleSlots = moduleSlotsLookup[entity];
+                var segmentControls = _segmentControlsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
 
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
 

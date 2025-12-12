@@ -17,7 +17,7 @@ namespace PureDOTS.Systems.Mining
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(VillagerJobFixedStepGroup))]
-    [UpdateAfter(typeof(VillagerJobExecutionSystem))]
+    // Removed invalid UpdateAfter: VillagerJobExecutionSystem runs in HotPathSystemGroup; cross-group ordering must be handled via group scheduling.
     public partial struct VillagerMiningSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -492,4 +492,3 @@ namespace PureDOTS.Systems.Mining
         }
     }
 }
-

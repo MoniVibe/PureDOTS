@@ -80,21 +80,19 @@ namespace PureDOTS.Authoring.Spells
             for (int i = 0; i < authoring.spells.Count; i++)
             {
                 var src = authoring.spells[i];
-                var entry = new SpellEntry
-                {
-                    SpellId = new FixedString64Bytes(src.spellId),
-                    DisplayName = new FixedString64Bytes(src.displayName),
-                    School = src.school,
-                    CastType = src.castType,
-                    TargetType = src.targetType,
-                    ManaCost = src.manaCost,
-                    Cooldown = src.cooldown,
-                    CastTime = src.castTime,
-                    Range = src.range,
-                    AreaRadius = src.areaRadius,
-                    RequiredEnlightenment = (byte)src.requiredEnlightenment,
-                    RequiredSkillLevel = (byte)src.requiredSkillLevel
-                };
+                ref var entry = ref spellArray[i];
+                entry.SpellId = new FixedString64Bytes(src.spellId);
+                entry.DisplayName = new FixedString64Bytes(src.displayName);
+                entry.School = src.school;
+                entry.CastType = src.castType;
+                entry.TargetType = src.targetType;
+                entry.ManaCost = src.manaCost;
+                entry.Cooldown = src.cooldown;
+                entry.CastTime = src.castTime;
+                entry.Range = src.range;
+                entry.AreaRadius = src.areaRadius;
+                entry.RequiredEnlightenment = (byte)src.requiredEnlightenment;
+                entry.RequiredSkillLevel = (byte)src.requiredSkillLevel;
 
                 // Bake prerequisites
                 var prereqs = bb.Allocate(ref entry.Prerequisites, src.prerequisites.Count);
@@ -122,7 +120,6 @@ namespace PureDOTS.Authoring.Spells
                     };
                 }
 
-                spellArray[i] = entry;
             }
 
             var blob = bb.CreateBlobAssetReference<SpellDefinitionBlob>(Allocator.Persistent);

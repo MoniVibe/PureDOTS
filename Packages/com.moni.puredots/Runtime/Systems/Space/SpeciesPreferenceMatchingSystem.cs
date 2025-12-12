@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Space
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [UpdateAfter(typeof(PlanetAppealSystem))]
+    // Removed invalid UpdateAfter: PlanetAppealSystem runs in EnvironmentSystemGroup.
     public partial struct SpeciesPreferenceMatchingSystem : ISystem
     {
         [BurstCompile]

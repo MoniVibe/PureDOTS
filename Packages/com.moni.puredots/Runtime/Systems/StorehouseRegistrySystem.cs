@@ -77,6 +77,7 @@ namespace PureDOTS.Systems
             _reservationItemsLookup.Update(ref state);
             _capacityLookup.Update(ref state);
             _inventoryItemsLookup.Update(ref state);
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var expectedCount = math.max(16, _storehouseQuery.CalculateEntityCount());

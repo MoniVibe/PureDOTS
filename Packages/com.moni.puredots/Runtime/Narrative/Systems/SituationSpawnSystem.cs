@@ -59,7 +59,6 @@ namespace PureDOTS.Systems.Narrative
                 var request = spawnRequests[i];
                 
                 // Find archetype in registry
-                var archetypeFound = false;
                 if (registry.SituationRegistry.IsCreated)
                 {
                     ref var situationRegistry = ref registry.SituationRegistry.Value;
@@ -68,8 +67,6 @@ namespace PureDOTS.Systems.Narrative
                         ref var archetype = ref situationRegistry.Archetypes[j];
                         if (archetype.SituationId.Value == request.SituationId.Value)
                         {
-                            archetypeFound = true;
-                            
                             // Create situation instance entity
                             var situationEntity = state.EntityManager.CreateEntity();
                             

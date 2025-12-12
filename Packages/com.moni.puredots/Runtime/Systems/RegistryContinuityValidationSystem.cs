@@ -19,6 +19,7 @@ namespace PureDOTS.Systems
         private BufferLookup<RegistryDirectoryEntry> _directoryLookup;
         private BufferLookup<RegistryContinuityParticipant> _participantsLookup;
         private BufferLookup<ContinuityValidationReport> _reportLookup;
+        private EntityQuery _participantsQuery;
 
         public void OnCreate(ref SystemState state)
         {
@@ -30,6 +31,7 @@ namespace PureDOTS.Systems
             _directoryLookup = state.GetBufferLookup<RegistryDirectoryEntry>(isReadOnly: true);
             _participantsLookup = state.GetBufferLookup<RegistryContinuityParticipant>(isReadOnly: true);
             _reportLookup = state.GetBufferLookup<ContinuityValidationReport>(isReadOnly: false);
+            _participantsQuery = state.GetEntityQuery(ComponentType.ReadOnly<RegistryContinuityParticipants>());
         }
 
         public void OnUpdate(ref SystemState state)
@@ -240,13 +242,12 @@ namespace PureDOTS.Systems
             ref int failureCount)
         {
             // Find the participants singleton
-            var participantsQuery = state.GetEntityQuery(ComponentType.ReadOnly<RegistryContinuityParticipants>());
-            if (participantsQuery.IsEmptyIgnoreFilter)
+            if (_participantsQuery.IsEmptyIgnoreFilter)
             {
                 return;
             }
 
-            var participantsEntity = participantsQuery.GetSingletonEntity();
+            var participantsEntity = _participantsQuery.GetSingletonEntity();
             if (!_participantsLookup.HasBuffer(participantsEntity))
             {
                 return;

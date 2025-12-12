@@ -16,9 +16,15 @@ namespace PureDOTS.Systems.Platform
     [UpdateAfter(typeof(PlatformSegmentDestructionSystem))]
     public partial struct PlatformReactorCriticalSystem : ISystem
     {
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+        private BufferLookup<PlatformModuleSlot> _moduleSlotsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<PlatformSegmentState>();
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
+            _moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -27,21 +33,19 @@ namespace PureDOTS.Systems.Platform
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             var random = new Unity.Mathematics.Random((uint)SystemAPI.Time.ElapsedTime + 1);
 
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            var moduleSlotsLookup = state.GetBufferLookup<PlatformModuleSlot>(true);
-            segmentStatesLookup.Update(ref state);
-            moduleSlotsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
+            _moduleSlotsLookup.Update(ref state);
 
             foreach (var (transform, entity) in SystemAPI.Query<
                 RefRO<LocalTransform>>().WithEntityAccess())
             {
-                if (!segmentStatesLookup.HasBuffer(entity) || !moduleSlotsLookup.HasBuffer(entity))
+                if (!_segmentStatesLookup.HasBuffer(entity) || !_moduleSlotsLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var segmentStates = segmentStatesLookup[entity];
-                var moduleSlots = moduleSlotsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
+                var moduleSlots = _moduleSlotsLookup[entity];
                 var platformEntity = entity;
 
                 CheckReactorFailures(

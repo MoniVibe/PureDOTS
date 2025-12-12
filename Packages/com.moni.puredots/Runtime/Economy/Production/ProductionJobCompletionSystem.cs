@@ -16,6 +16,9 @@ namespace PureDOTS.Runtime.Economy.Production
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ProductionJobCompletionSystem : ISystem
     {
+        private FixedString64Bytes _wageReason;
+        private FixedString128Bytes _productionJobChannel;
+
         private ComponentLookup<BusinessProduction> _productionLookup;
         private ComponentLookup<BusinessInventory> _businessInventoryLookup;
         private ComponentLookup<BusinessBalance> _businessBalanceLookup;
@@ -24,7 +27,6 @@ namespace PureDOTS.Runtime.Economy.Production
         private ComponentLookup<Inventory> _inventoryLookup;
         private BufferLookup<InventoryItem> _itemBufferLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -36,6 +38,9 @@ namespace PureDOTS.Runtime.Economy.Production
             _jobBufferLookup = state.GetBufferLookup<ProductionJob>(false);
             _inventoryLookup = state.GetComponentLookup<Inventory>(false);
             _itemBufferLookup = state.GetBufferLookup<InventoryItem>(false);
+
+            _wageReason = "wage";
+            _productionJobChannel = "production_job";
         }
 
         [BurstCompile]
@@ -148,8 +153,8 @@ namespace PureDOTS.Runtime.Economy.Production
                             job.Worker,
                             wage,
                             TransactionType.Income,
-                            new FixedString64Bytes("wage"),
-                            new FixedString128Bytes("production_job")
+                            _wageReason,
+                            _productionJobChannel
                         );
                     }
                 }

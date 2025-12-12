@@ -85,6 +85,9 @@ namespace PureDOTS.Systems.Aggregates
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRO<VillagerAIState>();
+            state.CompleteDependency();
+
             _transformLookup.Update(ref state);
             _aiStateLookup.Update(ref state);
             _moodLookup.Update(ref state);

@@ -219,8 +219,6 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                     if (companion == Entity.Null)
                         continue;
 
-                    // Check if companion is near death (high damage events)
-                    bool nearDeath = false;
                     float totalDamage = 0f;
                     for (int j = 0; j < damageEvents.Length; j++)
                     {

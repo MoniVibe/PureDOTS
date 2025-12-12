@@ -13,8 +13,8 @@ namespace PureDOTS.Systems.Navigation
     /// Makes agents follow flow field directions, blending with steering for smooth movement.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(VillagerSystemGroup))]
-    [UpdateAfter(typeof(VillagerTargetingSystem))]
+    [UpdateInGroup(typeof(HotPathSystemGroup))]
+    // Removed invalid UpdateAfter: VillagerTargetingSystem lives in VillagerSystemGroup.
     public partial struct FlowFieldFollowSystem : ISystem
     {
         private ComponentLookup<FlowFieldConfig> _configLookup;
@@ -181,4 +181,3 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
-

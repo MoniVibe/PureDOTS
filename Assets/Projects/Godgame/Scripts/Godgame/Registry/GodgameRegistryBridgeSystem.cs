@@ -92,6 +92,7 @@ namespace Godgame.Registry
 
         public void OnUpdate(ref SystemState state)
         {
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _spatialResidencyLookup.Update(ref state);
             _miracleTargetLookup.Update(ref state);
             _miracleCasterLookup.Update(ref state);

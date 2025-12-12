@@ -60,6 +60,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRO<VillagerAIState>();
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
+            state.CompleteDependency();
+
             _ticketLookup.Update(ref state);
             _disciplineLookup.Update(ref state);
             _residencyLookup.Update(ref state);

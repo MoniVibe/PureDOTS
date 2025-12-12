@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Economy
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(TransportPhaseGroup))]
-    [UpdateAfter(typeof(TradeRoutingSystem))]
+    // Removed invalid UpdateAfter: TradeRoutingSystem runs in ColdPathSystemGroup.
     [UpdateBefore(typeof(LogisticsRequestRegistrySystem))]
     public partial struct TradeTransportAssignmentSystem : ISystem
     {

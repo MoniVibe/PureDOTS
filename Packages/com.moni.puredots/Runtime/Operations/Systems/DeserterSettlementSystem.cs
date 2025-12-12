@@ -67,7 +67,7 @@ namespace PureDOTS.Runtime.Operations
                     if (deserterParams.ValueRO.DeserterCount >= 5 && 
                         progress.ValueRO.ElapsedTicks >= 108000) // 30 min
                     {
-                        FoundSettlement(state, op, ref deserterParams.ValueRW, ref progress.ValueRW, participants);
+                        FoundSettlement(ref state, op, ref deserterParams.ValueRW, ref progress.ValueRW, participants);
                     }
                 }
 
@@ -85,7 +85,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void FoundSettlement(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             ref DeserterSettlementParams deserterParams,
             ref OperationProgress progress,
@@ -105,7 +105,7 @@ namespace PureDOTS.Runtime.Operations
             });
 
             // Derive alignment from deserter alignment and grievances
-            AlignmentTriplet deserterAlignment = DeriveDeserterAlignment(state, operation, participants);
+            AlignmentTriplet deserterAlignment = DeriveDeserterAlignment(ref state, operation, participants);
 
             // Add alignment component to new org
             if (!_alignmentLookup.HasComponent(newOrgEntity))
@@ -114,7 +114,7 @@ namespace PureDOTS.Runtime.Operations
             }
 
             // Derive persona from deserter persona
-            OrgPersona deserterPersona = DeriveDeserterPersona(state, operation, participants);
+            OrgPersona deserterPersona = DeriveDeserterPersona(ref state, operation, participants);
             ecb.AddComponent(newOrgEntity, deserterPersona);
 
             // Mark settlement as founded
@@ -132,7 +132,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private AlignmentTriplet DeriveDeserterAlignment(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             DynamicBuffer<OperationParticipant> participants)
         {
@@ -191,7 +191,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private OrgPersona DeriveDeserterPersona(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             DynamicBuffer<OperationParticipant> participants)
         {

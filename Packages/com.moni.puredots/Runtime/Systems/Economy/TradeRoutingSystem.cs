@@ -15,7 +15,7 @@ namespace PureDOTS.Systems.Economy
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(TradeOpportunitySystem))]
+    // Removed invalid UpdateAfter: TradeOpportunitySystem runs in SimulationSystemGroup.
     public partial struct TradeRoutingSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;

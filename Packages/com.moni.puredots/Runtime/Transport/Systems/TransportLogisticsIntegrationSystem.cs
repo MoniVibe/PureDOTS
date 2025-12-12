@@ -66,10 +66,6 @@ namespace PureDOTS.Runtime.Transport.Systems
                 // In practice, would check SystemId from entities
                 // For now, simplified check
 
-                // Find nearest warp relay nodes to origin and destination
-                int originNodeId = -1;
-                int destNodeId = -1;
-
                 // TODO: Find nodes based on entity positions/system IDs
                 // For now, this is a placeholder that would:
                 // 1. Get origin/destination system IDs

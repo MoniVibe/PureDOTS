@@ -129,7 +129,7 @@ namespace PureDOTS.Systems
     /// Runs after perception/combat/group logic, before AI/GOAP systems.
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [UpdateAfter(typeof(CombatSystemGroup))]
+    // Removed invalid UpdateAfter: CombatSystemGroup runs under PhysicsSystemGroup; handle ordering at group composition.
     [UpdateBefore(typeof(AISystemGroup))]
     public partial class InterruptSystemGroup : ComponentSystemGroup { }
 

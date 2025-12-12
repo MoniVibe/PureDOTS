@@ -99,9 +99,9 @@ Shared record of PureDOTS ahead-of-time stubs. Search for `[TRI-STUB]` as needed
   - **Owner**: PureDOTS persistence spine.
 
 - **File**: `Packages/com.moni.puredots/Runtime/Stubs/BehaviorInfluenceStubComponents.cs` + `BehaviorInfluenceStubSystems.cs` + `BehaviorServiceStub.cs`
-  - **Module**: Behavior profiles / initiative / needs.
-  - **Types**: `BehaviorProfileId`, `BehaviorModifier`, `InitiativeStat`, `NeedCategory`, `NeedSatisfaction`, `NeedRequestElement`; system `BehaviorInfluenceStubSystem`; service `BehaviorServiceStub`.
-  - **Intent**: Let consumers reference behavior/initiative/needs contracts before real influence logic ships.
+  - **Module**: Behavior profiles / initiative / needs (now MVP).
+  - **Types**: `BehaviorProfileId`, `BehaviorModifier`, `InitiativeStat`, `NeedCategory`, `NeedSatisfaction`, `NeedRequestElement`; system `BehaviorInfluenceSystem`; service `BehaviorService`.
+  - **Intent**: Provides minimal decision cadence + need emission until full planners land; safe for gameplay to call via service bridges.
   - **Owner**: PureDOTS behavior spine.
 
 - **File**: `Packages/com.moni.puredots/Runtime/Stubs/AggregateStubComponents.cs` + `AggregateStubSystems.cs` + `AggregateServiceStub.cs`
@@ -115,3 +115,39 @@ Shared record of PureDOTS ahead-of-time stubs. Search for `[TRI-STUB]` as needed
   - **Types**: `CraftingJobTicket`, `CraftingMaterialEntry`, `CraftingFormulaParams`, `CraftingQualityState`, `CraftingResult`; system `CraftingLogicStubSystem`; service `CraftingServiceStub`.
   - **Intent**: Allow facilities and gameplay to reference crafting jobs/materials/quality before full logic lands.
   - **Owner**: PureDOTS crafting spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/DecisionStubComponents.cs` + `DecisionStubSystems.cs` + `DecisionServiceStub.cs`
+  - **Module**: Decision requests/planner bridge.
+  - **Types**: `DecisionTicket`, `DecisionRequestElement`, `DecisionAssignment`; system `DecisionPlannerStubSystem`; service `DecisionServiceStub`.
+  - **Intent**: Scaffold entity-level decision queues so needs can translate into action IDs until full planners land.
+  - **Owner**: PureDOTS behavior/decision spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/AmbitionStubComponents.cs` + `AmbitionStubSystems.cs` + `AmbitionServiceStub.cs`
+  - **Module**: Ambitions/desires/intents/tasks flow.
+  - **Types**: `AmbitionState`, `DesireElement`, `IntentState`, `TaskElement`; system `AmbitionFlowSystem`; service `AmbitionServiceStub`.
+  - **Intent**: Provide minimal ambition→desire→intent→task pipeline so planners can hook up without rendering.
+  - **Owner**: PureDOTS motivation spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/InterceptStubComponents.cs` + `InterceptStubSystems.cs` + `InterceptServiceStub.cs`
+  - **Module**: Long-range interception / pursuit.
+  - **Types**: `InterceptTicket`, `InterceptTarget`, `InterceptSolution`; system `InterceptPlannerStubSystem`; service `InterceptServiceStub`.
+  - **Intent**: Allow entities to request intercept solutions using last-known target data before full pursuit logic ships.
+  - **Owner**: PureDOTS navigation/combat spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/CommunicationStubComponents.cs` + `CommunicationStubSystems.cs` + `CommunicationServiceStub.cs`
+  - **Module**: Communication channels/disruption.
+  - **Types**: `CommChannel`, `CommRelay`, `CommDisruption`, `CommMessageElement`; system `CommunicationReliabilitySystem`; service `CommunicationServiceStub`.
+  - **Intent**: Track channel reliability/latency and disruptions for long-distance coordination before UI/rendering hooks arrive.
+  - **Owner**: PureDOTS communication spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/TradeStubComponents.cs` + `TradeStubSystems.cs` + `TradeServiceStub.cs`
+  - **Module**: Merchant trade intents/inventory.
+  - **Types**: `MerchantInventory`, `TradeOffer`, `TradeIntent`, `TradeLedgerEntry`; system `MerchantTradeStubSystem`; service `TradeServiceStub`.
+  - **Intent**: Give merchants/caravans a headless way to express buy/sell behavior using inventory fill/drain before full economy logic lands.
+  - **Owner**: PureDOTS economy/trade spine.
+
+- **File**: `Packages/com.moni.puredots/Runtime/Stubs/MorphingStubComponents.cs` + `MorphingStubSystems.cs` + `MorphingServiceStub.cs`
+  - **Module**: Terrain/structure morphing and damage.
+  - **Types**: `TerrainMorphState`, `BreakableSurface`, `BurnState`; system `MorphingStubSystem`; service `MorphingServiceStub`.
+  - **Intent**: Track deformation, breakage, and burn states for terrain/asteroids/structures before rendering and full physics interactions are ready.
+  - **Owner**: PureDOTS environment spine.

@@ -63,6 +63,7 @@ namespace PureDOTS.Systems
                 ? spatialState.Version
                 : (requireSpatialSync ? syncState.SpatialVersion : 0u);
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
             _statsLookup.Update(ref state);
 

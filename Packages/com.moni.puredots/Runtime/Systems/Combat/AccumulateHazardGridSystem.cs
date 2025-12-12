@@ -122,7 +122,7 @@ namespace PureDOTS.Systems.Combat
             var slicesArray = slices.ToNativeArray(Allocator.TempJob);
 
             // Rasterize slices into grid
-            state.Dependency = new AccumulateHazardGridJob
+            var jobHandle = new AccumulateHazardGridJob
             {
                 Grid = grid,
                 CurrentTick = currentTick,
@@ -130,9 +130,7 @@ namespace PureDOTS.Systems.Combat
                 Slices = slicesArray,
                 RiskData = riskData
             }.Schedule(slices.Length, 64, state.Dependency);
-            state.Dependency.Complete();
-
-            slicesArray.Dispose();
+            state.Dependency = slicesArray.Dispose(jobHandle);
         }
 
         [BurstCompile]
@@ -226,4 +224,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

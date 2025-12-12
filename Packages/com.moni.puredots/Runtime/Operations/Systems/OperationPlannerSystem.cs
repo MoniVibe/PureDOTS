@@ -74,12 +74,12 @@ namespace PureDOTS.Runtime.Operations
                 return;
 
             // Find hostile relations
-            var hostileTargets = FindHostileTargets(state, initiatorOrg, -50f);
+            var hostileTargets = FindHostileTargets(ref state, initiatorOrg, -50f);
 
             foreach (var target in hostileTargets)
             {
                 // Check if blockade is justified (low trust, high fear, or hostile attitude)
-                var relation = GetRelation(state, initiatorOrg, target);
+                var relation = GetRelation(ref state, initiatorOrg, target);
                 if (relation.Attitude > -30f) // Not hostile enough
                     continue;
 
@@ -109,11 +109,11 @@ namespace PureDOTS.Runtime.Operations
                 return;
 
             // Find very hostile relations or targets harboring enemies
-            var hostileTargets = FindHostileTargets(state, initiatorOrg, -70f);
+            var hostileTargets = FindHostileTargets(ref state, initiatorOrg, -70f);
 
             foreach (var target in hostileTargets)
             {
-                var relation = GetRelation(state, initiatorOrg, target);
+                var relation = GetRelation(ref state, initiatorOrg, target);
                 
                 // Vengeful orgs more likely to siege
                 float siegeProbability = CalculateSiegeProbability(persona, relation);
@@ -139,11 +139,11 @@ namespace PureDOTS.Runtime.Operations
                 return;
 
             // Find targets with grievances (low attitude, low trust)
-            var grievanceTargets = FindGrievanceTargets(state, initiatorOrg);
+            var grievanceTargets = FindGrievanceTargets(ref state, initiatorOrg);
 
             foreach (var target in grievanceTargets)
             {
-                var relation = GetRelation(state, initiatorOrg, target);
+                var relation = GetRelation(ref state, initiatorOrg, target);
                 
                 // High grievance level triggers protest
                 float grievanceLevel = CalculateGrievanceLevel(relation);
@@ -170,14 +170,14 @@ namespace PureDOTS.Runtime.Operations
 
             // Cults periodically perform rituals (simplified - check if enough time passed)
             // In production, check for specific triggers (need mana, need favor, etc.)
-            var lastRitualTick = GetLastRitualTick(state, initiatorOrg);
+            var lastRitualTick = GetLastRitualTick(ref state, initiatorOrg);
             uint ticksSinceLastRitual = currentTick - lastRitualTick;
 
             // Perform ritual every ~1 hour (216000 ticks)
             if (ticksSinceLastRitual > 216000)
             {
                 // Find suitable location (simplified - use initiator's location)
-                var targetLocation = GetOrgLocation(state, initiatorOrg);
+                var targetLocation = GetOrgLocation(ref state, initiatorOrg);
                 if (targetLocation != Entity.Null)
                 {
                     RequestOperation(ref state, initiatorOrg, initiatorOrg, OperationKind.CultRitual, currentTick);
@@ -235,7 +235,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private NativeList<Entity> FindHostileTargets(SystemState state, Entity org, float minAttitude)
+        private NativeList<Entity> FindHostileTargets(ref SystemState state, Entity org, float minAttitude)
         {
             var targets = new NativeList<Entity>(Allocator.Temp);
 
@@ -259,7 +259,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private NativeList<Entity> FindGrievanceTargets(SystemState state, Entity org)
+        private NativeList<Entity> FindGrievanceTargets(ref SystemState state, Entity org)
         {
             var targets = new NativeList<Entity>(Allocator.Temp);
 
@@ -287,7 +287,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private OrgRelation GetRelation(SystemState state, Entity orgA, Entity orgB)
+        private OrgRelation GetRelation(ref SystemState state, Entity orgA, Entity orgB)
         {
             foreach (var relation in SystemAPI.Query<RefRO<OrgRelation>>()
                 .WithAll<OrgRelationTag>())
@@ -313,7 +313,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private uint GetLastRitualTick(SystemState state, Entity org)
+        private uint GetLastRitualTick(ref SystemState state, Entity org)
         {
             // Check for existing ritual operations
             foreach (var (operation, entity) in SystemAPI.Query<RefRO<Operation>>()
@@ -331,7 +331,7 @@ namespace PureDOTS.Runtime.Operations
         }
 
         [BurstCompile]
-        private Entity GetOrgLocation(SystemState state, Entity org)
+        private Entity GetOrgLocation(ref SystemState state, Entity org)
         {
             // Simplified - in production, query actual location component
             // For now, return org itself as location

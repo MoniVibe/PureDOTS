@@ -92,9 +92,8 @@ namespace PureDOTS.Authoring.Guild
                 if (specAsset == null)
                     continue;
 
-                var spec = new GuildActionSpec();
+                ref var spec = ref specsArray[i];
                 specAsset.ToSpec(blobBuilder, ref spec);
-                specsArray[i] = spec;
             }
 
             var blobAsset = blobBuilder.CreateBlobAssetReference<GuildActionCatalog>(Allocator.Persistent);
@@ -105,6 +104,10 @@ namespace PureDOTS.Authoring.Guild
     }
 }
 #endif
+
+
+
+
 
 
 

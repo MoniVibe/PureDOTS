@@ -20,12 +20,15 @@ namespace PureDOTS.Systems.Combat
     [UpdateInGroup(typeof(CombatSystemGroup))]
     public partial struct BeamTickSystem : ISystem
     {
+        private BufferLookup<DamageEvent> _damageBufferLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<WeaponMount>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _damageBufferLookup = state.GetBufferLookup<DamageEvent>();
         }
 
         [BurstCompile]
@@ -55,7 +58,7 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var damageBufferLookup = state.GetBufferLookup<DamageEvent>();
+            _damageBufferLookup.Update(ref state);
 
             var job = new BeamTickJob
             {
@@ -65,10 +68,9 @@ namespace PureDOTS.Systems.Combat
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime,
                 Ecb = ecb,
-                DamageBuffers = damageBufferLookup
+                DamageBuffers = _damageBufferLookup
             };
 
-            damageBufferLookup.Update(ref state);
             state.Dependency = job.ScheduleParallel(state.Dependency);
         }
 

@@ -9,7 +9,7 @@ namespace PureDOTS.Systems.Ships
 {
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(CoreSingletonBootstrapSystem))]
+    // Removed invalid UpdateAfter: CoreSingletonBootstrapSystem executes in TimeSystemGroup; ordering is governed at the group level.
     public partial struct CrewAggregationSystem : ISystem
     {
         private EntityQuery _missingComplianceQuery;

@@ -55,6 +55,7 @@ namespace Godgame.Systems
             _targetLookup.Update(ref state);
             _casterLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var registryEntity = SystemAPI.GetSingletonEntity<MiracleRegistry>();

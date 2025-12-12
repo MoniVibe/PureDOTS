@@ -151,6 +151,10 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRW<VillagerAIState>();
+
+            state.CompleteDependency();
+
             _storehouseLookup.Update(ref state);
             _capacityLookup.Update(ref state);
             _storeItemsLookup.Update(ref state);

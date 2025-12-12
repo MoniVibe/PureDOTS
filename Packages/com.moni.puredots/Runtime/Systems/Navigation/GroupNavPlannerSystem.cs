@@ -12,7 +12,7 @@ namespace PureDOTS.Systems.Navigation
     /// Uses NavRequest from group-level AI to plan paths for groups (bands, armies, fleets).
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    [UpdateInGroup(typeof(ColdPathSystemGroup))]
     [UpdateAfter(typeof(MultiModalRoutePlannerSystem))]
     public partial struct GroupNavPlannerSystem : ISystem
     {

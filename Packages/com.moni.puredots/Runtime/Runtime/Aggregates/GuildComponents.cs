@@ -60,28 +60,6 @@ namespace PureDOTS.Runtime.Aggregates
     }
     
     /// <summary>
-    /// Guild alignment and outlooks (aggregate of members).
-    /// Legacy component kept for serialized data migration; runtime systems convert this
-    /// into VillagerAlignment + GuildOutlookSet.
-    /// </summary>
-    [Obsolete("GuildAlignment has been replaced by VillagerAlignment + GuildOutlookSet and will be removed.", false)]
-    public struct GuildAlignment : IComponentData
-    {
-        // Tri-axis alignment (like villagers)
-        public sbyte MoralAxis;             // -100 (evil) to +100 (good)
-        public sbyte OrderAxis;             // -100 (chaotic) to +100 (lawful)
-        public sbyte PurityAxis;            // -100 (corrupt) to +100 (pure)
-        
-        // Primary outlooks (up to 3)
-        public byte Outlook1;                // VillagerOutlookType enum
-        public byte Outlook2;
-        public byte Outlook3;
-        
-        // Computed from member average
-        public bool IsFanatic;               // Any outlook extreme?
-    }
-
-    /// <summary>
     /// Guild outlook set persisted after legacy alignment migration.
     /// </summary>
     public struct GuildOutlookSet : IComponentData

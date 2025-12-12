@@ -13,15 +13,20 @@ namespace PureDOTS.Runtime.Economy.Wealth
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct DonationSystem : ISystem
     {
+        private FixedString64Bytes _donationReason;
+        private FixedString64Bytes _opportunismReason;
+
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
         private ComponentLookup<FamilyWealth> _familyWealthLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
             _familyWealthLookup = state.GetComponentLookup<FamilyWealth>(false);
+
+            _donationReason = "donation";
+            _opportunismReason = "opportunism";
         }
 
         [BurstCompile]
@@ -67,7 +72,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
             }
 
             // Record transaction
-            var reason = request.IsOpportunism ? new FixedString64Bytes("opportunism") : new FixedString64Bytes("donation");
+            var reason = request.IsOpportunism ? _opportunismReason : _donationReason;
             WealthTransactionSystem.RecordTransaction(
                 ref state,
                 donor,

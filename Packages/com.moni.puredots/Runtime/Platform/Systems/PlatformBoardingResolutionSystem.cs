@@ -14,20 +14,25 @@ namespace PureDOTS.Systems.Platform
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct PlatformBoardingResolutionSystem : ISystem
     {
+        private BufferLookup<BoardingTeam> _boardingTeamsLookup;
+        private BufferLookup<SegmentControl> _segmentControlsLookup;
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<BoardingState>();
+            _boardingTeamsLookup = state.GetBufferLookup<BoardingTeam>(false);
+            _segmentControlsLookup = state.GetBufferLookup<SegmentControl>(false);
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var boardingTeamsLookup = state.GetBufferLookup<BoardingTeam>(false);
-            var segmentControlsLookup = state.GetBufferLookup<SegmentControl>(false);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            boardingTeamsLookup.Update(ref state);
-            segmentControlsLookup.Update(ref state);
-            segmentStatesLookup.Update(ref state);
+            _boardingTeamsLookup.Update(ref state);
+            _segmentControlsLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
 
             foreach (var (boardingState, entity) in SystemAPI.Query<
                 RefRW<BoardingState>>().WithEntityAccess())
@@ -37,14 +42,16 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
-                if (!boardingTeamsLookup.HasBuffer(entity) || !segmentControlsLookup.HasBuffer(entity) || !segmentStatesLookup.HasBuffer(entity))
+                if (!_boardingTeamsLookup.HasBuffer(entity) ||
+                    !_segmentControlsLookup.HasBuffer(entity) ||
+                    !_segmentStatesLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var boardingTeams = boardingTeamsLookup[entity];
-                var segmentControls = segmentControlsLookup[entity];
-                var segmentStates = segmentStatesLookup[entity];
+                var boardingTeams = _boardingTeamsLookup[entity];
+                var segmentControls = _segmentControlsLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
 
                 ResolveBoardingCombat(
                     ref boardingState.ValueRW,

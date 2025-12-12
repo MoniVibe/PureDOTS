@@ -51,22 +51,28 @@ namespace PureDOTS.Systems
                 var logicalCores = SystemInfo.processorCount;
                 var clampedCount = math.min(workerCount, logicalCores);
                 JobsUtility.JobWorkerCount = clampedCount;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 UnityEngine.Debug.Log($"[ThreadingBootstrap] Worker count set to {clampedCount} (requested: {workerCount}, logical cores: {logicalCores})");
+#endif
             }
             else
             {
                 // Use Unity's default
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 var defaultCount = JobsUtility.JobWorkerCount;
                 UnityEngine.Debug.Log($"[ThreadingBootstrap] Using Unity default worker count: {defaultCount}");
+#endif
             }
 
             // Configure Burst compilation
             #if UNITY_BURST
             BurstCompilerOptions.CompileSynchronously = burstSync;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (burstSync)
             {
                 Debug.Log("[ThreadingBootstrap] Burst synchronous compilation enabled (development mode)");
             }
+#endif
             #endif
         }
     }

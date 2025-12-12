@@ -76,17 +76,15 @@ namespace PureDOTS.Authoring.Knowledge
             for (int i = 0; i < authoring.lessons.Count; i++)
             {
                 var src = authoring.lessons[i];
-                var entry = new LessonEntry
-                {
-                    LessonId = new FixedString64Bytes(src.lessonId),
-                    DisplayName = new FixedString64Bytes(src.displayName),
-                    Description = new FixedString128Bytes(src.description),
-                    Category = src.category,
-                    XpPerTier = math.max(1f, src.xpPerTier),
-                    TeachingDifficulty = math.clamp(src.teachingDifficulty, 0f, 1f),
-                    CanBeDiscovered = src.canBeDiscovered,
-                    RequiredEnlightenment = (byte)math.clamp(src.requiredEnlightenment, 0, 10)
-                };
+                ref var entry = ref lessonArray[i];
+                entry.LessonId = new FixedString64Bytes(src.lessonId);
+                entry.DisplayName = new FixedString64Bytes(src.displayName);
+                entry.Description = new FixedString128Bytes(src.description);
+                entry.Category = src.category;
+                entry.XpPerTier = math.max(1f, src.xpPerTier);
+                entry.TeachingDifficulty = math.clamp(src.teachingDifficulty, 0f, 1f);
+                entry.CanBeDiscovered = src.canBeDiscovered;
+                entry.RequiredEnlightenment = (byte)math.clamp(src.requiredEnlightenment, 0, 10);
 
                 // Bake prerequisites
                 var prereqs = bb.Allocate(ref entry.Prerequisites, src.prerequisites.Count);
@@ -115,7 +113,6 @@ namespace PureDOTS.Authoring.Knowledge
                     };
                 }
 
-                lessonArray[i] = entry;
             }
 
             var blobAsset = bb.CreateBlobAssetReference<LessonDefinitionBlob>(Allocator.Persistent);

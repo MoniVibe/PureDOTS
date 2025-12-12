@@ -17,7 +17,7 @@ namespace PureDOTS.Systems.Creatures
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    [UpdateAfter(typeof(ClimateControlSystem))]
+    // Removed invalid UpdateAfter: ClimateControlSystem runs in EnvironmentSystemGroup.
     public partial struct SpeciesComfortSystem : ISystem
     {
         const uint kStrideTicks = 10u;

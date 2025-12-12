@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.AI
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct OperationalAISystem : ISystem
     {
         [BurstCompile]

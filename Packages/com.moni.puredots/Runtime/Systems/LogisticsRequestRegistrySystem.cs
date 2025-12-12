@@ -49,6 +49,7 @@ namespace PureDOTS.Systems
             }
 
             _progressLookup.Update(ref state);
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             var registryEntity = SystemAPI.GetSingletonEntity<LogisticsRequestRegistry>();

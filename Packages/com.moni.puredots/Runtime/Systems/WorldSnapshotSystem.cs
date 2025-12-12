@@ -14,7 +14,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HistorySystemGroup))]
-    [UpdateAfter(typeof(TimeHistoryRecordSystem))]
+    // Removed invalid UpdateAfter: TimeHistoryRecordSystem runs in WarmPathSystemGroup.
     public partial struct WorldSnapshotSystem : ISystem
     {
         [BurstCompile]

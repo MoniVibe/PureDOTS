@@ -15,12 +15,22 @@ namespace PureDOTS.Systems
     {
         private FixedString64Bytes _lastApplied;
         private bool _dirty;
+        private bool _shouldRun;
+        private BlobAssetReference<PresentationBindingBlob> _activeBinding;
 
         public void OnCreate(ref SystemState state)
         {
+            _shouldRun = ShouldRunInWorld(state.WorldUnmanaged);
+            if (!_shouldRun)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             state.RequireForUpdate<PresentationCommandQueue>();
             RuntimeConfigRegistry.Initialize();
             _dirty = false;
+            _activeBinding = default;
 
             if (PresentationBindingConfigVars.BindingSample != null)
             {
@@ -30,18 +40,34 @@ namespace PureDOTS.Systems
 
         public void OnDestroy(ref SystemState state)
         {
+            if (!_shouldRun)
+            {
+                return;
+            }
+
             if (PresentationBindingConfigVars.BindingSample != null)
             {
                 PresentationBindingConfigVars.BindingSample.ValueChanged -= OnConfigChanged;
             }
 
-            // Don't dispose blob assets in OnDestroy - they're owned by components and will be cleaned up by EntityManager
-            // Disposing them here can cause "already disposed" errors during world shutdown
-            // The EntityManager will handle cleanup of component data including blob references
+            if (SystemAPI.TryGetSingletonEntity<PresentationBindingReference>(out var bindingEntity))
+            {
+                var bindingRef = state.EntityManager.GetComponentData<PresentationBindingReference>(bindingEntity);
+                DisposeActiveBinding(ref state, bindingEntity, ref bindingRef);
+            }
+            else
+            {
+                DisposeActiveBinding();
+            }
         }
 
         public void OnUpdate(ref SystemState state)
         {
+            if (!_shouldRun)
+            {
+                return;
+            }
+
             if (!TryEnsureBindingEntity(ref state, out var bindingEntity))
             {
                 return;
@@ -72,13 +98,11 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            if (bindingRef.Binding.IsCreated)
-            {
-                bindingRef.Binding.Dispose();
-            }
+            DisposeActiveBinding(ref state, bindingEntity, ref bindingRef);
 
             bindingRef.Binding = blob;
             state.EntityManager.SetComponentData(bindingEntity, bindingRef);
+            _activeBinding = blob;
             _lastApplied = appliedKey;
             _dirty = false;
         }
@@ -106,6 +130,33 @@ namespace PureDOTS.Systems
         private void OnConfigChanged(RuntimeConfigVar _)
         {
             _dirty = true;
+        }
+
+        private void DisposeActiveBinding(ref SystemState state, Entity bindingEntity, ref PresentationBindingReference bindingRef)
+        {
+            DisposeActiveBinding();
+
+            if (bindingRef.Binding.IsCreated && state.EntityManager.Exists(bindingEntity))
+            {
+                bindingRef.Binding = default;
+                state.EntityManager.SetComponentData(bindingEntity, bindingRef);
+            }
+        }
+
+        private void DisposeActiveBinding()
+        {
+            if (_activeBinding.IsCreated)
+            {
+                _activeBinding.Dispose();
+                _activeBinding = default;
+            }
+        }
+
+        private static bool ShouldRunInWorld(WorldUnmanaged world)
+        {
+            var flags = world.Flags;
+            // Skip in production/game worlds to avoid leaking into the main runtime profile.
+            return (flags & WorldFlags.Game) == 0 || (flags & WorldFlags.Editor) != 0;
         }
     }
 }

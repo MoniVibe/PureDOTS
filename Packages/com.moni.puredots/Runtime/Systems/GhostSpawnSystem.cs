@@ -13,7 +13,7 @@ namespace PureDOTS.Systems
     /// Ghosts show historical positions/states while the real world stays frozen.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(TimeSystemGroup))]
     [UpdateAfter(typeof(RewindControlSystem))]
     public partial struct GhostSpawnSystem : ISystem
     {

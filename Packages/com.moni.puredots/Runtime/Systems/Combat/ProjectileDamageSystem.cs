@@ -20,11 +20,20 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct ProjectileDamageSystem : ISystem
     {
+        private EntityStorageInfoLookup _entityLookup;
+        private ComponentLookup<Health> _healthLookup;
+        private ComponentLookup<Damageable> _damageableLookup;
+        private BufferLookup<DamageEvent> _damageBufferLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _entityLookup = state.GetEntityStorageInfoLookup();
+            _healthLookup = state.GetComponentLookup<Health>(true);
+            _damageableLookup = state.GetComponentLookup<Damageable>(true);
+            _damageBufferLookup = state.GetBufferLookup<DamageEvent>();
         }
 
         [BurstCompile]
@@ -47,21 +56,23 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            var entityLookup = state.GetEntityStorageInfoLookup();
-            var healthLookup = state.GetComponentLookup<Health>(true);
-            var damageableLookup = state.GetComponentLookup<Damageable>(true);
-            var damageBufferLookup = state.GetBufferLookup<DamageEvent>();
+            _entityLookup.Update(ref state);
+            _healthLookup.Update(ref state);
+            _damageableLookup.Update(ref state);
+            _damageBufferLookup.Update(ref state);
 
-            new ProcessProjectileImpactsJob
+            var jobHandle = new ProcessProjectileImpactsJob
             {
                 CurrentTick = currentTick,
                 Ecb = ecb,
-                EntityLookup = entityLookup,
-                HealthLookup = healthLookup,
-                DamageableLookup = damageableLookup,
-                DamageBuffers = damageBufferLookup,
+                EntityLookup = _entityLookup,
+                HealthLookup = _healthLookup,
+                DamageableLookup = _damageableLookup,
+                DamageBuffers = _damageBufferLookup,
                 ProjectileCatalog = projectileCatalog.Catalog
-            }.ScheduleParallel();
+            }.ScheduleParallel(state.Dependency);
+
+            state.Dependency = jobHandle;
         }
 
         [BurstCompile]

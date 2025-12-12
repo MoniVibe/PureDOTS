@@ -15,12 +15,16 @@ namespace PureDOTS.Systems.Facility
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct FacilityProductionSystem : ISystem
     {
+        private BufferLookup<ResourceStack> _inventoryLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<DemoScenarioState>();
+
+            _inventoryLookup = state.GetBufferLookup<ResourceStack>(false);
         }
 
         [BurstCompile]
@@ -46,15 +50,14 @@ namespace PureDOTS.Systems.Facility
 
             var deltaTime = timeState.FixedDeltaTime;
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            var inventoryLookup = state.GetBufferLookup<ResourceStack>(false);
-            inventoryLookup.Update(ref state);
+            _inventoryLookup.Update(ref state);
 
             foreach (var (facility, entity) in SystemAPI.Query<RefRW<PureDOTS.Runtime.Facility.Facility>>().WithEntityAccess())
             {
-                if (!inventoryLookup.HasBuffer(entity))
+                if (!_inventoryLookup.HasBuffer(entity))
                     continue;
 
-                var inventory = inventoryLookup[entity];
+                var inventory = _inventoryLookup[entity];
 
                 // Get recipe for this facility archetype
                 if (!PureDOTS.Runtime.Facility.FacilityRecipes.TryGetRecipe(facility.ValueRO.ArchetypeId, out var recipe))

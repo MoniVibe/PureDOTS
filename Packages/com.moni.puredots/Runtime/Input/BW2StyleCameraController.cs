@@ -51,7 +51,6 @@ namespace PureDOTS.Runtime.Camera
             get => panScale;
             set => panScale = value;
         }
-        [SerializeField] float panDeadzoneMeters = 0.01f;
         [SerializeField] bool allowPanOverUI;
 
         [Header("Orbit")]
@@ -59,9 +58,6 @@ namespace PureDOTS.Runtime.Camera
         [SerializeField] float orbitPitchSensitivity = 0.25f;
         [SerializeField] Vector2 pitchClamp = new(-30f, 85f);
         [SerializeField] bool allowOrbitOverUI = true;
-        [SerializeField] float closeOrbitSensitivity = 1.5f;
-        [SerializeField] float farOrbitSensitivity = 0.6f;
-        [SerializeField] float pivotLockProbeDistance = 800f;
 
         [Header("Zoom")]
         [SerializeField] float zoomSpeed = 6f;
@@ -75,12 +71,6 @@ namespace PureDOTS.Runtime.Camera
         [SerializeField] float maxDistance = 220f;
         [SerializeField] bool invertZoom;
         [SerializeField] bool allowZoomOverUI = true;
-
-        [Header("Terrain Clearance")]
-        [SerializeField] float terrainClearance = 2f;
-        [SerializeField] float clearanceProbeHeight = 300f;
-        [SerializeField] float collisionProbeRadius = 0.6f;
-        [SerializeField] float collisionBuffer = 0.4f;
 
         float yaw;
         float pitch;
@@ -109,7 +99,6 @@ namespace PureDOTS.Runtime.Camera
         BW2CameraInputBridge.Snapshot _inputSnapshot;
         bool _hasSnapshot;
         RmbContext _routerContext;
-        bool _hasRouterContext;
         Vector3 _currentCameraPosition;
         Quaternion _currentCameraRotation = Quaternion.identity;
 
@@ -198,7 +187,6 @@ namespace PureDOTS.Runtime.Camera
 
         void UpdateRouterContext()
         {
-            _hasRouterContext = false;
             if (!_hasSnapshot) return;
             if (targetCamera == null) return;
 
@@ -221,23 +209,24 @@ namespace PureDOTS.Runtime.Camera
                 hitPile: false,
                 hitDraggable: false,
                 hitGround: hasHit);
-            _hasRouterContext = true;
         }
 
         void ApplyInput()
         {
             if (!_hasSnapshot) return;
+            bool pointerOverUI = IsPointerOverUI();
 
             // Zoom
             float scroll = _inputSnapshot.Scroll;
-            if (math.abs(scroll) > 0.01f)
+            if ((allowZoomOverUI || !pointerOverUI) && math.abs(scroll) > 0.01f)
             {
                 float zoomDir = invertZoom ? -scroll : scroll;
                 distance = math.clamp(distance - zoomDir * zoomSpeed * UnityEngine.Time.deltaTime, minDistance, maxDistance);
             }
 
             // Orbit
-            if (_inputSnapshot.MiddleHeld || (_inputSnapshot.RightHeld && allowOrbitOverUI))
+            bool orbitInputActive = _inputSnapshot.MiddleHeld || _inputSnapshot.RightHeld;
+            if (orbitInputActive && (allowOrbitOverUI || !pointerOverUI))
             {
                 yaw += _inputSnapshot.PointerDelta.x * orbitYawSensitivity;
                 pitch = math.clamp(pitch - _inputSnapshot.PointerDelta.y * orbitPitchSensitivity, pitchClamp.x, pitchClamp.y);
@@ -250,7 +239,7 @@ namespace PureDOTS.Runtime.Camera
             if (_inputSnapshot.EdgeTop) delta.y += 1f;
             if (_inputSnapshot.EdgeBottom) delta.y -= 1f;
 
-            if (delta.sqrMagnitude > 0.0001f)
+            if ((allowPanOverUI || !pointerOverUI) && delta.sqrMagnitude > 0.0001f)
             {
                 float panSpeed = panScale * math.max(distance, 1f);
                 var yawRot = Quaternion.Euler(0f, yaw, 0f);
@@ -265,6 +254,20 @@ namespace PureDOTS.Runtime.Camera
             targetCamera.transform.SetPositionAndRotation(camPos, rot);
             Pivot = _currentCameraPosition;
             _currentCameraRotation = rot;
+        }
+
+        bool IsPointerOverUI()
+        {
+            if (cachedEventSystem == null || !cachedEventSystem.enabled)
+            {
+#if UNITY_2023_1_OR_NEWER
+                cachedEventSystem = EventSystem.current ?? UnityEngine.Object.FindFirstObjectByType<EventSystem>();
+#else
+                cachedEventSystem = EventSystem.current ?? UnityEngine.Object.FindObjectOfType<EventSystem>();
+#endif
+            }
+
+            return cachedEventSystem != null && cachedEventSystem.IsPointerOverGameObject();
         }
 
         void PublishRig()

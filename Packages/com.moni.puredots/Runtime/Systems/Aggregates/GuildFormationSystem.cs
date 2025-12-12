@@ -105,6 +105,9 @@ namespace PureDOTS.Systems.Aggregates
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRO<VillagerAIState>();
+            state.CompleteDependency();
+
             _alignmentLookup.Update(ref state);
             _moodLookup.Update(ref state);
             _aiStateLookup.Update(ref state);
@@ -686,4 +689,3 @@ namespace PureDOTS.Systems.Aggregates
         public BandRole Role;
     }
 }
-

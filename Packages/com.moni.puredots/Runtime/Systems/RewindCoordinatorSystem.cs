@@ -13,8 +13,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
-    [UpdateAfter(typeof(TimeSettingsConfigSystem))]
-    [UpdateAfter(typeof(TimeLogConfigSystem))]
+    // Removed invalid UpdateAfter attributes: OrderFirst already controls placement in the TimeSystemGroup.
     public partial struct RewindCoordinatorSystem : ISystem
     {
         private float _playbackAccumulator;

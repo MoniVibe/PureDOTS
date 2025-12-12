@@ -15,10 +15,13 @@ namespace PureDOTS.Systems.Platform
     [UpdateAfter(typeof(PlatformSegmentDestructionSystem))]
     public partial struct PlatformConnectivitySystem : ISystem
     {
+        private BufferLookup<PlatformSegmentState> _segmentStatesLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HullDefRegistry>();
+            _segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
         }
 
         [BurstCompile]
@@ -34,8 +37,7 @@ namespace PureDOTS.Systems.Platform
             ref var hullRegistryBlob = ref hullRegistry.Registry.Value;
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-            var segmentStatesLookup = state.GetBufferLookup<PlatformSegmentState>(false);
-            segmentStatesLookup.Update(ref state);
+            _segmentStatesLookup.Update(ref state);
 
             foreach (var (hullRef, entity) in SystemAPI.Query<
                 RefRO<PlatformHullRef>>().WithEntityAccess())
@@ -52,13 +54,13 @@ namespace PureDOTS.Systems.Platform
                     continue;
                 }
 
-                if (!segmentStatesLookup.HasBuffer(entity))
+                if (!_segmentStatesLookup.HasBuffer(entity))
                 {
                     ecb.RemoveComponent<NeedConnectivityUpdate>(entity);
                     continue;
                 }
 
-                var segmentStates = segmentStatesLookup[entity];
+                var segmentStates = _segmentStatesLookup[entity];
                 ref var hullDef = ref hullRegistryBlob.Hulls[hullId];
 
                 UpdateConnectivity(

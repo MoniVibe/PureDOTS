@@ -11,8 +11,8 @@ namespace PureDOTS.Systems.Navigation
     /// Queues excess requests for future ticks when budget is exceeded.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
-    [UpdateAfter(typeof(NavPerformanceBudgetSystem))]
+    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    // Removed invalid UpdateAfter: NavPerformanceBudgetSystem runs in Spatial group (OrderFirst).
     [UpdateBefore(typeof(PathfindingSystem))]
     public partial struct PathRequestSystem : ISystem
     {

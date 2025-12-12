@@ -66,6 +66,9 @@ namespace Godgame.Systems
                 return;
             }
 
+            state.EntityManager.CompleteDependencyBeforeRW<VillagerAIState>();
+            state.CompleteDependency();
+
             _utilityBindingLookup.Update(ref state);
             _aiStateLookup.Update(ref state);
             _jobLookup.Update(ref state);

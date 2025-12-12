@@ -51,10 +51,14 @@ namespace PureDOTS.Systems.Spatial
             _lastProcessedVersion = currentVersion;
 
             // Stamp all SpatialGridResidency components with the current grid version
-            new StampResidencyVersionJob
+            var job = new StampResidencyVersionJob
             {
                 GridVersion = currentVersion
-            }.ScheduleParallel();
+            };
+
+            var handle = job.ScheduleParallel(state.Dependency);
+            handle.Complete();
+            state.Dependency = default;
         }
 
         [BurstCompile]

@@ -62,16 +62,14 @@ namespace PureDOTS.Authoring.Culture
             for (int i = 0; i < authoring.stories.Count; i++)
             {
                 var src = authoring.stories[i];
-                var story = new CultureStory
-                {
-                    StoryId = new FixedString64Bytes(src.storyId),
-                    DisplayName = new FixedString64Bytes(src.displayName),
-                    OriginCultureId = new FixedString64Bytes(src.originCultureId),
-                    Type = src.type,
-                    ImportanceRank = (byte)src.importanceRank,
-                    TransmissionDifficulty = src.transmissionDifficulty,
-                    DecayRate = src.decayRate
-                };
+                ref var story = ref storyArray[i];
+                story.StoryId = new FixedString64Bytes(src.storyId);
+                story.DisplayName = new FixedString64Bytes(src.displayName);
+                story.OriginCultureId = new FixedString64Bytes(src.originCultureId);
+                story.Type = src.type;
+                story.ImportanceRank = (byte)src.importanceRank;
+                story.TransmissionDifficulty = src.transmissionDifficulty;
+                story.DecayRate = src.decayRate;
 
                 // Bake prerequisites
                 var prereqs = bb.Allocate(ref story.PrerequisiteStories, src.prerequisiteStoryIds.Count);
@@ -99,7 +97,6 @@ namespace PureDOTS.Authoring.Culture
                     tags[t] = new FixedString32Bytes(src.tags[t]);
                 }
 
-                storyArray[i] = story;
             }
 
             var blob = bb.CreateBlobAssetReference<CultureStoryCatalogBlob>(Allocator.Persistent);

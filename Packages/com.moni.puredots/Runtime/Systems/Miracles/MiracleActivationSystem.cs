@@ -18,6 +18,7 @@ namespace PureDOTS.Systems.Miracles
     public partial struct MiracleActivationSystem : ISystem
     {
         private TimeAwareController _controller;
+        private BufferLookup<MiracleCooldown> _cooldownLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -28,6 +29,7 @@ namespace PureDOTS.Systems.Miracles
             _controller = new TimeAwareController(
                 TimeAwareExecutionPhase.Record | TimeAwareExecutionPhase.CatchUp,
                 TimeAwareExecutionOptions.SkipWhenPaused);
+            _cooldownLookup = state.GetBufferLookup<MiracleCooldown>(false);
         }
 
         [BurstCompile]
@@ -57,8 +59,7 @@ namespace PureDOTS.Systems.Miracles
 
             ref var catalog = ref configState.Catalog.Value;
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            var cooldownLookup = state.GetBufferLookup<MiracleCooldown>(false);
-            cooldownLookup.Update(ref state);
+            _cooldownLookup.Update(ref state);
             
             // Track which entities need cooldown entries added (for new buffers created this frame)
             var pendingCooldowns = new NativeHashMap<Entity, NativeList<MiracleCooldown>>(16, Allocator.TempJob);
@@ -67,10 +68,10 @@ namespace PureDOTS.Systems.Miracles
             foreach (var (requests, entity) in SystemAPI.Query<DynamicBuffer<MiracleActivationRequest>>().WithEntityAccess())
             {
                 DynamicBuffer<MiracleCooldown> cooldowns = default;
-                bool hasCooldownBuffer = cooldownLookup.HasBuffer(entity);
+                bool hasCooldownBuffer = _cooldownLookup.HasBuffer(entity);
                 if (hasCooldownBuffer)
                 {
-                    cooldowns = cooldownLookup[entity];
+                    cooldowns = _cooldownLookup[entity];
                 }
 
                 for (int i = requests.Length - 1; i >= 0; i--)
@@ -208,15 +209,15 @@ namespace PureDOTS.Systems.Miracles
             ecb.Dispose();
             
             // Add cooldown entries for entities that just got buffers created
-            cooldownLookup.Update(ref state);
+            _cooldownLookup.Update(ref state);
             foreach (var kvp in pendingCooldowns)
             {
                 var entity = kvp.Key;
                 var cooldownsToAdd = kvp.Value;
                 
-                if (cooldownLookup.HasBuffer(entity))
+                if (_cooldownLookup.HasBuffer(entity))
                 {
-                    var cooldowns = cooldownLookup[entity];
+                    var cooldowns = _cooldownLookup[entity];
                     for (int i = 0; i < cooldownsToAdd.Length; i++)
                     {
                         cooldowns.Add(cooldownsToAdd[i]);

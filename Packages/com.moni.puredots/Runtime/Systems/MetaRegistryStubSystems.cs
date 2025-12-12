@@ -65,6 +65,7 @@ namespace PureDOTS.Systems
                 ? gridState.Version
                 : (requireSpatialSync ? syncState.SpatialVersion : 0u);
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             foreach (var (factionId, factionState, transform, entity) in SystemAPI.Query<RefRO<FactionId>, RefRO<FactionState>, RefRO<LocalTransform>>()
@@ -189,6 +190,7 @@ namespace PureDOTS.Systems
                 ? gridState.Version
                 : (requireSpatialSync ? syncState.SpatialVersion : 0u);
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             foreach (var (hazardState, transform, entity) in SystemAPI.Query<RefRO<ClimateHazardState>, RefRO<LocalTransform>>()
@@ -318,6 +320,7 @@ namespace PureDOTS.Systems
                 ? gridState.Version
                 : (requireSpatialSync ? syncState.SpatialVersion : 0u);
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             foreach (var (effectState, transform, entity) in SystemAPI.Query<RefRO<AreaEffectState>, RefRO<LocalTransform>>()
@@ -443,6 +446,7 @@ namespace PureDOTS.Systems
                 ? gridState.Version
                 : (requireSpatialSync ? syncState.SpatialVersion : 0u);
 
+            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _residencyLookup.Update(ref state);
 
             foreach (var (cultureState, transform, entity) in SystemAPI.Query<RefRO<CultureState>, RefRO<LocalTransform>>()

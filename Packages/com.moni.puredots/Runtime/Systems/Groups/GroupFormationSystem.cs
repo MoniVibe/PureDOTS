@@ -45,9 +45,6 @@ namespace PureDOTS.Systems.Groups
             {
                 return;
             }
-            {
-                return;
-            }
 
             // Only process for Godgame (formations are primarily for ground units)
             if (!demoState.EnableGodgame)

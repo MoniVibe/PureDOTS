@@ -14,7 +14,7 @@ namespace PureDOTS.Systems.Villager
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(ColdPathSystemGroup))]
-    [UpdateAfter(typeof(UniversalPerformanceBudgetSystem))]
+    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
     public partial struct JobMarketBalancingSystem : ISystem
     {
         [BurstCompile]

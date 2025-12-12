@@ -45,7 +45,7 @@ namespace PureDOTS.Runtime.Operations
                 operation.ValueRW.LastUpdateTick = currentTick;
 
                 // Apply blockade effects to logistics routes
-                ApplyBlockadeToLogistics(state, operation.ValueRO, blockadeParams.ValueRO, currentTick);
+                ApplyBlockadeToLogistics(ref state, operation.ValueRO, blockadeParams.ValueRO, currentTick);
 
                 // Update success metric based on blockade effectiveness
                 UpdateBlockadeSuccessMetric(ref progress.ValueRW, blockadeParams.ValueRO, participants);
@@ -60,7 +60,7 @@ namespace PureDOTS.Runtime.Operations
 
         [BurstCompile]
         private void ApplyBlockadeToLogistics(
-            SystemState state,
+            ref SystemState state,
             Operation operation,
             BlockadeParams blockadeParams,
             uint currentTick)

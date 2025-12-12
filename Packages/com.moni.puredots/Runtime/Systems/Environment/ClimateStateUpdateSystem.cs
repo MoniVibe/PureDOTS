@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Environment
     /// Staggered updates, only simulate where something is happening.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(WarmPathSystemGroup))]
+    [UpdateInGroup(typeof(EnvironmentSystemGroup))]
     public partial struct ClimateStateUpdateSystem : ISystem
     {
         [BurstCompile]

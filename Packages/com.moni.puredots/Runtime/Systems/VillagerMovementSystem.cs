@@ -20,16 +20,21 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HotPathSystemGroup))]
-    [UpdateAfter(typeof(VillagerTargetingSystem))]
+    // Removed invalid UpdateAfter: VillagerTargetingSystem runs in VillagerSystemGroup.
     [UpdateAfter(typeof(FlowFieldFollowSystem))]
     public partial struct VillagerMovementSystem : ISystem
     {
+        private ComponentLookup<TimeBubbleMembership> _bubbleMembershipLookup;
+        private ComponentLookup<MovementSuppressed> _movementSuppressedLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
+            _bubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(isReadOnly: true);
+            _movementSuppressedLookup = state.GetComponentLookup<MovementSuppressed>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -53,6 +58,9 @@ namespace PureDOTS.Systems
             var config = SystemAPI.HasSingleton<VillagerBehaviorConfig>()
                 ? SystemAPI.GetSingleton<VillagerBehaviorConfig>()
                 : VillagerBehaviorConfig.CreateDefaults();
+
+            _bubbleMembershipLookup.Update(ref state);
+            _movementSuppressedLookup.Update(ref state);
             
             var job = new UpdateVillagerMovementJob
             {
@@ -67,8 +75,8 @@ namespace PureDOTS.Systems
                 TickTimeState = tickTimeState,
                 TimeState = timeState,
                 RewindState = rewindState,
-                BubbleMembershipLookup = state.GetComponentLookup<TimeBubbleMembership>(true),
-                MovementSuppressedLookup = state.GetComponentLookup<MovementSuppressed>(true)
+                BubbleMembershipLookup = _bubbleMembershipLookup,
+                MovementSuppressedLookup = _movementSuppressedLookup
             };
             
             state.Dependency = job.ScheduleParallel(state.Dependency);
