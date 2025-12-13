@@ -60,9 +60,24 @@ namespace PureDOTS.Authoring
         {
             public override void Bake(KnowledgeLessonEffectAuthoring authoring)
             {
+                // When the reference authoring lives on the same GameObject, it owns the catalog singleton.
+                if (authoring.TryGetComponent<KnowledgeLessonCatalogReferenceAuthoring>(out _))
+                {
+                    return;
+                }
+
                 var entity = GetEntity(TransformUsageFlags.None);
                 var blobRef = KnowledgeLessonCatalogBuilder.BuildCatalog(authoring);
-                AddComponent(entity, new KnowledgeLessonEffectCatalog { Blob = blobRef });
+                var catalog = new KnowledgeLessonEffectCatalog { Blob = blobRef };
+
+                try
+                {
+                    AddComponent(entity, catalog);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.IndexOf("duplicate component", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    SetComponent(entity, catalog);
+                }
             }
         }
     }

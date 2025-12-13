@@ -1,9 +1,8 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
-using System.Runtime.CompilerServices;
+using PureDOTS.Runtime.LowLevel;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -99,14 +98,14 @@ namespace PureDOTS.Systems.Combat
 
                 // Find weapon spec
                 ref var weaponSpec = ref FindWeaponSpec(WeaponCatalog, weaponMount.WeaponId);
-                if (Unsafe.IsNullRef(ref weaponSpec))
+                if (UnsafeRef.IsNull(ref weaponSpec))
                 {
                     return;
                 }
 
                 // Find projectile spec
                 ref var projectileSpec = ref FindProjectileSpec(ProjectileCatalog, weaponSpec.ProjectileId);
-                if (Unsafe.IsNullRef(ref projectileSpec))
+                if (UnsafeRef.IsNull(ref projectileSpec))
                 {
                     return;
                 }
@@ -173,7 +172,7 @@ namespace PureDOTS.Systems.Combat
             {
                 if (!catalog.IsCreated)
                 {
-                    return ref Unsafe.NullRef<WeaponSpec>();
+                    return ref UnsafeRef.Null<WeaponSpec>();
                 }
 
                 ref var weapons = ref catalog.Value.Weapons;
@@ -186,7 +185,7 @@ namespace PureDOTS.Systems.Combat
                     }
                 }
 
-                return ref Unsafe.NullRef<WeaponSpec>();
+                return ref UnsafeRef.Null<WeaponSpec>();
             }
 
             private static ref ProjectileSpec FindProjectileSpec(
@@ -195,7 +194,7 @@ namespace PureDOTS.Systems.Combat
             {
                 if (!catalog.IsCreated)
                 {
-                    return ref Unsafe.NullRef<ProjectileSpec>();
+                    return ref UnsafeRef.Null<ProjectileSpec>();
                 }
 
                 ref var projectiles = ref catalog.Value.Projectiles;
@@ -208,7 +207,7 @@ namespace PureDOTS.Systems.Combat
                     }
                 }
 
-                return ref Unsafe.NullRef<ProjectileSpec>();
+                return ref UnsafeRef.Null<ProjectileSpec>();
             }
         }
     }

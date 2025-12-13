@@ -17,12 +17,15 @@ namespace PureDOTS.Systems
     // Removed invalid UpdateAfter: TimeHistoryRecordSystem runs in WarmPathSystemGroup.
     public partial struct WorldSnapshotSystem : ISystem
     {
+        private EntityQuery _snapshotStateQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<WorldSnapshotState>();
+            _snapshotStateQuery = state.GetEntityQuery(ComponentType.ReadWrite<WorldSnapshotState>());
         }
 
         [BurstCompile]
@@ -37,8 +40,15 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                return;
+            }
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+            {
+                return;
+            }
+            if (_snapshotStateQuery.CalculateEntityCount() != 1)
             {
                 return;
             }
@@ -67,7 +77,10 @@ namespace PureDOTS.Systems
             }
 
             // Get snapshot entity and buffers
-            var snapshotEntity = SystemAPI.GetSingletonEntity<WorldSnapshotState>();
+            if (!SystemAPI.TryGetSingletonEntity<WorldSnapshotState>(out var snapshotEntity))
+            {
+                return;
+            }
             
             if (!state.EntityManager.HasBuffer<WorldSnapshotMeta>(snapshotEntity))
             {

@@ -43,7 +43,7 @@ namespace PureDOTS.Systems
         {
             _streamQuery = GetEntityQuery(ComponentType.ReadWrite<FrameTimingStream>());
             _pendingSamples = new Dictionary<FrameTimingGroup, FrameTimingSample>(16);
-            EnsureStreamEntity();
+            TryEnsureStreamEntity(out _);
         }
 
         protected override void OnDestroy()
@@ -121,9 +121,10 @@ namespace PureDOTS.Systems
 
         protected override void OnUpdate()
         {
-            EnsureStreamEntity();
-
-            var entity = _streamQuery.GetSingletonEntity();
+            if (!TryEnsureStreamEntity(out var entity))
+            {
+                return;
+            }
             var buffer = EntityManager.GetBuffer<FrameTimingSample>(entity);
             buffer.Clear();
 
@@ -165,11 +166,13 @@ namespace PureDOTS.Systems
             EntityManager.SetComponentData(entity, diagnostics);
         }
 
-        private void EnsureStreamEntity()
+        private bool TryEnsureStreamEntity(out Entity entity)
         {
-            if (_streamQuery.IsEmptyIgnoreFilter)
+            entity = Entity.Null;
+            var entityCount = _streamQuery.CalculateEntityCount();
+            if (entityCount == 0)
             {
-                var entity = EntityManager.CreateEntity(typeof(FrameTimingStream));
+                entity = EntityManager.CreateEntity(typeof(FrameTimingStream));
                 EntityManager.SetComponentData(entity, new FrameTimingStream
                 {
                     Version = 0,
@@ -178,9 +181,9 @@ namespace PureDOTS.Systems
                 EntityManager.AddBuffer<FrameTimingSample>(entity);
                 EntityManager.AddComponentData(entity, new AllocationDiagnostics());
             }
-            else
+            else if (entityCount == 1)
             {
-                var entity = _streamQuery.GetSingletonEntity();
+                entity = _streamQuery.GetSingletonEntity();
                 if (!EntityManager.HasBuffer<FrameTimingSample>(entity))
                 {
                     EntityManager.AddBuffer<FrameTimingSample>(entity);
@@ -190,6 +193,12 @@ namespace PureDOTS.Systems
                     EntityManager.AddComponentData(entity, new AllocationDiagnostics());
                 }
             }
+            else
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

@@ -29,19 +29,28 @@ namespace PureDOTS.Systems.Input
 
         public void OnUpdate(ref SystemState state)
         {
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (!SystemAPI.TryGetSingleton(out RewindState rewindState))
+            {
+                return;
+            }
             if (rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
 
-            var historySettings = SystemAPI.GetSingleton<HistorySettings>();
+            if (!SystemAPI.TryGetSingleton(out HistorySettings historySettings))
+            {
+                return;
+            }
             if (!historySettings.EnableInputRecording)
             {
                 return;
             }
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            if (!SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                return;
+            }
             uint currentTick = timeState.Tick;
             var historyEntity = EnsureHistoryEntity(ref state);
 

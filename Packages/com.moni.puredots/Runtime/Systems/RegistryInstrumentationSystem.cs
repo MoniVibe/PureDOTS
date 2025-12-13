@@ -25,7 +25,10 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            var directoryEntity = SystemAPI.GetSingletonEntity<RegistryDirectory>();
+            if (!SystemAPI.TryGetSingletonEntity<RegistryDirectory>(out var directoryEntity))
+            {
+                return;
+            }
 
             _metadataLookup.Update(ref state);
             _healthLookup.Update(ref state);
@@ -48,9 +51,11 @@ namespace PureDOTS.Systems
             var previousCritical = instrumentationState.CriticalCount;
             var previousFailure = instrumentationState.FailureCount;
 
-            var currentTick = SystemAPI.HasSingleton<TimeState>()
-                ? SystemAPI.GetSingleton<TimeState>().Tick
-                : 0u;
+            var currentTick = 0u;
+            if (SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                currentTick = timeState.Tick;
+            }
 
             var healthyCount = 0;
             var warningCount = 0;

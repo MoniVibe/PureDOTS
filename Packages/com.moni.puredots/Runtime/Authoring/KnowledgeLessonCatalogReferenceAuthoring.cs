@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using PureDOTS.Runtime.Knowledge;
 using Unity.Entities;
 using UnityEngine;
@@ -33,7 +34,16 @@ namespace PureDOTS.Authoring
 
                 var entity = GetEntity(TransformUsageFlags.None);
                 var blobRef = KnowledgeLessonCatalogBuilder.BuildCatalog(source);
-                AddComponent(entity, new KnowledgeLessonEffectCatalog { Blob = blobRef });
+                var catalog = new KnowledgeLessonEffectCatalog { Blob = blobRef };
+
+                try
+                {
+                    AddComponent(entity, catalog);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.IndexOf("duplicate component", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    SetComponent(entity, catalog);
+                }
             }
 
             private static KnowledgeLessonEffectAuthoring ResolveSource(KnowledgeLessonCatalogReferenceAuthoring authoring)

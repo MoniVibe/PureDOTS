@@ -1,9 +1,8 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
-using System.Runtime.CompilerServices;
+using PureDOTS.Runtime.LowLevel;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -115,7 +114,7 @@ namespace PureDOTS.Systems.Combat
                 DamageFlags damageFlags = DamageFlags.None;
 
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
-                if (!Unsafe.IsNullRef(ref spec))
+                if (!UnsafeRef.IsNull(ref spec))
                 {
                     damage = spec.Damage.BaseDamage;
                     damageType = DetermineDamageTypeFromSpec(ref spec);
@@ -165,7 +164,7 @@ namespace PureDOTS.Systems.Combat
             {
                 if (!catalog.IsCreated)
                 {
-                    return ref Unsafe.NullRef<ProjectileSpec>();
+                    return ref UnsafeRef.Null<ProjectileSpec>();
                 }
 
                 ref var catalogRef = ref catalog.Value;
@@ -178,7 +177,7 @@ namespace PureDOTS.Systems.Combat
                     }
                 }
 
-                return ref Unsafe.NullRef<ProjectileSpec>();
+                return ref UnsafeRef.Null<ProjectileSpec>();
             }
 
             /// <summary>

@@ -1,11 +1,10 @@
 using PureDOTS.Runtime.Buffs;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.LowLevel;
 using PureDOTS.Runtime.Spatial;
-using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -112,7 +111,7 @@ namespace PureDOTS.Systems.Combat
 
                 // Find projectile spec
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
-                if (Unsafe.IsNullRef(ref spec))
+                if (UnsafeRef.IsNull(ref spec))
                 {
                     return;
                 }
@@ -574,7 +573,7 @@ namespace PureDOTS.Systems.Combat
             {
                 if (!catalog.IsCreated)
                 {
-                    return ref Unsafe.NullRef<ProjectileSpec>();
+                    return ref UnsafeRef.Null<ProjectileSpec>();
                 }
 
                 ref var projectiles = ref catalog.Value.Projectiles;
@@ -587,7 +586,7 @@ namespace PureDOTS.Systems.Combat
                     }
                 }
 
-                return ref Unsafe.NullRef<ProjectileSpec>();
+                return ref UnsafeRef.Null<ProjectileSpec>();
             }
 
             /// <summary>
