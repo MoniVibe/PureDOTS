@@ -1,8 +1,11 @@
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Config;
 using PureDOTS.Runtime.Presentation;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace PureDOTS.Systems
 {
@@ -20,6 +23,12 @@ namespace PureDOTS.Systems
 
         public void OnCreate(ref SystemState state)
         {
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null || PureDOTS.Runtime.Core.RuntimeMode.IsHeadless)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             _shouldRun = ShouldRunInWorld(state.WorldUnmanaged);
             if (!_shouldRun)
             {
@@ -160,3 +169,4 @@ namespace PureDOTS.Systems
         }
     }
 }
+#endif

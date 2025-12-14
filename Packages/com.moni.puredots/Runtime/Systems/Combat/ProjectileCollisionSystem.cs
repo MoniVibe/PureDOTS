@@ -20,6 +20,8 @@ namespace PureDOTS.Systems.Combat
     public partial struct ProjectileCollisionSystem : ISystem
     {
         private BufferLookup<PlayEffectRequest> _impactFxBufferLookup;
+        private NativeParallelHashMap<ulong, BlobAssetReference<Unity.Physics.Collider>> _aoeColliderCache;
+        private BlobAssetReference<ProjectileCatalogBlob> _cachedCatalog;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -28,6 +30,8 @@ namespace PureDOTS.Systems.Combat
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             _impactFxBufferLookup = state.GetBufferLookup<PlayEffectRequest>();
+            _aoeColliderCache = new NativeParallelHashMap<ulong, BlobAssetReference<Unity.Physics.Collider>>(8, Allocator.Persistent);
+            _cachedCatalog = default;
         }
 
         [BurstCompile]
@@ -52,6 +56,8 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            EnsureAoEColliders(projectileCatalog.Catalog);
+
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
@@ -66,10 +72,87 @@ namespace PureDOTS.Systems.Combat
                 Ecb = ecb,
                 HasPresentationHub = hasPresentationHub,
                 HubEntity = hasPresentationHub ? hubEntity : Entity.Null,
-                ImpactFxBuffers = _impactFxBufferLookup
+                ImpactFxBuffers = _impactFxBufferLookup,
+                ColliderCache = _aoeColliderCache
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            DisposeAoEColliders();
+            if (_aoeColliderCache.IsCreated)
+            {
+                _aoeColliderCache.Dispose();
+            }
+            _cachedCatalog = default;
+        }
+
+        private void EnsureAoEColliders(in BlobAssetReference<ProjectileCatalogBlob> catalog)
+        {
+            if (_cachedCatalog.IsCreated && _cachedCatalog.Equals(catalog))
+            {
+                return;
+            }
+
+            DisposeAoEColliders();
+            _cachedCatalog = catalog;
+
+            ref var projectiles = ref catalog.Value.Projectiles;
+            for (int i = 0; i < projectiles.Length; i++)
+            {
+                ref var spec = ref projectiles[i];
+                if (spec.AoERadius <= 0f)
+                {
+                    continue;
+                }
+
+                var filter = new CollisionFilter
+                {
+                    BelongsTo = 0xFFFFFFFF,
+                    CollidesWith = spec.HitFilter,
+                    GroupIndex = 0
+                };
+
+                var sphereGeometry = new SphereGeometry
+                {
+                    Center = float3.zero,
+                    Radius = math.max(spec.AoERadius, 0.001f)
+                };
+
+                var collider = Unity.Physics.SphereCollider.Create(sphereGeometry, filter);
+                var key = BuildColliderKey(spec.AoERadius, spec.HitFilter);
+                _aoeColliderCache.TryAdd(key, collider);
+            }
+        }
+
+        private void DisposeAoEColliders()
+        {
+            if (!_aoeColliderCache.IsCreated)
+            {
+                return;
+            }
+
+            var values = _aoeColliderCache.GetValueArray(Allocator.Temp);
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i].IsCreated)
+                {
+                    values[i].Dispose();
+                }
+            }
+
+            values.Dispose();
+            _aoeColliderCache.Clear();
+        }
+
+        private static ulong BuildColliderKey(float radius, uint hitFilter)
+        {
+            unchecked
+            {
+                return ((ulong)math.asuint(radius) << 32) | hitFilter;
+            }
         }
 
         [BurstCompile]
@@ -81,6 +164,7 @@ namespace PureDOTS.Systems.Combat
             public bool HasPresentationHub;
             public Entity HubEntity;
             [NativeDisableParallelForRestriction] public BufferLookup<PlayEffectRequest> ImpactFxBuffers;
+            [ReadOnly] public NativeParallelHashMap<ulong, BlobAssetReference<Unity.Physics.Collider>> ColliderCache;
 
             public void Execute(
                 [ChunkIndexInQuery] int chunkIndex,
@@ -125,16 +209,11 @@ namespace PureDOTS.Systems.Combat
                 // Choose collision method based on projectile radius
                 if (spec.AoERadius > 0f)
                 {
-                    // Spherecast for projectiles with radius
-                    var sphereGeometry = new SphereGeometry
+                    var key = BuildColliderKey(spec.AoERadius, spec.HitFilter);
+                    if (!ColliderCache.TryGetValue(key, out var collider) || !collider.IsCreated)
                     {
-                        Center = float3.zero,
-                        Radius = spec.AoERadius
-                    };
-
-                    var collider = Unity.Physics.SphereCollider.Create(
-                        sphereGeometry,
-                        filter);
+                        return;
+                    }
 
                     var colliderCastInput = new ColliderCastInput(
                         collider,
@@ -150,8 +229,6 @@ namespace PureDOTS.Systems.Combat
                         hitEntity = castHit.Entity;
                         timeOfImpact = castHit.Fraction;
                     }
-
-                    collider.Dispose();
                 }
                 else
                 {
@@ -230,6 +307,11 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return ref UnsafeRef.Null<ProjectileSpec>();
+            }
+
+            private static ulong BuildColliderKey(float radius, uint hitFilter)
+            {
+                return ProjectileCollisionSystem.BuildColliderKey(radius, hitFilter);
             }
         }
     }

@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using Unity.Collections;
+using PureDOTS.Runtime.Core;
 using Unity.Entities;
 using UnityEngine;
 
@@ -29,6 +28,16 @@ namespace PureDOTS.Systems
 
             // Let Entities place every system into its declared group chain.
             DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, systems);
+
+            // Ensure the canonical Game World tag exists so gameplay systems can gate themselves.
+            var entityManager = world.EntityManager;
+            using (var gameWorldQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<GameWorldTag>()))
+            {
+                if (!gameWorldQuery.HasSingleton<GameWorldTag>())
+                {
+                    entityManager.CreateEntity(typeof(GameWorldTag));
+                }
+            }
 
             // Hook the world into the player loop so it actually updates each frame.
             ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(world);

@@ -19,6 +19,24 @@ namespace PureDOTS.Systems.Combat
     [UpdateAfter(typeof(BuildHazardSlicesSystem))]
     public partial struct AccumulateHazardGridSystem : ISystem
     {
+        public void OnDestroy(ref SystemState state)
+        {
+            if (!SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out var singletonEntity))
+                return;
+
+            var singleton = SystemAPI.GetComponent<HazardGridSingleton>(singletonEntity);
+            if (singleton.GridEntity == Entity.Null || !SystemAPI.HasComponent<HazardGrid>(singleton.GridEntity))
+                return;
+
+            var grid = SystemAPI.GetComponent<HazardGrid>(singleton.GridEntity);
+            if (grid.Risk.IsCreated)
+            {
+                grid.Risk.Dispose();
+                grid.Risk = default;
+                SystemAPI.SetComponent(singleton.GridEntity, grid);
+            }
+        }
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -40,13 +58,9 @@ namespace PureDOTS.Systems.Combat
             var currentTick = timeState.Tick;
             var deltaTime = timeState.DeltaTime;
 
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
-
             // Find or create hazard grid (single owner)
             HazardGrid grid;
             Entity gridEntity;
-            bool gridExists = false;
 
             var singletonEntity = SystemAPI.GetSingletonEntity<HazardGridSingleton>();
             var singleton = SystemAPI.GetComponent<HazardGridSingleton>(singletonEntity);
@@ -55,11 +69,10 @@ namespace PureDOTS.Systems.Combat
             {
                 gridEntity = singleton.GridEntity;
                 grid = SystemAPI.GetComponent<HazardGrid>(gridEntity);
-                gridExists = true;
             }
             else
             {
-                gridEntity = ecb.CreateEntity();
+                gridEntity = state.EntityManager.CreateEntity();
                 grid = new HazardGrid
                 {
                     Size = new int3(100, 100, 1), // 2D default
@@ -67,8 +80,8 @@ namespace PureDOTS.Systems.Combat
                     Origin = float3.zero,
                     Risk = default
                 };
-                ecb.AddComponent(gridEntity, grid);
-                ecb.SetComponent(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
+                state.EntityManager.AddComponentData(gridEntity, grid);
+                state.EntityManager.SetComponentData(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
             }
 
             // Get hazard slices buffer
@@ -101,14 +114,7 @@ namespace PureDOTS.Systems.Combat
                 builder.Dispose();
 
                 grid.Risk = newRisk;
-                if (gridExists)
-                {
-                    SystemAPI.SetComponent(gridEntity, grid);
-                }
-                else
-                {
-                    ecb.SetComponent(gridEntity, grid);
-                }
+                SystemAPI.SetComponent(gridEntity, grid);
             }
 
             // Clear grid

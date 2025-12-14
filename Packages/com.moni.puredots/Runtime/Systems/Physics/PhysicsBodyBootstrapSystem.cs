@@ -28,6 +28,7 @@ namespace PureDOTS.Systems.Physics
     public partial struct PhysicsBodyBootstrapSystem : ISystem
     {
         private EntityQuery _needsSetupQuery;
+        private NativeParallelHashMap<int, BlobAssetReference<Unity.Physics.Collider>> _sphereColliderCache;
 
         public void OnCreate(ref SystemState state)
         {
@@ -38,6 +39,7 @@ namespace PureDOTS.Systems.Physics
                 .Build();
 
             state.RequireForUpdate(_needsSetupQuery);
+            _sphereColliderCache = new NativeParallelHashMap<int, BlobAssetReference<Unity.Physics.Collider>>(4, Allocator.Persistent);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -71,24 +73,8 @@ namespace PureDOTS.Systems.Physics
                     collisionRadius = interactionConfig.CollisionRadius;
                 }
 
-                // Create sphere collider (default)
-                var sphereGeometry = new SphereGeometry
-                {
-                    Center = float3.zero,
-                    Radius = collisionRadius
-                };
-
-                // Create collision filter based on flags
                 var flags = requiresPhysics.ValueRO.Flags;
-                var filter = new CollisionFilter
-                {
-                    BelongsTo = 1u, // Default layer
-                    CollidesWith = ~0u, // Collide with everything by default
-                    GroupIndex = 0
-                };
-
-                // Create collider blob
-                var collider = Unity.Physics.SphereCollider.Create(sphereGeometry, filter);
+                var collider = GetOrCreateSphereCollider(collisionRadius, flags);
 
                 // Add PhysicsCollider
                 ecb.AddComponent(entity, new PhysicsCollider { Value = collider });
@@ -129,7 +115,58 @@ namespace PureDOTS.Systems.Physics
 
         public void OnDestroy(ref SystemState state)
         {
-            // No cleanup needed - collider blobs are managed by Unity Physics
+            if (_sphereColliderCache.IsCreated)
+            {
+                var values = _sphereColliderCache.GetValueArray(Allocator.Temp);
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values[i].IsCreated)
+                    {
+                        values[i].Dispose();
+                    }
+                }
+                values.Dispose();
+                _sphereColliderCache.Dispose();
+            }
+        }
+
+        private BlobAssetReference<Unity.Physics.Collider> GetOrCreateSphereCollider(float radius, PhysicsInteractionFlags flags)
+        {
+            var key = CombineKey(radius, flags);
+            if (_sphereColliderCache.TryGetValue(key, out var cached) && cached.IsCreated)
+            {
+                return cached;
+            }
+
+            var sphereGeometry = new SphereGeometry
+            {
+                Center = float3.zero,
+                Radius = math.max(radius, 0.01f)
+            };
+
+            var filter = BuildCollisionFilter(flags);
+            var collider = Unity.Physics.SphereCollider.Create(sphereGeometry, filter);
+            _sphereColliderCache.TryAdd(key, collider);
+            return collider;
+        }
+
+        private static CollisionFilter BuildCollisionFilter(PhysicsInteractionFlags flags)
+        {
+            var collidable = (flags & PhysicsInteractionFlags.Collidable) != 0;
+            return new CollisionFilter
+            {
+                BelongsTo = collidable ? 1u : 0u,
+                CollidesWith = collidable ? ~0u : 0u,
+                GroupIndex = 0
+            };
+        }
+
+        private static int CombineKey(float radius, PhysicsInteractionFlags flags)
+        {
+            unchecked
+            {
+                return (math.asint(radius) * 397) ^ (int)flags;
+            }
         }
     }
 
