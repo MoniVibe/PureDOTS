@@ -27,6 +27,18 @@ namespace PureDOTS.Input
         [SerializeField] private Camera raycastCamera;
         [SerializeField] private LayerMask selectionMask = ~0;
 
+        public Camera RaycastCamera
+        {
+            get => raycastCamera;
+            set => raycastCamera = value;
+        }
+
+        public LayerMask SelectionMask
+        {
+            get => selectionMask;
+            set => selectionMask = value;
+        }
+
         private enum PointerMode
         {
             None,
@@ -668,4 +680,3 @@ namespace PureDOTS.Input
         }
     }
 }
-

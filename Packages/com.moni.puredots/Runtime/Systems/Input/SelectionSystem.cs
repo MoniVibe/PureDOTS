@@ -3,6 +3,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Physics;
+using Unity.Physics.Systems;
 
 namespace PureDOTS.Systems.Input
 {
@@ -62,15 +64,15 @@ namespace PureDOTS.Systems.Input
 
             // Raycast from screen position
             Vector3 screenPos = new Vector3(clickEvent.ScreenPos.x, clickEvent.ScreenPos.y, 0f);
-            Ray ray = camera.ScreenPointToRay(screenPos);
+            UnityEngine.Ray ray = camera.ScreenPointToRay(screenPos);
 
             Entity hitEntity = Entity.Null;
-            if (UnityEngine.Physics.Raycast(ray, out RaycastHit hit, 800f))
+            hitEntity = RaycastForEntity(ref state, ray, 800f);
+
+            // Fallback: nearest selectable under cursor within small radius
+            if (hitEntity == Entity.Null)
             {
-                // Try to find entity from hit collider
-                // Note: This requires GameObject-to-Entity mapping, which is game-specific
-                // For now, we'll use a spatial query or tag-based approach
-                hitEntity = Entity.Null; // TODO: Resolve entity from hit
+                hitEntity = FindNearestSelectableOnScreen(ref state, camera, screenPos, 32f, clickEvent.PlayerId);
             }
 
             // If no entity hit, clear selection (classic RTS behavior)
@@ -122,6 +124,77 @@ namespace PureDOTS.Systems.Input
                     state.EntityManager.AddComponent<SelectedTag>(hitEntity);
                 }
             }
+        }
+
+        private Entity RaycastForEntity(ref SystemState state, UnityEngine.Ray ray, float maxDistance)
+        {
+            // Prefer Unity.Physics raycast (ECS entities)
+            if (SystemAPI.TryGetSingleton<PhysicsWorldSingleton>(out var physicsWorld))
+            {
+                var input = new RaycastInput
+                {
+                    Start = ray.origin,
+                    End = ray.origin + ray.direction * maxDistance,
+                    Filter = CollisionFilter.Default
+                };
+
+                if (physicsWorld.CastRay(input, out var hit))
+                {
+                    return hit.Entity;
+                }
+            }
+
+            // Fallback: classic Physics raycast and optional Mono bridge
+            if (UnityEngine.Physics.Raycast(ray, out UnityEngine.RaycastHit hit3d, maxDistance))
+            {
+                var bridge = hit3d.collider.GetComponent<IEntityBridge>();
+                if (bridge != null && bridge.TryGetEntity(out var bridged))
+                {
+                    return bridged;
+                }
+            }
+
+            return Entity.Null;
+        }
+
+        private Entity FindNearestSelectableOnScreen(ref SystemState state, Camera camera, Vector3 screenPos, float maxPixelDistance, byte playerId)
+        {
+            Entity best = Entity.Null;
+            float bestSqr = maxPixelDistance * maxPixelDistance;
+
+            foreach (var (_, entity) in SystemAPI.Query<SelectableTag>().WithEntityAccess())
+            {
+                if (state.EntityManager.HasComponent<SelectionOwner>(entity))
+                {
+                    var ownerId = state.EntityManager.GetComponentData<SelectionOwner>(entity).PlayerId;
+                    if (ownerId != playerId)
+                    {
+                        continue;
+                    }
+                }
+
+                if (!state.EntityManager.HasComponent<Unity.Transforms.LocalTransform>(entity))
+                {
+                    continue;
+                }
+
+                var transform = state.EntityManager.GetComponentData<Unity.Transforms.LocalTransform>(entity);
+                Vector3 worldPos = new Vector3(transform.Position.x, transform.Position.y, transform.Position.z);
+                Vector3 projected = camera.WorldToScreenPoint(worldPos);
+                if (projected.z < 0f)
+                {
+                    continue; // behind camera
+                }
+
+                float sqrDist = (new Vector2(projected.x, projected.y) - new Vector2(screenPos.x, screenPos.y)).sqrMagnitude;
+                if (sqrDist <= bestSqr)
+                {
+                    bestSqr = sqrDist;
+                    best = entity;
+                }
+            }
+
+            return best;
         }
 
         private void ProcessSelectionBox(ref SystemState state, SelectionBoxEvent boxEvent)
@@ -218,6 +291,3 @@ namespace PureDOTS.Systems.Input
         }
     }
 }
-
-
-

@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Physics;
 
 namespace PureDOTS.Systems.Input
 {
@@ -51,18 +52,11 @@ namespace PureDOTS.Systems.Input
 
             // Raycast from screen position
             Vector3 screenPos = new Vector3(rightClickEvent.ScreenPos.x, rightClickEvent.ScreenPos.y, 0f);
-            Ray ray = camera.ScreenPointToRay(screenPos);
+            UnityEngine.Ray ray = camera.ScreenPointToRay(screenPos);
 
             Entity hitEntity = Entity.Null;
             float3 hitPosition = float3.zero;
-            bool hasHit = UnityEngine.Physics.Raycast(ray, out RaycastHit hit, 800f);
-
-            if (hasHit)
-            {
-                hitPosition = new float3(hit.point.x, hit.point.y, hit.point.z);
-                // TODO: Resolve entity from hit collider
-                hitEntity = Entity.Null;
-            }
+            bool hasHit = RaycastForEntity(ref state, ray, 800f, out hitEntity, out hitPosition);
 
             // Get all selected entities
             var selectedEntities = new NativeList<Entity>(Allocator.Temp);
@@ -106,6 +100,46 @@ namespace PureDOTS.Systems.Input
             }
 
             selectedEntities.Dispose();
+        }
+
+        private bool RaycastForEntity(ref SystemState state, UnityEngine.Ray ray, float maxDistance, out Entity entity, out float3 position)
+        {
+            entity = Entity.Null;
+            position = float3.zero;
+
+            // Try Unity Physics ECS raycast
+            if (SystemAPI.TryGetSingleton<PhysicsWorldSingleton>(out var physicsWorld))
+            {
+                var input = new RaycastInput
+                {
+                    Start = ray.origin,
+                    End = ray.origin + ray.direction * maxDistance,
+                    Filter = CollisionFilter.Default
+                };
+
+                if (physicsWorld.CastRay(input, out var hit))
+                {
+                    entity = hit.Entity;
+                    position = hit.Position;
+                    return true;
+                }
+            }
+
+            // Fallback: classic Physics raycast + bridge
+            if (UnityEngine.Physics.Raycast(ray, out UnityEngine.RaycastHit hit3d, maxDistance))
+            {
+                position = new float3(hit3d.point.x, hit3d.point.y, hit3d.point.z);
+
+                var bridge = hit3d.collider.GetComponent<IEntityBridge>();
+                if (bridge != null && bridge.TryGetEntity(out var bridged))
+                {
+                    entity = bridged;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         private OrderKind DetermineOrderKind(ref SystemState state, Entity hitEntity, bool hasHit)
@@ -153,6 +187,3 @@ namespace PureDOTS.Systems.Input
         }
     }
 }
-
-
-

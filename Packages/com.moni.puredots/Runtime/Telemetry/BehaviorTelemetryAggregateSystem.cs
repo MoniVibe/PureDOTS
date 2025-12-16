@@ -26,6 +26,7 @@ namespace PureDOTS.Runtime.Telemetry
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _configLookup.Update(ref state);
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var configEntity = SystemAPI.GetSingletonEntity<BehaviorTelemetryConfig>();
             var config = _configLookup[configEntity];
