@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
@@ -77,7 +78,8 @@ namespace PureDOTS.Runtime.Scenarios
                 ScenarioId = scenario.ScenarioId.ToString(),
                 RunTicks = scenario.RunTicks,
                 Seed = scenario.Seed,
-                EntityCountEntries = scenario.EntityCounts.Length
+                EntityCountEntries = scenario.EntityCounts.Length,
+                Metrics = new List<ScenarioMetric>(8)
             };
 
             DefaultWorldInitializationInitializationHook(world);
@@ -284,6 +286,107 @@ namespace PureDOTS.Runtime.Scenarios
                 result.SnapshotBytes = snapshotState.Capacity * UnsafeUtility.SizeOf<TickSnapshotLogEntry>();
                 result.TotalLogBytes = result.CommandBytes + result.SnapshotBytes;
             }
+
+            TryCollectSpace4XMiningTelemetry(entityManager, ref result);
+        }
+
+        private static readonly string Space4XTelemetryTypeName = "Space4X.Registry.Space4XMiningTelemetry";
+
+        private static Type s_space4xTelemetryType;
+        private static FieldInfo s_space4xOreInHoldField;
+        private static FieldInfo s_space4xOreDepositedField;
+        private static FieldInfo s_space4xStorehouseInventoryField;
+        private static MethodInfo s_getComponentDataMethod;
+
+        private static void TryCollectSpace4XMiningTelemetry(EntityManager entityManager, ref ScenarioRunResult result)
+        {
+            EnsureSpace4XReflectionHandles();
+            if (s_space4xTelemetryType == null || s_getComponentDataMethod == null)
+            {
+                Debug.LogWarning("[ScenarioRunner] Space4XMiningTelemetry type or accessor missing; skipping mining metrics.");
+                return;
+            }
+
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly(s_space4xTelemetryType));
+            if (query.IsEmptyIgnoreFilter)
+            {
+                Debug.LogWarning("[ScenarioRunner] Space4XMiningTelemetry query returned no entities.");
+                return;
+            }
+
+            var telemetryEntity = query.GetSingletonEntity();
+            var telemetry = s_getComponentDataMethod
+                .MakeGenericMethod(s_space4xTelemetryType)
+                .Invoke(entityManager, new object[] { telemetryEntity });
+
+            if (telemetry == null)
+            {
+                Debug.LogWarning("[ScenarioRunner] Space4XMiningTelemetry reflection returned null.");
+                return;
+            }
+
+            var appended = false;
+            if (s_space4xOreInHoldField != null)
+            {
+                var value = Convert.ToDouble(s_space4xOreInHoldField.GetValue(telemetry));
+                result.AddMetric("space4x.mining.oreInHold", value);
+                appended = true;
+            }
+
+            if (s_space4xOreDepositedField != null)
+            {
+                var value = Convert.ToDouble(s_space4xOreDepositedField.GetValue(telemetry));
+                result.AddMetric("space4x.mining.oreDeposited", value);
+                appended = true;
+            }
+
+            if (s_space4xStorehouseInventoryField != null)
+            {
+                var value = Convert.ToDouble(s_space4xStorehouseInventoryField.GetValue(telemetry));
+                result.AddMetric("space4x.mining.storehouseInventory", value);
+                appended = true;
+            }
+
+            if (!appended)
+            {
+                Debug.LogWarning("[ScenarioRunner] Space4XMiningTelemetry fields were missing; no mining metrics recorded.");
+            }
+            else
+            {
+                Debug.Log("[ScenarioRunner] Space4X mining metrics appended to scenario report.");
+            }
+        }
+
+        private static void EnsureSpace4XReflectionHandles()
+        {
+            if (s_getComponentDataMethod == null)
+            {
+                s_getComponentDataMethod = typeof(EntityManager)
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                    .FirstOrDefault(m => m.Name == nameof(EntityManager.GetComponentData)
+                                         && m.IsGenericMethodDefinition
+                                         && m.GetGenericArguments().Length == 1
+                                         && m.GetParameters().Length == 1
+                                         && m.GetParameters()[0].ParameterType == typeof(Entity));
+            }
+
+            if (s_space4xTelemetryType != null)
+            {
+                return;
+            }
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var resolved = assembly.GetType(Space4XTelemetryTypeName);
+                if (resolved != null)
+                {
+                    s_space4xTelemetryType = resolved;
+                    s_space4xOreInHoldField = resolved.GetField("OreInHold", BindingFlags.Public | BindingFlags.Instance);
+                    s_space4xOreDepositedField = resolved.GetField("OreDeposited", BindingFlags.Public | BindingFlags.Instance);
+                    s_space4xStorehouseInventoryField = resolved.GetField("StorehouseInventory", BindingFlags.Public | BindingFlags.Instance);
+                    break;
+                }
+            }
         }
 
         private static void InjectScenarioMetadata(EntityManager entityManager, in ResolvedScenario scenario)
@@ -303,6 +406,15 @@ namespace PureDOTS.Runtime.Scenarios
                 {
                     RegistryId = scenario.EntityCounts[i].RegistryId,
                     Count = scenario.EntityCounts[i].Count
+                });
+            }
+
+            if (scenario.HasBehaviorOverride)
+            {
+                var overrideEntity = entityManager.CreateEntity(typeof(BehaviorScenarioOverrideComponent));
+                entityManager.SetComponentData(overrideEntity, new BehaviorScenarioOverrideComponent
+                {
+                    Value = scenario.BehaviorOverride
                 });
             }
         }
@@ -400,10 +512,31 @@ namespace PureDOTS.Runtime.Scenarios
         public int CommandBytes;
         public int SnapshotBytes;
         public int TotalLogBytes;
+        public List<ScenarioMetric> Metrics;
+
+        public void AddMetric(string key, double value)
+        {
+            if (Metrics == null)
+            {
+                Metrics = new List<ScenarioMetric>();
+            }
+
+            Metrics.Add(new ScenarioMetric
+            {
+                Key = string.IsNullOrEmpty(key) ? string.Empty : key,
+                Value = value
+            });
+        }
 
         public override string ToString()
         {
             return $"scenarioId={ScenarioId}, seed={Seed}, runTicks={RunTicks}, finalTick={FinalTick}, commands={CommandLogCount}, snapshots={SnapshotLogCount}, frameBudgetExceeded={FrameTimingBudgetExceeded}";
         }
+    }
+
+    public struct ScenarioMetric
+    {
+        public string Key;
+        public double Value;
     }
 }

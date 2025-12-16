@@ -12,7 +12,8 @@
         "Unity.Scenes",
         "Unity.Entities.Content",
         "Unity.Physics",
-        "PureDOTS.Config"
+        "PureDOTS.Config",
+        "PureDOTS.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -24,23 +24,21 @@ namespace PureDOTS.Authoring
 
         private void OnValidate()
         {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             for (int i = entries.Count - 1; i >= 0; i--)
             {
-                if (string.IsNullOrWhiteSpace(entries[i].id))
+                var id = entries[i].id;
+                if (string.IsNullOrWhiteSpace(id))
                 {
-                    entries.RemoveAt(i);
+                    // Allow blank entries so designers can fill them in without them being removed immediately.
+                    continue;
                 }
-            }
 
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < entries.Count; i++)
-            {
-                var trimmed = entries[i].id.Trim();
+                var trimmed = id.Trim();
                 if (seen.Contains(trimmed))
                 {
                     Debug.LogWarning($"Duplicate resource type id '{trimmed}' removed from catalog.", this);
                     entries.RemoveAt(i);
-                    i--;
                     continue;
                 }
 

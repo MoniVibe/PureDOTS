@@ -130,6 +130,7 @@ namespace PureDOTS.Systems.AI
             state.RequireForUpdate<SpatialGridState>();
             state.RequireForUpdate<UniversalPerformanceBudget>();
             state.RequireForUpdate<UniversalPerformanceCounters>();
+            state.RequireForUpdate<MindCadenceSettings>();
             state.RequireForUpdate(_sensorQuery);
 
             _villagerLookup = state.GetComponentLookup<VillagerId>(true);
@@ -145,6 +146,12 @@ namespace PureDOTS.Systems.AI
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            var cadenceSettings = SystemAPI.GetSingleton<MindCadenceSettings>();
+            if (!CadenceGate.ShouldRun(timeState.Tick, cadenceSettings.SensorCadenceTicks))
             {
                 return;
             }
@@ -436,6 +443,7 @@ namespace PureDOTS.Systems.AI
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             state.RequireForUpdate<AIBehaviourArchetype>();
             state.RequireForUpdate<AISensorConfig>();
+            state.RequireForUpdate<MindCadenceSettings>();
         }
 
         [BurstCompile]
@@ -443,6 +451,12 @@ namespace PureDOTS.Systems.AI
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            var cadenceSettings = SystemAPI.GetSingleton<MindCadenceSettings>();
+            if (!CadenceGate.ShouldRun(timeState.Tick, cadenceSettings.EvaluationCadenceTicks))
             {
                 return;
             }
@@ -556,6 +570,7 @@ namespace PureDOTS.Systems.AI
             state.RequireForUpdate<AISteeringConfig>();
             state.RequireForUpdate<AISteeringState>();
             state.RequireForUpdate<AITargetState>();
+            state.RequireForUpdate<MindCadenceSettings>();
         }
 
         [BurstCompile]
@@ -563,6 +578,12 @@ namespace PureDOTS.Systems.AI
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            var cadenceSettings = SystemAPI.GetSingleton<MindCadenceSettings>();
+            if (!CadenceGate.ShouldRun(timeState.Tick, cadenceSettings.EvaluationCadenceTicks))
             {
                 return;
             }
@@ -636,6 +657,7 @@ namespace PureDOTS.Systems.AI
             state.RequireForUpdate<AIUtilityState>();
             state.RequireForUpdate<AITargetState>();
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<MindCadenceSettings>();
         }
 
         [BurstCompile]
@@ -650,6 +672,12 @@ namespace PureDOTS.Systems.AI
             var queueEntity = SystemAPI.GetSingletonEntity<AICommandQueueTag>();
             var commands = state.EntityManager.GetBuffer<AICommand>(queueEntity);
             commands.Clear();
+
+            var cadenceSettings = SystemAPI.GetSingleton<MindCadenceSettings>();
+            if (!CadenceGate.ShouldRun(timeState.Tick, cadenceSettings.ResolutionCadenceTicks))
+            {
+                return;
+            }
 
             foreach (var (utility, target, entity) in SystemAPI.Query<RefRO<AIUtilityState>, RefRO<AITargetState>>()
                          .WithEntityAccess())

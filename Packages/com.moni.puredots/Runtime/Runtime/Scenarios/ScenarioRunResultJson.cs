@@ -1,4 +1,5 @@
 using System.Text;
+using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 
@@ -32,6 +33,11 @@ namespace PureDOTS.Runtime.Scenarios
             AppendInt(sb, "commandBytes", result.CommandBytes); sb.Append(",");
             AppendInt(sb, "snapshotBytes", result.SnapshotBytes); sb.Append(",");
             AppendInt(sb, "totalLogBytes", result.TotalLogBytes);
+            if (result.Metrics != null && result.Metrics.Count > 0)
+            {
+                sb.Append(",");
+                AppendMetrics(sb, result.Metrics);
+            }
             sb.Append("}");
             return sb.ToString();
         }
@@ -59,6 +65,29 @@ namespace PureDOTS.Runtime.Scenarios
         private static void AppendFloat(StringBuilder sb, string key, float value)
         {
             sb.Append("\"").Append(key).Append("\":").Append(value.ToString("0.###"));
+        }
+
+        private static void AppendDouble(StringBuilder sb, string key, double value)
+        {
+            sb.Append("\"").Append(key).Append("\":").Append(value.ToString("0.###"));
+        }
+
+        private static void AppendMetrics(StringBuilder sb, List<ScenarioMetric> metrics)
+        {
+            sb.Append("\"metrics\":[");
+            for (int i = 0; i < metrics.Count; i++)
+            {
+                var metric = metrics[i];
+                sb.Append("{");
+                AppendString(sb, "key", metric.Key ?? string.Empty); sb.Append(",");
+                AppendDouble(sb, "value", metric.Value);
+                sb.Append("}");
+                if (i < metrics.Count - 1)
+                {
+                    sb.Append(",");
+                }
+            }
+            sb.Append("]");
         }
 
         private static string Escape(string value)

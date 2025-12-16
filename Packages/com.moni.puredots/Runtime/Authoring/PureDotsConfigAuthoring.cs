@@ -96,11 +96,11 @@ namespace PureDOTS.Authoring
 #endif
             }
             else
-#if UNITY_EDITOR
             {
+#if UNITY_EDITOR
                 Debug.LogWarning("[PureDotsConfigBaker] ResourceTypes catalog missing or empty", authoring.config);
-            }
 #endif
+            }
 
             var recipeCatalog = authoring.config.RecipeCatalog;
             if (recipeCatalog != null)
@@ -111,11 +111,11 @@ namespace PureDOTS.Authoring
                 BuildRecipeSet(entity, recipeCatalog);
             }
             else
-#if UNITY_EDITOR
             {
+#if UNITY_EDITOR
                 Debug.LogWarning("[PureDotsConfigBaker] RecipeCatalog asset missing", authoring.config);
-            }
 #endif
+            }
         }
 
         private void BuildRecipeSet(Entity entity, ResourceRecipeCatalog catalog)

@@ -29,6 +29,7 @@ namespace PureDOTS.Systems.AI
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<MindCadenceSettings>();
         }
 
         [BurstCompile]
@@ -36,6 +37,12 @@ namespace PureDOTS.Systems.AI
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
+            {
+                return;
+            }
+
+            var cadenceSettings = SystemAPI.GetSingleton<MindCadenceSettings>();
+            if (!CadenceGate.ShouldRun(timeState.Tick, cadenceSettings.SensorCadenceTicks))
             {
                 return;
             }

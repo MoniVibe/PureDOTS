@@ -135,7 +135,8 @@ namespace PureDOTS.Systems
                 BuiltinProfiles.HeadlessId,
                 "Headless Simulation",
                 defaultFilter,
-                exclusions: new[] { typeof(Unity.Entities.PresentationSystemGroup) }));
+                exclusions: new[] { typeof(Unity.Entities.PresentationSystemGroup) },
+                additionalFilter: ShouldIncludeInHeadlessProfile));
 
             RegisterProfile(new BootstrapWorldProfile(
                 BuiltinProfiles.ReplayId,
@@ -172,40 +173,65 @@ namespace PureDOTS.Systems
                 BuiltinProfiles.GameWorldId,
                 "Game World",
                 defaultFilter,
-                additionalFilter: type =>
-                {
-                    var fullName = type.FullName;
-                    if (string.IsNullOrWhiteSpace(fullName))
-                        return false;
+                additionalFilter: ShouldIncludeInGameWorldProfile));
+        }
 
-                    // Exclude all demo and hybrid systems by namespace
-                    if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
-                        return false;
-                    if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
-                        return false;
-                    if (fullName.StartsWith("PureDOTS.Systems.Hybrid.", StringComparison.Ordinal))
-                        return false;
+        private static bool ShouldIncludeInHeadlessProfile(Type type)
+        {
+            var fullName = type.FullName;
+            if (string.IsNullOrWhiteSpace(fullName))
+                return false;
 
-                    // Exclude any legacy demo seeds that use ".Demo." in their namespace
-                    if (fullName.Contains(".Demo.", StringComparison.Ordinal))
-                        return false;
+            if (fullName.StartsWith("Unity.Rendering.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("Unity.Entities.Graphics.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Rendering.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Systems.Presentation", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
+                return false;
 
-                    // Exclude economy/presentation bootstraps that leak blobs (not needed for current slice)
-                    if (fullName == "PureDOTS.Runtime.Economy.Production.ProductionRecipeBootstrapSystem")
-                        return false;
-                    if (fullName == "PureDOTS.Runtime.Economy.Wealth.WealthTierSpecBootstrapSystem")
-                        return false;
-                    if (fullName == "PureDOTS.Runtime.Economy.Resources.ItemSpecBootstrapSystem")
-                        return false;
-                    if (fullName == "PureDOTS.Systems.PresentationBindingSampleBootstrapSystem")
-                        return false;
+            if (fullName.Contains(".Presentation", StringComparison.Ordinal))
+                return false;
+            if (fullName.Contains(".Demo.", StringComparison.Ordinal))
+                return false;
 
-                    // Exclude engine render sanity/demo rendering systems
-                    if (fullName == "PureDOTS.Rendering.RenderSanitySystem")
-                        return false;
+            return true;
+        }
 
-                    return true;
-                }));
+        private static bool ShouldIncludeInGameWorldProfile(Type type)
+        {
+            var fullName = type.FullName;
+            if (string.IsNullOrWhiteSpace(fullName))
+                return false;
+
+            if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
+                return false;
+            if (fullName.StartsWith("PureDOTS.Systems.Hybrid.", StringComparison.Ordinal))
+                return false;
+
+            if (fullName.Contains(".Demo.", StringComparison.Ordinal))
+                return false;
+
+            if (fullName == "PureDOTS.Runtime.Economy.Production.ProductionRecipeBootstrapSystem")
+                return false;
+            if (fullName == "PureDOTS.Runtime.Economy.Wealth.WealthTierSpecBootstrapSystem")
+                return false;
+            if (fullName == "PureDOTS.Runtime.Economy.Resources.ItemSpecBootstrapSystem")
+                return false;
+            if (fullName == "PureDOTS.Systems.PresentationBindingSampleBootstrapSystem")
+                return false;
+
+            if (fullName == "PureDOTS.Rendering.RenderSanitySystem")
+                return false;
+
+            return true;
         }
 
         public static class BuiltinProfiles
@@ -224,5 +250,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-
-

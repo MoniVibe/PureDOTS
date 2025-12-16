@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 
 namespace PureDOTS.Runtime.Combat
 {
@@ -22,6 +23,32 @@ namespace PureDOTS.Runtime.Combat
         public float BreakFormationThresh; // Risk threshold to justify breaking formation
         public float LooseSpacingMin; // Minimum spacing in loose formation (meters)
         public float LooseSpacingMax; // Maximum spacing in loose formation (meters)
+    }
+
+    /// <summary>
+    /// Per-entity configuration for ray / pseudo-sphere hazard probing.
+    /// </summary>
+    public struct HazardRaycastProbe : IComponentData
+    {
+        public float RayLength;
+        public float SphereRadius;
+        public byte SampleCount;
+        public float SpreadAngleDeg;
+        public float UrgencyFalloff; // seconds before urgency decays back to zero
+        public CollisionFilter CollisionFilter;
+        public float CooldownSeconds;
+        public uint LastSampleTick;
+    }
+
+    /// <summary>
+    /// Diagnostic state written by the raycast avoidance system.
+    /// </summary>
+    public struct HazardRaycastState : IComponentData
+    {
+        public float3 LastAvoidanceDirection;
+        public float LastHitDistance;
+        public byte HitCount;
+        public uint LastHitTick;
     }
 
     /// <summary>

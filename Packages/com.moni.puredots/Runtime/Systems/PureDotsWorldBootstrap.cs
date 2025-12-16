@@ -31,11 +31,11 @@ namespace PureDOTS.Systems
 
             // Ensure the canonical Game World tag exists so gameplay systems can gate themselves.
             var entityManager = world.EntityManager;
-            using (var gameWorldQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<GameWorldTag>()))
+            using (var gameWorldQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PureDOTS.Runtime.Core.GameWorldTag>()))
             {
-                if (!gameWorldQuery.HasSingleton<GameWorldTag>())
+                if (!gameWorldQuery.HasSingleton<PureDOTS.Runtime.Core.GameWorldTag>())
                 {
-                    entityManager.CreateEntity(typeof(GameWorldTag));
+                    entityManager.CreateEntity(typeof(PureDOTS.Runtime.Core.GameWorldTag));
                 }
             }
 

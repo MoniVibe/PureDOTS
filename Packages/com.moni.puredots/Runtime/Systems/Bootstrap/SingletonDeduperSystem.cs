@@ -52,7 +52,7 @@ namespace PureDOTS.Systems
 #if UNITY_EDITOR
             return true;
 #else
-            return Debug.isDebugBuild;
+            return UnityEngine.Debug.isDebugBuild;
 #endif
         }
 
