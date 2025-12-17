@@ -184,6 +184,10 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\AI\AIComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\HaulingLoopComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Rendering\MaterialOverrideComponents.cs" />
+    <!-- Glob the entire PureDOTS rendering runtime to keep contracts & systems in sync -->
+    <Compile Include="Packages\com.moni.puredots\Runtime\Rendering\**\*.cs"
+             Exclude="Packages\com.moni.puredots\Runtime\Rendering\**\*Editor*.cs;
+                      Packages\com.moni.puredots\Runtime\Rendering\Editor\**\*.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Camera\BW2CameraInputBridge.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Aggregates\VillagerAggregateComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\BatchInventoryComponents.cs" />

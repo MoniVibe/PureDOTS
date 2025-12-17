@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Rendering;
 using UnityEngine;
@@ -12,7 +11,6 @@ namespace PureDOTS.Rendering
     /// Emits a single warning if there are visible RenderKey entities but no Entities Graphics renderables.
     /// Helps catch broken catalog/bootstrap wiring early.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
     public partial struct RenderSanitySystem : ISystem

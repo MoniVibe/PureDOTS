@@ -1,9 +1,53 @@
-Library/
-Logs/
-Temp/
-UserSettings/
+## Unity generated content
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Cc]rashReports/
+[Bb]urstCache/
+[Bb]ee/
+
+## IDE / tooling artifacts
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.unityproj
+*.svd
+*.opendb
+*.VC.db
+*.pdb
+*.mdb
+*.tlog
+
+## Local packages / agent checkpoints
 Packages/Coplay/
 projects/*/Packages/Coplay/Editor/Checkpoints/
+.fleet/
+
+## Logs and crash dumps
+*.log
+*.log.meta
+*.stacktrace
+*.tmp
+
+## OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+## Assets that should stay local only
 Assets/Readme.asset
 Assets/Readme.asset.meta
 Assets/Settings/

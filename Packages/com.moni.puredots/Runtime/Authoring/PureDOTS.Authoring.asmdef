@@ -3,6 +3,7 @@
     "rootNamespace": "PureDOTS.Authoring",
     "references": [
         "PureDOTS.Config",
+        "PureDOTS.Rendering",
         "PureDOTS.Input",
         "PureDOTS.Runtime",
         "PureDOTS.Systems",
