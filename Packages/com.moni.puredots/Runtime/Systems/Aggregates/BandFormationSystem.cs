@@ -403,12 +403,16 @@ namespace PureDOTS.Systems.Aggregates
                 // Calculate initial aggregate alignment from founding members
                 var initialAlignment = CalculateAggregateAlignment(prospectsBuffer);
 
-                ecb.AddComponent(bandEntity, new Band
+                ecb.AddComponent(bandEntity, new BandIdentity
                 {
                     BandName = GenerateBandName(purpose, _bandNameDefenders, _bandNameHunters, _bandNameMiners, _bandNameBuilders, _bandNameWanderers, _bandNameDefault),
                     Purpose = purpose,
                     LeaderEntity = leader,
-                    FormationTick = timeState.Tick,
+                    FormationTick = timeState.Tick
+                });
+
+                ecb.AddComponent(bandEntity, new BandAggregateStats
+                {
                     MemberCount = (ushort)acceptedCount,
                     AverageMorale = 50f,
                     AverageEnergy = 50f,

@@ -9,14 +9,14 @@ namespace PureDOTS.Systems
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
-    public partial class TimeSystemGroup : ComponentSystemGroup { }
+    public partial class TimeSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Environment simulation group; runs after physics and before spatial indexing.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    public partial class EnvironmentSystemGroup : ComponentSystemGroup { }
+    public partial class EnvironmentSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Spatial systems run after environment state updates and before gameplay logic.
@@ -25,7 +25,7 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(EnvironmentSystemGroup))]
     [UpdateBefore(typeof(GameplaySystemGroup))]
-    public partial class SpatialSystemGroup : ComponentSystemGroup { }
+    public partial class SpatialSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Hot path system group - runs every tick, no throttling.
@@ -33,7 +33,7 @@ namespace PureDOTS.Systems
     /// Must be tiny, branch-light, data tight. No allocations, no pathfinding calls.
     /// </summary>
     [UpdateInGroup(typeof(SpatialSystemGroup), OrderFirst = true)]
-    public partial class HotPathSystemGroup : ComponentSystemGroup { }
+    public partial class HotPathSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Warm path system group - throttled, staggered updates.
@@ -42,7 +42,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [UpdateInGroup(typeof(SpatialSystemGroup))]
     [UpdateAfter(typeof(HotPathSystemGroup))]
-    public partial class WarmPathSystemGroup : ComponentSystemGroup { }
+    public partial class WarmPathSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Cold path system group - long intervals, event-driven.
@@ -51,7 +51,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [UpdateInGroup(typeof(SpatialSystemGroup))]
     [UpdateAfter(typeof(WarmPathSystemGroup))]
-    public partial class ColdPathSystemGroup : ComponentSystemGroup { }
+    public partial class ColdPathSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Shared AI systems that feed data into gameplay domains.
@@ -59,7 +59,7 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateBefore(typeof(VillagerSystemGroup))]
-    public partial class AISystemGroup : ComponentSystemGroup { }
+    public partial class AISystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// High level gameplay simulation group containing domain-specific subgroups.
@@ -68,7 +68,7 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpatialSystemGroup))]
     [UpdateAfter(typeof(TransportPhaseGroup))]
-    public partial class GameplaySystemGroup : ComponentSystemGroup { }
+    public partial class GameplaySystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for rewind/history recording.
@@ -76,14 +76,14 @@ namespace PureDOTS.Systems
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(HistoryPhaseGroup))]
-    public partial class HistorySystemGroup : ComponentSystemGroup { }
+    public partial class HistorySystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Fixed-step job systems for villagers. Runs inside FixedStepSimulation before high-level AI.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    public partial class VillagerJobFixedStepGroup : ComponentSystemGroup { }
+    public partial class VillagerJobFixedStepGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for villager AI and behavior.
@@ -91,7 +91,7 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(AISystemGroup))]
-    public partial class VillagerSystemGroup : ComponentSystemGroup { }
+    public partial class VillagerSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for resource management.
@@ -99,7 +99,7 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(VillagerSystemGroup))]
-    public partial class ResourceSystemGroup : ComponentSystemGroup { }
+    public partial class ResourceSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for power network management.
@@ -107,7 +107,7 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
-    public partial class PowerSystemGroup : ComponentSystemGroup { }
+    public partial class PowerSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for miracle effect processing.
@@ -115,14 +115,14 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
-    public partial class MiracleEffectSystemGroup : ComponentSystemGroup { }
+    public partial class MiracleEffectSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for perception systems.
     /// Runs after spatial grid, before AI systems.
     /// </summary>
     [UpdateInGroup(typeof(SpatialSystemGroup))]
-    public partial class PerceptionSystemGroup : ComponentSystemGroup { }
+    public partial class PerceptionSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for interrupt handling.
@@ -131,7 +131,7 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     // Removed invalid UpdateAfter: CombatSystemGroup runs under PhysicsSystemGroup; handle ordering at group composition.
     [UpdateBefore(typeof(AISystemGroup))]
-    public partial class InterruptSystemGroup : ComponentSystemGroup { }
+    public partial class InterruptSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for group decision systems.
@@ -139,28 +139,28 @@ namespace PureDOTS.Systems
     /// </summary>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateBefore(typeof(InterruptSystemGroup))]
-    public partial class GroupDecisionSystemGroup : ComponentSystemGroup { }
+    public partial class GroupDecisionSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for combat systems.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
-    public partial class CombatSystemGroup : ComponentSystemGroup { }
+    public partial class CombatSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for divine hand interaction.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
-    public partial class HandSystemGroup : ComponentSystemGroup { }
+    public partial class HandSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for vegetation systems.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
-    public partial class VegetationSystemGroup : ComponentSystemGroup { }
+    public partial class VegetationSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// System group for construction systems.
@@ -168,21 +168,21 @@ namespace PureDOTS.Systems
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
-    public partial class ConstructionSystemGroup : ComponentSystemGroup { }
+    public partial class ConstructionSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// High-priority system group for camera/input handling. Executes at the end of InitializationSystemGroup
     /// so input is processed before the SimulationSystemGroup begins.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderLast = true)]
-    public partial class CameraInputSystemGroup : ComponentSystemGroup { }
+    public partial class CameraInputSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// Late simulation group for cleanup and state recording.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
-    public partial class LateSimulationSystemGroup : ComponentSystemGroup { }
+    public partial class LateSimulationSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// PureDOTS presentation system group for rendering/UI bridge systems.
@@ -195,7 +195,7 @@ namespace PureDOTS.Systems
     /// See Docs/FoundationGuidelines.md for presentation system group policy.
     /// </remarks>
     [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
-    public partial class PureDotsPresentationSystemGroup : ComponentSystemGroup { }
+    public partial class PureDotsPresentationSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
     /// [DEPRECATED] Old PresentationSystemGroup - use Unity.Entities.PresentationSystemGroup or PureDotsPresentationSystemGroup instead.

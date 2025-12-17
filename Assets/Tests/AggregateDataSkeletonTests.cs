@@ -13,17 +13,24 @@ namespace PureDOTS.Tests
         [Test]
         public void Band_CanBeCreated()
         {
-            var band = new Band
+            var identity = new BandIdentity
             {
                 BandName = new Unity.Collections.FixedString64Bytes("Test Band"),
                 Purpose = BandPurpose.Military_Warband,
                 LeaderEntity = Entity.Null,
-                FormationTick = 0,
-                MemberCount = 0
+                FormationTick = 0
+            };
+
+            var stats = new BandAggregateStats
+            {
+                MemberCount = 0,
+                AverageMorale = 0f,
+                AverageEnergy = 0f,
+                AverageStrength = 0f
             };
             
-            Assert.AreEqual(BandPurpose.Military_Warband, band.Purpose);
-            Assert.AreEqual(0, band.MemberCount);
+            Assert.AreEqual(BandPurpose.Military_Warband, identity.Purpose);
+            Assert.AreEqual(0, stats.MemberCount);
         }
         
         [Test]

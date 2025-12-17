@@ -40,13 +40,10 @@ namespace PureDOTS.Runtime.AI
     [InternalBufferCapacity(4)]
     public struct FocusBudgetReservation : IBufferElementData
     {
-        /// <summary>Identifier for the system reserving focus (optional).</summary>
-        public FixedString32Bytes ReservationId;
-
         /// <summary>Amount of focus held.</summary>
         public float Amount;
 
-        /// <summary>Whether this reservation blocks others from using the same focus slice.</summary>
-        public byte IsExclusive;
+        /// <summary>Tick where the reservation expires (0 = never).</summary>
+        public uint ExpirationTick;
     }
 }

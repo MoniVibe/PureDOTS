@@ -32,6 +32,7 @@ namespace PureDOTS.Systems.Aggregates
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<BandAggregateStats>();
 
             _alignmentLookup = state.GetComponentLookup<VillagerAlignment>(false);
             _moodLookup = state.GetComponentLookup<VillagerMood>(true);
@@ -94,22 +95,23 @@ namespace PureDOTS.Systems.Aggregates
         [BurstCompile]
         public partial struct SyncBandStatsJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction] public ComponentLookup<VillagerAlignment> AlignmentLookup;
+            [ReadOnly] public ComponentLookup<VillagerAlignment> AlignmentLookup;
             [ReadOnly] public ComponentLookup<VillagerMood> MoodLookup;
             [ReadOnly] public ComponentLookup<VillagerAttributes> AttributesLookup;
             [ReadOnly] public ComponentLookup<VillagerNeeds> NeedsLookup;
 
             void Execute(
                 Entity bandEntity,
-                ref Band band,
+                ref BandAggregateStats stats,
+                ref VillagerAlignment bandAlignment,
                 in DynamicBuffer<BandMember> members)
             {
                 if (members.Length == 0)
                 {
-                    band.MemberCount = 0;
-                    band.AverageMorale = 0f;
-                    band.AverageEnergy = 0f;
-                    band.AverageStrength = 0f;
+                    stats.MemberCount = 0;
+                    stats.AverageMorale = 0f;
+                    stats.AverageEnergy = 0f;
+                    stats.AverageStrength = 0f;
                     return;
                 }
 
@@ -158,20 +160,15 @@ namespace PureDOTS.Systems.Aggregates
 
                 if (activeMembers > 0)
                 {
-                    band.MemberCount = (ushort)activeMembers;
-                    band.AverageMorale = totalMood / activeMembers;
-                    band.AverageEnergy = totalEnergy / activeMembers;
-                    band.AverageStrength = totalStrengthAttr / activeMembers;
+                    stats.MemberCount = (ushort)activeMembers;
+                    stats.AverageMorale = totalMood / activeMembers;
+                    stats.AverageEnergy = totalEnergy / activeMembers;
+                    stats.AverageStrength = totalStrengthAttr / activeMembers;
 
-                    if (AlignmentLookup.HasComponent(bandEntity))
-                    {
-                        var bandAlignment = AlignmentLookup[bandEntity];
-                        bandAlignment.MoralAxis = (sbyte)math.clamp(totalMoral / activeMembers, -100f, 100f);
-                        bandAlignment.OrderAxis = (sbyte)math.clamp(totalOrder / activeMembers, -100f, 100f);
-                        bandAlignment.PurityAxis = (sbyte)math.clamp(totalPurity / activeMembers, -100f, 100f);
-                        bandAlignment.AlignmentStrength = totalStrength / activeMembers;
-                        AlignmentLookup[bandEntity] = bandAlignment;
-                    }
+                    bandAlignment.MoralAxis = (sbyte)math.clamp(totalMoral / activeMembers, -100f, 100f);
+                    bandAlignment.OrderAxis = (sbyte)math.clamp(totalOrder / activeMembers, -100f, 100f);
+                    bandAlignment.PurityAxis = (sbyte)math.clamp(totalPurity / activeMembers, -100f, 100f);
+                    bandAlignment.AlignmentStrength = totalStrength / activeMembers;
                 }
             }
         }

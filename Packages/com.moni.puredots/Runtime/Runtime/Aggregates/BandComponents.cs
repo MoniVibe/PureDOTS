@@ -5,19 +5,24 @@ using Unity.Mathematics;
 namespace PureDOTS.Runtime.Aggregates
 {
     /// <summary>
-    /// Marks an entity as a band (aggregate entity with shared goal).
-    /// Aggregate stats (alignment, mood, energy) are derived from member entities
-    /// and synchronized by AggregateStatsSyncSystem.
+    /// Identity data for a band (stable fields such as name/purpose).
+    /// Split from stats so that parallel jobs never need to touch FixedStrings.
     /// </summary>
-    public struct Band : IComponentData
+    public struct BandIdentity : IComponentData
     {
         public FixedString64Bytes BandName;
         public BandPurpose Purpose;
         public Entity LeaderEntity;
         public uint FormationTick;
-        public ushort MemberCount;
+    }
 
-        // Aggregate stats derived from members (synced by AggregateStatsSyncSystem)
+    /// <summary>
+    /// Frequently updated aggregate stats derived from members.
+    /// Kept separate from identity to avoid NativeText write hazards.
+    /// </summary>
+    public struct BandAggregateStats : IComponentData
+    {
+        public ushort MemberCount;
         public float AverageMorale;
         public float AverageEnergy;
         public float AverageStrength;

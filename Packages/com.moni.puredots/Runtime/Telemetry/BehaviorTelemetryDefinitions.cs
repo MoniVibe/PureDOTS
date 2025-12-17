@@ -9,7 +9,13 @@ namespace PureDOTS.Runtime.Telemetry
         None = 0,
         HazardDodge = 1,
         GatherDeliver = 2,
-        VillagerMind = 3
+        VillagerCore = 3,
+        FleetCore = 4,
+        ModuleIntegrity = 5,
+        ShieldEnvelope = 6,
+        LimbVitality = 7,
+        ProjectileDamage = 8,
+        MoraleState = 9
     }
 
     public enum BehaviorMetricId : ushort
@@ -20,23 +26,41 @@ namespace PureDOTS.Runtime.Telemetry
         GatherMinedMilli = 100,
         GatherDepositedMilli = 101,
         GatherCarrierCargoMilli = 102,
-        VillagerCount = 200,
-        VillagerGoalIdleCount = 201,
-        VillagerGoalWorkCount = 202,
-        VillagerGoalEatCount = 203,
-        VillagerGoalSleepCount = 204,
-        VillagerGoalShelterCount = 205,
-        VillagerGoalPrayCount = 206,
-        VillagerGoalSocializeCount = 207,
-        VillagerGoalFleeCount = 208,
-        VillagerAverageFocusMilli = 210,
-        VillagerPeakNeedMilli = 211
+        VillagerNeedMaxMilli = 200,
+        VillagerFocusCurrentMilli = 201,
+        VillagerFleeEvents = 202,
+        FleetCohesionMilli = 300,
+        FleetMoraleMilli = 301,
+        FleetStrikeCraftLoadMilli = 302,
+        ModuleHullMilli = 400,
+        ModuleArmorMilli = 401,
+        ModuleEfficiencyMilli = 402,
+        ModuleDamageEvents = 403,
+        ShieldFrontLoadMilli = 500,
+        ShieldRearLoadMilli = 501,
+        ShieldBubbleStrengthMilli = 502,
+        LimbHealthMilli = 600,
+        LimbStaminaMilli = 601,
+        LimbManaMilli = 602,
+        ProjectileShotsFired = 700,
+        ProjectileShotsHit = 701,
+        ProjectileDamageMilli = 702,
+        MoraleCurrentMilli = 800,
+        MoraleDeltaMilli = 801,
     }
 
     public enum BehaviorInvariantId : ushort
     {
         HazardNoOscillation = 1,
-        GatherConservation = 100
+        GatherConservation = 100,
+        VillagerFocusNonNegative = 200,
+        VillagerNeedClamped = 201,
+        FleetCohesionBounds = 300,
+        ModuleHealthNonNegative = 400,
+        ShieldLoadWithinBounds = 500,
+        LimbVitalityNonNegative = 600,
+        ProjectileDamageNonNegative = 700,
+        MoraleWithinBounds = 800
     }
 
     public enum BehaviorTelemetryRecordKind : byte
@@ -79,6 +103,98 @@ namespace PureDOTS.Runtime.Telemetry
         public int DepositedAmountMilliInterval;
         public int CarrierCargoMilliSnapshot;
         public uint StuckTicksInterval;
+    }
+
+    /// <summary>
+    /// Per-agent villager telemetry accumulation (needs/focus/flee).
+    /// </summary>
+    public struct VillagerCoreTelemetry : IComponentData
+    {
+        public float NeedAccumulator;
+        public uint NeedSampleCount;
+        public float FocusSnapshot;
+        public uint FleeEvents;
+        public byte WasFleeingLastTick;
+        public byte FocusNegativeDetected;
+        public byte NeedExceededDetected;
+    }
+
+    /// <summary>
+    /// Per-fleet telemetry accumulation for cohesion/morale/strike craft load.
+    /// </summary>
+    public struct FleetCoreTelemetry : IComponentData
+    {
+        public float CohesionAccumulator;
+        public uint CohesionSamples;
+        public float MoraleAccumulator;
+        public uint MoraleSamples;
+        public float StrikeCraftLoadAccumulator;
+        public uint StrikeCraftSamples;
+        public byte CohesionOutOfRange;
+    }
+
+    /// <summary>
+    /// Per-module hull/armor/efficiency sampling.
+    /// </summary>
+    public struct ModuleHealthTelemetry : IComponentData
+    {
+        public float HullAccumulator;
+        public uint HullSamples;
+        public float ArmorAccumulator;
+        public uint ArmorSamples;
+        public float EfficiencyAccumulator;
+        public uint EfficiencySamples;
+        public uint DamageEventsInterval;
+        public byte HullBelowZero;
+        public byte ArmorBelowZero;
+    }
+
+    /// <summary>
+    /// Per-entity shield load telemetry (front/rear/bubble).
+    /// </summary>
+    public struct ShieldEnvelopeTelemetry : IComponentData
+    {
+        public float FrontLoadAccumulator;
+        public float RearLoadAccumulator;
+        public float BubbleStrengthAccumulator;
+        public uint Samples;
+        public byte OverCapacityDetected;
+    }
+
+    /// <summary>
+    /// Limb-style telemetry for organic entities (health/stamina/mana).
+    /// </summary>
+    public struct LimbVitalityTelemetry : IComponentData
+    {
+        public float HealthAccumulator;
+        public float StaminaAccumulator;
+        public float ManaAccumulator;
+        public uint Samples;
+        public byte HealthNegativeDetected;
+        public byte StaminaNegativeDetected;
+        public byte ManaNegativeDetected;
+    }
+
+    /// <summary>
+    /// Projectile firing telemetry (counts + damage).
+    /// </summary>
+    public struct ProjectileDamageTelemetry : IComponentData
+    {
+        public uint ShotsFiredInterval;
+        public uint ShotsHitInterval;
+        public float DamageMilliAccumulator;
+        public byte NegativeDamageDetected;
+    }
+
+    /// <summary>
+    /// Per-entity morale telemetry (current value + deltas).
+    /// </summary>
+    public struct MoraleTelemetry : IComponentData
+    {
+        public float MoraleAccumulator;
+        public uint MoraleSamples;
+        public float DeltaAccumulator;
+        public byte OutOfBoundsDetected;
     }
 
     /// <summary>
