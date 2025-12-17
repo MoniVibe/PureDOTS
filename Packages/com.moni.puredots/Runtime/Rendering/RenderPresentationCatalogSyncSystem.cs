@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_RENDER_CATALOG
 using Unity.Collections;
 using Unity.Entities;
 
@@ -40,3 +41,4 @@ namespace PureDOTS.Rendering
         }
     }
 }
+#endif

@@ -1,6 +1,9 @@
 using PureDOTS.Runtime;
 using Unity.Entities;
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace PureDOTS.Runtime.MonoBehaviours
 {
@@ -15,6 +18,13 @@ namespace PureDOTS.Runtime.MonoBehaviours
             var world = World.DefaultGameObjectInjectionWorld;
             if (world == null) return;
 
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb == null) return;
+#else
+            return;
+#endif
+
             var em = world.EntityManager;
             var query = em.CreateEntityQuery(typeof(DemoScenarioState));
             
@@ -24,30 +34,28 @@ namespace PureDOTS.Runtime.MonoBehaviours
             var state = em.GetComponentData<DemoScenarioState>(e);
             bool changed = false;
 
-            if (Input.GetKeyDown(KeyCode.F1))
+#if ENABLE_INPUT_SYSTEM
+            if (kb.f1Key.wasPressedThisFrame)
             {
                 state.Current = DemoScenario.AllSystemsShowcase;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to AllSystemsShowcase (F1)");
             }
-            else if (Input.GetKeyDown(KeyCode.F2))
+            else if (kb.f2Key.wasPressedThisFrame)
             {
                 state.Current = DemoScenario.Space4XPhysicsOnly;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to Space4XPhysicsOnly (F2)");
             }
-            else if (Input.GetKeyDown(KeyCode.F3))
+            else if (kb.f3Key.wasPressedThisFrame)
             {
                 state.Current = DemoScenario.GodgamePhysicsOnly;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to GodgamePhysicsOnly (F3)");
             }
-            else if (Input.GetKeyDown(KeyCode.F4))
+            else if (kb.f4Key.wasPressedThisFrame)
             {
                 state.Current = DemoScenario.HandThrowSandbox;
                 changed = true;
-                Debug.Log("[DemoScenarioController] Switched to HandThrowSandbox (F4)");
             }
+#endif
 
             if (changed)
             {
@@ -56,7 +64,4 @@ namespace PureDOTS.Runtime.MonoBehaviours
         }
     }
 }
-
-
-
 

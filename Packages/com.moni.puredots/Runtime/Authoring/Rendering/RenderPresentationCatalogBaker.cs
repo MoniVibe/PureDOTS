@@ -37,11 +37,6 @@ namespace PureDOTS.Authoring.Rendering
             };
 
             AddComponent(mainEntity, catalogComponent);
-            AddComponent(mainEntity, new RenderCatalogSingleton
-            {
-                Blob = blobRef,
-                RenderMeshArrayEntity = renderMeshEntity
-            });
 
             AddComponent(mainEntity, new RenderCatalogVersion
             {

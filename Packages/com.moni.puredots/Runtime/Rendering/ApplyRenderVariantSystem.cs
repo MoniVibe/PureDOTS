@@ -20,6 +20,10 @@ namespace PureDOTS.Rendering
         private EntityQuery _applyAllQuery;
         private EntityQuery _applyChangedQuery;
         private uint _lastCatalogVersion;
+        private EntityQuery _missingMaterialMeshQuery;
+        private EntityQuery _missingRenderBoundsQuery;
+        private EntityQuery _missingWorldBoundsQuery;
+        private EntityQuery _missingChunkBoundsQuery;
 
         public void OnCreate(ref SystemState state)
         {
@@ -52,6 +56,46 @@ namespace PureDOTS.Rendering
             });
             _applyChangedQuery.AddChangedVersionFilter(ComponentType.ReadOnly<MeshPresenter>());
 
+            _missingMaterialMeshQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<MeshPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<MaterialMeshInfo>() }
+            });
+
+            _missingRenderBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<MeshPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<RenderBounds>() }
+            });
+
+            _missingWorldBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<MeshPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<WorldRenderBounds>() }
+            });
+
+            _missingChunkBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<MeshPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<ChunkWorldRenderBounds>() }
+            });
+
             state.RequireForUpdate<RenderPresentationCatalog>();
         }
 
@@ -65,7 +109,7 @@ namespace PureDOTS.Rendering
                 return;
             }
 
-            EnsureCoreComponents<MeshPresenter>(ref state);
+            EnsureCoreComponents(ref state);
 
             var catalogChanged = catalogVersion.Value != _lastCatalogVersion;
             var query = catalogChanged ? _applyAllQuery : _applyChangedQuery;
@@ -171,38 +215,27 @@ namespace PureDOTS.Rendering
             }
         }
 
-        private static void EnsureCoreComponents<TPresenter>(ref SystemState state)
-            where TPresenter : unmanaged, IEnableableComponent
+        private void EnsureCoreComponents(ref SystemState state)
         {
-            EnsureComponentIfMissing<TPresenter, MaterialMeshInfo>(ref state, new MaterialMeshInfo());
-            EnsureComponentIfMissing<TPresenter, RenderBounds>(ref state, new RenderBounds
+            EnsureComponentIfMissing(ref state, _missingMaterialMeshQuery,
+                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0, 0));
+            EnsureComponentIfMissing(ref state, _missingRenderBoundsQuery, new RenderBounds
             {
                 Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
             });
-            EnsureComponentIfMissing<TPresenter, WorldRenderBounds>(ref state, new WorldRenderBounds
+            EnsureComponentIfMissing(ref state, _missingWorldBoundsQuery, new WorldRenderBounds
             {
                 Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
             });
-            EnsureComponentIfMissing<TPresenter, ChunkWorldRenderBounds>(ref state, new ChunkWorldRenderBounds
+            EnsureComponentIfMissing(ref state, _missingChunkBoundsQuery, new ChunkWorldRenderBounds
             {
                 Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
             });
         }
 
-        private static void EnsureComponentIfMissing<TPresenter, TComponent>(ref SystemState state, in TComponent value)
-            where TPresenter : unmanaged, IEnableableComponent
+        private static void EnsureComponentIfMissing<TComponent>(ref SystemState state, EntityQuery query, in TComponent value)
             where TComponent : unmanaged, IComponentData
         {
-            var query = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<TComponent>() }
-            });
-
             if (query.IsEmptyIgnoreFilter)
                 return;
 

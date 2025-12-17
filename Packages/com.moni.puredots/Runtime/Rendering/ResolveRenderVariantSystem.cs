@@ -17,6 +17,7 @@ namespace PureDOTS.Rendering
         private EntityQuery _missingThemeOverrideQuery;
         private EntityQuery _semanticChangeQuery;
         private EntityQuery _themeOverrideChangeQuery;
+        private EntityQuery _variantOverrideChangeQuery;
         private EntityQuery _renderKeyChangeQuery;
         private ushort _lastThemeId;
         private uint _lastCatalogVersion;
@@ -61,6 +62,17 @@ namespace PureDOTS.Rendering
             });
             _themeOverrideChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderThemeOverride>());
 
+            _variantOverrideChangeQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderSemanticKey>(),
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<RenderVariantOverride>()
+                }
+            });
+            _variantOverrideChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderVariantOverride>());
+
             _renderKeyChangeQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[]
@@ -101,18 +113,21 @@ namespace PureDOTS.Rendering
             var themeChanged = theme.ThemeId != _lastThemeId;
             var catalogChanged = catalogVersion != _lastCatalogVersion;
             var semanticChanged = !_semanticChangeQuery.IsEmptyIgnoreFilter;
-            var overrideChanged = !_themeOverrideChangeQuery.IsEmptyIgnoreFilter;
+            var themeOverrideChanged = !_themeOverrideChangeQuery.IsEmptyIgnoreFilter;
+            var variantOverrideChanged = !_variantOverrideChangeQuery.IsEmptyIgnoreFilter;
             var lodChanged = !_renderKeyChangeQuery.IsEmptyIgnoreFilter;
 
-            if (!(themeChanged || catalogChanged || semanticChanged || overrideChanged || lodChanged))
+            if (!(themeChanged || catalogChanged || semanticChanged || themeOverrideChanged || variantOverrideChanged || lodChanged))
                 return;
 
             var renderKeyLookup = GetComponentLookup<RenderKey>(true);
+            var variantOverrideLookup = GetComponentLookup<RenderVariantOverride>(true);
 
             var job = new ResolveRenderVariantJob
             {
                 Catalog = catalog.Blob,
                 RenderKeyLookup = renderKeyLookup,
+                RenderVariantOverrideLookup = variantOverrideLookup,
                 ActiveThemeId = theme.ThemeId
             };
 
@@ -127,6 +142,7 @@ namespace PureDOTS.Rendering
         {
             [ReadOnly] public BlobAssetReference<RenderPresentationCatalogBlob> Catalog;
             [ReadOnly] public ComponentLookup<RenderKey> RenderKeyLookup;
+            [ReadOnly] public ComponentLookup<RenderVariantOverride> RenderVariantOverrideLookup;
             public ushort ActiveThemeId;
 
             private int ResolveThemeIndex(ushort themeId)
@@ -150,6 +166,11 @@ namespace PureDOTS.Rendering
                 RefRO<RenderThemeOverride> themeOverride,
                 EnabledRefRO<RenderThemeOverride> themeOverrideEnabled)
             {
+                if (TryApplyOverride(entity, variantKey))
+                {
+                    return;
+                }
+
                 ref var catalog = ref Catalog.Value;
                 var themeOverrideValue = themeOverride.ValueRO.Value;
                 var themeId = themeOverrideEnabled.ValueRO ? themeOverrideValue : ActiveThemeId;
@@ -178,6 +199,21 @@ namespace PureDOTS.Rendering
                     return RenderKeyLookup[entity].LOD;
                 }
                 return 0;
+            }
+
+            private bool TryApplyOverride(Entity entity, RefRW<RenderVariantKey> variantKey)
+            {
+                if (!RenderVariantOverrideLookup.HasComponent(entity) || !RenderVariantOverrideLookup.IsComponentEnabled(entity))
+                {
+                    return false;
+                }
+
+                var overrideValue = RenderVariantOverrideLookup[entity].Value;
+                if (variantKey.ValueRO.Value != overrideValue)
+                {
+                    variantKey.ValueRW.Value = overrideValue;
+                }
+                return true;
             }
         }
     }
@@ -255,45 +291,25 @@ namespace PureDOTS.Rendering
 
             var ecb = new EntityCommandBuffer(WorldUpdateAllocator);
             var catalogBlob = catalog.Blob;
-            foreach (var (key, resolved, entity) in SystemAPI.Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>>().WithEntityAccess())
+
+            if (catalogChanged)
             {
-                var currentKey = key.ValueRO;
-                var cached = resolved.ValueRO;
-                if (!catalogChanged && cached.LastKey.Equals(currentKey))
-                    continue;
-
-                if (!TryResolve(catalogBlob, currentKey, out var record))
+                foreach (var (key, resolved, sprite, mesh, debugPresenter, entity) in SystemAPI
+                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>>()
+                             .WithEntityAccess())
                 {
-                    ecb.SetComponentEnabled<SpritePresenter>(entity, false);
-                    ecb.SetComponentEnabled<MeshPresenter>(entity, false);
-                    ecb.SetComponentEnabled<DebugPresenter>(entity, false);
-
-                    resolved.ValueRW.LastKey = currentKey;
-                    resolved.ValueRW.LastKind = RenderPresenterKind.None;
-                    resolved.ValueRW.LastDefIndex = -1;
-                    continue;
+                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, catalogBlob, ecb, true);
                 }
-
-                ecb.SetComponentEnabled<SpritePresenter>(entity, record.Kind == RenderPresenterKind.Sprite);
-                ecb.SetComponentEnabled<MeshPresenter>(entity, record.Kind == RenderPresenterKind.Mesh);
-                ecb.SetComponentEnabled<DebugPresenter>(entity, record.Kind == RenderPresenterKind.Debug);
-
-                switch (record.Kind)
+            }
+            else
+            {
+                foreach (var (key, resolved, sprite, mesh, debugPresenter, entity) in SystemAPI
+                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>>()
+                             .WithEntityAccess()
+                             .WithChangeFilter<RenderVariantKey>())
                 {
-                    case RenderPresenterKind.Sprite:
-                        ecb.SetComponent(entity, new SpritePresenter { DefIndex = PackPresenterIndex(record.DefIndex) });
-                        break;
-                    case RenderPresenterKind.Mesh:
-                        ecb.SetComponent(entity, new MeshPresenter { DefIndex = PackPresenterIndex(record.DefIndex) });
-                        break;
-                    case RenderPresenterKind.Debug:
-                        ecb.SetComponent(entity, new DebugPresenter { DefIndex = PackPresenterIndex(record.DefIndex) });
-                        break;
+                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, catalogBlob, ecb, false);
                 }
-
-                resolved.ValueRW.LastKey = currentKey;
-                resolved.ValueRW.LastKind = record.Kind;
-                resolved.ValueRW.LastDefIndex = record.DefIndex;
             }
 
             ecb.Playback(EntityManager);
@@ -303,6 +319,90 @@ namespace PureDOTS.Rendering
             {
                 _lastCatalogVersion = catalogVersion.Value;
             }
+        }
+
+        private void ResolveVariantForEntity(
+            Entity entity,
+            RefRO<RenderVariantKey> key,
+            RefRW<RenderVariantResolved> resolved,
+            RefRW<SpritePresenter> sprite,
+            RefRW<MeshPresenter> mesh,
+            RefRW<DebugPresenter> debugPresenter,
+            BlobAssetReference<RenderPresentationCatalogBlob> catalogBlob,
+            EntityCommandBuffer ecb,
+            bool forceRefresh)
+        {
+            var currentKey = key.ValueRO;
+            var cached = resolved.ValueRO;
+            if (!forceRefresh && cached.LastKey.Equals(currentKey))
+                return;
+
+            var spriteTarget = (ushort)0;
+            var meshTarget = (ushort)0;
+            var debugTarget = (ushort)0;
+
+            if (TryResolve(catalogBlob, currentKey, out var record))
+            {
+                spriteTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Sprite);
+                meshTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Mesh);
+                debugTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Debug);
+
+                resolved.ValueRW.LastKind = ResolvePrimaryKind(record.Mask);
+                resolved.ValueRW.LastDefIndex = record.DefIndex;
+            }
+            else
+            {
+                resolved.ValueRW.LastKind = RenderPresenterKind.None;
+                resolved.ValueRW.LastDefIndex = -1;
+            }
+
+            ApplyPresenterDefIndex(entity, sprite.ValueRO.DefIndex, spriteTarget, RenderPresenterKind.Sprite, ecb);
+            ApplyPresenterDefIndex(entity, mesh.ValueRO.DefIndex, meshTarget, RenderPresenterKind.Mesh, ecb);
+            ApplyPresenterDefIndex(entity, debugPresenter.ValueRO.DefIndex, debugTarget, RenderPresenterKind.Debug, ecb);
+
+            resolved.ValueRW.LastKey = currentKey;
+        }
+
+        private static void ApplyPresenterDefIndex(
+            Entity entity,
+            ushort currentValue,
+            ushort targetValue,
+            RenderPresenterKind presenterKind,
+            EntityCommandBuffer ecb)
+        {
+            if (currentValue == targetValue)
+                return;
+
+            switch (presenterKind)
+            {
+                case RenderPresenterKind.Sprite:
+                    ecb.SetComponent(entity, new SpritePresenter { DefIndex = targetValue });
+                    break;
+                case RenderPresenterKind.Mesh:
+                    ecb.SetComponent(entity, new MeshPresenter { DefIndex = targetValue });
+                    break;
+                case RenderPresenterKind.Debug:
+                    ecb.SetComponent(entity, new DebugPresenter { DefIndex = targetValue });
+                    break;
+            }
+        }
+
+        private static ushort ResolvePresenterDefIndex(in RenderResolveRecord record, RenderPresenterMask targetMask)
+        {
+            return (record.Mask & targetMask) != 0
+                ? PackPresenterIndex(record.DefIndex)
+                : (ushort)0;
+        }
+
+        private static RenderPresenterKind ResolvePrimaryKind(RenderPresenterMask mask)
+        {
+            if ((mask & RenderPresenterMask.Mesh) != 0)
+                return RenderPresenterKind.Mesh;
+            if ((mask & RenderPresenterMask.Sprite) != 0)
+                return RenderPresenterKind.Sprite;
+            if ((mask & RenderPresenterMask.Debug) != 0)
+                return RenderPresenterKind.Debug;
+            return RenderPresenterKind.None;
         }
 
         private void EnsureComponentDataImmediate<T>(EntityQuery query, in T value)
@@ -364,32 +464,20 @@ namespace PureDOTS.Rendering
 
             var resolvedIndex = math.clamp(key.Value, 0, catalog.Variants.Length - 1);
             var variant = catalog.Variants[resolvedIndex];
-            var kind = ResolveKind(variant.PresenterMask);
-            if (kind == RenderPresenterKind.None)
+            if (variant.PresenterMask == RenderPresenterMask.None)
                 return false;
 
             record = new RenderResolveRecord
             {
-                Kind = kind,
+                Mask = variant.PresenterMask,
                 DefIndex = resolvedIndex
             };
             return true;
         }
 
-        private static RenderPresenterKind ResolveKind(RenderPresenterMask mask)
-        {
-            if ((mask & RenderPresenterMask.Mesh) != 0)
-                return RenderPresenterKind.Mesh;
-            if ((mask & RenderPresenterMask.Sprite) != 0)
-                return RenderPresenterKind.Sprite;
-            if ((mask & RenderPresenterMask.Debug) != 0)
-                return RenderPresenterKind.Debug;
-            return RenderPresenterKind.None;
-        }
-
         private struct RenderResolveRecord
         {
-            public RenderPresenterKind Kind;
+            public RenderPresenterMask Mask;
             public int DefIndex;
         }
     }

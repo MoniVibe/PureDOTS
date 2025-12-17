@@ -48,6 +48,14 @@ namespace PureDOTS.Rendering
     }
 
     /// <summary>
+    /// Optional per-entity override for resolved variant ids. Enableable for structural stability.
+    /// </summary>
+    public struct RenderVariantOverride : IComponentData, IEnableableComponent
+    {
+        public int Value;
+    }
+
+    /// <summary>
     /// Describes the high-level presenter category for a variant.
     /// </summary>
     public enum RenderPresenterKind : byte

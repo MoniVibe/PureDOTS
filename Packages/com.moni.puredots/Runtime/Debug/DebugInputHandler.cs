@@ -1,6 +1,9 @@
 using PureDOTS.Runtime.Components;
 using Unity.Entities;
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace PureDOTS.Debugging
 {
@@ -127,26 +130,50 @@ namespace PureDOTS.Debugging
             var commands = entityManager.GetBuffer<DebugCommand>(entity);
 
             // Check for keyboard input
-            if (UnityEngine.Input.GetKeyDown(toggleHUDKey))
+            if (WasPressed(toggleHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ToggleHUD });
             }
-            else if (UnityEngine.Input.GetKeyDown(showHUDKey))
+            else if (WasPressed(showHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ShowHUD });
             }
-            else if (UnityEngine.Input.GetKeyDown(hideHUDKey))
+            else if (WasPressed(hideHUDKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.HideHUD });
             }
-            else if (UnityEngine.Input.GetKeyDown(clearStreamingCooldownsKey))
+            else if (WasPressed(clearStreamingCooldownsKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ClearStreamingCooldowns });
             }
-            else if (UnityEngine.Input.GetKeyDown(reloadPresentationKey))
+            else if (WasPressed(reloadPresentationKey))
             {
                 commands.Add(new DebugCommand { Type = DebugCommand.CommandType.ReloadPresentation });
             }
         }
+
+#if ENABLE_INPUT_SYSTEM
+        private static bool WasPressed(KeyCode keyCode)
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null)
+                return false;
+
+            return keyCode switch
+            {
+                KeyCode.F1 => keyboard.f1Key.wasPressedThisFrame,
+                KeyCode.F2 => keyboard.f2Key.wasPressedThisFrame,
+                KeyCode.F3 => keyboard.f3Key.wasPressedThisFrame,
+                KeyCode.F4 => keyboard.f4Key.wasPressedThisFrame,
+                KeyCode.F5 => keyboard.f5Key.wasPressedThisFrame,
+                KeyCode.F6 => keyboard.f6Key.wasPressedThisFrame,
+                KeyCode.F7 => keyboard.f7Key.wasPressedThisFrame,
+                KeyCode.F8 => keyboard.f8Key.wasPressedThisFrame,
+                _ => false
+            };
+        }
+#else
+        private static bool WasPressed(KeyCode keyCode) => false;
+#endif
     }
 }

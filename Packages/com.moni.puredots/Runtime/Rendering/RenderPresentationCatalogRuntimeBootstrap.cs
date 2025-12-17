@@ -52,7 +52,7 @@ namespace PureDOTS.Rendering
             _renderMeshEntity = entityManager.CreateEntity();
             entityManager.AddSharedComponentManaged(_renderMeshEntity, renderMeshArray);
 
-            _catalogEntity = entityManager.CreateEntity(typeof(RenderPresentationCatalog), typeof(RenderCatalogSingleton), typeof(RenderCatalogVersion));
+            _catalogEntity = entityManager.CreateEntity(typeof(RenderPresentationCatalog), typeof(RenderCatalogVersion));
             var catalogData = new RenderPresentationCatalog
             {
                 Blob = _catalogBlob,
@@ -60,11 +60,6 @@ namespace PureDOTS.Rendering
             };
 
             entityManager.SetComponentData(_catalogEntity, catalogData);
-            entityManager.SetComponentData(_catalogEntity, new RenderCatalogSingleton
-            {
-                Blob = _catalogBlob,
-                RenderMeshArrayEntity = _renderMeshEntity
-            });
             entityManager.SetComponentData(_catalogEntity, new RenderCatalogVersion
             {
                 Value = RenderCatalogVersionUtility.Next()

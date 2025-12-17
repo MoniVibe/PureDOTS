@@ -15,6 +15,7 @@ namespace PureDOTS.Rendering
         private EntityQuery _missingPresenterQuery;
         private NativeParallelHashSet<ulong> _reportedSemantic;
         private NativeParallelHashSet<ulong> _reportedPresenter;
+        private EntityTypeHandle _entityTypeHandle;
 
         public void OnCreate(ref SystemState state)
         {
@@ -46,6 +47,7 @@ namespace PureDOTS.Rendering
 
             _reportedSemantic = new NativeParallelHashSet<ulong>(64, Allocator.Persistent);
             _reportedPresenter = new NativeParallelHashSet<ulong>(64, Allocator.Persistent);
+            _entityTypeHandle = state.GetEntityTypeHandle();
         }
 
         public void OnDestroy(ref SystemState state)
@@ -58,24 +60,27 @@ namespace PureDOTS.Rendering
 
         public void OnUpdate(ref SystemState state)
         {
+            _entityTypeHandle.Update(ref state);
             ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
-                "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");
+                "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.",
+                _entityTypeHandle);
 
             ReportOnce(ref state, _missingPresenterQuery, ref _reportedPresenter,
-                "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Debug).");
+                "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Debug).",
+                _entityTypeHandle);
         }
 
         private static void ReportOnce(
             ref SystemState state,
             EntityQuery query,
             ref NativeParallelHashSet<ulong> reportedSet,
-            string message)
+            string message,
+            EntityTypeHandle entityType)
         {
             if (query.IsEmptyIgnoreFilter)
                 return;
 
             using var chunks = query.ToArchetypeChunkArray(Allocator.Temp);
-            var entityType = state.GetEntityTypeHandle();
 
             for (int chunkIndex = 0; chunkIndex < chunks.Length; chunkIndex++)
             {
