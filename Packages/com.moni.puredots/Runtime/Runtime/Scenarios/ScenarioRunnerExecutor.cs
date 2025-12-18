@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Telemetry;
@@ -38,6 +39,20 @@ namespace PureDOTS.Runtime.Scenarios
             "PureDOTS.Systems.HistorySystemGroup, PureDOTS.Systems"
         };
 
+        private static ExitPolicy s_exitPolicy = ExitPolicy.InvariantsAndDeterminism;
+        private static bool s_exitPolicyResolved;
+        private static ExitPolicy GetExitPolicy()
+        {
+            if (!s_exitPolicyResolved)
+            {
+                s_exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+                s_exitPolicyResolved = true;
+                Debug.Log($"[ScenarioRunner] Exit policy set to {s_exitPolicy}");
+            }
+
+            return s_exitPolicy;
+        }
+
         public static ScenarioRunResult RunFromFile(string scenarioPath, string reportPath = null)
         {
             if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
@@ -63,15 +78,26 @@ namespace PureDOTS.Runtime.Scenarios
 
             using (scenario)
             {
-                var result = ExecuteScenario(in scenario);
-                WriteReport(reportPath, result);
-                Debug.Log($"ScenarioRunner: completed {scenario.ScenarioId} ({sourceLabel}) ticks={scenario.RunTicks} commands={scenario.InputCommands.Length} snapshots={result.SnapshotLogCount} frameBudgetExceeded={result.FrameTimingBudgetExceeded}");
-                return result;
+                ScenarioRunRecorder.Initialize(in scenario, sourceLabel, FixedDeltaTime);
+                ScenarioRunResult result = default;
+                try
+                {
+                    result = ExecuteScenario(in scenario);
+                    WriteReport(reportPath, result);
+                    Debug.Log($"ScenarioRunner: completed {scenario.ScenarioId} ({sourceLabel}) ticks={scenario.RunTicks} commands={scenario.InputCommands.Length} snapshots={result.SnapshotLogCount} frameBudgetExceeded={result.FrameTimingBudgetExceeded}");
+                    return result;
+                }
+                finally
+                {
+                    ScenarioRunRecorder.CompleteRun(result);
+                }
             }
         }
 
         private static ScenarioRunResult ExecuteScenario(in ResolvedScenario scenario)
         {
+            ScenarioRunIssueReporter.BeginRun();
+            var exitPolicy = GetExitPolicy();
             using var world = CreateWorld("ScenarioWorld");
             var result = new ScenarioRunResult
             {
@@ -79,7 +105,9 @@ namespace PureDOTS.Runtime.Scenarios
                 RunTicks = scenario.RunTicks,
                 Seed = scenario.Seed,
                 EntityCountEntries = scenario.EntityCounts.Length,
-                Metrics = new List<ScenarioMetric>(8)
+                Metrics = new List<ScenarioMetric>(8),
+                ExitPolicy = exitPolicy,
+                HighestSeverity = ScenarioSeverity.Info
             };
 
             DefaultWorldInitializationInitializationHook(world);
@@ -90,9 +118,12 @@ namespace PureDOTS.Runtime.Scenarios
             var simulationGroup = world.GetExistingSystemManaged<SimulationSystemGroup>();
             var fixedStepGroup = world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
 
+            var entityManager = world.EntityManager;
+
             // Warm-up initialization once to seed singletons (CoreSingletonBootstrapSystem runs here).
             world.Unmanaged.Time = new TimeData(FixedDeltaTime, 0);
             initGroup.Update();
+            ScenarioRunRecorder.TryWriteRunHeader(entityManager);
 
             using (var commandQueue = BuildCommandLookup(in scenario))
             {
@@ -110,12 +141,15 @@ namespace PureDOTS.Runtime.Scenarios
                         timeGroup?.Update();
                         fixedStepGroup?.Update();
                         simulationGroup?.Update();
+
+                        ScenarioRunRecorder.RecordDigest(entityManager);
                     }
                 }
 
                 PopulateTelemetry(world.EntityManager, rewindEntity, ref result);
             }
 
+            ScenarioRunIssueReporter.FlushToResult(ref result);
             return result;
         }
 
@@ -254,6 +288,27 @@ namespace PureDOTS.Runtime.Scenarios
 
         private static void PopulateTelemetry(EntityManager entityManager, Entity rewindEntity, ref ScenarioRunResult result)
         {
+            using (var scenarioQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ScenarioState>()))
+            {
+                if (scenarioQuery.IsEmptyIgnoreFilter)
+                {
+                    ScenarioExitUtility.ReportScenarioContract("ScenarioStateMissing", "ScenarioState singleton missing after scenario run.");
+                }
+                else
+                {
+                    var scenarioState = scenarioQuery.GetSingleton<ScenarioState>();
+                    if (!scenarioState.IsInitialized)
+                    {
+                        ScenarioExitUtility.ReportScenarioContract("ScenarioStateUninitialized", "Scenario never reached initialized state.");
+                    }
+
+                    if (scenarioState.BootPhase != DemoBootPhase.Done)
+                    {
+                        ScenarioRunIssueReporter.Report(ScenarioIssueKind.ScenarioContract, ScenarioSeverity.Warn, "ScenarioBootIncomplete", $"Boot phase = {scenarioState.BootPhase}");
+                    }
+                }
+            }
+
             if (entityManager.HasComponent<TickTimeState>(rewindEntity))
             {
                 result.FinalTick = entityManager.GetComponentData<TickTimeState>(rewindEntity).Tick;
@@ -274,6 +329,20 @@ namespace PureDOTS.Runtime.Scenarios
                 result.FrameTimingWorstGroup = debug.FrameTimingWorstGroup.ToString();
                 result.RegistryContinuityFailures = debug.RegistryContinuityFailureCount;
                 result.RegistryContinuityWarnings = debug.RegistryContinuityWarningCount;
+
+                if (result.RegistryContinuityFailures > 0)
+                {
+                    ScenarioExitUtility.ReportScenarioContract("RegistryContinuityFailure", $"Registry continuity failures detected: {result.RegistryContinuityFailures}");
+                }
+                else if (result.RegistryContinuityWarnings > 0)
+                {
+                    ScenarioRunIssueReporter.Report(ScenarioIssueKind.ScenarioContract, ScenarioSeverity.Warn, "RegistryContinuityWarn", $"Registry continuity warnings detected: {result.RegistryContinuityWarnings}");
+                }
+
+                if (result.FrameTimingBudgetExceeded)
+                {
+                    ScenarioExitUtility.ReportPerformance("FrameTimingBudget", $"Frame budget exceeded ({result.FrameTimingWorstGroup}) worst={result.FrameTimingWorstMs:F2}ms");
+                }
             }
 
             if (entityManager.HasComponent<InputCommandLogState>(rewindEntity) && entityManager.HasComponent<TickSnapshotLogState>(rewindEntity))
@@ -285,6 +354,26 @@ namespace PureDOTS.Runtime.Scenarios
                 result.CommandBytes = commandState.Capacity * UnsafeUtility.SizeOf<InputCommandLogEntry>();
                 result.SnapshotBytes = snapshotState.Capacity * UnsafeUtility.SizeOf<TickSnapshotLogEntry>();
                 result.TotalLogBytes = result.CommandBytes + result.SnapshotBytes;
+            }
+
+            using (var timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>()))
+            {
+                if (timeQuery.TryGetSingletonEntity<TimeState>(out var timeEntity) &&
+                    entityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
+                {
+                    var budgetStatus = entityManager.GetComponentData<PerformanceBudgetStatus>(timeEntity);
+                    if (budgetStatus.HasFailure != 0)
+                    {
+                        result.PerformanceBudgetFailed = true;
+                        result.PerformanceBudgetMetric = budgetStatus.Metric.ToString();
+                        result.PerformanceBudgetValue = budgetStatus.ObservedValue;
+                        result.PerformanceBudgetLimit = budgetStatus.BudgetValue;
+                        result.PerformanceBudgetTick = budgetStatus.Tick;
+
+                        var message = $"Performance budget failure ({result.PerformanceBudgetMetric}) at tick {result.PerformanceBudgetTick}: value={result.PerformanceBudgetValue:F2}, budget={result.PerformanceBudgetLimit:F2}";
+                        ScenarioExitUtility.ReportPerformance("PerformanceBudget", message);
+                    }
+                }
             }
 
             TryCollectSpace4XMiningTelemetry(entityManager, ref result);
@@ -512,7 +601,15 @@ namespace PureDOTS.Runtime.Scenarios
         public int CommandBytes;
         public int SnapshotBytes;
         public int TotalLogBytes;
+        public bool PerformanceBudgetFailed;
+        public string PerformanceBudgetMetric;
+        public float PerformanceBudgetValue;
+        public float PerformanceBudgetLimit;
+        public uint PerformanceBudgetTick;
         public List<ScenarioMetric> Metrics;
+        public List<ScenarioRunIssue> Issues;
+        public ScenarioSeverity HighestSeverity;
+        public ExitPolicy ExitPolicy;
 
         public void AddMetric(string key, double value)
         {
@@ -530,7 +627,7 @@ namespace PureDOTS.Runtime.Scenarios
 
         public override string ToString()
         {
-            return $"scenarioId={ScenarioId}, seed={Seed}, runTicks={RunTicks}, finalTick={FinalTick}, commands={CommandLogCount}, snapshots={SnapshotLogCount}, frameBudgetExceeded={FrameTimingBudgetExceeded}";
+            return $"scenarioId={ScenarioId}, seed={Seed}, runTicks={RunTicks}, finalTick={FinalTick}, commands={CommandLogCount}, snapshots={SnapshotLogCount}, frameBudgetExceeded={FrameTimingBudgetExceeded}, perfBudgetFailed={PerformanceBudgetFailed}";
         }
     }
 

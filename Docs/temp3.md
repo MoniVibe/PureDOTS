@@ -82,13 +82,13 @@ public partial struct SomeTimeAwareSystem : ISystem
     {
         state.RequireForUpdate<TimeState>();
         // Often also:
-        // state.RequireForUpdate<DemoScenarioState>();
+        // state.RequireForUpdate<ScenarioState>();
     }
 
     public void OnUpdate(ref SystemState state)
     {
         var time = SystemAPI.GetSingleton<TimeState>();
-        // var demo = SystemAPI.GetSingleton<DemoScenarioState>();
+        // var demo = SystemAPI.GetSingleton<ScenarioState>();
 
         // Optional: if you want to skip in certain modes
         // if (time.Mode == TimeMode.Playback) return;
@@ -113,13 +113,13 @@ public partial class SomeTimeAwareSystem : SystemBase
     protected override void OnCreate()
     {
         RequireForUpdate<TimeState>();
-        // RequireForUpdate<DemoScenarioState>();
+        // RequireForUpdate<ScenarioState>();
     }
 
     protected override void OnUpdate()
     {
         var time = GetSingleton<TimeState>();
-        // var demo = GetSingleton<DemoScenarioState>();
+        // var demo = GetSingleton<ScenarioState>();
         // ... logic ...
     }
 }
@@ -133,7 +133,7 @@ For each system:
 
 Add RequireForUpdate<TimeState>(); in OnCreate (or state.RequireForUpdate<TimeState>() for ISystem).
 
-If useful, also require DemoScenarioState so the system doesn’t run before the scenario is initialized.
+If useful, also require ScenarioState so the system doesn’t run before the scenario is initialized.
 
 Keep GetSingleton<TimeState>() in OnUpdate; it will then be safe.
 

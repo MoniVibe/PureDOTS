@@ -56,14 +56,28 @@ namespace PureDOTS.Rendering
     }
 
     /// <summary>
+    /// Describes the authored visual pipeline for a variant entry.
+    /// </summary>
+    public enum RenderVisualKind : byte
+    {
+        None = 0,
+        Mesh = 1,
+        Sprite = 2,
+        Tracer = 3,
+        Debug = 4
+    }
+
+    /// <summary>
     /// Describes the high-level presenter category for a variant.
+    /// Mirrors <see cref="RenderVisualKind"/> but stays compatible with legacy code paths.
     /// </summary>
     public enum RenderPresenterKind : byte
     {
         None = 0,
         Sprite = 1,
         Mesh = 2,
-        Debug = 3
+        Debug = 3,
+        Tracer = 4
     }
 
     /// <summary>
@@ -75,7 +89,8 @@ namespace PureDOTS.Rendering
         None = 0,
         Mesh = 1 << 0,
         Sprite = 1 << 1,
-        Debug = 1 << 2
+        Debug = 1 << 2,
+        Tracer = 1 << 3
     }
 
     /// <summary>
@@ -119,6 +134,11 @@ namespace PureDOTS.Rendering
         public RenderPresenterMask PresenterMask;
         public float3 BoundsCenter;
         public float3 BoundsExtents;
+        public RenderVisualKind VisualKind;
+        public float TracerWidth;
+        public float TracerLength;
+        public float4 TracerColor;
+        public byte TracerStyle;
     }
 
     public struct RenderThemeRow
@@ -211,6 +231,7 @@ namespace PureDOTS.Rendering
         public RenderVariantKey LastKey;
         public RenderPresenterKind LastKind;
         public int LastDefIndex;
+        public RenderPresenterMask LastMask;
     }
 
     public static class RenderPresentationConstants
@@ -219,5 +240,51 @@ namespace PureDOTS.Rendering
         /// Sentinel stored inside presenter components when no variant has been assigned yet.
         /// </summary>
         public const ushort UnassignedPresenterDefIndex = ushort.MaxValue;
+    }
+
+    /// <summary>
+    /// Tag applied to projectile entities so presenter policy systems can detect them quickly.
+    /// </summary>
+    public struct ProjectileTag : IComponentData
+    {
+    }
+
+    /// <summary>
+    /// Runtime projector visual parameters that can be tweaked per-entity without structural changes.
+    /// Width/Length are in meters, Color is linear RGBA, Style is author-defined.
+    /// </summary>
+    public struct ProjectileVisual : IComponentData
+    {
+        public float Width;
+        public float Length;
+        public float4 Color;
+        public byte Style;
+    }
+
+    /// <summary>
+    /// Presenter slot used for tracer-style projectiles.
+    /// </summary>
+    public struct TracerPresenter : IComponentData, IEnableableComponent
+    {
+        public ushort DefIndex;
+    }
+
+    /// <summary>
+    /// Instanced material property describing tracer width/length in meters.
+    /// xy = (Width, Length).
+    /// </summary>
+    [MaterialProperty("_TracerShape")]
+    public struct TracerShapeProperty : IComponentData
+    {
+        public float2 Value;
+    }
+
+    /// <summary>
+    /// Instanced material property describing tracer color (linear RGBA).
+    /// </summary>
+    [MaterialProperty("_TracerColor")]
+    public struct TracerColorProperty : IComponentData
+    {
+        public float4 Value;
     }
 }

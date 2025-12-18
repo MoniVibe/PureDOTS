@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Camera\CameraStateComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\ScenarioConfig.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Resource\ResourceTier.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Pooling\NxPoolingRuntime.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TimeLoggingComponents.cs" />
@@ -82,6 +83,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ModuleTelemetryComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Hand\HandInteractionComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\ShipComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\ScenarioState.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\OrderComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Knowledge\KnowledgeLessonEffectComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Pooling\NxPoolingService.cs" />
@@ -167,6 +169,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\TechDiffusionComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\DebugComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioRunnerExecutor.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioRunRecorder.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ModuleTelemetryLogState.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Resource\ResourceRecipeComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\MetaRegistryStubs.cs" />
@@ -177,11 +180,15 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Registry\RegistryDefinitions.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Registry\RegistryUtilities.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioRunResultCsv.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioStatSeeding.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationBridge.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Telemetry\TelemetryExportConfig.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Telemetry\PerformanceBudgetSettings.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Telemetry\PerformanceBudgetStatus.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\VillagerJobComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Ships\CarrierModuleComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\AI\AIComponents.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\AI\AIRoleComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\HaulingLoopComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Rendering\MaterialOverrideComponents.cs" />
     <!-- Glob the entire PureDOTS rendering runtime to keep contracts & systems in sync -->
@@ -226,6 +233,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Presentation\PresentationComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Space\ResourcePileMovement.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioDefinition.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\ScenarioTick.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Scenarios\GitMetadataUtility.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\BuildingComponents.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Debug\MiningVisualConfigVars.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Runtime\Bands\BandRegistryComponents.cs" />

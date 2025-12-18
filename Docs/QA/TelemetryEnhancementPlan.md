@@ -12,6 +12,7 @@ This document outlines the plan for enhancing PureDOTS telemetry collection, ext
 - `ReplayCaptureSystem` - Captures replay events
 - `DebugDisplaySystem` - In-game debug overlay
 - `RegistryInstrumentationSystem` - Registry health metrics
+- `PerformanceTelemetryExportSystem` – Streams NDJSON metrics/budget status to `PUREDOTS_PERF_TELEMETRY_PATH`
 
 **Gaps**:
 - External dashboard integration (Grafana/InfluxDB)
@@ -29,7 +30,8 @@ Export telemetry data to external time-series databases (Grafana/InfluxDB) for l
 ### Design
 
 **Data Export Format**:
-- JSON Lines (one metric per line) for efficient streaming
+- JSON Lines (one metric per line) for efficient streaming. `PerformanceTelemetryExportSystem`
+  writes to the file specified via the `PUREDOTS_PERF_TELEMETRY_PATH` environment variable.
 - Timestamp, metric name, value, tags (system, registry, etc.)
 - Batch export every N seconds or on scene unload
 
@@ -40,6 +42,7 @@ Export telemetry data to external time-series databases (Grafana/InfluxDB) for l
 - Spatial grid rebuild times
 - Memory allocations (NativeContainer usage)
 - Burst job completion times
+- Structural change deltas and pooled resource utilisation
 
 **Implementation Plan**:
 
@@ -52,6 +55,15 @@ Export telemetry data to external time-series databases (Grafana/InfluxDB) for l
 2. **Configuration**
    - `TelemetryExportConfig` component (enabled, export interval, endpoint URL)
    - Support file-based export (CSV/JSON) and HTTP POST to InfluxDB
+    - `PerformanceTelemetryExportSystem` uses env var `PUREDOTS_PERF_TELEMETRY_PATH`. When unset, it still drives
+      budget alerts but skips file IO. The export contains:
+        - per-group timings (`timing.*` metrics with budget/catch-up tags)
+        - entity/archetype/chunk counts and chunk fragmentation proxy
+        - structural change deltas (derived from `GlobalSystemVersion`)
+        - memory stats (`memory.*`, GC collection counters, pooling diagnostics)
+        - telemetry ring buffer sizes (`telemetry.command.*`, `telemetry.snapshot.*`)
+        - presentation companion counts (`presentation.companions.active`)
+        - budget FAIL records (`{"type":"fail", ...}`) whenever `PerformanceBudgetSettings` thresholds are breached
 
 3. **Example Export Format**:
 ```json
@@ -198,6 +210,10 @@ Automatically detect performance regressions and alert developers.
 
 2. **Comparison Logic**
    - Load baseline metrics
+- `PerformanceTelemetryExportSystem` maintains `PerformanceBudgetStatus` and writes FAIL records when
+  `PerformanceBudgetSettings` (tick budget, telemetry ring budgets, companion budget) are exceeded.
+  Headless scenario entry points now exit with a non-zero status if `PerformanceBudgetStatus` reports a failure,
+  ensuring CI jobs fail immediately when performance regressions occur.
    - Compare current run against baseline
    - Generate alert report (JSON or HTML)
 
@@ -253,5 +269,4 @@ Automatically detect performance regressions and alert developers.
 - `Docs/DesignNotes/ThreadingAndScheduling.md` - Job scheduling policy
 - `Runtime/Systems/Telemetry/` - Existing telemetry systems
 - `CI/` - CI scripts and automation
-
 

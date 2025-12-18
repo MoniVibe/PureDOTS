@@ -22,7 +22,7 @@ namespace PureDOTS.Systems.Facility
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<DemoScenarioState>();
+            state.RequireForUpdate<ScenarioState>();
 
             _inventoryLookup = state.GetBufferLookup<ResourceStack>(false);
         }
@@ -41,7 +41,7 @@ namespace PureDOTS.Systems.Facility
                 return;
             }
 
-            var demoState = SystemAPI.GetSingleton<DemoScenarioState>();
+            var demoState = SystemAPI.GetSingleton<ScenarioState>();
             // Facilities work for both Godgame and Space4X, so we only skip if both are disabled
             if (!demoState.EnableGodgame && !demoState.EnableSpace4x)
             {

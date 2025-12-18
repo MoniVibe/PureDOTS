@@ -281,8 +281,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -410,8 +410,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -784,8 +784,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -1243,8 +1243,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -1605,8 +1605,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -1774,8 +1774,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -1848,8 +1848,8 @@ namespace PureDOTS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }
@@ -1924,8 +1924,8 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Gate by DemoScenarioState.EnableGodgame and initialization
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
+            // Gate by ScenarioState.EnableGodgame and initialization
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) || !scenario.EnableGodgame || !scenario.IsInitialized)
             {
                 return;
             }

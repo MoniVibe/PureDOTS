@@ -41,7 +41,8 @@ namespace PureDOTS.Rendering
                 {
                     ComponentType.ReadOnly<MeshPresenter>(),
                     ComponentType.ReadOnly<SpritePresenter>(),
-                    ComponentType.ReadOnly<DebugPresenter>()
+                    ComponentType.ReadOnly<DebugPresenter>(),
+                    ComponentType.ReadOnly<TracerPresenter>()
                 }
             });
 
@@ -62,20 +63,17 @@ namespace PureDOTS.Rendering
         {
             _entityTypeHandle.Update(ref state);
             ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
-                "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.",
-                _entityTypeHandle);
+                "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");
 
             ReportOnce(ref state, _missingPresenterQuery, ref _reportedPresenter,
-                "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Debug).",
-                _entityTypeHandle);
+                "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Tracer/Debug).");
         }
 
-        private static void ReportOnce(
+        private void ReportOnce(
             ref SystemState state,
             EntityQuery query,
             ref NativeParallelHashSet<ulong> reportedSet,
-            string message,
-            EntityTypeHandle entityType)
+            string message)
         {
             if (query.IsEmptyIgnoreFilter)
                 return;
@@ -85,7 +83,7 @@ namespace PureDOTS.Rendering
             for (int chunkIndex = 0; chunkIndex < chunks.Length; chunkIndex++)
             {
                 var chunk = chunks[chunkIndex];
-                var entities = chunk.GetNativeArray(entityType);
+                var entities = chunk.GetNativeArray(_entityTypeHandle);
                 if (entities.Length == 0)
                     continue;
 

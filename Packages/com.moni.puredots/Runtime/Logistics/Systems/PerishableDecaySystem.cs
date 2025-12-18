@@ -26,7 +26,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<ItemSpecCatalog>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<DemoScenarioState>();
+            state.RequireForUpdate<ScenarioState>();
             _cargoBufferLookup = state.GetBufferLookup<CargoItem>(false);
             _containerBufferLookup = state.GetBufferLookup<CargoContainerSlot>(false);
             _loadStateLookup = state.GetComponentLookup<CargoLoadState>(false);
@@ -35,7 +35,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo)
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demo)
                 || !demo.IsInitialized
                 || !demo.EnableEconomy)
             {

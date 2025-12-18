@@ -44,7 +44,7 @@ namespace PureDOTS.Runtime.Economy.Wealth
                 return;
             }
 
-            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) &&
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var demo) &&
                 (!demo.IsInitialized || !demo.EnableEconomy))
             {
                 return;

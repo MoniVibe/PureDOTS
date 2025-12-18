@@ -1,0 +1,29 @@
+{
+  "scenarioId": "scenario.space4x.ai.resource_contention",
+  "seed": 87121,
+  "runTicks": 10800,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.deposit",
+      "payload": "{\"depositId\":\"deposit.ore.tiny\",\"position\":{\"x\":12,\"y\":0,\"z\":-6},\"richness\":0.4}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.miner",
+      "payload": "{\"minerId\":\"miner.autonomous\",\"position\":{\"x\":10,\"y\":0,\"z\":-4},\"count\":12}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.hauler",
+      "payload": "{\"haulerId\":\"hauler.autonomous\",\"position\":{\"x\":8,\"y\":0,\"z\":-2},\"count\":4}"
+    },
+    {
+      "tick": 0,
+      "commandId": "mining.spawn.station",
+      "payload": "{\"stationId\":\"station.audit\",\"position\":{\"x\":0,\"y\":0,\"z\":0},\"pricing\":{\"ore\":{\"buy\":9.5,\"sell\":11.0}}}"
+    }
+  ],
+  "docs": "AI audit: resource contention. Too few resources for the number of autonomous miners/haulers. Validates fairness (rotating assignments), starvation detection, queue oscillation, and ensures `GodgameBehaviorTelemetryExportSystem` captures per-agent cancellation + wait metrics."
+}

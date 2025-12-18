@@ -2,6 +2,8 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
+using PureDOTS.Rendering;
+using Space4X.Rendering;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -119,6 +121,42 @@ namespace Space4X.Systems
 
                     // Add hit results buffer for collision system
                     ECB.AddBuffer<ProjectileHitResult>(entityInQueryIndex, projectileEntity);
+
+                    ECB.AddComponent<ProjectileTag>(entityInQueryIndex, projectileEntity);
+                    ECB.AddComponent(entityInQueryIndex, projectileEntity, new ProjectileVisual
+                    {
+                        Width = 0f,
+                        Length = 0f,
+                        Color = float4.zero,
+                        Style = 0
+                    });
+
+                    ECB.AddComponent(entityInQueryIndex, projectileEntity, new RenderKey
+                    {
+                        ArchetypeId = Space4XRenderKeys.Projectile,
+                        LOD = 0
+                    });
+                    ECB.AddComponent(entityInQueryIndex, projectileEntity, new RenderFlags
+                    {
+                        Visible = 1,
+                        ShadowCaster = 0,
+                        HighlightMask = 0
+                    });
+                    ECB.AddComponent(entityInQueryIndex, projectileEntity, new RenderSemanticKey
+                    {
+                        Value = Space4XRenderKeys.Projectile
+                    });
+                    ECB.AddComponent(entityInQueryIndex, projectileEntity, new RenderVariantKey { Value = 0 });
+                    ECB.AddComponent<RenderThemeOverride>(entityInQueryIndex, projectileEntity);
+                    ECB.SetComponentEnabled<RenderThemeOverride>(projectileEntity, false);
+                    ECB.AddComponent<MeshPresenter>(entityInQueryIndex, projectileEntity);
+                    ECB.SetComponentEnabled<MeshPresenter>(projectileEntity, false);
+                    ECB.AddComponent<SpritePresenter>(entityInQueryIndex, projectileEntity);
+                    ECB.SetComponentEnabled<SpritePresenter>(projectileEntity, false);
+                    ECB.AddComponent<DebugPresenter>(entityInQueryIndex, projectileEntity);
+                    ECB.SetComponentEnabled<DebugPresenter>(projectileEntity, false);
+                    ECB.AddComponent<TracerPresenter>(entityInQueryIndex, projectileEntity);
+                    ECB.SetComponentEnabled<TracerPresenter>(projectileEntity, false);
                 }
 
                 // Clear spawn requests
@@ -151,4 +189,3 @@ namespace Space4X.Systems
         }
     }
 }
-

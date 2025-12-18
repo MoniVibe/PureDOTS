@@ -291,7 +291,7 @@ This document catalogs remaining technical debt items across PureDOTS, organized
 **Issues**:
 - Grafana/InfluxDB integration not implemented
 - Telemetry export system not built
-- JSON Lines format not implemented
+- ~~JSON Lines format not implemented~~ ✅ `PerformanceTelemetryExportSystem` writes NDJSON via `PUREDOTS_PERF_TELEMETRY_PATH`
 
 **Impact**: No long-term trend analysis
 
@@ -423,4 +423,3 @@ This document catalogs remaining technical debt items across PureDOTS, organized
 - `Docs/QA/TelemetryEnhancementPlan.md` - Telemetry gaps
 - `Docs/CI/CI_AutomationPlan.md` - CI automation gaps
 - `Docs/DesignNotes/MetaRegistryRoadmap.md` - Meta registry implementation plan
-

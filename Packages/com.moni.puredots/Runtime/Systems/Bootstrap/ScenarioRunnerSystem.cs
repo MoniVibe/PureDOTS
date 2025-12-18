@@ -1,4 +1,4 @@
-#if PUREDOTS_DEMO
+#if PUREDOTS_SCENARIO
 
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
@@ -23,22 +23,22 @@ namespace PureDOTS.Systems.Bootstrap
     using VillageTagRuntime = PureDOTS.Runtime.Village.VillageTag;
 
     /// <summary>
-    /// PureDOTS system that spawns demo scenario entities from DemoScenarioConfig.
+    /// PureDOTS system that spawns demo scenario entities from ScenarioConfig.
     /// Spreads spawning across multiple frames using BootPhase state machine.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(DemoScenarioBootstrapSystem))]
-    public partial struct DemoScenarioRunnerSystem : ISystem
+    [UpdateAfter(typeof(ScenarioBootstrapSystem))]
+    public partial struct ScenarioRunnerSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
             // Ensure a config singleton exists even if the authoring was omitted.
-            if (!SystemAPI.HasSingleton<DemoScenarioConfig>())
+            if (!SystemAPI.HasSingleton<ScenarioConfig>())
             {
                 var cfgEntity = state.EntityManager.CreateEntity();
-                state.EntityManager.AddComponent<DemoScenarioConfig>(cfgEntity);
-                state.EntityManager.SetComponentData(cfgEntity, new DemoScenarioConfig
+                state.EntityManager.AddComponent<ScenarioConfig>(cfgEntity);
+                state.EntityManager.SetComponentData(cfgEntity, new ScenarioConfig
                 {
                     EnableGodgame = true,
                     EnableSpace4x = true,
@@ -66,18 +66,18 @@ namespace PureDOTS.Systems.Bootstrap
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<DemoScenarioConfig>(out var config))
+            if (!SystemAPI.TryGetSingleton<ScenarioConfig>(out var config))
             {
                 return;
             }
 
-            if (!SystemAPI.TryGetSingletonEntity<DemoScenarioState>(out var scenarioEntity))
+            if (!SystemAPI.TryGetSingletonEntity<ScenarioState>(out var scenarioEntity))
             {
                 return;
             }
 
             var em = state.EntityManager;
-            var scenarioState = SystemAPI.GetComponent<DemoScenarioState>(scenarioEntity);
+            var scenarioState = SystemAPI.GetComponent<ScenarioState>(scenarioEntity);
 
             switch (scenarioState.BootPhase)
             {
@@ -125,9 +125,9 @@ namespace PureDOTS.Systems.Bootstrap
                         em.SetComponentData(scenarioEntity, scenarioState);
 
                         // Mark config as complete
-                        if (SystemAPI.TryGetSingletonEntity<DemoScenarioConfig>(out var configEntity))
+                        if (SystemAPI.TryGetSingletonEntity<ScenarioConfig>(out var configEntity))
                         {
-                            em.AddComponent<DemoScenarioCompleteTag>(configEntity);
+                            em.AddComponent<ScenarioCompleteTag>(configEntity);
                         }
                         state.Enabled = false;
                     }
@@ -139,7 +139,7 @@ namespace PureDOTS.Systems.Bootstrap
             }
         }
 
-        private static void SpawnGodgameSlice(ref SystemState state, EntityManager em, in DemoScenarioConfig config, ref Unity.Mathematics.Random random)
+        private static void SpawnGodgameSlice(ref SystemState state, EntityManager em, in ScenarioConfig config, ref Unity.Mathematics.Random random)
         {
             // Spawn flat terrain tile (simple quad)
             var terrainEntity = em.CreateEntity();
@@ -414,7 +414,7 @@ namespace PureDOTS.Systems.Bootstrap
             }
         }
 
-        private static void SpawnSpace4xSlice(ref SystemState state, EntityManager em, in DemoScenarioConfig config, ref Unity.Mathematics.Random random)
+        private static void SpawnSpace4xSlice(ref SystemState state, EntityManager em, in ScenarioConfig config, ref Unity.Mathematics.Random random)
         {
             // Create orgs for carriers first
             NativeList<Entity> carrierOrgs = new NativeList<Entity>(config.CarrierCount, Allocator.Temp);

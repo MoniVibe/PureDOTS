@@ -1,0 +1,24 @@
+{
+  "scenarioId": "scenario.space4x.ai.soak",
+  "seed": 11111,
+  "runTicks": 86400,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "scenario.spawn.mix",
+      "payload": "{\"miners\":6,\"haulers\":3,\"hulls\":4,\"stations\":1,\"obstacles\":2}"
+    },
+    {
+      "tick": 0,
+      "commandId": "telemetry.enable.leakwatch",
+      "payload": "{\"counters\":[\"component.alloc\",\"ticket.claims\",\"queue.length\"]}"
+    },
+    {
+      "tick": 43200,
+      "commandId": "scenario.inject.event",
+      "payload": "{\"event\":\"market.shock\",\"magnitude\":0.2}"
+    }
+  ],
+  "docs": "AI audit: soak run. Fixed seed + 24h worth of ticks keeps AI, queues, and telemetry buffers active to expose leaks or invariant drift. Reports stable memory counters, ticket durations, and ensures invariants never accumulate beyond thresholds."
+}

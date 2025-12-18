@@ -28,7 +28,7 @@ namespace PureDOTS.Runtime.Economy.Production
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demo) ||
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demo) ||
                 !demo.IsInitialized ||
                 !demo.EnableEconomy)
             {

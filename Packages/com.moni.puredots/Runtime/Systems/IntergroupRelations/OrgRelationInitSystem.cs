@@ -1,4 +1,4 @@
-#if PUREDOTS_DEMO
+#if PUREDOTS_SCENARIO
 
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
@@ -21,19 +21,19 @@ namespace PureDOTS.Systems.IntergroupRelations
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(DemoScenarioRunnerSystem))]
+    [UpdateAfter(typeof(ScenarioRunnerSystem))]
     public partial struct OrgRelationInitSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<DemoScenarioState>();
+            state.RequireForUpdate<ScenarioState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var demoState = SystemAPI.GetSingleton<DemoScenarioState>();
+            var demoState = SystemAPI.GetSingleton<ScenarioState>();
             if (!demoState.IsInitialized)
             {
                 return;

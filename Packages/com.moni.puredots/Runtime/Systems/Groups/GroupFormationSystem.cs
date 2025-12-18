@@ -24,7 +24,7 @@ namespace PureDOTS.Systems.Groups
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<DemoScenarioState>();
+            state.RequireForUpdate<ScenarioState>();
         }
 
         [BurstCompile]
@@ -41,7 +41,7 @@ namespace PureDOTS.Systems.Groups
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState))
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demoState))
             {
                 return;
             }

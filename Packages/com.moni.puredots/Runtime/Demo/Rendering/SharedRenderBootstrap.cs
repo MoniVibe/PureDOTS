@@ -1,4 +1,4 @@
-#if PUREDOTS_DEMO
+#if PUREDOTS_SCENARIO
 using Unity.Entities;
 using Unity.Rendering;
 

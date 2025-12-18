@@ -541,6 +541,11 @@ namespace Godgame.Tests.Registry
             if (query.IsEmptyIgnoreFilter)
             {
                 _telemetryEntity = _entityManager.CreateEntity(typeof(TelemetryStream));
+                _entityManager.SetComponentData(_telemetryEntity, new TelemetryStream
+                {
+                    Version = 0,
+                    LastTick = 0
+                });
             }
             else
             {
@@ -551,6 +556,8 @@ namespace Godgame.Tests.Registry
             {
                 _entityManager.AddBuffer<TelemetryMetric>(_telemetryEntity);
             }
+
+            TelemetryStreamUtility.EnsureEventStream(_entityManager);
         }
 
         private void EnsureVillagerRegistry()

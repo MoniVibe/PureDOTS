@@ -80,6 +80,7 @@ This document outlines the plan for automating build, test, and deployment pipel
 3. **Deterministic Replay Validation**
    - Replay capture/playback tests
    - Snapshot comparison across runs
+   - Scenario run log digests compared against stored baselines (see *Scenario Run Metadata* below)
 
 4. **IL2CPP Full Build**
    - Windows IL2CPP build
@@ -96,6 +97,30 @@ This document outlines the plan for automating build, test, and deployment pipel
 **Output**: Comprehensive test results, coverage reports, performance baselines
 
 ## Build Configuration
+
+## Scenario Run Metadata & Determinism Guards
+
+Headless runs now emit deterministic NDJSON records guarded by environment variables:
+
+| Env Var | Purpose |
+| --- | --- |
+| `PUREDOTS_SCENARIO_RUN_LOG` | Absolute/relative path for run log (NDJSON). When unset, logging is skipped. |
+| `PUREDOTS_SCENARIO_BASELINE` | Optional path to a baseline NDJSON file. When provided, every digest hash is compared against baseline digests and the run fails (non-zero exit) on the first mismatch. |
+| `PUREDOTS_SCENARIO_DIGEST_INTERVAL` | Interval in ticks between determinism digests (default `1`). Increase to reduce log size for longer runs. |
+
+Each run writes a **header** (git commit/branch, platform, Unity version, catalog hashes, scenario id/seed), periodic **digest** records (per-tick component hashes + entity counts + RNG state), and a **summary** line (final frame stats, telemetry metrics). CI pipelines should archive both the log and the optional baseline file so regressions can be bisected quickly.
+
+When the baseline variable is set, any replay drift immediately surfaces as a failed build step, satisfying the “automatically failing” audit requirement.
+
+### Telemetry Events
+
+`TelemetryExportConfig.Flags` now includes `IncludeTelemetryEvents`, which flushes high-signal NDJSON events from the shared `TelemetryEvent` buffer alongside the metric stream. Games emit events such as:
+
+- `BehaviorProfileAssigned` – which doctrine/profile/role was applied to an agent
+- `RoleStateChanged` / `GoalChanged` – phase/goal transitions with reason codes
+- Domain-specific events (`AttackRunStart`, `AttackRunEnd`, `FormationCohesion`, `EscortCoverage`, etc.)
+
+CI jobs that analyze headless runs should enable this flag so strike craft + peacekeeper audits can be diffed without replaying the scene.
 
 ### IL2CPP Build Checklist
 
@@ -324,5 +349,3 @@ Validate headless server build for large-scale simulations and testing.
 - `Docs/QA/TestingStrategy.md` - Test execution strategy
 - `Docs/QA/TelemetryEnhancementPlan.md` - Performance monitoring
 - `Docs/TruthSources/PlatformPerformance_TruthSource.md` - Build configuration
-
-

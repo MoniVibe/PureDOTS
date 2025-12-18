@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Rendering;
 using PureDOTS.Tests.Support;
 using Unity.Collections;
 using Unity.Entities;
@@ -75,6 +76,14 @@ namespace PureDOTS.Tests.Playmode
                 Age = 0f,
                 Seed = 12345u
             });
+            EntityManager.AddComponent<ProjectileTag>(projectileEntity);
+            EntityManager.AddComponentData(projectileEntity, new ProjectileVisual
+            {
+                Width = 0f,
+                Length = 0f,
+                Color = float4.zero,
+                Style = 0
+            });
 
             // Simulate multiple hits
             var projectile = EntityManager.GetComponentData<ProjectileEntity>(projectileEntity);
@@ -116,6 +125,14 @@ namespace PureDOTS.Tests.Playmode
                 Age = 0f,
                 Seed = 12345u
             });
+            EntityManager.AddComponent<ProjectileTag>(projectileEntity);
+            EntityManager.AddComponentData(projectileEntity, new ProjectileVisual
+            {
+                Width = 0f,
+                Length = 0f,
+                Color = float4.zero,
+                Style = 0
+            });
 
             var projectile = EntityManager.GetComponentData<ProjectileEntity>(projectileEntity);
 
@@ -153,4 +170,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

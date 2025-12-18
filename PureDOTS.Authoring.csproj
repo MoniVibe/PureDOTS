@@ -113,6 +113,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Meta\AreaEffectProfileAsset.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\SimulationAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\SceneSpawnAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\ScenarioConfigAuthoring.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\ScenarioDef.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\VillagerArchetypeCatalog.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\Space\HarvesterAuthoring.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Authoring\VegetationSpeciesCatalogBaker.cs" />

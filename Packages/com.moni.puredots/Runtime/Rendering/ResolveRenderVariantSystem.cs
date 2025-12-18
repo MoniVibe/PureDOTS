@@ -229,6 +229,7 @@ namespace PureDOTS.Rendering
         private EntityQuery _missingSpritePresenterQuery;
         private EntityQuery _missingMeshPresenterQuery;
         private EntityQuery _missingDebugPresenterQuery;
+        private EntityQuery _missingTracerPresenterQuery;
         private EntityQuery _missingThemeOverrideQuery;
         private uint _lastCatalogVersion;
 
@@ -262,6 +263,12 @@ namespace PureDOTS.Rendering
                 None = new[] { ComponentType.ReadOnly<DebugPresenter>() }
             });
 
+            _missingTracerPresenterQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<RenderVariantKey>() },
+                None = new[] { ComponentType.ReadOnly<TracerPresenter>() }
+            });
+
             _missingThemeOverrideQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<RenderVariantKey>() },
@@ -282,33 +289,35 @@ namespace PureDOTS.Rendering
             {
                 LastKey = new RenderVariantKey(-1),
                 LastKind = RenderPresenterKind.None,
-                LastDefIndex = -1
+                LastDefIndex = -1,
+                LastMask = RenderPresenterMask.None
             });
             EnsureEnableableComponentImmediate(_missingThemeOverrideQuery, new RenderThemeOverride { Value = 0 });
             EnsureEnableableComponentImmediate(_missingSpritePresenterQuery, new SpritePresenter { DefIndex = RenderPresentationConstants.UnassignedPresenterDefIndex });
             EnsureEnableableComponentImmediate(_missingMeshPresenterQuery, new MeshPresenter { DefIndex = RenderPresentationConstants.UnassignedPresenterDefIndex });
             EnsureEnableableComponentImmediate(_missingDebugPresenterQuery, new DebugPresenter { DefIndex = RenderPresentationConstants.UnassignedPresenterDefIndex });
+            EnsureEnableableComponentImmediate(_missingTracerPresenterQuery, new TracerPresenter { DefIndex = RenderPresentationConstants.UnassignedPresenterDefIndex });
 
             var ecb = new EntityCommandBuffer(WorldUpdateAllocator);
             var catalogBlob = catalog.Blob;
 
             if (catalogChanged)
             {
-                foreach (var (key, resolved, sprite, mesh, debugPresenter, entity) in SystemAPI
-                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>>()
+                foreach (var (key, resolved, sprite, mesh, debugPresenter, tracerPresenter, entity) in SystemAPI
+                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>, RefRW<TracerPresenter>>()
                              .WithEntityAccess())
                 {
-                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, catalogBlob, ecb, true);
+                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, tracerPresenter, catalogBlob, ecb, true);
                 }
             }
             else
             {
-                foreach (var (key, resolved, sprite, mesh, debugPresenter, entity) in SystemAPI
-                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>>()
+                foreach (var (key, resolved, sprite, mesh, debugPresenter, tracerPresenter, entity) in SystemAPI
+                             .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>, RefRW<TracerPresenter>>()
                              .WithEntityAccess()
                              .WithChangeFilter<RenderVariantKey>())
                 {
-                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, catalogBlob, ecb, false);
+                    ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, tracerPresenter, catalogBlob, ecb, false);
                 }
             }
 
@@ -328,6 +337,7 @@ namespace PureDOTS.Rendering
             RefRW<SpritePresenter> sprite,
             RefRW<MeshPresenter> mesh,
             RefRW<DebugPresenter> debugPresenter,
+            RefRW<TracerPresenter> tracerPresenter,
             BlobAssetReference<RenderPresentationCatalogBlob> catalogBlob,
             EntityCommandBuffer ecb,
             bool forceRefresh)
@@ -340,25 +350,30 @@ namespace PureDOTS.Rendering
             var spriteTarget = (ushort)0;
             var meshTarget = (ushort)0;
             var debugTarget = (ushort)0;
+            var tracerTarget = (ushort)0;
 
             if (TryResolve(catalogBlob, currentKey, out var record))
             {
                 spriteTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Sprite);
                 meshTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Mesh);
                 debugTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Debug);
+                tracerTarget = ResolvePresenterDefIndex(record, RenderPresenterMask.Tracer);
 
                 resolved.ValueRW.LastKind = ResolvePrimaryKind(record.Mask);
                 resolved.ValueRW.LastDefIndex = record.DefIndex;
+                resolved.ValueRW.LastMask = record.Mask;
             }
             else
             {
                 resolved.ValueRW.LastKind = RenderPresenterKind.None;
                 resolved.ValueRW.LastDefIndex = -1;
+                resolved.ValueRW.LastMask = RenderPresenterMask.None;
             }
 
             ApplyPresenterDefIndex(entity, sprite.ValueRO.DefIndex, spriteTarget, RenderPresenterKind.Sprite, ecb);
             ApplyPresenterDefIndex(entity, mesh.ValueRO.DefIndex, meshTarget, RenderPresenterKind.Mesh, ecb);
             ApplyPresenterDefIndex(entity, debugPresenter.ValueRO.DefIndex, debugTarget, RenderPresenterKind.Debug, ecb);
+            ApplyPresenterDefIndex(entity, tracerPresenter.ValueRO.DefIndex, tracerTarget, RenderPresenterKind.Tracer, ecb);
 
             resolved.ValueRW.LastKey = currentKey;
         }
@@ -384,6 +399,9 @@ namespace PureDOTS.Rendering
                 case RenderPresenterKind.Debug:
                     ecb.SetComponent(entity, new DebugPresenter { DefIndex = targetValue });
                     break;
+                case RenderPresenterKind.Tracer:
+                    ecb.SetComponent(entity, new TracerPresenter { DefIndex = targetValue });
+                    break;
             }
         }
 
@@ -396,6 +414,8 @@ namespace PureDOTS.Rendering
 
         private static RenderPresenterKind ResolvePrimaryKind(RenderPresenterMask mask)
         {
+            if ((mask & RenderPresenterMask.Tracer) != 0)
+                return RenderPresenterKind.Tracer;
             if ((mask & RenderPresenterMask.Mesh) != 0)
                 return RenderPresenterKind.Mesh;
             if ((mask & RenderPresenterMask.Sprite) != 0)

@@ -32,11 +32,23 @@ namespace PureDOTS.Runtime.Scenarios
             AppendInt(sb, "snapshotCapacity", result.SnapshotCapacity); sb.Append(",");
             AppendInt(sb, "commandBytes", result.CommandBytes); sb.Append(",");
             AppendInt(sb, "snapshotBytes", result.SnapshotBytes); sb.Append(",");
-            AppendInt(sb, "totalLogBytes", result.TotalLogBytes);
+            AppendInt(sb, "totalLogBytes", result.TotalLogBytes); sb.Append(",");
+            AppendBool(sb, "performanceBudgetFailed", result.PerformanceBudgetFailed); sb.Append(",");
+            AppendString(sb, "performanceBudgetMetric", result.PerformanceBudgetMetric ?? string.Empty); sb.Append(",");
+            AppendFloat(sb, "performanceBudgetValue", result.PerformanceBudgetValue); sb.Append(",");
+            AppendFloat(sb, "performanceBudgetLimit", result.PerformanceBudgetLimit); sb.Append(",");
+            AppendUInt(sb, "performanceBudgetTick", result.PerformanceBudgetTick); sb.Append(",");
+            AppendString(sb, "exitPolicy", result.ExitPolicy.ToString()); sb.Append(",");
+            AppendString(sb, "highestSeverity", result.HighestSeverity.ToString());
             if (result.Metrics != null && result.Metrics.Count > 0)
             {
                 sb.Append(",");
                 AppendMetrics(sb, result.Metrics);
+            }
+            if (result.Issues != null && result.Issues.Count > 0)
+            {
+                sb.Append(",");
+                AppendIssues(sb, result.Issues);
             }
             sb.Append("}");
             return sb.ToString();
@@ -83,6 +95,26 @@ namespace PureDOTS.Runtime.Scenarios
                 AppendDouble(sb, "value", metric.Value);
                 sb.Append("}");
                 if (i < metrics.Count - 1)
+                {
+                    sb.Append(",");
+                }
+            }
+            sb.Append("]");
+        }
+
+        private static void AppendIssues(StringBuilder sb, List<ScenarioRunIssue> issues)
+        {
+            sb.Append("\"issues\":[");
+            for (int i = 0; i < issues.Count; i++)
+            {
+                var issue = issues[i];
+                sb.Append("{");
+                AppendString(sb, "kind", issue.Kind.ToString()); sb.Append(",");
+                AppendString(sb, "severity", issue.Severity.ToString()); sb.Append(",");
+                AppendString(sb, "code", issue.Code.ToString()); sb.Append(",");
+                AppendString(sb, "message", issue.Message.ToString());
+                sb.Append("}");
+                if (i < issues.Count - 1)
                 {
                     sb.Append(",");
                 }

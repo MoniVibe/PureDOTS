@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -17,6 +18,11 @@ namespace PureDOTS.Rendering
         public RenderPresenterMask PresenterMask;
         public ushort SubMesh;
         public byte RenderLayer;
+        public RenderVisualKind VisualKind;
+        public float TracerWidth;
+        public float TracerLength;
+        public Color TracerColor;
+        public byte TracerStyle;
     }
 
     public struct RenderThemeSource
@@ -73,21 +79,65 @@ namespace PureDOTS.Rendering
             ref var root = ref builder.ConstructRoot<RenderPresentationCatalogBlob>();
             var variants = builder.Allocate(ref root.Variants, variantCount);
 
-            var materials = new Material[variantCount];
-            var meshes = new Mesh[variantCount];
+            var materialList = new List<Material>(variantCount);
+            var meshList = new List<Mesh>(variantCount);
+            var materialIndices = new Dictionary<Material, ushort>();
+            var meshIndices = new Dictionary<Mesh, ushort>();
+            var fallbackMaterial = input.FallbackMaterial;
+            var fallbackMesh = input.FallbackMesh;
+
+            ushort GetOrAddMaterial(Material mat)
+            {
+                if (mat == null)
+                    mat = fallbackMaterial;
+                if (materialIndices.TryGetValue(mat, out var existing))
+                    return existing;
+                if (materialList.Count >= ushort.MaxValue)
+                {
+                    Debug.LogError("[RenderPresentationCatalogBuilder] Exceeded maximum unique materials (65535).");
+                    return 0;
+                }
+                var index = (ushort)materialList.Count;
+                materialIndices.Add(mat, index);
+                materialList.Add(mat);
+                return index;
+            }
+
+            ushort GetOrAddMesh(Mesh mesh)
+            {
+                if (mesh == null)
+                    mesh = fallbackMesh;
+                if (meshIndices.TryGetValue(mesh, out var existing))
+                    return existing;
+                if (meshList.Count >= ushort.MaxValue)
+                {
+                    Debug.LogError("[RenderPresentationCatalogBuilder] Exceeded maximum unique meshes (65535).");
+                    return 0;
+                }
+                var index = (ushort)meshList.Count;
+                meshIndices.Add(mesh, index);
+                meshList.Add(mesh);
+                return index;
+            }
 
             // slot 0 is fallback
+            var fallbackMaterialIndex = GetOrAddMaterial(fallbackMaterial);
+            var fallbackMeshIndex = GetOrAddMesh(fallbackMesh);
             variants[0] = CreateVariantSource(
-                0,
-                input.FallbackMaterial,
-                input.FallbackMesh,
+                fallbackMaterial,
+                fallbackMesh,
                 Vector3.zero,
                 Vector3.one * 0.5f,
                 RenderPresenterMask.Mesh | RenderPresenterMask.Sprite | RenderPresenterMask.Debug,
                 0,
+                0,
+                fallbackMaterialIndex,
+                fallbackMeshIndex,
+                RenderVisualKind.Mesh,
+                0.5f,
+                0.5f,
+                Color.white,
                 0);
-            materials[0] = input.FallbackMaterial;
-            meshes[0] = input.FallbackMesh;
 
             for (int i = 0; i < variantSources.Length; i++)
             {
@@ -106,19 +156,35 @@ namespace PureDOTS.Rendering
                     boundsExtents = Vector3.one * 0.5f;
                 }
 
-                var mask = source.PresenterMask == RenderPresenterMask.None ? RenderPresenterMask.Mesh : source.PresenterMask;
+                var visualKind = source.VisualKind == RenderVisualKind.None ? RenderVisualKind.Mesh : source.VisualKind;
+                var mask = source.PresenterMask == RenderPresenterMask.None
+                    ? ResolveDefaultMask(visualKind)
+                    : source.PresenterMask;
+                if (visualKind == RenderVisualKind.Tracer)
+                {
+                    mask |= RenderPresenterMask.Tracer;
+                }
+
+                var tracerWidth = math.max(source.TracerWidth, 0.01f);
+                var tracerLength = math.max(source.TracerLength, 0.01f);
                 var slot = (ushort)(i + 1);
+                var materialIndex = GetOrAddMaterial(material);
+                var meshIndex = GetOrAddMesh(mesh);
                 variants[slot] = CreateVariantSource(
-                    slot,
                     material,
                     mesh,
                     boundsCenter,
                     boundsExtents,
                     mask,
                     source.SubMesh,
-                    source.RenderLayer);
-                materials[slot] = material;
-                meshes[slot] = mesh;
+                    source.RenderLayer,
+                    materialIndex,
+                    meshIndex,
+                    visualKind,
+                    tracerWidth,
+                    tracerLength,
+                    source.TracerColor,
+                    source.TracerStyle);
             }
 
             int maxThemeId = 0;
@@ -182,32 +248,62 @@ namespace PureDOTS.Rendering
             }
 
             blob = builder.CreateBlobAssetReference<RenderPresentationCatalogBlob>(Allocator.Persistent);
-            renderMeshArray = new RenderMeshArray(materials, meshes);
+            renderMeshArray = new RenderMeshArray(materialList.ToArray(), meshList.ToArray());
             return true;
         }
 
+        private static RenderPresenterMask ResolveDefaultMask(RenderVisualKind visualKind)
+        {
+            switch (visualKind)
+            {
+                case RenderVisualKind.Sprite:
+                    return RenderPresenterMask.Sprite;
+                case RenderVisualKind.Tracer:
+                    return RenderPresenterMask.Tracer;
+                case RenderVisualKind.Debug:
+                    return RenderPresenterMask.Debug;
+                default:
+                    return RenderPresenterMask.Mesh;
+            }
+        }
+
         private static RenderVariantData CreateVariantSource(
-            ushort slotIndex,
             Material material,
             Mesh mesh,
             Vector3 boundsCenter,
             Vector3 boundsExtents,
             RenderPresenterMask presenterMask,
             ushort subMesh,
-            byte renderLayer)
+            byte renderLayer,
+            ushort materialIndex,
+            ushort meshIndex,
+            RenderVisualKind visualKind,
+            float tracerWidth,
+            float tracerLength,
+            Color tracerColor,
+            byte tracerStyle)
         {
             var safeBounds = boundsExtents == Vector3.zero ? Vector3.one * 0.5f : boundsExtents;
             var safeMask = presenterMask == RenderPresenterMask.None ? RenderPresenterMask.Mesh : presenterMask;
+            var safeWidth = math.max(tracerWidth, 0.01f);
+            var safeLength = math.max(tracerLength, 0.01f);
+            var colorLinear = tracerColor.linear;
+            var safeColor = new float4(colorLinear.r, colorLinear.g, colorLinear.b, colorLinear.a);
 
             return new RenderVariantData
             {
-                MaterialIndex = slotIndex,
-                MeshIndex = slotIndex,
+                MaterialIndex = materialIndex,
+                MeshIndex = meshIndex,
                 SubMesh = subMesh,
                 RenderLayer = renderLayer,
                 PresenterMask = safeMask,
                 BoundsCenter = (float3)boundsCenter,
-                BoundsExtents = (float3)safeBounds
+                BoundsExtents = (float3)safeBounds,
+                VisualKind = visualKind == RenderVisualKind.None ? RenderVisualKind.Mesh : visualKind,
+                TracerWidth = safeWidth,
+                TracerLength = safeLength,
+                TracerColor = safeColor,
+                TracerStyle = tracerStyle
             };
         }
 

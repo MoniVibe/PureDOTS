@@ -30,7 +30,7 @@ namespace PureDOTS.Rendering
         public int LodCount = 1;
 
         [Serializable]
-        public struct VariantDefinition
+        public class VariantDefinition
         {
             public string Name;
             public Mesh Mesh;
@@ -40,6 +40,16 @@ namespace PureDOTS.Rendering
             public RenderPresenterMask PresenterMask;
             public ushort SubMesh;
             public byte RenderLayer;
+            [Tooltip("Declares which visual pipeline this variant is authored for.")]
+            public RenderVisualKind VisualKind = RenderVisualKind.Mesh;
+            [Tooltip("Default tracer width in meters when VisualKind == Tracer.")]
+            public float TracerWidth = 0.3f;
+            [Tooltip("Default tracer length in meters when VisualKind == Tracer.")]
+            public float TracerLength = 6f;
+            [Tooltip("Default tracer color when VisualKind == Tracer.")]
+            public Color TracerColor = Color.white;
+            [Tooltip("Optional style byte consumed by tracer presenters.")]
+            public byte TracerStyle;
         }
 
         [Serializable]
@@ -77,7 +87,12 @@ namespace PureDOTS.Rendering
                     BoundsExtents = variant.BoundsExtents,
                     PresenterMask = variant.PresenterMask,
                     SubMesh = variant.SubMesh,
-                    RenderLayer = variant.RenderLayer
+                    RenderLayer = variant.RenderLayer,
+                    VisualKind = variant.VisualKind == RenderVisualKind.None ? RenderVisualKind.Mesh : variant.VisualKind,
+                    TracerWidth = variant.TracerWidth,
+                    TracerLength = variant.TracerLength,
+                    TracerColor = variant.TracerColor,
+                    TracerStyle = variant.TracerStyle
                 };
             }
 

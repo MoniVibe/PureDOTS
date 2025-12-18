@@ -67,15 +67,15 @@ namespace PureDOTS.Runtime.MonoBehaviours
             GUILayout.Box("Demo Debug HUD");
 
             // Check scenario state
-            using var scenarioCheckQuery = _entityManager.CreateEntityQuery(typeof(DemoScenarioState));
+            using var scenarioCheckQuery = _entityManager.CreateEntityQuery(typeof(ScenarioState));
             if (scenarioCheckQuery.IsEmptyIgnoreFilter)
             {
-                GUILayout.Label("No DemoScenarioState found");
+                GUILayout.Label("No ScenarioState found");
                 GUILayout.EndArea();
                 return;
             }
 
-            var scenario = scenarioCheckQuery.GetSingleton<DemoScenarioState>();
+            var scenario = scenarioCheckQuery.GetSingleton<ScenarioState>();
 
             // Godgame stats
             if (scenario.EnableGodgame)
@@ -202,13 +202,13 @@ namespace PureDOTS.Runtime.MonoBehaviours
             }
 
             // Check scenario state
-            using var scenarioQuery = _entityManager.CreateEntityQuery(typeof(DemoScenarioState));
+            using var scenarioQuery = _entityManager.CreateEntityQuery(typeof(ScenarioState));
             if (scenarioQuery.IsEmptyIgnoreFilter)
             {
                 return;
             }
 
-            var demoState = scenarioQuery.GetSingleton<DemoScenarioState>();
+            var demoState = scenarioQuery.GetSingleton<ScenarioState>();
 
             // Draw villages
             if (demoState.EnableGodgame)

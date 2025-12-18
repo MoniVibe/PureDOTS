@@ -49,7 +49,7 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 rewindState.Mode != RewindMode.Record)
                 return;
 
-            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState) &&
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) &&
                 (!demoState.IsInitialized))
                 return;
 

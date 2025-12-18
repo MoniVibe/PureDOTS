@@ -5,22 +5,22 @@ using PureDOTS.Runtime;
 namespace PureDOTS.Authoring
 {
     [DisallowMultipleComponent]
-    public sealed class DemoScenarioConfigAuthoring : MonoBehaviour
+    public sealed class ScenarioConfigAuthoring : MonoBehaviour
     {
         [Tooltip("Demo scenario definition asset.")]
-        public DemoScenarioDef scenarioDef;
+        public ScenarioDef scenarioDef;
     }
 
-    public sealed class DemoScenarioConfigBaker : Baker<DemoScenarioConfigAuthoring>
+    public sealed class ScenarioConfigBaker : Baker<ScenarioConfigAuthoring>
     {
-        public override void Bake(DemoScenarioConfigAuthoring authoring)
+        public override void Bake(ScenarioConfigAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.None);
 
             if (authoring.scenarioDef == null)
             {
-                Debug.LogWarning("[DemoScenarioConfigBaker] No scenarioDef assigned. Using defaults.", authoring);
-                AddComponent(entity, new DemoScenarioConfig
+                Debug.LogWarning("[ScenarioConfigBaker] No scenarioDef assigned. Using defaults.", authoring);
+                AddComponent(entity, new ScenarioConfig
                 {
                     EnableGodgame = true,
                     EnableSpace4x = true,
@@ -39,7 +39,7 @@ namespace PureDOTS.Authoring
             }
 
             var def = authoring.scenarioDef;
-            AddComponent(entity, new DemoScenarioConfig
+            AddComponent(entity, new ScenarioConfig
             {
                 EnableGodgame = def.EnableGodgame,
                 EnableSpace4x = def.EnableSpace4x,

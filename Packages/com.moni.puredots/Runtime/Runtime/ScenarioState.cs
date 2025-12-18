@@ -3,10 +3,10 @@ using Unity.Entities;
 namespace PureDOTS.Runtime
 {
     /// <summary>
-    /// Demo scenario modes for switching between different test/demo configurations.
+    /// Scenario modes for switching between different test/demo configurations.
     /// Used to gate systems and control what's active in showcase scenes.
     /// </summary>
-    public enum DemoScenario : byte
+    public enum ScenarioKind : byte
     {
         /// <summary>
         /// All systems active (default showcase mode).
@@ -42,15 +42,15 @@ namespace PureDOTS.Runtime
     }
 
     /// <summary>
-    /// Singleton component tracking the current demo scenario mode.
+    /// Singleton component tracking the current scenario mode.
     /// Systems should check this to determine if they should run.
     /// </summary>
-    public struct DemoScenarioState : IComponentData
+    public struct ScenarioState : IComponentData
     {
         /// <summary>
         /// Current active scenario mode.
         /// </summary>
-        public DemoScenario Current;
+        public ScenarioKind Current;
 
         /// <summary>
         /// Whether the demo scenario has been initialized (entities spawned).
@@ -78,7 +78,6 @@ namespace PureDOTS.Runtime
         public bool EnableEconomy;
     }
 }
-
 
 
 

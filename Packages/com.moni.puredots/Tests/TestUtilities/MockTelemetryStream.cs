@@ -11,6 +11,7 @@ namespace PureDOTS.TestUtilities
     {
         private readonly EntityManager _entityManager;
         private readonly Entity _streamEntity;
+        private readonly Entity _eventStreamEntity;
         private uint _version;
 
         public MockTelemetryStream(EntityManager entityManager)
@@ -34,6 +35,7 @@ namespace PureDOTS.TestUtilities
                 entityManager.AddBuffer<TelemetryMetric>(_streamEntity);
             }
 
+            _eventStreamEntity = TelemetryStreamUtility.EnsureEventStream(_entityManager);
             _version = 0;
         }
 
@@ -41,6 +43,11 @@ namespace PureDOTS.TestUtilities
         /// The stream singleton entity.
         /// </summary>
         public Entity StreamEntity => _streamEntity;
+
+        /// <summary>
+        /// The telemetry event stream entity.
+        /// </summary>
+        public Entity EventStreamEntity => _eventStreamEntity;
 
         /// <summary>
         /// Current version of the stream.
@@ -141,4 +148,3 @@ namespace PureDOTS.TestUtilities
         }
     }
 }
-

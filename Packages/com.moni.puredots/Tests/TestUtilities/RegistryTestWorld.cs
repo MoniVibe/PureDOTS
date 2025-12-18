@@ -236,6 +236,7 @@ namespace PureDOTS.TestUtilities
                 LastTick = 0
             });
             EntityManager.AddBuffer<TelemetryMetric>(TelemetryStreamEntity);
+            TelemetryStreamUtility.EnsureEventStream(EntityManager);
         }
 
         private void CreateRegistryDirectory()
@@ -268,4 +269,3 @@ namespace PureDOTS.TestUtilities
         }
     }
 }
-

@@ -5,20 +5,20 @@ using Unity.Entities;
 namespace PureDOTS.Systems
 {
     /// <summary>
-    /// Bootstrap system that initializes the DemoScenarioState singleton.
+    /// Bootstrap system that initializes the ScenarioState singleton.
     /// Runs in InitializationSystemGroup to ensure scenario state is available before other systems.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    public partial struct DemoScenarioBootstrapSystem : ISystem
+    public partial struct ScenarioBootstrapSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DemoScenarioState>())
+            if (!SystemAPI.HasSingleton<ScenarioState>())
             {
-                var entity = state.EntityManager.CreateEntity(typeof(DemoScenarioState));
-                state.EntityManager.SetComponentData(entity, new DemoScenarioState
+                var entity = state.EntityManager.CreateEntity(typeof(ScenarioState));
+                state.EntityManager.SetComponentData(entity, new ScenarioState
                 {
-                    Current = DemoScenario.AllSystemsShowcase,
+                    Current = ScenarioKind.AllSystemsShowcase,
                     IsInitialized = false,
                     BootPhase = DemoBootPhase.None,
                     EnableGodgame = true,

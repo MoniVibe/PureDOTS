@@ -43,6 +43,45 @@ Documentation is organized by responsibility:
 See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding standards (P0-P17 patterns)
 
 
+## Core Physics & Forces ⚡ NEW
+
+**Runtime-flexible force system** for spatial, temporal, mass, and grid-based forces:
+- [Concepts/Core/General_Forces_System.md](Concepts/Core/General_Forces_System.md) - **Technical specification** for Burst-friendly forces
+- [Concepts/Core/Forces_Integration_Guide.md](Concepts/Core/Forces_Integration_Guide.md) - **Integration examples** for Godgame and Space4X
+- [Concepts/Core/Multi_Force_Interactions.md](Concepts/Core/Multi_Force_Interactions.md) - **Emergent behaviors** from multiple simultaneous forces
+- Features: Gravity wells, wind zones, vortex fields, temporal distortion, heightmap collision
+- Runtime-configurable: Toggle fields, modify strength, change spatial grid at runtime
+- Optimized: Layer masking, spatial partitioning, LOD system
+- Deterministic: Full rewind support, same inputs → same outputs
+
+## Social Dynamics & Reactions 🤝 NEW
+
+**Personality-driven reaction system** where same events produce different outcomes:
+- [Concepts/Core/Reactions_And_Relations_System.md](Concepts/Core/Reactions_And_Relations_System.md) - **Complete social dynamics system**
+- [Concepts/Core/Relation_Bonuses_System.md](Concepts/Core/Relation_Bonuses_System.md) - **Strategic diplomacy through relation bonuses**
+- Features: Event perception, reaction computation, relation changes, grudges, debts
+- Context-dependent bonuses: Relations provide different bonuses based on alignment/outlook combinations
+- Hate-driven bonuses: Intelligent entities gain production/military bonuses when threatened by hostile relations
+- Personality-driven: Alignment and behavior traits modify reactions
+- Emergent diplomacy: Warlike villages ally, peaceful villages shun aggressors, materialists cooperate with spiritualists
+- Cascading consequences: Simple insults escalate to wars, gifts build alliances
+- Aggregate reactions: Villages/fleets react as collectives based on member values
+- Deterministic: Same personality + same event = same reaction
+
+## Tactical Combat ⚔️ NEW
+
+**Position-based combat system** where firing arcs and bay management create tactical depth:
+- [Concepts/Core/Bay_And_Platform_Combat.md](Concepts/Core/Bay_And_Platform_Combat.md) - **Bay and platform combat system**
+- Features: Combat positions (bays/platforms), firing arcs, line of sight, coordinated fire
+- Space4X: Carriers open hangar bays to deploy mechs/titans attacking from the hull
+- Godgame: Ships use broadside platforms where crews man cannons with specific firing arcs
+- Bay states: Opening/closing transitions create vulnerability windows
+- Arc management: Positioning matters (crossing-the-T, flanking, arc coverage)
+- Damage progression: Bay health affects combat capability
+- Parent-child relationships: Carriers/ships/fortresses empower occupants
+- Coordinated volleys: Simultaneous firing from all positions for bonus damage
+- Deterministic: Same positioning + same targets = same results
+
 ## Cross-Game Mechanics
 
 **NEW**: Cross-game mechanics with thematic variations for both Godgame and Space4X:

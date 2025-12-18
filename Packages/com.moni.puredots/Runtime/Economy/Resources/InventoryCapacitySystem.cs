@@ -29,7 +29,7 @@ namespace PureDOTS.Runtime.Economy.Resources
             }
 
             // Optional: skip until demo world is ready
-            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState) &&
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) &&
                 (!demoState.IsInitialized || !demoState.EnableEconomy))
             {
                 return;

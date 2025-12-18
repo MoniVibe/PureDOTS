@@ -25,7 +25,7 @@ namespace PureDOTS.Systems.Combat
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<DemoScenarioState>();
+            state.RequireForUpdate<ScenarioState>();
         }
 
         [BurstCompile]
@@ -42,7 +42,7 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<DemoScenarioState>(out var demoState) || !demoState.EnableGodgame)
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) || !demoState.EnableGodgame)
             {
                 return;
             }

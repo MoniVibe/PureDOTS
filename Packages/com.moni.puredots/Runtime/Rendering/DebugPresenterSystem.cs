@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
-using Unity.Transforms;
 
 namespace PureDOTS.Rendering
 {
@@ -22,8 +21,8 @@ namespace PureDOTS.Rendering
         private uint _lastCatalogVersion;
         private EntityQuery _missingMaterialMeshQuery;
         private EntityQuery _missingRenderBoundsQuery;
-        private EntityQuery _missingWorldBoundsQuery;
-        private EntityQuery _missingChunkBoundsQuery;
+        private bool _hasEnsuredCoreComponents;
+        private TypeHandles _typeHandles;
 
         public void OnCreate(ref SystemState state)
         {
@@ -33,11 +32,8 @@ namespace PureDOTS.Rendering
                 {
                     ComponentType.ReadOnly<RenderVariantKey>(),
                     ComponentType.ReadOnly<DebugPresenter>(),
-                    ComponentType.ReadOnly<LocalTransform>(),
                     ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>(),
-                    ComponentType.ReadWrite<WorldRenderBounds>(),
-                    ComponentType.ReadWrite<ChunkWorldRenderBounds>()
+                    ComponentType.ReadWrite<RenderBounds>()
                 }
             });
 
@@ -47,11 +43,8 @@ namespace PureDOTS.Rendering
                 {
                     ComponentType.ReadOnly<RenderVariantKey>(),
                     ComponentType.ReadOnly<DebugPresenter>(),
-                    ComponentType.ReadOnly<LocalTransform>(),
                     ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>(),
-                    ComponentType.ReadWrite<WorldRenderBounds>(),
-                    ComponentType.ReadWrite<ChunkWorldRenderBounds>()
+                    ComponentType.ReadWrite<RenderBounds>()
                 }
             });
             _applyChangedQuery.AddChangedVersionFilter(ComponentType.ReadOnly<DebugPresenter>());
@@ -76,27 +69,8 @@ namespace PureDOTS.Rendering
                 None = new[] { ComponentType.ReadOnly<RenderBounds>() }
             });
 
-            _missingWorldBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<DebugPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<WorldRenderBounds>() }
-            });
-
-            _missingChunkBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<DebugPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<ChunkWorldRenderBounds>() }
-            });
-
             state.RequireForUpdate<RenderPresentationCatalog>();
+            _typeHandles = TypeHandles.Create(ref state);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -109,7 +83,11 @@ namespace PureDOTS.Rendering
                 return;
             }
 
-            EnsureCoreComponents(ref state);
+            if (!_hasEnsuredCoreComponents)
+            {
+                EnsureCoreComponents(ref state);
+                _hasEnsuredCoreComponents = true;
+            }
 
             var catalogChanged = catalogVersion.Value != _lastCatalogVersion;
             var query = catalogChanged ? _applyAllQuery : _applyChangedQuery;
@@ -130,17 +108,16 @@ namespace PureDOTS.Rendering
                 return;
             }
 
+            _typeHandles.Update(ref state);
+
             var job = new ApplyDebugPresenterJob
             {
                 Catalog = catalog.Blob,
                 MeshCount = meshCount,
                 MaterialCount = materialCount,
-                DebugPresenterHandle = state.GetComponentTypeHandle<DebugPresenter>(true),
-                TransformHandle = state.GetComponentTypeHandle<LocalTransform>(true),
-                MaterialMeshHandle = state.GetComponentTypeHandle<MaterialMeshInfo>(),
-                RenderBoundsHandle = state.GetComponentTypeHandle<RenderBounds>(),
-                WorldBoundsHandle = state.GetComponentTypeHandle<WorldRenderBounds>(),
-                ChunkBoundsHandle = state.GetComponentTypeHandle<ChunkWorldRenderBounds>()
+                DebugPresenterHandle = _typeHandles.DebugPresenterHandle,
+                MaterialMeshHandle = _typeHandles.MaterialMeshHandle,
+                RenderBoundsHandle = _typeHandles.RenderBoundsHandle
             };
 
             state.Dependency = job.ScheduleParallel(query, state.Dependency);
@@ -155,20 +132,14 @@ namespace PureDOTS.Rendering
             public int MaterialCount;
 
             [ReadOnly] public ComponentTypeHandle<DebugPresenter> DebugPresenterHandle;
-            [ReadOnly] public ComponentTypeHandle<LocalTransform> TransformHandle;
             public ComponentTypeHandle<MaterialMeshInfo> MaterialMeshHandle;
             public ComponentTypeHandle<RenderBounds> RenderBoundsHandle;
-            public ComponentTypeHandle<WorldRenderBounds> WorldBoundsHandle;
-            public ComponentTypeHandle<ChunkWorldRenderBounds> ChunkBoundsHandle;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var debugPresenters = chunk.GetNativeArray(ref DebugPresenterHandle);
-                var transforms = chunk.GetNativeArray(ref TransformHandle);
                 var materialMeshes = chunk.GetNativeArray(ref MaterialMeshHandle);
                 var renderBounds = chunk.GetNativeArray(ref RenderBoundsHandle);
-                var worldBounds = chunk.GetNativeArray(ref WorldBoundsHandle);
-                var chunkBounds = chunk.GetNativeArray(ref ChunkBoundsHandle);
 
                 ref var catalog = ref Catalog.Value;
                 if (catalog.Variants.Length == 0)
@@ -194,27 +165,38 @@ namespace PureDOTS.Rendering
 
                     materialMeshes[i] = MaterialMeshInfo.FromRenderMeshArrayIndices((ushort)matIndex, (ushort)meshIndex, variant.SubMesh);
 
-                    var transform = transforms[i];
-                    var scaledCenter = variant.BoundsCenter * transform.Scale;
-                    var worldCenter = transform.Position + math.rotate(transform.Rotation, scaledCenter);
-                    var scaledExtents = variant.BoundsExtents * transform.Scale;
-
                     var localBounds = new AABB
                     {
                         Center = variant.BoundsCenter,
                         Extents = variant.BoundsExtents
                     };
 
-                    var worldAabb = new AABB
-                    {
-                        Center = worldCenter,
-                        Extents = scaledExtents
-                    };
-
                     renderBounds[i] = new RenderBounds { Value = localBounds };
-                    worldBounds[i] = new WorldRenderBounds { Value = worldAabb };
-                    chunkBounds[i] = new ChunkWorldRenderBounds { Value = worldAabb };
                 }
+            }
+        }
+
+        private struct TypeHandles
+        {
+            public ComponentTypeHandle<DebugPresenter> DebugPresenterHandle;
+            public ComponentTypeHandle<MaterialMeshInfo> MaterialMeshHandle;
+            public ComponentTypeHandle<RenderBounds> RenderBoundsHandle;
+
+            public static TypeHandles Create(ref SystemState state)
+            {
+                return new TypeHandles
+                {
+                    DebugPresenterHandle = state.GetComponentTypeHandle<DebugPresenter>(true),
+                    MaterialMeshHandle = state.GetComponentTypeHandle<MaterialMeshInfo>(),
+                    RenderBoundsHandle = state.GetComponentTypeHandle<RenderBounds>()
+                };
+            }
+
+            public void Update(ref SystemState state)
+            {
+                DebugPresenterHandle.Update(ref state);
+                MaterialMeshHandle.Update(ref state);
+                RenderBoundsHandle.Update(ref state);
             }
         }
 
@@ -223,14 +205,6 @@ namespace PureDOTS.Rendering
             EnsureComponentIfMissing(ref state, _missingMaterialMeshQuery,
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0, 0));
             EnsureComponentIfMissing(ref state, _missingRenderBoundsQuery, new RenderBounds
-            {
-                Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
-            });
-            EnsureComponentIfMissing(ref state, _missingWorldBoundsQuery, new WorldRenderBounds
-            {
-                Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
-            });
-            EnsureComponentIfMissing(ref state, _missingChunkBoundsQuery, new ChunkWorldRenderBounds
             {
                 Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
             });

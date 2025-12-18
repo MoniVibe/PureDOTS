@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace PureDOTS.Authoring
 {
-    [CreateAssetMenu(fileName = "DemoScenarioDef", menuName = "PureDOTS/Demo Scenario Definition", order = 10)]
-    public sealed class DemoScenarioDef : ScriptableObject
+    [CreateAssetMenu(fileName = "ScenarioDef", menuName = "PureDOTS/Demo Scenario Definition", order = 10)]
+    public sealed class ScenarioDef : ScriptableObject
     {
         [Header("Game Mode Toggles")]
         [Tooltip("Enable Godgame slice (villages, villagers, terrain).")]

@@ -20,7 +20,7 @@ namespace PureDOTS.Systems.Space
         public void OnUpdate(ref SystemState state)
         {
             // Gate on demo scenario initialization
-            if (SystemAPI.TryGetSingleton<DemoScenarioState>(out var scenario) && !scenario.IsInitialized)
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) && !scenario.IsInitialized)
             {
                 return;
             }

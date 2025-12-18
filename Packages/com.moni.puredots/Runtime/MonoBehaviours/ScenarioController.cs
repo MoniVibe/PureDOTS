@@ -11,7 +11,7 @@ namespace PureDOTS.Runtime.MonoBehaviours
     /// MonoBehaviour controller for switching demo scenarios via F1-F4 hotkeys.
     /// Attach to a GameObject in the showcase scene.
     /// </summary>
-    public class DemoScenarioController : MonoBehaviour
+    public class ScenarioController : MonoBehaviour
     {
         private void Update()
         {
@@ -26,33 +26,33 @@ namespace PureDOTS.Runtime.MonoBehaviours
 #endif
 
             var em = world.EntityManager;
-            var query = em.CreateEntityQuery(typeof(DemoScenarioState));
+            var query = em.CreateEntityQuery(typeof(ScenarioState));
             
-            if (!query.TryGetSingletonEntity<DemoScenarioState>(out var e))
+            if (!query.TryGetSingletonEntity<ScenarioState>(out var e))
                 return;
 
-            var state = em.GetComponentData<DemoScenarioState>(e);
+            var state = em.GetComponentData<ScenarioState>(e);
             bool changed = false;
 
 #if ENABLE_INPUT_SYSTEM
             if (kb.f1Key.wasPressedThisFrame)
             {
-                state.Current = DemoScenario.AllSystemsShowcase;
+                state.Current = ScenarioKind.AllSystemsShowcase;
                 changed = true;
             }
             else if (kb.f2Key.wasPressedThisFrame)
             {
-                state.Current = DemoScenario.Space4XPhysicsOnly;
+                state.Current = ScenarioKind.Space4XPhysicsOnly;
                 changed = true;
             }
             else if (kb.f3Key.wasPressedThisFrame)
             {
-                state.Current = DemoScenario.GodgamePhysicsOnly;
+                state.Current = ScenarioKind.GodgamePhysicsOnly;
                 changed = true;
             }
             else if (kb.f4Key.wasPressedThisFrame)
             {
-                state.Current = DemoScenario.HandThrowSandbox;
+                state.Current = ScenarioKind.HandThrowSandbox;
                 changed = true;
             }
 #endif

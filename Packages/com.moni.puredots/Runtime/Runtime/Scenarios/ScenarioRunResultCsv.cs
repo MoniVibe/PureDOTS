@@ -27,7 +27,16 @@ namespace PureDOTS.Runtime.Scenarios
             "frameTimingWorstGroup",
             "registryContinuityWarnings",
             "registryContinuityFailures",
-            "entityCountEntries");
+            "entityCountEntries",
+            "performanceBudgetFailed",
+            "performanceBudgetMetric",
+            "performanceBudgetValue",
+            "performanceBudgetLimit",
+            "performanceBudgetTick",
+            "exitPolicy",
+            "highestSeverity",
+            "issueCount",
+            "issueCodes");
 
         public static void Write(string path, in ScenarioRunResult result)
         {
@@ -47,6 +56,22 @@ namespace PureDOTS.Runtime.Scenarios
         {
             // Basic CSV escaping for commas/quotes if they appear; expected fields are simple.
             string Escape(string v) => $"\"{v.Replace("\"", "\"\"")}\"";
+            var issueCount = result.Issues?.Count ?? 0;
+            var issueCodes = string.Empty;
+            if (issueCount > 0)
+            {
+                var codeBuilder = new StringBuilder();
+                for (int i = 0; i < result.Issues.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        codeBuilder.Append('|');
+                    }
+                    codeBuilder.Append(result.Issues[i].Code.ToString());
+                }
+                issueCodes = codeBuilder.ToString();
+            }
+
             return string.Join(",",
                 Escape(result.ScenarioId ?? string.Empty),
                 result.Seed,
@@ -65,7 +90,16 @@ namespace PureDOTS.Runtime.Scenarios
                 Escape(result.FrameTimingWorstGroup ?? string.Empty),
                 result.RegistryContinuityWarnings,
                 result.RegistryContinuityFailures,
-                result.EntityCountEntries);
+                result.EntityCountEntries,
+                result.PerformanceBudgetFailed ? "true" : "false",
+                Escape(result.PerformanceBudgetMetric ?? string.Empty),
+                result.PerformanceBudgetValue.ToString("0.###"),
+                result.PerformanceBudgetLimit.ToString("0.###"),
+                result.PerformanceBudgetTick,
+                Escape(result.ExitPolicy.ToString()),
+                Escape(result.HighestSeverity.ToString()),
+                issueCount,
+                Escape(issueCodes));
         }
     }
 }

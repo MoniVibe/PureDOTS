@@ -220,7 +220,7 @@ Successfully implemented comprehensive demo systems for the Godgame project, inc
 16. `Assets/Scripts/Godgame/Authoring/DemoSceneSetup.cs`
 
 ### Documentation:
-- `Docs/DemoSystems_Summary.md` - Comprehensive system documentation
+- `Docs/Archive/Demo_Legacy/DemoSystemsOverview.md` - Comprehensive system documentation
 
 ---
 

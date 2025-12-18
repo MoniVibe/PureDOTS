@@ -37,40 +37,75 @@ namespace PureDOTS.Systems.Hand
     {
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<RtsInputSingletonTag>();
-        }
+            state.RequireForUpdate<GodHandCommandStreamSingleton>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
-        public void OnUpdate(ref SystemState state)
-        {
-            Entity rtsInputEntity = SystemAPI.GetSingletonEntity<RtsInputSingletonTag>();
-
-            if (!state.EntityManager.HasBuffer<GodHandCommandEvent>(rtsInputEntity))
+            if (!SystemAPI.TryGetSingletonEntity<GodHandThrowState>(out var stateEntity))
             {
-                return;
-            }
-
-            // Ensure god-hand throw state singleton exists
-            Entity godHandEntity;
-            if (!SystemAPI.TryGetSingletonEntity<GodHandThrowState>(out godHandEntity))
-            {
-                godHandEntity = state.EntityManager.CreateEntity(typeof(GodHandThrowState));
-                state.EntityManager.SetComponentData(godHandEntity, new GodHandThrowState
+                stateEntity = state.EntityManager.CreateEntity(typeof(GodHandThrowState));
+                state.EntityManager.SetComponentData(stateEntity, new GodHandThrowState
                 {
                     ThrowModeEnabled = false,
                     HeldEntity = Entity.Null
                 });
             }
 
-            var throwState = state.EntityManager.GetComponentData<GodHandThrowState>(godHandEntity);
-            var commandBuffer = state.EntityManager.GetBuffer<GodHandCommandEvent>(rtsInputEntity);
-
-            // Ensure launch queue buffer exists
-            if (!state.EntityManager.HasBuffer<GodHandLaunchQueueElement>(godHandEntity))
+            if (!state.EntityManager.HasBuffer<GodHandLaunchQueueElement>(stateEntity))
             {
-                state.EntityManager.AddBuffer<GodHandLaunchQueueElement>(godHandEntity);
+                state.EntityManager.AddBuffer<GodHandLaunchQueueElement>(stateEntity);
+            }
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var streamSingleton = SystemAPI.GetSingleton<GodHandCommandStreamSingleton>();
+            var streamEntity = streamSingleton.Entity;
+
+            if (streamEntity == Entity.Null || !state.EntityManager.Exists(streamEntity))
+            {
+                return;
             }
 
-            var launchQueue = state.EntityManager.GetBuffer<GodHandLaunchQueueElement>(godHandEntity);
+            if (!state.EntityManager.HasBuffer<GodHandCommandEvent>(streamEntity))
+            {
+                return;
+            }
+
+            var commandBuffer = state.EntityManager.GetBuffer<GodHandCommandEvent>(streamEntity);
+
+            if (commandBuffer.Length == 0)
+            {
+                return;
+            }
+
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            if (!SystemAPI.TryGetSingletonEntity<GodHandThrowState>(out var godHandEntity))
+            {
+                var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+                var newEntity = ecb.CreateEntity();
+                ecb.AddComponent(newEntity, new GodHandThrowState
+                {
+                    ThrowModeEnabled = false,
+                    HeldEntity = Entity.Null
+                });
+                ecb.AddBuffer<GodHandLaunchQueueElement>(newEntity);
+                return;
+            }
+
+            DynamicBuffer<GodHandLaunchQueueElement> launchQueue;
+            if (!state.EntityManager.HasBuffer<GodHandLaunchQueueElement>(godHandEntity))
+            {
+                var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+                ecb.AddBuffer<GodHandLaunchQueueElement>(godHandEntity);
+                return;
+            }
+            else
+            {
+                launchQueue = state.EntityManager.GetBuffer<GodHandLaunchQueueElement>(godHandEntity);
+            }
+
+            var throwState = state.EntityManager.GetComponentData<GodHandThrowState>(godHandEntity);
 
             for (int i = 0; i < commandBuffer.Length; i++)
             {
@@ -157,6 +192,3 @@ namespace PureDOTS.Systems.Hand
         }
     }
 }
-
-
-

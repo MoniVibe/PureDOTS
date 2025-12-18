@@ -86,6 +86,16 @@ This document summarizes the implementation of the Space4X deterministic loop pl
 - `mining_loop.json` - 4 miners + 2 haulers + 1 station throughput test
 - `compliance_demo.json` - Scripted infraction → sanction path test
 - `carrier_ops.json` - Refit/repair cadence under load test
+- `ai_resource_contention.json` - AI audit: unfair resource distribution to verify starvation/fairness handling and queue oscillation metrics
+- `ai_target_churn.json` - AI audit: constantly changing targets to stress cancellation + retarget logic
+- `ai_navigation_adversary.json` - AI audit: blocked paths & dynamic obstacles to validate reroute/recovery behavior
+- `ai_soak.json` - AI audit: long-running soak to surface leaks/ticket drift/invariant accumulation
+
+**AI Audit Scenario Coverage:**
+- **Resource Contention:** Limited deposits + oversized miner pool. Measures fairness/rotation, starvation prevention, and whether telemetry captures oscillating assignments.
+- **Target Churn:** Decoy hulls enter/exit combat to force constant retargeting. Validates cancellation flow, ensures “reasonCode” telemetry records every transition, and prevents thrash.
+- **Navigation Adversary:** Injects static plus moving blockers into primary lanes. Confirms navigation recovery (reroute, wait, abandon) and ties queue-pressure counters to pathing backlogs.
+- **Soak:** 24-hour tick budget with fixed seed to monitor leak counters, ticket durations, and invariant drift in a steady-state sandbox.
 
 **CI Integration:**
 - Scenarios ready for integration into `CI/run_playmode_tests.sh`
@@ -142,6 +152,10 @@ projects/space4x/
 ├── mining_loop.json
 ├── compliance_demo.json
 ├── carrier_ops.json
+├── ai_resource_contention.json
+├── ai_target_churn.json
+├── ai_navigation_adversary.json
+├── ai_soak.json
 └── IMPLEMENTATION_SUMMARY.md
 ```
 
@@ -159,4 +173,3 @@ projects/space4x/
 - ✅ Presentation read-only: Structural changes via Begin/End Presentation ECB
 - ✅ Determinism: Fixed-step, seeded tie-breakers, no realtime reliance
 - ✅ Idempotent tools: Prefab Maker writes stable assets; CI checks for drift
-

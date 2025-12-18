@@ -213,6 +213,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Economy\BatchInventoryBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\VillagerHistorySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\BootstrapWorldProfile.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Bootstrap\ScenarioRunnerSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\ScenarioTickSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Bands\BandRegistrySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleDegradationSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\ModuleTelemetrySystem.cs" />
@@ -239,6 +241,7 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RegistryHealthSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\RegistryDirectorySystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Space\CarrierModuleScenarioBootstrapSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\ScenarioBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationSpawnSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Ships\CarrierModuleBootstrapSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Combat\DangerZoneAwarenessSystem.cs" />
@@ -267,6 +270,8 @@
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Presentation\PresentationRecycleSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Streaming\StreamingFocusUpdateSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Devtools\SpawnTelemetrySystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Telemetry\TelemetryExportSystem.cs" />
+    <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Telemetry\PerformanceTelemetryExportSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Villagers\VillagerAutonomousActionSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\Navigation\LocalSteeringSystem.cs" />
     <Compile Include="Packages\com.moni.puredots\Runtime\Systems\PhysicsHistorySystems.cs" />

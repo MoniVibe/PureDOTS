@@ -1,0 +1,44 @@
+{
+  "scenarioId": "scenario.space4x.ai.target_churn",
+  "seed": 99123,
+  "runTicks": 7200,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.pickett\",\"position\":{\"x\":-10,\"y\":0,\"z\":0},\"weaponId\":\"weapon.rapid\",\"turretId\":\"turret.fast\"}"
+    },
+    {
+      "tick": 0,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.pickett\",\"position\":{\"x\":10,\"y\":0,\"z\":0},\"weaponId\":\"weapon.rapid\",\"turretId\":\"turret.fast\"}"
+    },
+    {
+      "tick": 600,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.decoy\",\"position\":{\"x\":0,\"y\":0,\"z\":15},\"weaponId\":\"weapon.light\",\"turretId\":\"turret.light\"}"
+    },
+    {
+      "tick": 1200,
+      "commandId": "combat.despawn.hull",
+      "payload": "{\"targetIndex\":2}"
+    },
+    {
+      "tick": 1800,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.decoy\",\"position\":{\"x\":-5,\"y\":0,\"z\":-15},\"weaponId\":\"weapon.light\",\"turretId\":\"turret.light\"}"
+    },
+    {
+      "tick": 2400,
+      "commandId": "combat.spawn.hull",
+      "payload": "{\"hullId\":\"hull.decoy\",\"position\":{\"x\":5,\"y\":0,\"z\":-15},\"weaponId\":\"weapon.light\",\"turretId\":\"turret.light\"}"
+    },
+    {
+      "tick": 3600,
+      "commandId": "combat.despawn.hull",
+      "payload": "{\"targetIndex\":3}"
+    }
+  ],
+  "docs": "AI audit: target churn / cancellation stability. Continuously spawns and despawns decoy hulls so targeting logic must re-plan without thrashing or wedge dead targets. Verifies cancellation reason codes and ensures telemetry logs include reason-coded state transitions for every retarget." 
+}

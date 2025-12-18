@@ -1,3 +1,4 @@
+using PureDOTS.Input;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Bands;
@@ -329,8 +330,10 @@ namespace PureDOTS.Systems
             EnsureKnowledgeLessonCatalog(entityManager);
             EnsureSkillXpCurveConfig(entityManager);
             EnsureTelemetryStream(entityManager);
+            EnsureTelemetryExportConfig(entityManager);
             EnsureSignalBus(entityManager);
             EnsureOrderEventStream(entityManager);
+            EnsureGodHandCommandStream(entityManager);
             EnsureFrameTimingStream(entityManager);
             EnsureReplayCaptureStream(entityManager);
             EnsureRegistryHealthConfig(entityManager);
@@ -533,10 +536,10 @@ namespace PureDOTS.Systems
 
         private static void EnsureTelemetryStream(EntityManager entityManager)
         {
-            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
+            using var streamQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
             Entity telemetryEntity;
 
-            if (query.IsEmptyIgnoreFilter)
+            if (streamQuery.IsEmptyIgnoreFilter)
             {
                 telemetryEntity = entityManager.CreateEntity(typeof(TelemetryStream));
                 entityManager.SetComponentData(telemetryEntity, new TelemetryStream
@@ -547,13 +550,27 @@ namespace PureDOTS.Systems
             }
             else
             {
-                telemetryEntity = query.GetSingletonEntity();
+                telemetryEntity = streamQuery.GetSingletonEntity();
             }
 
             if (!entityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
             {
                 entityManager.AddBuffer<TelemetryMetric>(telemetryEntity);
             }
+
+            TelemetryStreamUtility.EnsureEventStream(entityManager);
+        }
+
+        private static void EnsureTelemetryExportConfig(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportConfig>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var entity = entityManager.CreateEntity(typeof(TelemetryExportConfig));
+            entityManager.SetComponentData(entity, TelemetryExportConfig.CreateDisabled());
         }
 
         private static void EnsureSignalBus(EntityManager entityManager)
@@ -604,6 +621,11 @@ namespace PureDOTS.Systems
             {
                 entityManager.AddComponentData(streamEntity, OrderEventStreamConfig.CreateDefault());
             }
+        }
+
+        private static void EnsureGodHandCommandStream(EntityManager entityManager)
+        {
+            GodHandCommandStreamUtility.EnsureStream(entityManager);
         }
 
         private static void EnsureFrameTimingStream(EntityManager entityManager)

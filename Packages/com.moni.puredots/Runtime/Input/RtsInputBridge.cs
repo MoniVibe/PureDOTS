@@ -56,6 +56,7 @@ namespace PureDOTS.Input
 
         private EntityManager _em;
         private Entity _rtsInputEntity;
+        private Entity _godHandCommandStreamEntity;
         private bool _rtsInputEntityInitialized;
 
         private InputActionMap _map;
@@ -117,6 +118,13 @@ namespace PureDOTS.Input
                 return;
             }
 
+            EnsureGodHandCommandStream();
+
+            if (_godHandCommandStreamEntity == Entity.Null)
+            {
+                return;
+            }
+
             HandleMouseButtons();
             HandleKeyboard();
         }
@@ -155,12 +163,29 @@ namespace PureDOTS.Input
             EnsureBuffer<RightClickEvent>();
             EnsureBuffer<ControlGroupInputEvent>();
             EnsureBuffer<TimeControlInputEvent>();
-            EnsureBuffer<GodHandCommandEvent>();
             EnsureBuffer<CameraFocusEvent>();
             EnsureBuffer<RockBreakEvent>();
             EnsureBuffer<SaveLoadCommandEvent>();
 
             _rtsInputEntityInitialized = true;
+        }
+
+        private void EnsureGodHandCommandStream()
+        {
+            if (_em == null)
+            {
+                _godHandCommandStreamEntity = Entity.Null;
+                return;
+            }
+
+            if (_godHandCommandStreamEntity != Entity.Null &&
+                _em.Exists(_godHandCommandStreamEntity) &&
+                _em.HasBuffer<GodHandCommandEvent>(_godHandCommandStreamEntity))
+            {
+                return;
+            }
+
+            _godHandCommandStreamEntity = GodHandCommandStreamUtility.EnsureStream(_em);
         }
 
         private void EnsureBuffer<T>() where T : unmanaged, IBufferElementData
@@ -506,10 +531,16 @@ namespace PureDOTS.Input
 
         private void HandleGodHand()
         {
+            if (_godHandCommandStreamEntity == Entity.Null || !_em.Exists(_godHandCommandStreamEntity))
+            {
+                return;
+            }
+
+            var buffer = _em.GetBuffer<GodHandCommandEvent>(_godHandCommandStreamEntity);
+
             // T = toggle throw mode
             if (_pendingTToggle)
             {
-                var buffer = _em.GetBuffer<GodHandCommandEvent>(_rtsInputEntity);
                 buffer.Add(new GodHandCommandEvent
                 {
                     Kind = GodHandCommandKind.ToggleThrowMode,
@@ -521,7 +552,6 @@ namespace PureDOTS.Input
             // C = launch next queued
             if (_pendingCToggle)
             {
-                var buffer = _em.GetBuffer<GodHandCommandEvent>(_rtsInputEntity);
                 buffer.Add(new GodHandCommandEvent
                 {
                     Kind = GodHandCommandKind.LaunchNextQueued,
@@ -533,7 +563,6 @@ namespace PureDOTS.Input
             // Z = launch all queued
             if (_pendingZToggle)
             {
-                var buffer = _em.GetBuffer<GodHandCommandEvent>(_rtsInputEntity);
                 buffer.Add(new GodHandCommandEvent
                 {
                     Kind = GodHandCommandKind.LaunchAllQueued,

@@ -4,9 +4,9 @@ namespace PureDOTS.Runtime
 {
     /// <summary>
     /// ECS component storing demo scenario configuration values.
-    /// Created by DemoScenarioConfigAuthoring from DemoScenarioDef asset.
+    /// Created by ScenarioConfigAuthoring from ScenarioDef asset.
     /// </summary>
-    public struct DemoScenarioConfig : IComponentData
+    public struct ScenarioConfig : IComponentData
     {
         public bool EnableGodgame;
         public bool EnableSpace4x;
@@ -25,7 +25,7 @@ namespace PureDOTS.Runtime
     /// <summary>
     /// Tag component indicating demo scenario spawning is complete.
     /// </summary>
-    public struct DemoScenarioCompleteTag : IComponentData
+    public struct ScenarioCompleteTag : IComponentData
     {
     }
 }
