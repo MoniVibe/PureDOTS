@@ -82,6 +82,20 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - Coordinated volleys: Simultaneous firing from all positions for bonus damage
 - Deterministic: Same positioning + same targets = same results
 
+## Power & Energy Systems ⚡🔋 NEW
+
+**Consistent power economy** with generation losses, battery discharge, and buffer requirements:
+- [Concepts/Core/Power_And_Battery_System.md](Concepts/Core/Power_And_Battery_System.md) - **Complete power generation and storage system**
+- Power generation: Reactors produce steady power with efficiency losses (70-99% based on tech)
+- Distribution losses: Transmission resistance loses 2-15% power as heat
+- Battery self-discharge: Passive drain at fixed rate (0.005-0.1%/sec based on tech)
+- Power bank requirements: Weapons and shields require local buffers for burst operation
+- Battery degradation: Charge cycles reduce capacity and efficiency over time
+- Tech unlocks: Better reactors, superconductors, quantum batteries
+- Strategic depth: Power management in combat (reactor damage, battery depletion, surge timing)
+- Works for: Ships, mechs, buildings, stations, magic systems (mana as energy)
+- Deterministic: Consistent power flow calculations
+
 ## Cross-Game Mechanics
 
 **NEW**: Cross-game mechanics with thematic variations for both Godgame and Space4X:
