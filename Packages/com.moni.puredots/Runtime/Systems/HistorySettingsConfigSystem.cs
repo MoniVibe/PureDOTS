@@ -41,7 +41,10 @@ namespace PureDOTS.Systems
             SystemAPI.SetComponent(historyEntity, settings);
 
             var configEntity = SystemAPI.GetSingletonEntity<HistorySettingsConfig>();
-            state.EntityManager.DestroyEntity(configEntity);
+            // Remove the config component after applying it.
+            // Do not destroy the entity: authoring pipelines may co-locate multiple config/singleton components
+            // on one entity (e.g., PureDotsConfigAuthoring), and destroying it would wipe unrelated state.
+            state.EntityManager.RemoveComponent<HistorySettingsConfig>(configEntity);
 
             state.Enabled = false;
         }

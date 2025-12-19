@@ -20,7 +20,6 @@ namespace PureDOTS.Systems.Telemetry
     /// Streams performance and health telemetry to NDJSON for headless regression detection and enforces budgets.
     /// </summary>
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-    [UpdateAfter(typeof(FrameTimingRecorderSystem))]
     public sealed partial class PerformanceTelemetryExportSystem : SystemBase
     {
         private const string ExportEnvVar = "PUREDOTS_PERF_TELEMETRY_PATH";
@@ -56,8 +55,8 @@ namespace PureDOTS.Systems.Telemetry
             _companionQuery = GetEntityQuery(ComponentType.ReadOnly<CompanionPresentation>());
             _universalQuery = EntityManager.UniversalQuery;
 
-            var timeEntity = SystemAPI.GetSingletonEntity<TimeState>();
-            if (!EntityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
+            if (SystemAPI.TryGetSingletonEntity<TimeState>(out var timeEntity)
+                && !EntityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
             {
                 EntityManager.AddComponentData(timeEntity, default(PerformanceBudgetStatus));
             }
@@ -177,6 +176,17 @@ namespace PureDOTS.Systems.Telemetry
 
             var companionCount = _companionQuery.CalculateEntityCount();
             WriteMetric("presentation.companions.active", companionCount, "count", timeState.Tick, timestampMs);
+
+            if (!EntityManager.Exists(timeEntity))
+            {
+                return;
+            }
+
+            if (!EntityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
+            {
+                EntityManager.AddComponentData(timeEntity, default(PerformanceBudgetStatus));
+                return;
+            }
 
             var status = EntityManager.GetComponentData<PerformanceBudgetStatus>(timeEntity);
             var statusChanged = false;

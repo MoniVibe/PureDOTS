@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
 
@@ -21,7 +22,8 @@ namespace PureDOTS.Rendering
         private uint _lastCatalogVersion;
         private EntityQuery _missingMaterialMeshQuery;
         private EntityQuery _missingRenderBoundsQuery;
-        private bool _hasEnsuredCoreComponents;
+        private EntityQuery _missingRenderMeshArrayQuery;
+        private EntityQuery _missingRenderFilterQuery;
         private TypeHandles _typeHandles;
 
         public void OnCreate(ref SystemState state)
@@ -69,6 +71,26 @@ namespace PureDOTS.Rendering
                 None = new[] { ComponentType.ReadOnly<RenderBounds>() }
             });
 
+            _missingRenderMeshArrayQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<DebugPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<RenderMeshArray>() }
+            });
+
+            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<DebugPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<RenderFilterSettings>() }
+            });
+
             state.RequireForUpdate<RenderPresentationCatalog>();
             _typeHandles = TypeHandles.Create(ref state);
         }
@@ -83,10 +105,12 @@ namespace PureDOTS.Rendering
                 return;
             }
 
-            if (!_hasEnsuredCoreComponents)
+            if (!_missingMaterialMeshQuery.IsEmptyIgnoreFilter
+                || !_missingRenderBoundsQuery.IsEmptyIgnoreFilter
+                || !_missingRenderFilterQuery.IsEmptyIgnoreFilter)
             {
                 EnsureCoreComponents(ref state);
-                _hasEnsuredCoreComponents = true;
+                EnsureRenderFilterSettings(ref state);
             }
 
             var catalogChanged = catalogVersion.Value != _lastCatalogVersion;
@@ -107,6 +131,8 @@ namespace PureDOTS.Rendering
             {
                 return;
             }
+
+            EnsureSharedComponentIfMissing(ref state, _missingRenderMeshArrayQuery, renderMeshArray);
 
             _typeHandles.Update(ref state);
 
@@ -210,6 +236,19 @@ namespace PureDOTS.Rendering
             });
         }
 
+        private void EnsureRenderFilterSettings(ref SystemState state)
+        {
+            if (_missingRenderFilterQuery.IsEmptyIgnoreFilter)
+                return;
+
+            var entityManager = state.EntityManager;
+            using var entities = _missingRenderFilterQuery.ToEntityArray(Allocator.Temp);
+            foreach (var entity in entities)
+            {
+                entityManager.AddSharedComponentManaged(entity, RenderFilterSettings.Default);
+            }
+        }
+
         private static void EnsureComponentIfMissing<TComponent>(ref SystemState state, EntityQuery query, in TComponent value)
             where TComponent : unmanaged, IComponentData
         {
@@ -227,6 +266,22 @@ namespace PureDOTS.Rendering
                 else
                 {
                     entityManager.AddComponentData(entity, value);
+                }
+            }
+        }
+
+        private static void EnsureSharedComponentIfMissing(ref SystemState state, EntityQuery query, RenderMeshArray renderMeshArray)
+        {
+            if (query.IsEmptyIgnoreFilter || renderMeshArray == null)
+                return;
+
+            var entityManager = state.EntityManager;
+            using var entities = query.ToEntityArray(Allocator.Temp);
+            foreach (var entity in entities)
+            {
+                if (!entityManager.HasComponent<RenderMeshArray>(entity))
+                {
+                    entityManager.AddSharedComponentManaged(entity, renderMeshArray);
                 }
             }
         }

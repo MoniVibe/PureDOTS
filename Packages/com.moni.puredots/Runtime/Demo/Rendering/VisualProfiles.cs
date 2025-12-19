@@ -152,11 +152,13 @@ namespace PureDOTS.Demo.Rendering
     /// and game-specific render catalogs.
     ///
     /// Only runs when PureDOTS demo profile is active.
+#if UNITY_EDITOR
     /// </summary>
     [BurstCompile]
     [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(SharedRenderBootstrap))]
+    [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
     public partial struct AssignVisualsSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -192,9 +194,7 @@ namespace PureDOTS.Demo.Rendering
             // Guard: invalid array means MaterialMeshInfo would encode -1 indices -> Entities Graphics Key:-1 error.
             if (meshCount <= 0 || materialCount <= 0)
             {
-#if UNITY_EDITOR
                 Debug.LogWarning("[AssignVisualsSystem] RenderMeshArraySingleton has no meshes/materials; skipping MaterialMeshInfo assignment.");
-#endif
                 return;
             }
 
@@ -223,9 +223,7 @@ namespace PureDOTS.Demo.Rendering
                 // Only add valid indices; skip bad catalog rows to avoid -1 encodings.
                 if (entry.MeshIndex >= meshCount || entry.MaterialIndex >= materialCount)
                 {
-#if UNITY_EDITOR
                     Debug.LogWarning($"[AssignVisualsSystem] Skipping VisualProfile {id} due to out-of-range mesh/material index ({entry.MeshIndex}/{entry.MaterialIndex}) for counts {meshCount}/{materialCount}.");
-#endif
                     continue;
                 }
 
@@ -249,6 +247,7 @@ namespace PureDOTS.Demo.Rendering
             ecb.Dispose();
         }
     }
+#endif
 }
 
 #endif

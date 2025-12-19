@@ -1,4 +1,4 @@
-#if PUREDOTS_SCENARIO
+#if UNITY_EDITOR && PUREDOTS_SCENARIO
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Rendering;

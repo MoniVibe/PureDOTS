@@ -43,7 +43,10 @@ namespace PureDOTS.Systems
             tickTimeState.IsPlaying = !config.PauseOnStart;
             tickTimeState.TargetTick = math.max(tickTimeState.TargetTick, tickTimeState.Tick);
 
-            state.EntityManager.DestroyEntity(configEntity);
+            // Remove the config component after applying it.
+            // Do not destroy the entity: authoring pipelines may co-locate multiple config/singleton components
+            // on one entity (e.g., PureDotsConfigAuthoring), and destroying it would wipe unrelated state.
+            state.EntityManager.RemoveComponent<TimeSettingsConfig>(configEntity);
             state.Enabled = false;
         }
     }

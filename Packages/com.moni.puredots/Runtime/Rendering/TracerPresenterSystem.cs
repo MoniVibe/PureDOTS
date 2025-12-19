@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
 
@@ -20,11 +21,11 @@ namespace PureDOTS.Rendering
         private EntityQuery _applyChangedQuery;
         private EntityQuery _missingMaterialMeshQuery;
         private EntityQuery _missingRenderBoundsQuery;
+        private EntityQuery _missingRenderFilterQuery;
         private EntityQuery _missingShapePropertyQuery;
         private EntityQuery _missingColorPropertyQuery;
         private TypeHandles _typeHandles;
         private uint _lastCatalogVersion;
-        private bool _hasEnsuredCoreComponents;
 
         public void OnCreate(ref SystemState state)
         {
@@ -75,6 +76,16 @@ namespace PureDOTS.Rendering
                 None = new[] { ComponentType.ReadOnly<RenderBounds>() }
             });
 
+            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<RenderVariantKey>(),
+                    ComponentType.ReadOnly<TracerPresenter>()
+                },
+                None = new[] { ComponentType.ReadOnly<RenderFilterSettings>() }
+            });
+
             _missingShapePropertyQuery = state.GetEntityQuery(new EntityQueryDesc
             {
                 All = new[]
@@ -107,10 +118,13 @@ namespace PureDOTS.Rendering
             if (!SystemAPI.TryGetSingleton<RenderCatalogVersion>(out var catalogVersion))
                 return;
 
-            if (!_hasEnsuredCoreComponents)
+            if (!_missingMaterialMeshQuery.IsEmptyIgnoreFilter
+                || !_missingRenderBoundsQuery.IsEmptyIgnoreFilter
+                || !_missingRenderFilterQuery.IsEmptyIgnoreFilter
+                || !_missingShapePropertyQuery.IsEmptyIgnoreFilter
+                || !_missingColorPropertyQuery.IsEmptyIgnoreFilter)
             {
                 EnsureCoreComponents(ref state);
-                _hasEnsuredCoreComponents = true;
             }
 
             var catalogChanged = catalogVersion.Value != _lastCatalogVersion;
@@ -243,6 +257,7 @@ namespace PureDOTS.Rendering
             {
                 Value = new AABB { Center = float3.zero, Extents = new float3(0.5f) }
             });
+            EnsureRenderFilterSettings(ref state);
             EnsureComponentIfMissing(ref state, _missingShapePropertyQuery, new TracerShapeProperty
             {
                 Value = new float2(0.25f, 1f)
@@ -251,6 +266,19 @@ namespace PureDOTS.Rendering
             {
                 Value = new float4(1f, 1f, 1f, 1f)
             });
+        }
+
+        private void EnsureRenderFilterSettings(ref SystemState state)
+        {
+            if (_missingRenderFilterQuery.IsEmptyIgnoreFilter)
+                return;
+
+            var entityManager = state.EntityManager;
+            using var entities = _missingRenderFilterQuery.ToEntityArray(Allocator.Temp);
+            foreach (var entity in entities)
+            {
+                entityManager.AddSharedComponentManaged(entity, RenderFilterSettings.Default);
+            }
         }
 
         private static void EnsureComponentIfMissing<T>(ref SystemState state, EntityQuery query, in T value)

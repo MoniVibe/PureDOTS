@@ -290,9 +290,9 @@ namespace PureDOTS.Systems.Telemetry
 
         private Entity GetTelemetryEventStreamEntity()
         {
-            if (SystemAPI.TryGetSingleton<TelemetryStreamSingleton>(out var reference) && reference.Entity != Entity.Null)
+            if (SystemAPI.TryGetSingleton<TelemetryStreamSingleton>(out var reference) && reference.Stream != Entity.Null)
             {
-                return reference.Entity;
+                return reference.Stream;
             }
 
             return Entity.Null;

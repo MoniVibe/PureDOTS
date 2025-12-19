@@ -9,6 +9,8 @@
         "Unity.Mathematics.Extensions",
         "Unity.Transforms",
         "Unity.Entities.Graphics",
+        "Unity.Rendering",
+        "Unity.Rendering.Entities",
         "PureDOTS.Runtime"
     ],
     "includePlatforms": [],

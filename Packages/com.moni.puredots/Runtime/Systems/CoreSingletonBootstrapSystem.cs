@@ -33,28 +33,26 @@ namespace PureDOTS.Systems
         private static BlobAssetReference<ResourceTypeIndexBlob> s_ResourceTypeIndexBlob;
         private static BlobAssetReference<KnowledgeLessonEffectBlob> s_KnowledgeLessonCatalogBlob;
         private static BlobAssetReference<ResourceRecipeSetBlob> s_ResourceRecipeSetBlob;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private static bool s_loggedTimeBootstrap;
+        private static bool s_loggedTimeConfigs;
+#endif
+
+        private EntityQuery _timeStateQuery;
+        private EntityQuery _tickTimeStateQuery;
+        private EntityQuery _rewindStateQuery;
 
         public void OnCreate(ref SystemState state)
         {
-            EnsureSingletons(state.EntityManager);
-            EnsureSingleAudioListener();
-            
-            // Verify critical singletons were created
-            if (!HasSingleton<TimeState>(state.EntityManager))
-            {
-                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TimeState singleton was not created! This will cause system failures.");
-            }
-            if (!HasSingleton<TickTimeState>(state.EntityManager))
-            {
-                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TickTimeState singleton was not created! This will cause system failures.");
-            }
-            
-            state.Enabled = false;
+            _timeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TimeState>());
+            _tickTimeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TickTimeState>());
+            _rewindStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<RewindState>());
+            EnsureIfMissing(ref state);
         }
 
         public void OnUpdate(ref SystemState state)
         {
-            // No-op; this system only seeds singleton entities on create.
+            EnsureIfMissing(ref state);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -75,6 +73,34 @@ namespace PureDOTS.Systems
             {
                 s_ResourceRecipeSetBlob.Dispose();
                 s_ResourceRecipeSetBlob = default;
+            }
+        }
+
+        private void EnsureIfMissing(ref SystemState state)
+        {
+            // This must be resilient to late SubScene streaming or world resets that can clear entities after OnCreate.
+            // Only run the heavy singleton seeding path if the critical time singletons are missing.
+            if (!_timeStateQuery.IsEmptyIgnoreFilter &&
+                !_tickTimeStateQuery.IsEmptyIgnoreFilter &&
+                !_rewindStateQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            EnsureSingletons(state.EntityManager);
+            EnsureSingleAudioListener();
+
+            if (_timeStateQuery.IsEmptyIgnoreFilter)
+            {
+                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TimeState singleton is missing! This will cause system failures.");
+            }
+            if (_tickTimeStateQuery.IsEmptyIgnoreFilter)
+            {
+                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] TickTimeState singleton is missing! This will cause system failures.");
+            }
+            if (_rewindStateQuery.IsEmptyIgnoreFilter)
+            {
+                UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] RewindState singleton is missing! This will cause system failures.");
             }
         }
 
@@ -206,73 +232,56 @@ namespace PureDOTS.Systems
                 entityManager.SetComponentData(entity, HistorySettingsDefaults.CreateDefault());
             }
 
-            // Ensure HistorySettingsConfig singleton exists (required for rewind)
+            // Ensure HistorySettingsConfig singleton exists (required for rewind).
+            // IMPORTANT: HistorySettingsConfigSystem destroys the HistorySettingsConfig entity after applying it.
+            // Do NOT attach this component to other singleton entities (e.g. HistorySettings), or they will be destroyed.
             if (!HasSingleton<HistorySettingsConfig>(entityManager))
             {
-                var historyEntity = GetSingletonEntity<HistorySettings>(entityManager);
-                if (historyEntity != Entity.Null)
+                var configEntity = entityManager.CreateEntity(typeof(HistorySettingsConfig));
+                entityManager.SetComponentData(configEntity, new HistorySettingsConfig
                 {
-                    entityManager.AddComponentData(historyEntity, new HistorySettingsConfig
-                    {
-                        Value = HistorySettingsDefaults.CreateDefault()
-                    });
-                }
-                else
-                {
-                    // Create standalone entity if HistorySettings doesn't exist
-                    var configEntity = entityManager.CreateEntity(typeof(HistorySettingsConfig));
-                    entityManager.SetComponentData(configEntity, new HistorySettingsConfig
-                    {
-                        Value = HistorySettingsDefaults.CreateDefault()
-                    });
-                }
+                    Value = HistorySettingsDefaults.CreateDefault()
+                });
             }
 
-            // Ensure TimeSettingsConfig singleton exists (required for time system)
+            // Ensure TimeSettingsConfig singleton exists (required for time system).
+            // IMPORTANT: TimeSettingsConfigSystem destroys the TimeSettingsConfig entity after applying it.
+            // Do NOT attach this component to the TimeState entity, or it will destroy the time singleton entity.
             if (!HasSingleton<TimeSettingsConfig>(entityManager))
             {
-                if (timeEntity != Entity.Null)
+                var configEntity = entityManager.CreateEntity(typeof(TimeSettingsConfig));
+                entityManager.SetComponentData(configEntity, new TimeSettingsConfig
                 {
-                    entityManager.AddComponentData(timeEntity, new TimeSettingsConfig
-                    {
-                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
-                        MaxDeltaTime = TimeSettingsDefaults.FixedDeltaTime * 4f,
-                        DefaultSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
-                        PauseOnStart = false
-                    });
-                }
-                else
-                {
-                    // Create standalone entity if TimeState doesn't exist
-                    var configEntity = entityManager.CreateEntity(typeof(TimeSettingsConfig));
-                    entityManager.SetComponentData(configEntity, new TimeSettingsConfig
-                    {
-                        FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
-                        MaxDeltaTime = TimeSettingsDefaults.FixedDeltaTime * 4f,
-                        DefaultSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
-                        PauseOnStart = false
-                    });
-                }
+                    FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime,
+                    MaxDeltaTime = TimeSettingsDefaults.FixedDeltaTime * 4f,
+                    DefaultSpeedMultiplier = TimeSettingsDefaults.DefaultSpeedMultiplier,
+                    PauseOnStart = false
+                });
             }
 
+            // RewindState must exist or the time system will never tick (TimeTickSystem requires it).
+            // Prefer storing it on the TimeState singleton entity to keep core singletons co-located and stable.
             Entity rewindEntity;
-            if (!HasSingleton<RewindState>(entityManager))
+            if (HasSingleton<RewindState>(entityManager))
             {
-                rewindEntity = entityManager.CreateEntity(typeof(RewindState));
-                entityManager.SetComponentData(rewindEntity, new RewindState
-                {
-                    Mode = RewindMode.Record,
-                    StartTick = 0,
-                    TargetTick = 0,
-                    PlaybackTick = 0,
-                    PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
-                    ScrubDirection = 0,
-                    ScrubSpeedMultiplier = 1f
-                });
+                rewindEntity = GetSingletonEntity<RewindState>(entityManager);
             }
             else
             {
-                rewindEntity = GetSingletonEntity<RewindState>(entityManager);
+                rewindEntity = timeEntity != Entity.Null ? timeEntity : entityManager.CreateEntity();
+                if (!entityManager.HasComponent<RewindState>(rewindEntity))
+                {
+                    entityManager.AddComponentData(rewindEntity, new RewindState
+                    {
+                        Mode = RewindMode.Record,
+                        StartTick = 0,
+                        TargetTick = 0,
+                        PlaybackTick = 0,
+                        PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
+                        ScrubDirection = 0,
+                        ScrubSpeedMultiplier = 1f
+                    });
+                }
             }
 
             if (!entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
@@ -1126,7 +1135,16 @@ namespace PureDOTS.Systems
                 ? entityManager.GetComponentData<TimeScaleConfig>(GetSingletonEntity<TimeScaleConfig>(entityManager))
                 : TimeScaleConfig.CreateDefault();
             
-            UnityEngine.Debug.Log($"[Time] tick={tickState.Tick} baseScale={timeScaleConfig.DefaultScale} mode={flags.SimulationMode} mp={flags.IsMultiplayerSession}");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (!s_loggedTimeBootstrap)
+            {
+                s_loggedTimeBootstrap = true;
+                if (!Application.isBatchMode)
+                {
+                    UnityEngine.Debug.Log($"[Time] tick={tickState.Tick} baseScale={timeScaleConfig.DefaultScale} mode={flags.SimulationMode} mp={flags.IsMultiplayerSession}");
+                }
+            }
+#endif
         }
         
         private static void EnsureRewindControlState(EntityManager entityManager)
@@ -1162,13 +1180,31 @@ namespace PureDOTS.Systems
                 var historyConfig = entityManager.GetComponentData<HistorySettingsConfig>(GetSingletonEntity<HistorySettingsConfig>(entityManager));
                 var timeSettingsConfig = entityManager.GetComponentData<TimeSettingsConfig>(GetSingletonEntity<TimeSettingsConfig>(entityManager));
                 
-                UnityEngine.Debug.Log($"[Time] Configs loaded: TimeScaleConfig (min={timeScaleConfig.MinScale}, max={timeScaleConfig.MaxScale}, default={timeScaleConfig.DefaultScale}), " +
-                    $"HistoryConfig (horizon={historyConfig.Value.DefaultHorizonSeconds}s), " +
-                    $"TimeSettingsConfig (fixedDt={timeSettingsConfig.FixedDeltaTime}, defaultSpeed={timeSettingsConfig.DefaultSpeedMultiplier})");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (!s_loggedTimeConfigs)
+                {
+                    s_loggedTimeConfigs = true;
+                    if (!Application.isBatchMode)
+                    {
+                        UnityEngine.Debug.Log($"[Time] Configs loaded: TimeScaleConfig (min={timeScaleConfig.MinScale}, max={timeScaleConfig.MaxScale}, default={timeScaleConfig.DefaultScale}), " +
+                            $"HistoryConfig (horizon={historyConfig.Value.DefaultHorizonSeconds}s), " +
+                            $"TimeSettingsConfig (fixedDt={timeSettingsConfig.FixedDeltaTime}, defaultSpeed={timeSettingsConfig.DefaultSpeedMultiplier})");
+                    }
+                }
+#endif
             }
             else
             {
-                UnityEngine.Debug.LogWarning($"[Time] Missing configs: TimeScaleConfig={hasTimeScaleConfig}, HistoryConfig={hasHistoryConfig}, TimeSettingsConfig={hasTimeSettingsConfig}");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (!s_loggedTimeConfigs)
+                {
+                    s_loggedTimeConfigs = true;
+                    if (!Application.isBatchMode)
+                    {
+                        UnityEngine.Debug.LogWarning($"[Time] Missing configs: TimeScaleConfig={hasTimeScaleConfig}, HistoryConfig={hasHistoryConfig}, TimeSettingsConfig={hasTimeSettingsConfig}");
+                    }
+                }
+#endif
             }
         }
 

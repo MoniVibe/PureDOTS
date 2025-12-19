@@ -38,28 +38,7 @@ namespace PureDOTS.Authoring
 
             // Bake time config (used by TimeSettingsConfigSystem to initialize singletons)
             AddComponent(entity, timeConfig);
-            
-            // Also bake TimeState and TickTimeState singletons directly from config
-            // This ensures they exist at runtime without requiring bootstrap fallback
-            AddComponent(entity, new TimeState
-            {
-                FixedDeltaTime = timeConfig.FixedDeltaTime > 0f ? timeConfig.FixedDeltaTime : TimeSettingsDefaults.FixedDeltaTime,
-                DeltaTime = timeConfig.FixedDeltaTime > 0f ? timeConfig.FixedDeltaTime : TimeSettingsDefaults.FixedDeltaTime,
-                CurrentSpeedMultiplier = timeConfig.DefaultSpeedMultiplier > 0f ? timeConfig.DefaultSpeedMultiplier : TimeSettingsDefaults.DefaultSpeed,
-                Tick = 0,
-                IsPaused = timeConfig.PauseOnStart
-            });
-            
-            AddComponent(entity, new TickTimeState
-            {
-                FixedDeltaTime = timeConfig.FixedDeltaTime > 0f ? timeConfig.FixedDeltaTime : TimeSettingsDefaults.FixedDeltaTime,
-                CurrentSpeedMultiplier = timeConfig.DefaultSpeedMultiplier > 0f ? timeConfig.DefaultSpeedMultiplier : TimeSettingsDefaults.DefaultSpeed,
-                Tick = 0,
-                TargetTick = 0,
-                IsPaused = timeConfig.PauseOnStart,
-                IsPlaying = !timeConfig.PauseOnStart
-            });
-            
+
             AddComponent(entity, history);
             AddComponent(entity, pooling);
             AddComponent(entity, new PoolingSettings { Value = pooling });

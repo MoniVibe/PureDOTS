@@ -48,7 +48,7 @@ namespace PureDOTS.Runtime.Telemetry
     /// </summary>
     public struct TelemetryStreamSingleton : IComponentData
     {
-        public Entity Entity;
+        public Entity Stream;
     }
 
     /// <summary>
@@ -126,9 +126,9 @@ namespace PureDOTS.Runtime.Telemetry
             {
                 var singletonEntity = singletonQuery.GetSingletonEntity();
                 var singleton = entityManager.GetComponentData<TelemetryStreamSingleton>(singletonEntity);
-                if (singleton.Entity != Entity.Null && entityManager.Exists(singleton.Entity))
+                if (singleton.Stream != Entity.Null && entityManager.Exists(singleton.Stream))
                 {
-                    return singleton.Entity;
+                    return singleton.Stream;
                 }
             }
 
@@ -198,16 +198,16 @@ namespace PureDOTS.Runtime.Telemetry
                 var singleton = entityManager.CreateEntity(typeof(TelemetryStreamSingleton));
                 entityManager.SetComponentData(singleton, new TelemetryStreamSingleton
                 {
-                    Entity = eventEntity
+                    Stream = eventEntity
                 });
             }
             else
             {
                 var singleton = query.GetSingletonEntity();
                 var data = entityManager.GetComponentData<TelemetryStreamSingleton>(singleton);
-                if (data.Entity != eventEntity)
+                if (data.Stream != eventEntity)
                 {
-                    data.Entity = eventEntity;
+                    data.Stream = eventEntity;
                     entityManager.SetComponentData(singleton, data);
                 }
             }

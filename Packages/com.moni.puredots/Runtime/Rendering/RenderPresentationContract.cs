@@ -203,7 +203,8 @@ namespace PureDOTS.Rendering
     [MaterialProperty("_RenderTexSlice")]
     public struct RenderTexSlice : IComponentData
     {
-        public ushort Value;
+        // Entities Graphics packs Property components in 4-byte slots; keep this aligned.
+        public int Value;
     }
 
     /// <summary>

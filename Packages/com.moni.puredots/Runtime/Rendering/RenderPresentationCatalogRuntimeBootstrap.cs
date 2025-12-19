@@ -70,10 +70,16 @@ namespace PureDOTS.Rendering
 
         private void OnDestroy()
         {
-            if (!World.DefaultGameObjectInjectionWorld?.IsCreated ?? true)
-                return;
+            if (_catalogBlob.IsCreated)
+            {
+                _catalogBlob.Dispose();
+            }
 
             var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+            {
+                return;
+            }
             var entityManager = world.EntityManager;
 
             if (_catalogEntity != Entity.Null && entityManager.Exists(_catalogEntity))
@@ -86,10 +92,6 @@ namespace PureDOTS.Rendering
                 entityManager.DestroyEntity(_renderMeshEntity);
             }
 
-            if (_catalogBlob.IsCreated)
-            {
-                _catalogBlob.Dispose();
-            }
         }
     }
 }

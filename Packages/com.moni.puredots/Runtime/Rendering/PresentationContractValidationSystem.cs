@@ -1,4 +1,4 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Rendering;
 using UnityEngine;
@@ -11,15 +11,11 @@ namespace PureDOTS.Rendering
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct PresentationContractValidationSystem : ISystem
     {
-        private EntityQuery _materialMeshWithoutVariantQuery;
         private EntityQuery _materialMeshWithoutPresenterQuery;
-        private EntityQuery _worldBoundsQuery;
-        private EntityQuery _chunkBoundsQuery;
+        private EntityQuery _missingSemanticKeyQuery;
 
-        private bool _reportedMissingVariant;
         private bool _reportedMissingPresenter;
-        private bool _reportedWorldBounds;
-        private bool _reportedChunkBounds;
+        private bool _reportedMissingSemanticKey;
 
         public void OnCreate(ref SystemState state)
         {
@@ -28,13 +24,6 @@ namespace PureDOTS.Rendering
             return;
 #else
             var queryOptions = EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab;
-
-            _materialMeshWithoutVariantQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<MaterialMeshInfo>() },
-                None = new[] { ComponentType.ReadOnly<RenderVariantKey>() },
-                Options = queryOptions
-            });
 
             _materialMeshWithoutPresenterQuery = state.GetEntityQuery(new EntityQueryDesc
             {
@@ -53,15 +42,10 @@ namespace PureDOTS.Rendering
                 Options = queryOptions
             });
 
-            _worldBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
+            _missingSemanticKeyQuery = state.GetEntityQuery(new EntityQueryDesc
             {
-                All = new[] { ComponentType.ReadOnly<WorldRenderBounds>() },
-                Options = queryOptions
-            });
-
-            _chunkBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<ChunkWorldRenderBounds>() },
+                All = new[] { ComponentType.ReadOnly<RenderVariantKey>() },
+                None = new[] { ComponentType.ReadOnly<RenderSemanticKey>() },
                 Options = queryOptions
             });
 
@@ -75,34 +59,61 @@ namespace PureDOTS.Rendering
             state.Enabled = false;
             return;
 #else
-            ReportIfNeeded(_materialMeshWithoutVariantQuery, ref _reportedMissingVariant,
-                "[PresentationContractValidationSystem] MaterialMeshInfo detected without RenderVariantKey. Spawners/bakers must create RenderVariantKey (and semantic key) so variant resolution can run.");
-
-            ReportIfNeeded(_materialMeshWithoutPresenterQuery, ref _reportedMissingPresenter,
+            ReportIfNeeded(ref state, _materialMeshWithoutPresenterQuery, ref _reportedMissingPresenter,
                 "[PresentationContractValidationSystem] MaterialMeshInfo detected on an archetype with no presenter (Mesh/Sprite/Tracer/Debug). Spawn/bake code must add at least one presenter component.");
 
-            ReportIfNeeded(_worldBoundsQuery, ref _reportedWorldBounds,
-                "[PresentationContractValidationSystem] WorldRenderBounds is present. Presentation/bake code must no longer add this component – Unity's bounds systems populate it automatically.");
-
-            ReportIfNeeded(_chunkBoundsQuery, ref _reportedChunkBounds,
-                "[PresentationContractValidationSystem] ChunkWorldRenderBounds is present. Remove any code paths that add it; Entities Graphics manages chunk bounds.");
+            ReportIfNeeded(ref state, _missingSemanticKeyQuery, ref _reportedMissingSemanticKey,
+                "[PresentationContractValidationSystem] RenderVariantKey detected without RenderSemanticKey. Author semantic keys so variant resolution can map catalog entries.");
 #endif
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        private static void ReportIfNeeded(EntityQuery query, ref bool wasReported, string message)
+        private static void ReportIfNeeded(ref SystemState state, EntityQuery query, ref bool wasReported, string message)
         {
-            if (query.IsEmptyIgnoreFilter)
+            if (wasReported)
+                return;
+
+            query.ResetFilter();
+            var count = query.CalculateEntityCount();
+            using var entities = query.ToEntityArray(Allocator.Temp);
+            var worldName = state.WorldUnmanaged.Name;
+            if (entities.Length == 0)
             {
                 wasReported = false;
                 return;
             }
 
-            if (wasReported)
-                return;
+            Debug.LogError($"{message} (count={count} array={entities.Length} world={worldName})");
 
-            var count = query.CalculateEntityCount();
-            Debug.LogError($"{message} (count={count})");
+            if (entities.Length > 0)
+            {
+                var entity = entities[0];
+                var entityManager = state.EntityManager;
+                var name = entityManager.GetName(entity);
+                var isPrefab = entityManager.HasComponent<Prefab>(entity);
+                var isDisabled = entityManager.HasComponent<Disabled>(entity);
+                var hasSemantic = entityManager.HasComponent<RenderSemanticKey>(entity);
+                var hasVariant = entityManager.HasComponent<RenderVariantKey>(entity);
+                var variantValue = hasVariant ? entityManager.GetComponentData<RenderVariantKey>(entity).Value : -1;
+                var semanticValue = hasSemantic ? entityManager.GetComponentData<RenderSemanticKey>(entity).Value : (ushort)0;
+                var hasMeshPresenter = entityManager.HasComponent<MeshPresenter>(entity);
+                var hasSpritePresenter = entityManager.HasComponent<SpritePresenter>(entity);
+                var hasDebugPresenter = entityManager.HasComponent<DebugPresenter>(entity);
+                var hasTracerPresenter = entityManager.HasComponent<TracerPresenter>(entity);
+
+                Debug.LogError("[PresentationContractValidationSystem] Offender entity=" + entity +
+                               " name='" + name + "'" +
+                               " prefab=" + isPrefab +
+                               " disabled=" + isDisabled +
+                               " hasSemantic=" + hasSemantic +
+                               " semantic=" + semanticValue +
+                               " hasVariant=" + hasVariant +
+                               " variant=" + variantValue +
+                               " presenters(mesh=" + hasMeshPresenter +
+                               " sprite=" + hasSpritePresenter +
+                               " debug=" + hasDebugPresenter +
+                               " tracer=" + hasTracerPresenter + ")");
+            }
             wasReported = true;
         }
 #endif

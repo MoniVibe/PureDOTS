@@ -12,7 +12,7 @@ namespace PureDOTS.Systems
     /// Aggregates per-group frame timings and allocation diagnostics for debug tooling.
     /// Executes ahead of presentation systems so overlay consumers read the latest data.
     /// </summary>
-    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     // DebugDisplaySystem is legacy and compiled out unless PUREDOTS_LEGACY_CAMERA is defined.
     public sealed partial class FrameTimingRecorderSystem : SystemBase
     {

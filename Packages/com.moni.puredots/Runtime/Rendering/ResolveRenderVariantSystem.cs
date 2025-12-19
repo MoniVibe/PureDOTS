@@ -31,7 +31,8 @@ namespace PureDOTS.Rendering
                     ComponentType.ReadOnly<RenderSemanticKey>(),
                     ComponentType.ReadWrite<RenderVariantKey>(),
                     ComponentType.ReadOnly<RenderThemeOverride>()
-                }
+                },
+                Options = EntityQueryOptions.IgnoreComponentEnabledState
             });
 
             _missingVariantQuery = GetEntityQuery(new EntityQueryDesc
@@ -47,7 +48,8 @@ namespace PureDOTS.Rendering
                     ComponentType.ReadOnly<RenderSemanticKey>(),
                     ComponentType.ReadOnly<RenderVariantKey>(),
                     ComponentType.ReadOnly<RenderThemeOverride>()
-                }
+                },
+                Options = EntityQueryOptions.IgnoreComponentEnabledState
             });
             _semanticChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderSemanticKey>());
 
@@ -58,7 +60,8 @@ namespace PureDOTS.Rendering
                     ComponentType.ReadOnly<RenderSemanticKey>(),
                     ComponentType.ReadOnly<RenderVariantKey>(),
                     ComponentType.ReadOnly<RenderThemeOverride>()
-                }
+                },
+                Options = EntityQueryOptions.IgnoreComponentEnabledState
             });
             _themeOverrideChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderThemeOverride>());
 
@@ -69,7 +72,8 @@ namespace PureDOTS.Rendering
                     ComponentType.ReadOnly<RenderSemanticKey>(),
                     ComponentType.ReadOnly<RenderVariantKey>(),
                     ComponentType.ReadOnly<RenderVariantOverride>()
-                }
+                },
+                Options = EntityQueryOptions.IgnoreComponentEnabledState
             });
             _variantOverrideChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderVariantOverride>());
 
@@ -305,6 +309,7 @@ namespace PureDOTS.Rendering
             {
                 foreach (var (key, resolved, sprite, mesh, debugPresenter, tracerPresenter, entity) in SystemAPI
                              .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>, RefRW<TracerPresenter>>()
+                             .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                              .WithEntityAccess())
                 {
                     ResolveVariantForEntity(entity, key, resolved, sprite, mesh, debugPresenter, tracerPresenter, catalogBlob, ecb, true);
@@ -314,6 +319,7 @@ namespace PureDOTS.Rendering
             {
                 foreach (var (key, resolved, sprite, mesh, debugPresenter, tracerPresenter, entity) in SystemAPI
                              .Query<RefRO<RenderVariantKey>, RefRW<RenderVariantResolved>, RefRW<SpritePresenter>, RefRW<MeshPresenter>, RefRW<DebugPresenter>, RefRW<TracerPresenter>>()
+                             .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                              .WithEntityAccess()
                              .WithChangeFilter<RenderVariantKey>())
                 {
