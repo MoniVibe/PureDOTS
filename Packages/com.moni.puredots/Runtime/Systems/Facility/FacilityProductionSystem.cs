@@ -41,9 +41,9 @@ namespace PureDOTS.Systems.Facility
                 return;
             }
 
-            var demoState = SystemAPI.GetSingleton<ScenarioState>();
+            var scenarioState = SystemAPI.GetSingleton<ScenarioState>();
             // Facilities work for both Godgame and Space4X, so we only skip if both are disabled
-            if (!demoState.EnableGodgame && !demoState.EnableSpace4x)
+            if (!scenarioState.EnableGodgame && !scenarioState.EnableSpace4x)
             {
                 return;
             }

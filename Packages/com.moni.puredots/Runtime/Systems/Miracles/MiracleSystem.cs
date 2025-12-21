@@ -126,7 +126,7 @@ namespace PureDOTS.Systems.Miracles
             }
 
             // Find environment cells within radius and increase moisture
-            // For demo, we'll use a simple spatial query or update EnvCellDynamic if available
+            // For now, we'll use a simple spatial query or update EnvCellDynamic if available
             // This is a simplified version - full implementation would query the environment grid
             
             // TODO: Query EnvCellDynamic entities within radius and increase moisture
@@ -134,4 +134,3 @@ namespace PureDOTS.Systems.Miracles
         }
     }
 }
-

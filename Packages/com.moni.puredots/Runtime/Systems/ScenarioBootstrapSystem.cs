@@ -20,7 +20,7 @@ namespace PureDOTS.Systems
                 {
                     Current = ScenarioKind.AllSystemsShowcase,
                     IsInitialized = false,
-                    BootPhase = DemoBootPhase.None,
+                    BootPhase = ScenarioBootPhase.None,
                     EnableGodgame = true,
                     EnableSpace4x = true
                 });
@@ -50,7 +50,6 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state) { }
     }
 }
-
 
 
 

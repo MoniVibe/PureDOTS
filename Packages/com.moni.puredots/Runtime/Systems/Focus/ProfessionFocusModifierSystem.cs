@@ -169,7 +169,7 @@ namespace PureDOTS.Systems.Focus
                     case FocusAbilityType.MentoringBond:
                         mods.QualityMultiplier *= 1.3f * stackMult;
                         break;
-                    case FocusAbilityType.PracticalDemo:
+                    case FocusAbilityType.PracticalTraining:
                         mods.QualityMultiplier *= 1.25f * stackMult;
                         break;
                     case FocusAbilityType.InspiredTeaching:
@@ -323,4 +323,3 @@ namespace PureDOTS.Systems.Focus
         }
     }
 }
-

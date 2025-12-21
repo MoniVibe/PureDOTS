@@ -1,7 +1,6 @@
 using PureDOTS.Input;
 using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace PureDOTS.Systems.Input
 {
@@ -28,23 +27,27 @@ namespace PureDOTS.Systems.Input
             }
 
             var focusBuffer = state.EntityManager.GetBuffer<CameraFocusEvent>(rtsInputEntity);
-
-            Camera camera = Camera.main;
-            if (camera == null)
+            if (focusBuffer.Length == 0)
             {
-                focusBuffer.Clear();
                 return;
             }
 
-            // Process focus events (typically only one per frame)
+            if (!state.EntityManager.HasBuffer<CameraRequestEvent>(rtsInputEntity))
+            {
+                state.EntityManager.AddBuffer<CameraRequestEvent>(rtsInputEntity);
+            }
+            var requests = state.EntityManager.GetBuffer<CameraRequestEvent>(rtsInputEntity);
+
+            // Convert focus events into camera rig requests (camera is controlled by a single Mono publisher).
             for (int i = 0; i < focusBuffer.Length; i++)
             {
                 var focusEvent = focusBuffer[i];
-                Vector3 targetPos = new Vector3(focusEvent.WorldPosition.x, focusEvent.WorldPosition.y, focusEvent.WorldPosition.z);
-
-                // Move camera to target (frame-time lerp for smooth movement)
-                // Note: This is presentation code, so frame-time is appropriate
-                camera.transform.position = Vector3.Lerp(camera.transform.position, targetPos, UnityEngine.Time.deltaTime * 5f);
+                requests.Add(new CameraRequestEvent
+                {
+                    Kind = CameraRequestKind.FocusWorld,
+                    WorldPosition = focusEvent.WorldPosition,
+                    PlayerId = focusEvent.PlayerId
+                });
             }
 
             // Clear buffer after processing
@@ -52,4 +55,3 @@ namespace PureDOTS.Systems.Input
         }
     }
 }
-

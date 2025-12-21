@@ -1,3 +1,5 @@
+using System;
+using SystemEnv = System.Environment;
 using PureDOTS.Runtime;
 using Unity.Entities;
 using UnityEngine;
@@ -8,11 +10,21 @@ using UnityEngine.InputSystem;
 namespace PureDOTS.Runtime.MonoBehaviours
 {
     /// <summary>
-    /// MonoBehaviour controller for switching demo scenarios via F1-F4 hotkeys.
+    /// MonoBehaviour controller for switching simulation scenarios via F1-F4 hotkeys.
     /// Attach to a GameObject in the showcase scene.
     /// </summary>
     public class ScenarioController : MonoBehaviour
     {
+        private const string LegacyScenarioEnvVar = "PURE_DOTS_LEGACY_SCENARIO";
+
+        private void Awake()
+        {
+            if (!IsLegacyProfileEnabled())
+            {
+                enabled = false;
+            }
+        }
+
         private void Update()
         {
             var world = World.DefaultGameObjectInjectionWorld;
@@ -62,6 +74,21 @@ namespace PureDOTS.Runtime.MonoBehaviours
                 em.SetComponentData(e, state);
             }
         }
+
+        private static bool IsLegacyProfileEnabled()
+        {
+            var value = SystemEnv.GetEnvironmentVariable(LegacyScenarioEnvVar);
+            return IsEnabledValue(value);
+        }
+
+        private static bool IsEnabledValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
-

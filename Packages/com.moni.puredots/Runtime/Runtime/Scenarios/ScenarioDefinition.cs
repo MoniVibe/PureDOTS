@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,6 +21,7 @@ namespace PureDOTS.Runtime.Scenarios
         public ScenarioEntityCountData[] entityCounts = Array.Empty<ScenarioEntityCountData>();
         public ScenarioInputCommandData[] inputCommands = Array.Empty<ScenarioInputCommandData>();
         public BehaviorScenarioOverrideData behavior = null;
+        public TelemetryScenarioOverrideData telemetry = null;
     }
 
     [Serializable]
@@ -102,6 +104,19 @@ namespace PureDOTS.Runtime.Scenarios
         public int aggregateCadenceTicks = -1;
     }
 
+    [Serializable]
+    public class TelemetryScenarioOverrideData
+    {
+        public int enabled = -1;
+        public string path = null;
+        public string runId = null;
+        public string[] flags = null;
+        public int cadenceTicks = -1;
+        public string lod = null;
+        public string[] loops = null;
+        public int maxEventsPerTick = -1;
+    }
+
     /// <summary>
     /// Native representation used during scenario execution.
     /// Dispose after use to release temporary allocations.
@@ -115,6 +130,8 @@ namespace PureDOTS.Runtime.Scenarios
         public NativeList<ScenarioInputCommand> InputCommands;
         public bool HasBehaviorOverride;
         public BehaviorScenarioOverride BehaviorOverride;
+        public bool HasTelemetryOverride;
+        public TelemetryScenarioOverride TelemetryOverride;
 
         public void Dispose()
         {
@@ -208,7 +225,11 @@ namespace PureDOTS.Runtime.Scenarios
                 HasBehaviorOverride = data.behavior != null,
                 BehaviorOverride = data.behavior != null
                     ? ConvertBehaviorOverride(data.behavior)
-                    : BehaviorScenarioOverride.CreateSentinel()
+                    : BehaviorScenarioOverride.CreateSentinel(),
+                HasTelemetryOverride = data.telemetry != null,
+                TelemetryOverride = data.telemetry != null
+                    ? ConvertTelemetryOverride(data.telemetry)
+                    : TelemetryScenarioOverride.CreateSentinel()
             };
 
             if (data.entityCounts != null)
@@ -325,6 +346,201 @@ namespace PureDOTS.Runtime.Scenarios
             }
 
             return overrides;
+        }
+
+        private static TelemetryScenarioOverride ConvertTelemetryOverride(TelemetryScenarioOverrideData data)
+        {
+            var result = TelemetryScenarioOverride.CreateSentinel();
+            if (data == null)
+            {
+                return result;
+            }
+
+            if (data.enabled >= 0)
+            {
+                result.EnabledOverride = (sbyte)(data.enabled > 0 ? 1 : 0);
+            }
+
+            if (!string.IsNullOrWhiteSpace(data.path))
+            {
+                result.OutputPath = new FixedString512Bytes(data.path);
+            }
+
+            if (!string.IsNullOrWhiteSpace(data.runId))
+            {
+                result.RunId = new FixedString128Bytes(data.runId);
+            }
+
+            if (data.flags != null && TryParseFlags(data.flags, out var flags))
+            {
+                result.Flags = flags;
+            }
+
+            if (data.cadenceTicks > 0)
+            {
+                result.CadenceTicks = (uint)data.cadenceTicks;
+            }
+
+            if (!string.IsNullOrWhiteSpace(data.lod) && TryParseLod(data.lod, out var lod))
+            {
+                result.LodOverride = (sbyte)lod;
+            }
+
+            if (data.loops != null && TryParseLoops(data.loops, out var loops))
+            {
+                result.Loops = loops;
+            }
+
+            if (data.maxEventsPerTick > 0)
+            {
+                result.MaxEventsPerTick = (ushort)math.min(data.maxEventsPerTick, ushort.MaxValue);
+            }
+
+            return result;
+        }
+
+        private static bool TryParseFlags(string[] tokens, out TelemetryExportFlags flags)
+        {
+            flags = TelemetryExportFlags.None;
+            if (tokens == null || tokens.Length == 0)
+            {
+                return false;
+            }
+
+            foreach (var raw in tokens)
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    continue;
+                }
+
+                var token = raw.Trim();
+                if (Enum.TryParse(token, true, out TelemetryExportFlags parsed))
+                {
+                    flags |= parsed;
+                    continue;
+                }
+
+                if (TryMapFlagAlias(token, out parsed))
+                {
+                    flags |= parsed;
+                }
+            }
+
+            return flags != TelemetryExportFlags.None;
+        }
+
+        private static bool TryMapFlagAlias(string token, out TelemetryExportFlags flag)
+        {
+            flag = TelemetryExportFlags.None;
+            if (string.IsNullOrEmpty(token))
+            {
+                return false;
+            }
+
+            token = token.Trim().ToLowerInvariant();
+            switch (token)
+            {
+                case "metrics":
+                    flag = TelemetryExportFlags.IncludeTelemetryMetrics;
+                    return true;
+                case "frame":
+                case "frametiming":
+                    flag = TelemetryExportFlags.IncludeFrameTiming;
+                    return true;
+                case "behavior":
+                    flag = TelemetryExportFlags.IncludeBehaviorTelemetry;
+                    return true;
+                case "replay":
+                    flag = TelemetryExportFlags.IncludeReplayEvents;
+                    return true;
+                case "events":
+                case "telemetryevents":
+                case "proofs":
+                    flag = TelemetryExportFlags.IncludeTelemetryEvents;
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryParseLod(string raw, out TelemetryExportLod lod)
+        {
+            lod = TelemetryExportLod.Minimal;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            if (byte.TryParse(raw, out var numeric))
+            {
+                lod = (TelemetryExportLod)numeric;
+                return true;
+            }
+
+            var token = raw.Trim().ToLowerInvariant();
+            switch (token)
+            {
+                case "minimal":
+                    lod = TelemetryExportLod.Minimal;
+                    return true;
+                case "standard":
+                    lod = TelemetryExportLod.Standard;
+                    return true;
+                case "full":
+                    lod = TelemetryExportLod.Full;
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryParseLoops(string[] tokens, out TelemetryLoopFlags loops)
+        {
+            loops = TelemetryLoopFlags.None;
+            if (tokens == null || tokens.Length == 0)
+            {
+                return false;
+            }
+
+            foreach (var raw in tokens)
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    continue;
+                }
+
+                var token = raw.Trim().ToLowerInvariant();
+                switch (token)
+                {
+                    case "all":
+                        loops |= TelemetryLoopFlags.All;
+                        break;
+                    case "extract":
+                        loops |= TelemetryLoopFlags.Extract;
+                        break;
+                    case "logistics":
+                        loops |= TelemetryLoopFlags.Logistics;
+                        break;
+                    case "construction":
+                        loops |= TelemetryLoopFlags.Construction;
+                        break;
+                    case "exploration":
+                        loops |= TelemetryLoopFlags.Exploration;
+                        break;
+                    case "combat":
+                        loops |= TelemetryLoopFlags.Combat;
+                        break;
+                    case "rewind":
+                        loops |= TelemetryLoopFlags.Rewind;
+                        break;
+                    case "time":
+                        loops |= TelemetryLoopFlags.Time;
+                        break;
+                }
+            }
+
+            return loops != TelemetryLoopFlags.None;
         }
     }
 }

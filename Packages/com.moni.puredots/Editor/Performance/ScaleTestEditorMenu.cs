@@ -24,16 +24,16 @@ namespace PureDOTS.Editor.Performance
             // ScenarioRunnerEntryPoints.ListScaleScenarios();
         }
 
-        [MenuItem("PureDOTS/Scale Tests/Run Mini LOD Demo", priority = 200)]
-        public static void RunMiniLODDemo()
+        [MenuItem("PureDOTS/Scale Tests/Run Mini LOD Scenario", priority = 200)]
+        public static void RunMiniLODScenario()
         {
-            RunScenario("scale_mini_lod_demo.json", "mini_lod_demo_report.json");
+            RunScenario("scale_mini_lod.json", "mini_lod_report.json");
         }
 
-        [MenuItem("PureDOTS/Scale Tests/Run Mini Aggregate Demo", priority = 201)]
-        public static void RunMiniAggregateDemo()
+        [MenuItem("PureDOTS/Scale Tests/Run Mini Aggregate Scenario", priority = 201)]
+        public static void RunMiniAggregateScenario()
         {
-            RunScenario("scale_mini_aggregate_demo.json", "mini_aggregate_demo_report.json");
+            RunScenario("scale_mini_aggregate.json", "mini_aggregate_report.json");
         }
 
         [MenuItem("PureDOTS/Scale Tests/Run Baseline 10k", priority = 300)]
@@ -54,16 +54,16 @@ namespace PureDOTS.Editor.Performance
             RunScenario("scale_extreme_1m.json", "extreme_1m_report.json");
         }
 
-        [MenuItem("PureDOTS/Scale Tests/Game Demos/Space4X Demo", priority = 500)]
-        public static void RunSpace4XDemo()
+        [MenuItem("PureDOTS/Scale Tests/Game Scenarios/Space4X Scenario", priority = 500)]
+        public static void RunSpace4XScenario()
         {
-            RunScenario("scenario_space_demo_01.json", "space_demo_01_report.json");
+            RunScenario("scenario_space_01.json", "space_01_report.json");
         }
 
-        [MenuItem("PureDOTS/Scale Tests/Game Demos/Godgame Demo", priority = 501)]
-        public static void RunGodgameDemo()
+        [MenuItem("PureDOTS/Scale Tests/Game Scenarios/Godgame Scenario", priority = 501)]
+        public static void RunGodgameScenario()
         {
-            RunScenario("scenario_god_demo_01.json", "god_demo_01_report.json");
+            RunScenario("scenario_god_01.json", "god_01_report.json");
         }
 
         [MenuItem("PureDOTS/Scale Tests/Open Reports Folder", priority = 400)]
@@ -147,4 +147,3 @@ namespace PureDOTS.Editor.Performance
     }
 }
 #endif
-

@@ -3,7 +3,7 @@ using Unity.Entities;
 namespace PureDOTS.Runtime
 {
     /// <summary>
-    /// ECS component storing demo scenario configuration values.
+    /// ECS component storing scenario configuration values for simulation/game bootstraps.
     /// Created by ScenarioConfigAuthoring from ScenarioDef asset.
     /// </summary>
     public struct ScenarioConfig : IComponentData
@@ -23,10 +23,9 @@ namespace PureDOTS.Runtime
     }
 
     /// <summary>
-    /// Tag component indicating demo scenario spawning is complete.
+    /// Tag component indicating scenario spawning is complete.
     /// </summary>
     public struct ScenarioCompleteTag : IComponentData
     {
     }
 }
-

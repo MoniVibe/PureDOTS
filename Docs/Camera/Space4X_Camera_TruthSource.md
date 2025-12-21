@@ -1,6 +1,7 @@
 # Space4X Camera Truth Source
 
 **Implementation Chosen**: Space4XCameraRigController (MonoBehaviour-based)
+**Contract**: Controller publishes `CameraRigState` only; `CameraRigApplier` is the sole transform writer.
 
 ## Files Used
 
@@ -26,7 +27,7 @@
 **Type**: MonoBehaviour with ECS integration
 **Input**: Unity Input System (action-based)
 **State**: Publishes to CameraRigService for ECS consumption
-**Timing**: Update() for input, LateUpdate() for positioning
+**Timing**: Update() updates canonical state (focus/yaw/pitch/distance) + consumes requests; LateUpdate publishes; `CameraRigApplier` derives/apply in LateUpdate
 
 ## Input Controls
 
@@ -54,13 +55,19 @@ Scene validation checks for:
 
 ## Status: Stable ✅
 
-**Verified Working**: Camera rig controller with proper namespace aliasing and bootstrap integration.
+**Verified Working**: Camera rig controller with proper namespace aliasing and bootstrap integration (single-writer camera contract).
 
 **Bootstrap Integration**: Space4XCameraBootstrap ensures camera exists and is assigned to rig controller.
 
 **Input System**: Uses Unity Input System actions for orbit, pan, zoom controls.
 
 **ECS Integration**: Publishes CameraRigState via CameraRigService for ECS consumption.
+
+## Contract Notes (Stop-the-Chaos)
+
+- **No direct camera transform writes** from ECS systems or camera controllers.
+- **Canonical truth** is `CameraRigState.Focus + Yaw/Pitch/Roll + Distance`; Unity transform is derived by `CameraRigApplier`.
+- ECS focus/bookmark requests are emitted via `CameraRequestEvent` on the RTS input singleton; the active camera rig consumes them.
 
 ## Future Considerations
 

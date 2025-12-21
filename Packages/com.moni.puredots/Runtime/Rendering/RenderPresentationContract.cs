@@ -241,6 +241,11 @@ namespace PureDOTS.Rendering
         /// Sentinel stored inside presenter components when no variant has been assigned yet.
         /// </summary>
         public const ushort UnassignedPresenterDefIndex = ushort.MaxValue;
+
+        /// <summary>
+        /// Shared semantic key for rewind ghost tethers.
+        /// </summary>
+        public const ushort GhostTetherSemanticKey = 280;
     }
 
     /// <summary>

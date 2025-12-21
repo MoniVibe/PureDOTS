@@ -66,11 +66,12 @@ namespace PureDOTS.Runtime.Camera
                 // 4. Create CameraRigState (PureDOTS contract)
                 CameraRigState rigState = new CameraRigState
                 {
-                    Position = cameraPosition,
-                    Rotation = rotation,
+                    Focus = _position,
                     Pitch = _pitch,
                     Yaw = _yaw,
+                    Roll = 0f,
                     Distance = _distance,
+                    Mode = CameraRigMode.Orbit,
                     PerspectiveMode = true,
                     FieldOfView = 60f,
                     RigType = CameraRigType.Space4X // or Godgame
@@ -89,8 +90,8 @@ namespace PureDOTS.Runtime.Camera
         /// Game Code Responsibilities:
         /// - Interpret game-specific input (WASD, mouse, gamepad, touch)
         /// - Implement game-specific camera behaviors (bounds, modes, transitions)
-        /// - Compute camera Position and Rotation based on game rules
-        /// - Fill CameraRigState struct with current camera state
+        /// - Maintain canonical camera state (Focus/Yaw/Pitch/Distance)
+        /// - Fill CameraRigState struct with the canonical state and publish it
         /// - Call CameraRigService.Publish(state) when state changes
         ///
         /// PureDOTS Responsibilities:

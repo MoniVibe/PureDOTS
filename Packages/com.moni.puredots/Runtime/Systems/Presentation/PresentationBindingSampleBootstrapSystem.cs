@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 namespace PureDOTS.Systems
 {
     /// <summary>
-    /// Seeds a sample presentation binding set based on runtime config to make graybox visuals available in demos and headless runs.
+    /// Seeds a sample presentation binding set based on runtime config to make graybox visuals available in scenarios and headless runs.
     /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(PresentationBootstrapSystem))]

@@ -14,6 +14,8 @@ PureDOTS provides **game-agnostic** entity scaffolding for both individual entit
 
 **Key Principle:** Aggregates and individuals use the same components and systems. They only differ in how game-specific layers interpret and present them.
 
+**Blank-by-default extension:** Entities should be **blank by default** (no behaviors, no presentation) and become “something” only by attaching capability modules. This is described in `Docs/Concepts/Core/Entity_Modularity_And_Capabilities.md`.
+
 ---
 
 ## Core Concept: "Villager" as Generic Entity
@@ -261,10 +263,11 @@ public void Execute(ref VillagerInitiativeState initiative, in VillagerBehavior 
 
 ## Related Documentation
 
-- **Generalized Alignment Framework:** `Docs/Concepts/Meta/Generalized_Alignment_Framework.md`
-- **Villager Behavioral Personality:** `Docs/Concepts/Villagers/Villager_Behavioral_Personality.md`
-- **Band Formation:** `Docs/Concepts/Villagers/Band_Formation_And_Dynamics.md`
-- **Guild System:** `Docs/Concepts/Villagers/Guild_System.md`
+- **Entity Modularity & Capabilities:** `Docs/Concepts/Core/Entity_Modularity_And_Capabilities.md`
+- **Entity Profile Schema:** `Docs/Concepts/Core/Entity_Profile_Schema.md`
+- **Authority & Command Hierarchies:** `Docs/Concepts/Core/Authority_And_Command_Hierarchies.md`
+- **Conflict Resolution System:** `Docs/Concepts/Core/Conflict_Resolution.md`
+- **Entity Cooperation System:** `Docs/Concepts/Core/Entity_Cooperation_System.md`
 
 ---
 
@@ -276,4 +279,3 @@ public void Execute(ref VillagerInitiativeState initiative, in VillagerBehavior 
 
 **Last Updated:** 2025-01-XX  
 **Status:** Design Document - Foundation Layer Architecture
-

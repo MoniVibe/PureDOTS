@@ -7,7 +7,7 @@ using Unity.Transforms;
 namespace PureDOTS.Systems.History
 {
     /// <summary>
-    /// Records transform history for demo-important entities (villagers, ships, villages, carriers).
+    /// Records transform history for scenario-critical entities (villagers, ships, villages, carriers).
     /// Runs during Record mode only.
     /// </summary>
     [BurstCompile]
@@ -40,7 +40,7 @@ namespace PureDOTS.Systems.History
                 return;
             }
 
-            // Record transform history for demo-important entities
+            // Record transform history for scenario-critical entities
             foreach (var (transform, historyBuffer, entity) in SystemAPI.Query<RefRO<LocalTransform>, DynamicBuffer<PositionHistorySample>>()
                          .WithAll<RewindableTag>()
                          .WithEntityAccess())
@@ -88,4 +88,3 @@ namespace PureDOTS.Systems.History
         }
     }
 }
-

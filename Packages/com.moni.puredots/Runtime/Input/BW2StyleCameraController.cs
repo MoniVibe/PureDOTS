@@ -29,6 +29,7 @@ namespace PureDOTS.Runtime.Camera
         [Header("References")]
         [SerializeField] UnityEngine.Camera targetCamera;
         [SerializeField] Transform pivotTransform;
+        [SerializeField] CameraRigType rigType = CameraRigType.BW2;
 
         [Header("Input")]
         [SerializeField] HandCameraInputRouter inputRouter;
@@ -83,6 +84,8 @@ namespace PureDOTS.Runtime.Camera
         World handWorld;
         EntityQuery handQuery;
         bool handQueryValid;
+        EntityQuery _rtsInputQuery;
+        bool _rtsQueryValid;
         bool orbitPivotLocked;
         Vector3 lockedPivot;
         float lockedDistance;
@@ -101,6 +104,8 @@ namespace PureDOTS.Runtime.Camera
         RmbContext _routerContext;
         Vector3 _currentCameraPosition;
         Quaternion _currentCameraRotation = Quaternion.identity;
+        Vector3 _currentCameraWorldPos;
+        byte _playerId;
 
         public static bool HasActiveRig => s_activeRigCount > 0;
 
@@ -128,6 +133,8 @@ namespace PureDOTS.Runtime.Camera
 
             _currentCameraPosition = targetCamera != null ? targetCamera.transform.position : Vector3.zero;
             _currentCameraRotation = targetCamera != null ? targetCamera.transform.rotation : Quaternion.identity;
+            _currentCameraWorldPos = _currentCameraPosition;
+            _playerId = 0;
 
             EnsureInputRouter();
 
@@ -146,6 +153,19 @@ namespace PureDOTS.Runtime.Camera
         void OnDisable()
         {
             s_activeRigCount = math.max(0, s_activeRigCount - 1);
+
+            if (_rtsQueryValid)
+            {
+                try
+                {
+                    _rtsInputQuery.Dispose();
+                }
+                catch
+                {
+                    // World may already be tearing down.
+                }
+                _rtsQueryValid = false;
+            }
         }
 
         void EnsureInputRouter()
@@ -172,12 +192,77 @@ namespace PureDOTS.Runtime.Camera
 
             UpdateInputSnapshot();
             UpdateRouterContext();
+            ConsumeCameraRequests();
 
             // Basic pan/orbit/zoom based on snapshot
             ApplyInput();
 
             // Publish rig state
             PublishRig();
+        }
+
+        void ConsumeCameraRequests()
+        {
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+            {
+                return;
+            }
+
+            var em = world.EntityManager;
+            if (!_rtsQueryValid)
+            {
+                _rtsInputQuery = em.CreateEntityQuery(ComponentType.ReadOnly<RtsInputSingletonTag>());
+                _rtsQueryValid = true;
+            }
+
+            if (_rtsInputQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            var rtsEntity = _rtsInputQuery.GetSingletonEntity();
+            if (!em.HasBuffer<CameraRequestEvent>(rtsEntity))
+            {
+                return;
+            }
+
+            var requests = em.GetBuffer<CameraRequestEvent>(rtsEntity);
+            for (int i = requests.Length - 1; i >= 0; i--)
+            {
+                var req = requests[i];
+                if (req.PlayerId != _playerId)
+                {
+                    continue;
+                }
+
+                switch (req.Kind)
+                {
+                    case CameraRequestKind.FocusWorld:
+                        _currentCameraPosition = new Vector3(req.WorldPosition.x, req.WorldPosition.y, req.WorldPosition.z);
+                        requests.RemoveAt(i);
+                        break;
+
+                    case CameraRequestKind.RecallBookmark:
+                        {
+                            var rot = new Quaternion(
+                                req.BookmarkRotation.value.x,
+                                req.BookmarkRotation.value.y,
+                                req.BookmarkRotation.value.z,
+                                req.BookmarkRotation.value.w);
+
+                            var euler = rot.eulerAngles;
+                            yaw = euler.y;
+                            pitch = math.clamp(euler.x, pitchClamp.x, pitchClamp.y);
+
+                            var camPos = new Vector3(req.BookmarkPosition.x, req.BookmarkPosition.y, req.BookmarkPosition.z);
+                            _currentCameraPosition = camPos + (rot * Vector3.forward * distance);
+                            _currentCameraRotation = rot;
+                            requests.RemoveAt(i);
+                        }
+                        break;
+                }
+            }
         }
 
         void UpdateInputSnapshot()
@@ -216,17 +301,90 @@ namespace PureDOTS.Runtime.Camera
             if (!_hasSnapshot) return;
             bool pointerOverUI = IsPointerOverUI();
 
+            bool panAllowed = allowPanOverUI || !pointerOverUI;
+            bool orbitAllowed = allowOrbitOverUI || !pointerOverUI;
+            bool orbitHeld = _inputSnapshot.MiddleHeld || _inputSnapshot.RightHeld;
+            bool orbitPressed = _inputSnapshot.MiddlePressed || _inputSnapshot.RightPressed;
+
+            if (!orbitHeld)
+            {
+                orbitPivotLocked = false;
+            }
+
+            if (orbitPressed && orbitAllowed)
+            {
+                orbitPivotLocked = true;
+                lockedDistance = distance;
+
+                if (targetCamera != null)
+                {
+                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
+                    if (UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask))
+                    {
+                        lockedPivot = hit.point;
+                    }
+                    else
+                    {
+                        lockedPivot = _currentCameraPosition;
+                    }
+                }
+                else
+                {
+                    lockedPivot = _currentCameraPosition;
+                }
+            }
+
+            if (orbitPivotLocked)
+            {
+                _currentCameraPosition = lockedPivot;
+            }
+
             // Zoom
             float scroll = _inputSnapshot.Scroll;
             if ((allowZoomOverUI || !pointerOverUI) && math.abs(scroll) > 0.01f)
             {
                 float zoomDir = invertZoom ? -scroll : scroll;
-                distance = math.clamp(distance - zoomDir * zoomSpeed * UnityEngine.Time.deltaTime, minDistance, maxDistance);
+                float scrollNotches = zoomDir / 120f;
+                distance = math.clamp(distance - scrollNotches * (zoomSpeed * 2f), minDistance, maxDistance);
+            }
+
+            // Grab-land pan (LMB drag): lock a ground plane on press; keep the grabbed point under cursor.
+            if (!orbitHeld && panAllowed && targetCamera != null)
+            {
+                if (_inputSnapshot.LeftPressed)
+                {
+                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
+                    if (UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask))
+                    {
+                        grabbing = true;
+                        panWorldStart = hit.point;
+                        panPivotStart = _currentCameraPosition;
+                        panPlane = new Plane(Vector3.up, panWorldStart);
+                    }
+                }
+                else if (_inputSnapshot.LeftReleased)
+                {
+                    grabbing = false;
+                }
+
+                if (grabbing && _inputSnapshot.LeftHeld)
+                {
+                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
+                    if (panPlane.Raycast(ray, out float enter))
+                    {
+                        Vector3 worldNow = ray.GetPoint(enter);
+                        Vector3 deltaWorld = panWorldStart - worldNow;
+                        _currentCameraPosition = panPivotStart + deltaWorld;
+                    }
+                }
+            }
+            else if (_inputSnapshot.LeftReleased)
+            {
+                grabbing = false;
             }
 
             // Orbit
-            bool orbitInputActive = _inputSnapshot.MiddleHeld || _inputSnapshot.RightHeld;
-            if (orbitInputActive && (allowOrbitOverUI || !pointerOverUI))
+            if (orbitHeld && orbitAllowed)
             {
                 yaw += _inputSnapshot.PointerDelta.x * orbitYawSensitivity;
                 pitch = math.clamp(pitch - _inputSnapshot.PointerDelta.y * orbitPitchSensitivity, pitchClamp.x, pitchClamp.y);
@@ -239,7 +397,7 @@ namespace PureDOTS.Runtime.Camera
             if (_inputSnapshot.EdgeTop) delta.y += 1f;
             if (_inputSnapshot.EdgeBottom) delta.y -= 1f;
 
-            if ((allowPanOverUI || !pointerOverUI) && delta.sqrMagnitude > 0.0001f)
+            if (!grabbing && !orbitPivotLocked && panAllowed && delta.sqrMagnitude > 0.0001f)
             {
                 float panSpeed = panScale * math.max(distance, 1f);
                 var yawRot = Quaternion.Euler(0f, yaw, 0f);
@@ -251,7 +409,7 @@ namespace PureDOTS.Runtime.Camera
             // Apply to camera and pivot
             Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
             Vector3 camPos = _currentCameraPosition - rot * Vector3.forward * distance;
-            targetCamera.transform.SetPositionAndRotation(camPos, rot);
+            _currentCameraWorldPos = camPos;
             Pivot = _currentCameraPosition;
             _currentCameraRotation = rot;
         }
@@ -274,17 +432,17 @@ namespace PureDOTS.Runtime.Camera
         {
             var state = new CameraRigState
             {
-                Position = targetCamera.transform.position,
-                Rotation = targetCamera.transform.rotation,
+                Focus = _currentCameraPosition,
                 Pitch = pitch,
                 Yaw = yaw,
+                Roll = 0f,
                 Distance = distance,
+                Mode = CameraRigMode.Orbit,
                 PerspectiveMode = true,
                 FieldOfView = targetCamera.fieldOfView,
-                RigType = CameraRigType.Space4X
+                RigType = rigType
             };
             CameraRigService.Publish(state);
         }
     }
 }
-

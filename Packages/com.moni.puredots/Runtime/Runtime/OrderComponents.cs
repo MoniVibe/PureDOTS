@@ -27,7 +27,7 @@ namespace PureDOTS.Runtime.Orders
     }
 
     /// <summary>
-    /// Lightweight order descriptor used by gameplay and demo bootstraps.
+    /// Lightweight order descriptor used by gameplay and scenario bootstraps.
     /// </summary>
     public struct Order : IComponentData
     {

@@ -11,7 +11,7 @@ namespace PureDOTS.Runtime.Camera
     ///
     /// CONTRACT GUARANTEES:
     /// - Reads CameraRigState from CameraRigService
-    /// - Applies Position+Rotation via SetPositionAndRotation (atomic operation)
+    /// - Derives Position+Rotation from canonical state and applies via SetPositionAndRotation (atomic operation)
     /// - Applies FieldOfView if specified (> 0.01f)
     /// - Runs in LateUpdate at ExecutionOrder 10000 (after all other updates)
     /// - Fallback to Camera.main if no camera attached
@@ -59,8 +59,10 @@ namespace PureDOTS.Runtime.Camera
                 }
             }
 
+            CameraRigMath.DerivePose(in state, out var position, out var rotation);
+
             // Atomic position+rotation update
-            _camera.transform.SetPositionAndRotation(state.Position, state.Rotation);
+            _camera.transform.SetPositionAndRotation(position, rotation);
 
             // Optional field of view update
             if (state.FieldOfView > 0.01f)

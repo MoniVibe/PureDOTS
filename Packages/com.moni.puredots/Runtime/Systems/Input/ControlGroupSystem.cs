@@ -46,14 +46,14 @@ namespace PureDOTS.Systems.Input
             for (int i = 0; i < controlGroupBuffer.Length; i++)
             {
                 var inputEvent = controlGroupBuffer[i];
-                ProcessControlGroupInput(ref state, ref groupState, inputEvent);
+                ProcessControlGroupInput(ref state, rtsInputEntity, ref groupState, inputEvent);
             }
 
             state.EntityManager.SetComponentData(controlGroupEntity, groupState);
             controlGroupBuffer.Clear();
         }
 
-        private void ProcessControlGroupInput(ref SystemState state, ref ControlGroupState groupState, ControlGroupInputEvent inputEvent)
+        private void ProcessControlGroupInput(ref SystemState state, Entity rtsInputEntity, ref ControlGroupState groupState, ControlGroupInputEvent inputEvent)
         {
             int index = inputEvent.Number;
             if (index < 0 || index > 9)
@@ -69,7 +69,7 @@ namespace PureDOTS.Systems.Input
             else if (inputEvent.Recall != 0)
             {
                 // Recall operation
-                RecallControlGroup(ref state, ref groupState, index, inputEvent.PlayerId);
+                RecallControlGroup(ref state, rtsInputEntity, ref groupState, index, inputEvent.PlayerId);
             }
         }
 
@@ -135,7 +135,7 @@ namespace PureDOTS.Systems.Input
             selectedEntities.Dispose();
         }
 
-        private void RecallControlGroup(ref SystemState state, ref ControlGroupState groupState, int index, byte playerId)
+        private void RecallControlGroup(ref SystemState state, Entity rtsInputEntity, ref ControlGroupState groupState, int index, byte playerId)
         {
             if (index < 0 || index >= groupState.Groups.Length)
             {
@@ -171,15 +171,19 @@ namespace PureDOTS.Systems.Input
             }
             else if (group.HasCameraBookmark)
             {
-                // Recall camera bookmark
-                Camera camera = Camera.main;
-                if (camera != null)
+                // Emit a request for the active game camera rig to consume (keeps the camera contract single-writer).
+                if (state.EntityManager.HasBuffer<CameraRequestEvent>(rtsInputEntity))
                 {
-                    camera.transform.position = new Vector3(group.BookmarkPosition.x, group.BookmarkPosition.y, group.BookmarkPosition.z);
-                    camera.transform.rotation = new Quaternion(group.BookmarkRotation.value.x, group.BookmarkRotation.value.y, group.BookmarkRotation.value.z, group.BookmarkRotation.value.w);
+                    var requests = state.EntityManager.GetBuffer<CameraRequestEvent>(rtsInputEntity);
+                    requests.Add(new CameraRequestEvent
+                    {
+                        Kind = CameraRequestKind.RecallBookmark,
+                        BookmarkPosition = group.BookmarkPosition,
+                        BookmarkRotation = group.BookmarkRotation,
+                        PlayerId = playerId
+                    });
                 }
             }
         }
     }
 }
-

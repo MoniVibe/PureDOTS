@@ -12,6 +12,7 @@ namespace PureDOTS.Systems
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(TimeSystemGroup))]
+    [UpdateAfter(typeof(TimeScaleCommandSystem))]
     // Removed invalid UpdateAfter/Before: ordering relative to CoreSingletonBootstrapSystem and TimeSettingsConfigSystem is governed by group order (OrderFirst).
     public partial struct TimeScaleResolutionSystem : ISystem
     {
@@ -155,4 +156,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-

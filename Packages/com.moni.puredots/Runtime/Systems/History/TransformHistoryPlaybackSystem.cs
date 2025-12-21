@@ -37,7 +37,7 @@ namespace PureDOTS.Systems.History
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint targetTick = (uint)math.max(0, rewindState.TargetTick);
 
-            // Playback transform history for demo-important entities
+            // Playback transform history for scenario-critical entities
             foreach (var (transformRef, historyBuffer, entity) in SystemAPI.Query<RefRW<LocalTransform>, DynamicBuffer<PositionHistorySample>>()
                          .WithAll<RewindableTag, PlaybackGuardTag>()
                          .WithEntityAccess())
@@ -79,4 +79,3 @@ namespace PureDOTS.Systems.History
         }
     }
 }
-

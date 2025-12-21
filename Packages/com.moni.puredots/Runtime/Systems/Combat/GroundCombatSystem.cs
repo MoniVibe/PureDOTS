@@ -42,7 +42,7 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) || !demoState.EnableGodgame)
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenarioState) || !scenarioState.EnableGodgame)
             {
                 return;
             }

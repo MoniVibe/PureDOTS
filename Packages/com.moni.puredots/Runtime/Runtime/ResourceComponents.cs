@@ -427,7 +427,7 @@ namespace PureDOTS.Runtime.Components
     }
 
     /// <summary>
-    /// Static class with hardcoded resource type IDs for demo.
+    /// Static class with hardcoded resource type IDs for initial scenarios.
     /// Can be replaced with data-driven catalog later.
     /// </summary>
     public static class ResourceIds

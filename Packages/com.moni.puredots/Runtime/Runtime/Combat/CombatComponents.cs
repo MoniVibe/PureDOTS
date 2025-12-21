@@ -287,7 +287,7 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
-    /// Simple attack stats component for demo combat (Milestone 6).
+    /// Simple attack stats component for baseline combat (Milestone 6).
     /// </summary>
     public struct AttackStats : IComponentData
     {
@@ -298,7 +298,7 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
-    /// Simple defense stats component for demo combat (Milestone 6).
+    /// Simple defense stats component for baseline combat (Milestone 6).
     /// </summary>
     public struct DefenseStats : IComponentData
     {
@@ -327,4 +327,3 @@ namespace PureDOTS.Runtime.Combat
         HoldPosition = 4
     }
 }
-

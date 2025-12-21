@@ -49,8 +49,8 @@ namespace PureDOTS.Runtime.Systems.Social.Companions
                 rewindState.Mode != RewindMode.Record)
                 return;
 
-            if (SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) &&
-                (!demoState.IsInitialized))
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var scenarioState) &&
+                (!scenarioState.IsInitialized))
                 return;
 
             _bondLookup.Update(ref state);

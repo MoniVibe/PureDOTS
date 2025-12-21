@@ -12,8 +12,10 @@ namespace PureDOTS.Systems
     /// Handles AddTimeScaleEntry and RemoveTimeScaleEntry commands.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(TimeSystemGroup))]
-    [UpdateAfter(typeof(TimeScaleResolutionSystem))]
+    [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
+    [UpdateAfter(typeof(TimeSettingsConfigSystem))]
+    [UpdateBefore(typeof(TimeScaleResolutionSystem))]
+    [UpdateBefore(typeof(RewindCoordinatorSystem))]
     [UpdateBefore(typeof(TimeTickSystem))]
     public partial struct TimeScaleCommandSystem : ISystem
     {
@@ -217,4 +219,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-

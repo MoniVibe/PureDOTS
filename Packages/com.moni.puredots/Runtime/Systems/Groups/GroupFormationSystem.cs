@@ -41,13 +41,13 @@ namespace PureDOTS.Systems.Groups
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demoState))
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenarioState))
             {
                 return;
             }
 
             // Only process for Godgame (formations are primarily for ground units)
-            if (!demoState.EnableGodgame)
+            if (!scenarioState.EnableGodgame)
             {
                 return;
             }

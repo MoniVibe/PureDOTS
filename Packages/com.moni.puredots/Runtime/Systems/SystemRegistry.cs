@@ -14,6 +14,10 @@ namespace PureDOTS.Systems
         private const string EnvironmentProfileKey = "PURE_DOTS_BOOTSTRAP_PROFILE";
 
         private static readonly Dictionary<string, BootstrapWorldProfile> s_profiles = new();
+        private static readonly BootstrapWorldProfile s_legacyScenarioProfile = new(
+            BuiltinProfiles.LegacyScenarioId,
+            "Legacy Scenario (Deprecated)",
+            WorldSystemFilterFlags.Default);
         private static readonly List<Type> s_profileScratch = new(1024);
         private static readonly HashSet<Type> s_seenTypes = new();
         private static string? s_overrideProfileId;
@@ -150,24 +154,7 @@ namespace PureDOTS.Systems
                     typeof(GameplaySystemGroup)
                 }));
 
-            // Demo profile: includes all default systems PLUS demo systems for testing
-            RegisterProfile(new BootstrapWorldProfile(
-                BuiltinProfiles.DemoId,
-                "Demo World",
-                defaultFilter,
-                additionalFilter: type =>
-                {
-                    // Include demo systems that start with "PureDOTS.Demo."
-                    if (type.FullName != null && type.FullName.StartsWith("PureDOTS.Demo."))
-                        return true;
-
-                    // Include Hybrid systems for demo purposes
-                    if (type.FullName != null && type.FullName.StartsWith("PureDOTS.Hybrid."))
-                        return true;
-
-                    // Use default filter for all other systems
-                    return true;
-                }));
+            // Legacy scenario profile removed; legacy scenario systems are now gated by explicit legacy flags.
 
             RegisterProfile(new BootstrapWorldProfile(
                 BuiltinProfiles.GameWorldId,
@@ -190,14 +177,14 @@ namespace PureDOTS.Systems
                 return false;
             if (fullName.StartsWith("PureDOTS.Systems.Presentation", StringComparison.Ordinal))
                 return false;
-            if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
+            if (fullName.StartsWith("PureDOTS.LegacyScenario.", StringComparison.Ordinal))
                 return false;
-            if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
+            if (fullName.StartsWith("PureDOTS.Runtime.LegacyScenario.", StringComparison.Ordinal))
                 return false;
 
             if (fullName.Contains(".Presentation", StringComparison.Ordinal))
                 return false;
-            if (fullName.Contains(".Demo.", StringComparison.Ordinal))
+            if (fullName.Contains(".LegacyScenario.", StringComparison.Ordinal))
                 return false;
 
             return true;
@@ -209,14 +196,14 @@ namespace PureDOTS.Systems
             if (string.IsNullOrWhiteSpace(fullName))
                 return false;
 
-            if (fullName.StartsWith("PureDOTS.Demo.", StringComparison.Ordinal))
+            if (fullName.StartsWith("PureDOTS.LegacyScenario.", StringComparison.Ordinal))
                 return false;
-            if (fullName.StartsWith("PureDOTS.Runtime.Demo.", StringComparison.Ordinal))
+            if (fullName.StartsWith("PureDOTS.Runtime.LegacyScenario.", StringComparison.Ordinal))
                 return false;
             if (fullName.StartsWith("PureDOTS.Systems.Hybrid.", StringComparison.Ordinal))
                 return false;
 
-            if (fullName.Contains(".Demo.", StringComparison.Ordinal))
+            if (fullName.Contains(".LegacyScenario.", StringComparison.Ordinal))
                 return false;
 
             if (fullName == "PureDOTS.Runtime.Economy.Production.ProductionRecipeBootstrapSystem")
@@ -240,13 +227,17 @@ namespace PureDOTS.Systems
             public const string HeadlessId = "headless";
             public const string ReplayId = "replay";
             public const string GameWorldId = "gameworld";
-            public const string DemoId = "demo";
+            public const string LegacyScenarioId = "demo";
+            [Obsolete("Use LegacyScenarioId for legacy scenario profile IDs.")]
+            public const string DemoId = LegacyScenarioId;
 
             public static BootstrapWorldProfile Default => s_profiles[DefaultId];
             public static BootstrapWorldProfile Headless => s_profiles[HeadlessId];
             public static BootstrapWorldProfile Replay => s_profiles[ReplayId];
             public static BootstrapWorldProfile GameWorld => s_profiles[GameWorldId];
-            public static BootstrapWorldProfile Demo => s_profiles[DemoId];
+            public static BootstrapWorldProfile LegacyScenario => s_legacyScenarioProfile;
+            [Obsolete("Use LegacyScenario for legacy scenario profile access.")]
+            public static BootstrapWorldProfile Demo => s_legacyScenarioProfile;
         }
     }
 }

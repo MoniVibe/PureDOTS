@@ -1,14 +1,15 @@
-#if PUREDOTS_SCENARIO
+#if PUREDOTS_SCENARIO && PUREDOTS_LEGACY_SCENARIO_ASM
 using Unity.Entities;
 using Unity.Rendering;
 
-namespace PureDOTS.Demo.Rendering
+namespace PureDOTS.LegacyScenario.Rendering
 {
     /// <summary>
-    /// Centralized mesh and material index constants for the PureDOTS demo systems.
-    /// These indices correspond to positions in the RenderMeshArray used by demo entities.
+    /// Centralized mesh and material index constants for legacy scenario systems.
+    /// These indices correspond to positions in the RenderMeshArray used by scenario entities.
     /// </summary>
-    public static class DemoMeshIndices
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, "PureDOTS.Demo.Rendering", null, "DemoMeshIndices")]
+    public static class ScenarioMeshIndices
     {
         /// <summary>
         /// Mesh index for village ground/terrain (index 0 in RenderMeshArray).
@@ -31,31 +32,30 @@ namespace PureDOTS.Demo.Rendering
         public const int VillageVillagerMeshIndex = 3;
 
         /// <summary>
-        /// Material index for demo entities (typically 0, using Simple Lit shader).
+        /// Material index for scenario entities (typically 0, using Simple Lit shader).
         /// </summary>
-        public const int DemoMaterialIndex = 0;
+        public const int ScenarioMaterialIndex = 0;
     }
 
     /// <summary>
-    /// DEMO-ONLY: Bootstrap system that initializes shared render mesh array for demo systems.
-    /// This is an example implementation for testing PureDOTS demo functionality.
+    /// Legacy scenario bootstrap that initializes shared render mesh array for scenario systems.
+    /// This is an example implementation for validating PureDOTS rendering hooks.
     ///
     /// IMPORTANT: Real games should NOT use this system. Instead:
     /// - Use game-specific RenderKey components
     /// - Implement RenderCatalogAuthoring/Baker for your game's render data
     /// - Use ApplyRenderCatalogSystem to assign render components
     ///
-    /// Only runs when PureDOTS demo profile is active.
+    /// Only runs when legacy scenario gates are enabled.
     /// </summary>
     [DisableAutoCreation]
     [Unity.Entities.UpdateInGroup(typeof(Unity.Entities.InitializationSystemGroup))]
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, "PureDOTS.Demo.Rendering", null, "SharedRenderBootstrap")]
     public partial struct SharedRenderBootstrap : Unity.Entities.ISystem
     {
         public void OnCreate(ref Unity.Entities.SystemState state)
         {
-            // Only run in demo worlds
-            var activeProfile = PureDOTS.Systems.SystemRegistry.ResolveActiveProfile();
-            if (activeProfile.Id != PureDOTS.Systems.SystemRegistry.BuiltinProfiles.Demo.Id)
+            if (!LegacyScenarioGate.IsEnabled)
             {
                 state.Enabled = false;
                 return;
@@ -75,7 +75,7 @@ namespace PureDOTS.Demo.Rendering
                 Value = renderMeshArray
             });
 
-            UnityEngine.Debug.Log($"[SharedRenderBootstrap] DEMO RenderMeshArray singleton created in world: {state.WorldUnmanaged.Name}. This is for demo purposes only.");
+            UnityEngine.Debug.Log($"[SharedRenderBootstrap] Legacy scenario RenderMeshArray singleton created in world: {state.WorldUnmanaged.Name}.");
         }
 
         public void OnUpdate(ref Unity.Entities.SystemState state)
@@ -86,4 +86,3 @@ namespace PureDOTS.Demo.Rendering
 }
 
 #endif
-

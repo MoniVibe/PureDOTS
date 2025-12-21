@@ -1,26 +1,34 @@
-#if PUREDOTS_SCENARIO
+#if PUREDOTS_SCENARIO && PUREDOTS_LEGACY_SCENARIO_ASM
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace PureDOTS.Demo.Village
+namespace PureDOTS.LegacyScenario.Village
 {
     /// <summary>
-    /// Debug system that logs counts of village demo entities (villagers, homes, works).
-    /// Runs once per world to provide visibility into demo entity spawning.
+    /// Debug system that logs counts of legacy scenario village entities (villagers, homes, works).
+    /// Runs once per world to provide visibility into scenario entity spawning.
     /// </summary>
     [BurstCompile]
     [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor)]
+    [MovedFrom(true, "PureDOTS.Demo.Village", null, "VillageDebugSystem")]
     public partial struct VillageDebugSystem : ISystem
     {
         bool _loggedOnce;
 
         public void OnCreate(ref SystemState state)
         {
+            if (!LegacyScenarioGate.IsEnabled)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             UnityEngine.Debug.Log($"[VillageDebugSystem] OnCreate in world: {state.WorldUnmanaged.Name}");
             // Only run if the basic village components exist in this world.
             state.RequireForUpdate<VillageTag>();
@@ -74,4 +82,3 @@ namespace PureDOTS.Demo.Village
     }
 }
 #endif
-

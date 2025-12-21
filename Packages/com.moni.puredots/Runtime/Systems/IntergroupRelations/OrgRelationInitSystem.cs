@@ -33,8 +33,8 @@ namespace PureDOTS.Systems.IntergroupRelations
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var demoState = SystemAPI.GetSingleton<ScenarioState>();
-            if (!demoState.IsInitialized)
+            var scenarioState = SystemAPI.GetSingleton<ScenarioState>();
+            if (!scenarioState.IsInitialized)
             {
                 return;
             }
@@ -48,7 +48,7 @@ namespace PureDOTS.Systems.IntergroupRelations
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // Create orgs for villages (Godgame)
-            if (demoState.EnableGodgame)
+            if (scenarioState.EnableGodgame)
             {
                 var villageQuery = SystemAPI.QueryBuilder()
                     .WithAll<VillageTag, LocalTransform, OwnerOrg>()
@@ -76,7 +76,7 @@ namespace PureDOTS.Systems.IntergroupRelations
             }
 
             // Create orgs for carriers (Space4X)
-            if (demoState.EnableSpace4x)
+            if (scenarioState.EnableSpace4x)
             {
                 var carrierQuery = SystemAPI.QueryBuilder()
                     .WithAll<PlatformTag, LocalTransform, OwnerOrg>()
@@ -90,7 +90,7 @@ namespace PureDOTS.Systems.IntergroupRelations
                 {
                     for (int j = i + 1; j < carriers.Length; j++)
                     {
-                        // For demo, alternate between friendly and hostile
+                        // For now, alternate between friendly and hostile
                         float attitude = (i % 2 == j % 2) ? 30f : -30f; // Same faction = friendly, different = hostile
                         CreateOrgRelation(ref state, ref ecb, carrierOwnerOrgs[i].OrgEntity, carrierOwnerOrgs[j].OrgEntity, attitude);
                     }
@@ -150,4 +150,3 @@ namespace PureDOTS.Systems.IntergroupRelations
 }
 
 #endif
-

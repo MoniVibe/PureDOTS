@@ -145,7 +145,7 @@ namespace PureDOTS.Runtime.Focus
         DeepTeaching = 131,     // Better retention, slower
         GroupInstruction = 132, // Teach multiple students
         MentoringBond = 133,    // Bonus XP to specific student
-        PracticalDemo = 134,    // Skill-based teaching bonus
+        PracticalTraining = 134,    // Skill-based teaching bonus
         InspiredTeaching = 135, // Chance for eureka moment
 
         // === Refining (150-169) ===
@@ -350,4 +350,3 @@ namespace PureDOTS.Runtime.Focus
         public float ComaDuration;
     }
 }
-

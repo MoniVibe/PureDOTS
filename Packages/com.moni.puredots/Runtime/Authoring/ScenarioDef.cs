@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace PureDOTS.Authoring
 {
-    [CreateAssetMenu(fileName = "ScenarioDef", menuName = "PureDOTS/Demo Scenario Definition", order = 10)]
+    [CreateAssetMenu(fileName = "ScenarioDef", menuName = "PureDOTS/Scenario Definition", order = 10)]
     public sealed class ScenarioDef : ScriptableObject
     {
         [Header("Game Mode Toggles")]
@@ -53,4 +53,3 @@ namespace PureDOTS.Authoring
         public float Density = 0.5f;
     }
 }
-

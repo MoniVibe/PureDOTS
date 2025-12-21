@@ -28,9 +28,9 @@ namespace PureDOTS.Runtime.Economy.Resources
                 return;
             }
 
-            // Optional: skip until demo world is ready
-            if (SystemAPI.TryGetSingleton<ScenarioState>(out var demoState) &&
-                (!demoState.IsInitialized || !demoState.EnableEconomy))
+            // Optional: skip until scenario world is ready
+            if (SystemAPI.TryGetSingleton<ScenarioState>(out var scenarioState) &&
+                (!scenarioState.IsInitialized || !scenarioState.EnableEconomy))
             {
                 return;
             }
@@ -71,4 +71,3 @@ namespace PureDOTS.Runtime.Economy.Resources
     {
     }
 }
-

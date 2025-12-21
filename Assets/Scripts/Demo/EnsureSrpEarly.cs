@@ -11,12 +11,12 @@ static class EnsureSrpEarly
     {
         if (GraphicsSettings.currentRenderPipeline != null) return;
 
-        // Try to load your tiny demo URP from Resources (create it once if you haven't)
-        var asset = Resources.Load<UniversalRenderPipelineAsset>("Rendering/DemoURP");
+        // Try to load the lightweight scenario URP from Resources (create it once if you haven't).
+        var asset = Resources.Load<UniversalRenderPipelineAsset>("Rendering/ScenarioURP");
         if (asset == null)
         {
             asset = ScriptableObject.CreateInstance<UniversalRenderPipelineAsset>();
-            Debug.LogWarning("[EnsureSrpEarly] DemoURP not found in Resources/Rendering; using a transient URP asset.");
+            Debug.LogWarning("[EnsureSrpEarly] ScenarioURP not found in Resources/Rendering; using a transient URP asset.");
         }
 
         // Assign for this run only (does not touch Project Settings on disk)

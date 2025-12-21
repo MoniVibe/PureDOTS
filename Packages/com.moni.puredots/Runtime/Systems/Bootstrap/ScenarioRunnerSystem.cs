@@ -8,7 +8,6 @@ using PureDOTS.Runtime.Groups;
 using PureDOTS.Runtime.Formation;
 using PureDOTS.Runtime.IntergroupRelations;
 using PureDOTS.Runtime.Platform;
-using PureDOTS.Demo.Village;
 #if SPACE4X_AVAILABLE
 using Space4X.Mining;
 #endif
@@ -23,8 +22,8 @@ namespace PureDOTS.Systems.Bootstrap
     using VillageTagRuntime = PureDOTS.Runtime.Village.VillageTag;
 
     /// <summary>
-    /// PureDOTS system that spawns demo scenario entities from ScenarioConfig.
-    /// Spreads spawning across multiple frames using BootPhase state machine.
+    /// PureDOTS system that spawns scenario entities from ScenarioConfig.
+    /// Spreads spawning across multiple frames using the BootPhase state machine.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
@@ -55,12 +54,14 @@ namespace PureDOTS.Systems.Bootstrap
                 });
             }
 
-            // Ensure village demo visuals are enabled in the default world
-            if (!SystemAPI.HasSingleton<VillageWorldTag>())
+            // Optional legacy visuals hook for simulation/test scenes.
+#if PUREDOTS_LEGACY_SCENARIO_VISUALS && PUREDOTS_LEGACY_SCENARIO_ASM
+            if (!SystemAPI.HasSingleton<PureDOTS.LegacyScenario.Village.VillageWorldTag>())
             {
                 var tagEntity = state.EntityManager.CreateEntity();
-                state.EntityManager.AddComponent<VillageWorldTag>(tagEntity);
+                state.EntityManager.AddComponent<PureDOTS.LegacyScenario.Village.VillageWorldTag>(tagEntity);
             }
+#endif
         }
 
         [BurstCompile]
@@ -81,43 +82,43 @@ namespace PureDOTS.Systems.Bootstrap
 
             switch (scenarioState.BootPhase)
             {
-                case DemoBootPhase.None:
+                case ScenarioBootPhase.None:
                     // Initialize boot phase based on config
                     if (config.EnableGodgame)
                     {
-                        scenarioState.BootPhase = DemoBootPhase.SpawnGodgame;
+                        scenarioState.BootPhase = ScenarioBootPhase.SpawnGodgame;
                     }
                     else if (config.EnableSpace4x)
                     {
-                        scenarioState.BootPhase = DemoBootPhase.SpawnSpace4x;
+                        scenarioState.BootPhase = ScenarioBootPhase.SpawnSpace4x;
                     }
                     else
                     {
                         // Nothing to spawn, mark as done
-                        scenarioState.BootPhase = DemoBootPhase.Done;
+                        scenarioState.BootPhase = ScenarioBootPhase.Done;
                         scenarioState.IsInitialized = true;
                     }
                     em.SetComponentData(scenarioEntity, scenarioState);
                     break;
 
-                case DemoBootPhase.SpawnGodgame:
+                case ScenarioBootPhase.SpawnGodgame:
                     {
                         var random = Unity.Mathematics.Random.CreateFromIndex(config.GodgameSeed);
                         SpawnGodgameSlice(ref state, em, config, ref random);
 
                         // Move to next phase
-                        scenarioState.BootPhase = config.EnableSpace4x ? DemoBootPhase.SpawnSpace4x : DemoBootPhase.Done;
+                        scenarioState.BootPhase = config.EnableSpace4x ? ScenarioBootPhase.SpawnSpace4x : ScenarioBootPhase.Done;
                         em.SetComponentData(scenarioEntity, scenarioState);
                     }
                     break;
 
-                case DemoBootPhase.SpawnSpace4x:
+                case ScenarioBootPhase.SpawnSpace4x:
                     {
                         var spaceRandom = Unity.Mathematics.Random.CreateFromIndex(config.Space4xSeed);
                         SpawnSpace4xSlice(ref state, em, config, ref spaceRandom);
 
                         // Mark as done
-                        scenarioState.BootPhase = DemoBootPhase.Done;
+                        scenarioState.BootPhase = ScenarioBootPhase.Done;
                         scenarioState.IsInitialized = true;
                         scenarioState.EnableGodgame = config.EnableGodgame;
                         scenarioState.EnableSpace4x = config.EnableSpace4x;
@@ -133,7 +134,7 @@ namespace PureDOTS.Systems.Bootstrap
                     }
                     break;
 
-                case DemoBootPhase.Done:
+                case ScenarioBootPhase.Done:
                     state.Enabled = false;
                     break;
             }
@@ -722,13 +723,13 @@ namespace PureDOTS.Systems.Bootstrap
 
             // Add ResourceDeposit component
             // ResourceTypeId: 0=wood, 1=stone, 2=ore (assuming catalog order)
-            // For demo, we'll use the nodeType directly as ResourceTypeId index
+            // For simulation, we'll use the nodeType directly as ResourceTypeId index
             em.AddComponentData(entity, new ResourceDeposit
             {
                 ResourceTypeId = nodeType, // 0=wood, 1=stone, 2=ore
                 CurrentAmount = richness,
                 MaxAmount = richness,
-                RegenPerSecond = 0f // No regeneration for demo
+                RegenPerSecond = 0f // No regeneration for simulation
             });
 
             // Add rewind support
@@ -738,4 +739,3 @@ namespace PureDOTS.Systems.Bootstrap
 }
 
 #endif
-

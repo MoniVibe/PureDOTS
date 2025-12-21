@@ -1,11 +1,12 @@
-#if PUREDOTS_SCENARIO
+#if PUREDOTS_SCENARIO && PUREDOTS_LEGACY_SCENARIO_ASM
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using static Unity.Mathematics.math;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace PureDOTS.Demo.Village
+namespace PureDOTS.LegacyScenario.Village
 {
     /// <summary>
     /// Moves villagers back and forth between their home and work positions
@@ -17,6 +18,7 @@ namespace PureDOTS.Demo.Village
     [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor)]
+    [MovedFrom(true, "PureDOTS.Demo.Village", null, "VillagerWalkLoopSystem")]
     public partial struct VillagerWalkLoopSystem : ISystem
     {
         const float Speed         = 2f;   // units / second
@@ -24,6 +26,12 @@ namespace PureDOTS.Demo.Village
 
         public void OnCreate(ref SystemState state)
         {
+            if (!LegacyScenarioGate.IsEnabled)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             UnityEngine.Debug.Log($"[VillagerWalkLoopSystem] OnCreate in world: {state.WorldUnmanaged.Name}");
             // Only run if there are villagers in this world
             state.RequireForUpdate<VillagerTag>();
@@ -91,4 +99,3 @@ namespace PureDOTS.Demo.Village
     }
 }
 #endif
-

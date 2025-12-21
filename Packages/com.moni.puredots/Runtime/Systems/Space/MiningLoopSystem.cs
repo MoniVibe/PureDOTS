@@ -19,7 +19,7 @@ namespace PureDOTS.Systems.Space
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Gate on demo scenario initialization
+            // Gate on scenario initialization
             if (SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) && !scenario.IsInitialized)
             {
                 return;

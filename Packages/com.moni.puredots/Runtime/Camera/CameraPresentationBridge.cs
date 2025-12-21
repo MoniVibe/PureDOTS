@@ -11,6 +11,7 @@ namespace PureDOTS.Runtime.Camera
     /// This is a reference implementation - game-specific bridges can extend this pattern.
     /// </summary>
     [RequireComponent(typeof(UnityEngine.Camera))]
+    [RequireComponent(typeof(CameraRigApplier))]
     public sealed class CameraPresentationBridge : MonoBehaviour
     {
         [Header("Smoothing")]
@@ -19,18 +20,27 @@ namespace PureDOTS.Runtime.Camera
 
         [Header("Configuration")]
         [SerializeField] byte playerId = 0; // Default player
+        [SerializeField] CameraRigType rigType = CameraRigType.Godgame;
 
         private World _world;
         private EntityQuery _cameraQuery;
         private UnityEngine.Camera _targetCamera;
         private bool _queryValid;
 
-        private Vector3 _smoothedPosition;
-        private Quaternion _smoothedRotation;
+        private bool _smoothingInitialized;
+        private Vector3 _smoothedFocus;
+        private float _smoothedYaw;
+        private float _smoothedPitch;
+        private float _smoothedDistance;
 
         void Awake()
         {
             _targetCamera = GetComponent<UnityEngine.Camera>();
+            _smoothedFocus = _targetCamera.transform.position;
+            var euler = _targetCamera.transform.rotation.eulerAngles;
+            _smoothedYaw = euler.y;
+            _smoothedPitch = euler.x;
+            _smoothedDistance = 0f;
             EnsureWorld();
         }
 
@@ -72,29 +82,47 @@ namespace PureDOTS.Runtime.Camera
                 var cameraState = _world.EntityManager.GetComponentData<CameraState>(cameraEntity);
 
                 // Read authoritative state from ECS
-                Vector3 targetPos = new Vector3(
-                    cameraState.TargetPosition.x,
-                    cameraState.TargetPosition.y,
-                    cameraState.TargetPosition.z);
-                Vector3 targetForward = new Vector3(
-                    cameraState.TargetForward.x,
-                    cameraState.TargetForward.y,
-                    cameraState.TargetForward.z);
-                Vector3 targetUp = new Vector3(
-                    cameraState.TargetUp.x,
-                    cameraState.TargetUp.y,
-                    cameraState.TargetUp.z);
+                Vector3 targetFocus = new Vector3(
+                    cameraState.PivotPosition.x,
+                    cameraState.PivotPosition.y,
+                    cameraState.PivotPosition.z);
+                float targetYaw = cameraState.Yaw;
+                float targetPitch = cameraState.Pitch;
+                float targetDistance = cameraState.Distance;
 
                 // Apply visual-only smoothing (presentation layer, not gameplay)
                 float deltaTime = UnityEngine.Time.deltaTime;
-                _smoothedPosition = Vector3.Lerp(_smoothedPosition, targetPos, deltaTime / positionSmoothing);
-                Quaternion targetRotation = Quaternion.LookRotation(targetForward, targetUp);
-                _smoothedRotation = Quaternion.Slerp(_smoothedRotation, targetRotation, deltaTime / rotationSmoothing);
+                float posT = positionSmoothing > 1e-4f ? Mathf.Clamp01(deltaTime / positionSmoothing) : 1f;
+                float rotT = rotationSmoothing > 1e-4f ? Mathf.Clamp01(deltaTime / rotationSmoothing) : 1f;
 
-                // Update GameObject camera
-                _targetCamera.transform.position = _smoothedPosition;
-                _targetCamera.transform.rotation = _smoothedRotation;
-                _targetCamera.fieldOfView = cameraState.FOV;
+                if (!_smoothingInitialized)
+                {
+                    _smoothedFocus = targetFocus;
+                    _smoothedYaw = targetYaw;
+                    _smoothedPitch = targetPitch;
+                    _smoothedDistance = targetDistance;
+                    _smoothingInitialized = true;
+                }
+                else
+                {
+                    _smoothedFocus = Vector3.Lerp(_smoothedFocus, targetFocus, posT);
+                    _smoothedYaw = Mathf.LerpAngle(_smoothedYaw, targetYaw, rotT);
+                    _smoothedPitch = Mathf.LerpAngle(_smoothedPitch, targetPitch, rotT);
+                    _smoothedDistance = Mathf.Lerp(_smoothedDistance, targetDistance, posT);
+                }
+
+                CameraRigService.Publish(new CameraRigState
+                {
+                    Focus = _smoothedFocus,
+                    Pitch = _smoothedPitch,
+                    Yaw = _smoothedYaw,
+                    Roll = 0f,
+                    Distance = _smoothedDistance,
+                    Mode = CameraRigMode.Orbit,
+                    PerspectiveMode = true,
+                    FieldOfView = cameraState.FOV,
+                    RigType = rigType
+                });
             }
             catch
             {
@@ -131,9 +159,6 @@ namespace PureDOTS.Runtime.Camera
         }
     }
 }
-
-
-
 
 
 

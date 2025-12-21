@@ -13,10 +13,25 @@ namespace PureDOTS.Systems.Space
     [UpdateAfter(typeof(CarrierModuleTelemetrySystem))]
     public partial class CarrierModuleConsoleTelemetrySystem : SystemBase
     {
+        private const string EnableEnvVar = "PUREDOTS_CARRIER_MODULE_CONSOLE";
+        private bool _loggingEnabled;
+
         protected override void OnCreate()
         {
             RequireForUpdate<CarrierModuleTelemetry>();
             RequireForUpdate<TimeState>();
+
+            if (Application.isBatchMode)
+            {
+                Enabled = false;
+                return;
+            }
+
+            _loggingEnabled = IsLoggingEnabled();
+            if (!_loggingEnabled)
+            {
+                Enabled = false;
+            }
         }
 
         protected override void OnUpdate()
@@ -51,6 +66,26 @@ namespace PureDOTS.Systems.Space
             logState.LastOverBudget = telemetry.AnyOverBudget;
 
             UnityEngine.Debug.Log($"[ModuleTelemetry] carriers={telemetry.CarrierCount} modules: damaged={telemetry.DamagedModules} destroyed={telemetry.DestroyedModules} tickets={telemetry.RepairTicketCount} power(draw/gen/net)=({telemetry.TotalPowerDraw:F1}/{telemetry.TotalPowerGeneration:F1}/{telemetry.NetPower:F1}) overBudget={telemetry.AnyOverBudget}");
+        }
+
+        private static bool IsLoggingEnabled()
+        {
+            var value = global::System.Environment.GetEnvironmentVariable(EnableEnvVar);
+            return IsTruthy(value);
+        }
+
+        private static bool IsTruthy(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            value = value.Trim();
+            return value.Equals("1", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("true", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", System.StringComparison.OrdinalIgnoreCase);
         }
     }
 }

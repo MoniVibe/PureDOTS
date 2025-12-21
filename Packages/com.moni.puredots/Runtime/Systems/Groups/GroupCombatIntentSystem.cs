@@ -43,13 +43,13 @@ namespace PureDOTS.Systems.Groups
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demoState))
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenarioState))
             {
                 return;
             }
 
             // Only process for Godgame (combat intent is primarily for ground units)
-            if (!demoState.EnableGodgame)
+            if (!scenarioState.EnableGodgame)
             {
                 return;
             }
@@ -81,7 +81,7 @@ namespace PureDOTS.Systems.Groups
                 }
 
                 // Check personality traits (if available) to determine behavior
-                // For demo, use simple random chance based on health
+                // For now, use simple random chance based on health
                 float healthPercent = health.ValueRO.Current / math.max(1f, health.ValueRO.Max);
                 float randomValue = random.NextFloat();
 
@@ -111,4 +111,3 @@ namespace PureDOTS.Systems.Groups
         }
     }
 }
-

@@ -1,12 +1,14 @@
-#if PUREDOTS_SCENARIO
+#if PUREDOTS_SCENARIO && PUREDOTS_LEGACY_SCENARIO_ASM
 
 using UnityEngine;
 using Unity.Entities;
 using Unity.Rendering;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace PureDOTS.Demo.Rendering
+namespace PureDOTS.LegacyScenario.Rendering
 {
     // Shared component for debug render mesh array (managed).
+    [MovedFrom(true, "PureDOTS.Demo.Rendering", null, "RenderMeshArraySingleton")]
     public struct RenderMeshArraySingleton : ISharedComponentData, System.IEquatable<RenderMeshArraySingleton>
     {
         // Must remain 'Value' to match consumers (e.g., VisualProfiles).
@@ -29,15 +31,18 @@ namespace PureDOTS.Demo.Rendering
     }
 
     [DisallowMultipleComponent]
+    [MovedFrom(true, "PureDOTS.Demo.Rendering", null, "UniversalDebugRenderConfigAuthoring")]
     public sealed class UniversalDebugRenderConfigAuthoring : MonoBehaviour
     {
         public Mesh DebugMesh;
         public Material DebugMaterial;
     }
 
+    [MovedFrom(true, "PureDOTS.Demo.Rendering", null, "UniversalDebugRenderConfigTag")]
     public struct UniversalDebugRenderConfigTag : IComponentData {}
 
     // Baker<T> lives in Unity.Entities namespace (assembly Unity.Entities.Hybrid).
+    [MovedFrom(true, "PureDOTS.Demo.Rendering", null, "UniversalDebugRenderConfigBaker")]
     public sealed class UniversalDebugRenderConfigBaker : Baker<UniversalDebugRenderConfigAuthoring>
     {
         public override void Bake(UniversalDebugRenderConfigAuthoring authoring)
@@ -64,4 +69,3 @@ namespace PureDOTS.Demo.Rendering
 }
 
 #endif
-

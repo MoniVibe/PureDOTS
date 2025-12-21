@@ -29,9 +29,9 @@ namespace PureDOTS.Runtime.Economy.Markets
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var demo) ||
-                !demo.IsInitialized ||
-                !demo.EnableEconomy)
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) ||
+                !scenario.IsInitialized ||
+                !scenario.EnableEconomy)
             {
                 return;
             }

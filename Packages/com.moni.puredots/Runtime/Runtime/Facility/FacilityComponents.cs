@@ -29,7 +29,7 @@ namespace PureDOTS.Runtime.Facility
 
     /// <summary>
     /// Recipe definition for facility crafting.
-    /// For demo, stored as static data. Can be moved to blob assets later.
+    /// For now, stored as static data. Can be moved to blob assets later.
     /// </summary>
     public struct FacilityRecipeDef
     {
@@ -43,13 +43,13 @@ namespace PureDOTS.Runtime.Facility
     }
 
     /// <summary>
-    /// Static recipe catalog for demo facilities.
+    /// Static recipe catalog for starter facilities.
     /// </summary>
     public static class FacilityRecipes
     {
         /// <summary>
         /// Gets a recipe by facility archetype ID.
-        /// Returns the first recipe for that archetype (assumes 1 recipe per archetype for demo).
+        /// Returns the first recipe for that archetype (assumes 1 recipe per archetype for now).
         /// </summary>
         public static bool TryGetRecipe(FacilityArchetypeId archetypeId, out FacilityRecipeDef recipe)
         {
@@ -120,4 +120,3 @@ namespace PureDOTS.Runtime.Facility
         }
     }
 }
-

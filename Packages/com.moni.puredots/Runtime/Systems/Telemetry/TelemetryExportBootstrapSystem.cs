@@ -47,6 +47,10 @@ namespace PureDOTS.Systems.Telemetry
             var runIdValue = GetEnv("PUREDOTS_TELEMETRY_RUN_ID");
             var pathValue = GetEnv("PUREDOTS_TELEMETRY_PATH");
             var flagsValue = GetEnv("PUREDOTS_TELEMETRY_FLAGS");
+            var cadenceValue = GetEnv("PUREDOTS_TELEMETRY_CADENCE_TICKS");
+            var lodValue = GetEnv("PUREDOTS_TELEMETRY_LOD");
+            var loopsValue = GetEnv("PUREDOTS_TELEMETRY_LOOPS");
+            var maxEventsValue = GetEnv("PUREDOTS_TELEMETRY_MAX_EVENTS_PER_TICK");
 
             var flags = configRW.ValueRO.Flags;
             if (!string.IsNullOrEmpty(flagsValue) && TryParseFlags(flagsValue, out var parsedFlags))
@@ -72,6 +76,10 @@ namespace PureDOTS.Systems.Telemetry
             configRW.ValueRW.OutputPath = new FixedString512Bytes(pathValue);
             configRW.ValueRW.RunId = runId;
             configRW.ValueRW.Flags = flags;
+            configRW.ValueRW.CadenceTicks = ResolveCadence(configRW.ValueRO.CadenceTicks, cadenceValue);
+            configRW.ValueRW.Lod = ResolveLod(configRW.ValueRO.Lod, lodValue);
+            configRW.ValueRW.Loops = ResolveLoops(configRW.ValueRO.Loops, loopsValue);
+            configRW.ValueRW.MaxEventsPerTick = ResolveMaxEvents(configRW.ValueRO.MaxEventsPerTick, maxEventsValue);
             configRW.ValueRW.Enabled = 1;
             configRW.ValueRW.Version++;
             _initialized = true;
@@ -184,9 +192,121 @@ namespace PureDOTS.Systems.Telemetry
                 case "telemetryevents":
                     flag = TelemetryExportFlags.IncludeTelemetryEvents;
                     return true;
+                case "proofs":
+                    flag = TelemetryExportFlags.IncludeTelemetryEvents;
+                    return true;
             }
 
             return false;
+        }
+
+        private static uint ResolveCadence(uint currentCadence, string cadenceValue)
+        {
+            var cadence = currentCadence > 0 ? currentCadence : 30u;
+            if (!string.IsNullOrEmpty(cadenceValue) && uint.TryParse(cadenceValue, out var parsed) && parsed > 0)
+            {
+                cadence = parsed;
+            }
+
+            return cadence;
+        }
+
+        private static TelemetryExportLod ResolveLod(TelemetryExportLod currentLod, string lodValue)
+        {
+            var lod = currentLod;
+            if (string.IsNullOrEmpty(lodValue))
+            {
+                return lod;
+            }
+
+            if (byte.TryParse(lodValue, out var numeric))
+            {
+                lod = (TelemetryExportLod)numeric;
+                return lod;
+            }
+
+            var token = lodValue.Trim().ToLowerInvariant();
+            switch (token)
+            {
+                case "minimal":
+                    return TelemetryExportLod.Minimal;
+                case "standard":
+                    return TelemetryExportLod.Standard;
+                case "full":
+                    return TelemetryExportLod.Full;
+                default:
+                    return lod;
+            }
+        }
+
+        private static TelemetryLoopFlags ResolveLoops(TelemetryLoopFlags currentLoops, string loopsValue)
+        {
+            var loops = currentLoops == TelemetryLoopFlags.None ? TelemetryLoopFlags.All : currentLoops;
+            if (string.IsNullOrEmpty(loopsValue))
+            {
+                return loops;
+            }
+
+            if (int.TryParse(loopsValue, out var numeric))
+            {
+                return (TelemetryLoopFlags)numeric;
+            }
+
+            var parts = loopsValue.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                return loops;
+            }
+
+            loops = TelemetryLoopFlags.None;
+            foreach (var part in parts)
+            {
+                var token = part.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(token))
+                {
+                    continue;
+                }
+
+                switch (token)
+                {
+                    case "all":
+                        loops |= TelemetryLoopFlags.All;
+                        break;
+                    case "extract":
+                        loops |= TelemetryLoopFlags.Extract;
+                        break;
+                    case "logistics":
+                        loops |= TelemetryLoopFlags.Logistics;
+                        break;
+                    case "construction":
+                        loops |= TelemetryLoopFlags.Construction;
+                        break;
+                    case "exploration":
+                        loops |= TelemetryLoopFlags.Exploration;
+                        break;
+                    case "combat":
+                        loops |= TelemetryLoopFlags.Combat;
+                        break;
+                }
+            }
+
+            if (loops == TelemetryLoopFlags.None)
+            {
+                loops = TelemetryLoopFlags.All;
+            }
+
+            return loops;
+        }
+
+        private static ushort ResolveMaxEvents(ushort currentMax, string maxEventsValue)
+        {
+            var maxEvents = currentMax > 0 ? currentMax : (ushort)64;
+            if (!string.IsNullOrEmpty(maxEventsValue) && int.TryParse(maxEventsValue, out var parsed) && parsed > 0)
+            {
+                maxEvents = (ushort)Math.Min(parsed, ushort.MaxValue);
+            }
+
+            return maxEvents;
         }
     }
 }

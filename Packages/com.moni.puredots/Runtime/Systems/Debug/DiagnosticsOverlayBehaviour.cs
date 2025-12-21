@@ -33,8 +33,10 @@ namespace PureDOTS.Runtime.Debugging
             if (CameraRigService.HasState)
             {
                 var state = CameraRigService.Current;
-                GUILayout.Label($"Pos: {state.Position.x:F1}, {state.Position.y:F1}, {state.Position.z:F1}");
-                GUILayout.Label($"Yaw: {Mathf.Rad2Deg * state.Yaw:F1}°  Pitch: {Mathf.Rad2Deg * state.Pitch:F1}°");
+                CameraRigMath.DerivePose(in state, out var position, out _);
+                GUILayout.Label($"Pos: {position.x:F1}, {position.y:F1}, {position.z:F1}");
+                GUILayout.Label($"Focus: {state.Focus.x:F1}, {state.Focus.y:F1}, {state.Focus.z:F1}");
+                GUILayout.Label($"Yaw: {state.Yaw:F1}°  Pitch: {state.Pitch:F1}°  Dist: {state.Distance:F1}");
             }
             else
             {
@@ -86,5 +88,4 @@ namespace PureDOTS.Runtime.Debugging
     }
 }
 #endif
-
 

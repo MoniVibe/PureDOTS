@@ -11,6 +11,7 @@ using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Signals;
 using PureDOTS.Runtime.Skills;
+using PureDOTS.Runtime.Social;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
@@ -329,6 +330,7 @@ namespace PureDOTS.Systems
             // EnsureResourceRecipeSet(entityManager);
 
             EnsureAICommandQueue(entityManager);
+            EnsureMoralityEventQueue(entityManager);
 
             EnsureSpatialGridSingleton(entityManager);
             EnsureSpatialProviderRegistry(entityManager);
@@ -459,6 +461,31 @@ namespace PureDOTS.Systems
             if (!entityManager.HasBuffer<AICommand>(queueEntity))
             {
                 entityManager.AddBuffer<AICommand>(queueEntity);
+            }
+        }
+
+        private static void EnsureMoralityEventQueue(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<MoralityEventQueueTag>());
+            Entity queueEntity;
+
+            if (query.IsEmptyIgnoreFilter)
+            {
+                queueEntity = entityManager.CreateEntity(typeof(MoralityEventQueueTag));
+            }
+            else
+            {
+                queueEntity = query.GetSingletonEntity();
+            }
+
+            if (!entityManager.HasBuffer<MoralityEvent>(queueEntity))
+            {
+                entityManager.AddBuffer<MoralityEvent>(queueEntity);
+            }
+
+            if (!entityManager.HasComponent<MoralityEventProcessingState>(queueEntity))
+            {
+                entityManager.AddComponentData(queueEntity, default(MoralityEventProcessingState));
             }
         }
 

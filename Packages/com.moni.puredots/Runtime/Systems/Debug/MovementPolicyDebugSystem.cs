@@ -19,12 +19,25 @@ namespace PureDOTS.Systems.Debug
     [UpdateAfter(typeof(TransformSystemGroup))]
     public partial struct MovementPolicyDebugSystem : ISystem
     {
+        private const string EnableEnvVar = "PUREDOTS_MOVEMENT_POLICY_DEBUG";
         private uint _lastLogTick;
         private const uint LogIntervalTicks = 60; // Log once per second at 60 TPS
 
         [BurstDiscard]
         public void OnCreate(ref SystemState state)
         {
+            if (Application.isBatchMode)
+            {
+                state.Enabled = false;
+                return;
+            }
+
+            if (!IsLoggingEnabled())
+            {
+                state.Enabled = false;
+                return;
+            }
+
             _lastLogTick = 0;
         }
 
@@ -86,6 +99,26 @@ namespace PureDOTS.Systems.Debug
         public void OnDestroy(ref SystemState state)
         {
         }
+
+        private static bool IsLoggingEnabled()
+        {
+            var value = global::System.Environment.GetEnvironmentVariable(EnableEnvVar);
+            return IsTruthy(value);
+        }
+
+        private static bool IsTruthy(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            value = value.Trim();
+            return value.Equals("1", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("true", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", System.StringComparison.OrdinalIgnoreCase);
+        }
     }
 #else
     // Disabled in non-editor builds
@@ -116,4 +149,3 @@ namespace PureDOTS.Systems.Debug
     }
 #endif
 }
-

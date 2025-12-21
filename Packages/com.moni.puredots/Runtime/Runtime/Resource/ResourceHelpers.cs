@@ -6,7 +6,7 @@ namespace PureDOTS.Runtime.Resource
 {
     /// <summary>
     /// Burst-friendly helper functions for managing ResourceStack buffers.
-    /// Uses linear search for demo-scale (small inventories).
+    /// Uses linear search for small-scale inventories.
     /// </summary>
     public static class ResourceHelpers
     {
@@ -105,4 +105,3 @@ namespace PureDOTS.Runtime.Resource
         }
     }
 }
-

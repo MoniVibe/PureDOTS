@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Modularity;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
@@ -72,6 +73,30 @@ namespace PureDOTS.Runtime.Systems.Performance
                 {
                     SpawnTestEntities(ref state, entry.Count, ref random);
                 }
+                else if (registryId == "registry.blank")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: false, includeRelations: false, includeProfile: false);
+                }
+                else if (registryId == "registry.blank_needs")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: true, includeRelations: false, includeProfile: false);
+                }
+                else if (registryId == "registry.blank_relations")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: false, includeRelations: true, includeProfile: false);
+                }
+                else if (registryId == "registry.blank_profile")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: false, includeRelations: false, includeProfile: true);
+                }
+                else if (registryId == "registry.blank_agency")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: false, includeRelations: false, includeProfile: false, includeAgency: true);
+                }
+                else if (registryId == "registry.blank_all")
+                {
+                    SpawnBlankEntities(ref state, entry.Count, ref random, includeNeeds: true, includeRelations: true, includeProfile: true, includeAgency: true);
+                }
                 else if (registryId == "registry.aggregate")
                 {
                     SpawnAggregates(ref state, entry.Count, ref random);
@@ -86,6 +111,51 @@ namespace PureDOTS.Runtime.Systems.Performance
 
             _hasProcessed = true;
             Debug.Log($"[ScenarioTestEntitySpawner] Processed scenario: {scenarioInfo.ScenarioId}");
+        }
+
+        private void SpawnBlankEntities(
+            ref SystemState state,
+            int count,
+            ref Unity.Mathematics.Random random,
+            bool includeNeeds,
+            bool includeRelations,
+            bool includeProfile,
+            bool includeAgency = false)
+        {
+            var center = float3.zero;
+            var radius = 25f;
+
+            for (int i = 0; i < count; i++)
+            {
+                var entity = state.EntityManager.CreateEntity();
+
+                // Random position in a disk (XZ)
+                var angle = random.NextFloat(0f, math.PI * 2f);
+                var r = random.NextFloat(0f, radius);
+                var pos = center + new float3(r * math.cos(angle), 0f, r * math.sin(angle));
+
+                state.EntityManager.AddComponentData(entity, LocalTransform.FromPosition(pos));
+
+                if (includeNeeds)
+                {
+                    state.EntityManager.AddComponent<NeedsModuleTag>(entity);
+                }
+
+                if (includeRelations)
+                {
+                    state.EntityManager.AddComponent<RelationsModuleTag>(entity);
+                }
+
+                if (includeProfile)
+                {
+                    state.EntityManager.AddComponent<ProfileModuleTag>(entity);
+                }
+
+                if (includeAgency)
+                {
+                    state.EntityManager.AddComponent<AgencyModuleTag>(entity);
+                }
+            }
         }
 
         private void SpawnTestEntities(ref SystemState state, int count, ref Unity.Mathematics.Random random)
@@ -201,4 +271,3 @@ namespace PureDOTS.Runtime.Systems.Performance
         }
     }
 }
-

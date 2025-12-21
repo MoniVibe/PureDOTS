@@ -15,6 +15,10 @@ Documentation is organized by responsibility:
 - `TRI_PROJECT_BRIEFING.md` (root) – project overview and coding patterns
 - `Docs/INDEX.md` (this file) – documentation navigation
 
+## UI / Presentation
+- [Presentation/TRI_UI_Launch_MainMenu.md](Presentation/TRI_UI_Launch_MainMenu.md) – shared launch/main menu + worldgen + time-controls contract
+- [Presentation/TRI_UI_BehaviorCloud_Widget.md](Presentation/TRI_UI_BehaviorCloud_Widget.md) – behavior cloud “card shell + RenderTexture” spec
+
 ## New Project Setup
 - `TRI_PROJECT_BRIEFING.md` (root) – project overview and structure
 - `Docs/INTEGRATION_GUIDE.md` – PureDOTS integration reference
@@ -68,6 +72,18 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - [Concepts/Core/Communication_And_Language_System.md](Concepts/Core/Communication_And_Language_System.md) - **Communication, languages, and spell casting**
 - [Concepts/Core/Reputation_System.md](Concepts/Core/Reputation_System.md) - **Reputation, trust, and guild membership systems**
 - [Concepts/Core/Dialogue_Content_System.md](Concepts/Core/Dialogue_Content_System.md) - **Dialogue topics, deception, influence, and cooperation**
+- [Concepts/Core/Entity_Cooperation_System.md](Concepts/Core/Entity_Cooperation_System.md) - **Multi-domain entity cooperation and mutual care**
+- Cooperation types: Magic pooling, ritual casting, coordinated volleys, collaborative research/crafting, crew coordination, music ensembles
+- Cohesion mechanics: Skills (40%) + Relations (30%) + Communication (20%) + Experience (10%) determines cooperation quality
+- Efficiency scaling: 1.5× to 3× effectiveness with perfect cohesion depending on cooperation type
+- Magic cooperation: Mages channel mana to powerful allies, increases cast speed and efficiency from one source
+- Combat cooperation: Archers/bombardiers coordinate fire, phalanx cohesion (400 warriors as one)
+- Production cooperation: Researchers/craftsmen collaborate, quality depends on skills and cohesion
+- Facility cooperation: Officers, captains, pilots + operators + hangar crews coordinate using comms/sensors
+- Social cooperation: Band members, companions develop shared sign languages
+- Mutual care: Mechanics care about pilots surviving, pilots care about mechanics sleeping/eating (morale +26%, performance +17%)
+- Multi-layer cooperation: Strategic → Operational → Tactical → Individual cascading bonuses
+- Cross-game: Magic circles (Godgame), flight deck crews (Space4X), both use same framework
 - Features: Event perception, reaction computation, relation changes, grudges, debts
 - Dialogue topics: Social, tactical, strategic, personal, transactional (greetings, romance, familial, neighborly, outsider, teaching/learning)
 - Profile sharing: Entities reveal/lie about identity, profession, guild, skills, intentions
@@ -114,6 +130,17 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - [Concepts/Core/Combat_Mechanics_Core.md](Concepts/Core/Combat_Mechanics_Core.md) - **Core combat mechanics** (accuracy, damage, knockback, stability)
 - [Concepts/Core/Bay_And_Platform_Combat.md](Concepts/Core/Bay_And_Platform_Combat.md) - **Bay and platform combat system**
 - [Concepts/Core/Mobile_Cities_And_Land_Carriers.md](Concepts/Core/Mobile_Cities_And_Land_Carriers.md) - **Mobile cities and land carriers**
+- [Concepts/Core/Tactical_Commands_And_Formations.md](Concepts/Core/Tactical_Commands_And_Formations.md) - **Tactical commands and formation system**
+- Tactical commands: Follow, attack, defend, stay, formations, retreat through communication system
+- Command compliance: Authority + relations + personality + priority determine obedience
+- Formation types: Phalanx, shield wall, wedge, testudo, skirmish, square, line, column (infantry), line ahead/abreast (naval)
+- Formation training: Entities must learn formations through drilling, proficiency 0% to 100%
+- Formation cohesion: Proficiency (50%) + Relations (30%) + Position Adherence (20%) determines integrity
+- Formation bonuses: Phalanx (+100% defense, immune to flanking/charges, 50% speed), Wedge (+60% attack, -20% defense), Testudo (+200% defense, 30% speed)
+- Bonuses scale with cohesion: 50% cohesion = 50% of bonuses (phalanx 100% defense becomes +50%)
+- Breaking conditions: Casualties, morale collapse, leader death, flanking attacks, disruption, cohesion below threshold
+- Formation strength example: Novice phalanx (30% proficiency, 40% relations) = 50% cohesion vs Veteran phalanx (90% proficiency, 80% relations) = 95% cohesion
+- Communication-based: Commands use language/clarity system, can be misunderstood, hand signals vs verbal orders
 - Accuracy disruption: Damage and knockback reduce accuracy, offset by physical strength and focus usage
 - Stability system: (Strength + log(Mass)) / 2 + FocusUsage determines disruption resistance (0-95% dampening)
 - Damage type modifiers: Physical 1.0×, Lightning 1.5×, Psychic 1.8×, Void 2.0× disruption
@@ -146,6 +173,49 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - Strategic depth: Power management in combat (reactor damage, battery depletion, surge timing)
 - Works for: Ships, mechs, buildings, stations, magic systems (mana as energy)
 - Deterministic: Consistent power flow calculations
+
+## Magic & Ritual Systems 🔮⚡ NEW
+
+**Focus-fueled sustained magic** where intensity scales with investment and interruption causes dangerous backlash:
+- [Concepts/Core/Ritual_Magic_System.md](Concepts/Core/Ritual_Magic_System.md) - **Complete ritual magic system**
+- Ritual types: Barriers, shields, storms (blizzard/lightning/flame/acid/void), healing rains, auras, control fields, summoning
+- Focus-based intensity: Baseline focus to maintain, more focus = more power (linear/exponential/logarithmic/stepped scaling)
+- Concentration mechanics: Must maintain concentration, fueled by focus, checked by mental stats
+- Disruption sources: Damage, stuns, silences (verbal rituals), knockbacks, forced movement, mana depletion, fear
+- Concentration checks: Mental Fortitude × Skill × Resistance vs Disruption Severity
+- Stat resistance: Willpower, discipline, concentration skill resist interruption
+- Alignment consequences: Lawful (safe, 10× damage), Neutral (moderate, 50× damage), Chaotic (DANGEROUS, 200× damage + catastrophic effects)
+- Backlash severity: Minor (energy dissipates) → Moderate (temporary effects) → Major (dangerous explosion) → Catastrophic (reality-warping disaster)
+- Chaotic ritual interruption: Reality tears, unintended summons, mass madness, portal leaks, chain lightning, permanent curses
+- Cooperative rituals: Multi-caster bonuses (up to 3× intensity at perfect cohesion), uses cooperation system
+- Intensity examples: Blizzard 1.0 (10 dmg/sec, -20% speed) → 10.0 (100 dmg/sec, -90% speed, 50% freeze)
+- Space4X ship rituals: Siege beams (focused energy), repair clouds (nanite healing), jam fields (sensor disruption), shield links (unified defense)
+- Ship cooperation: Multiple ships pool power for massive effects, interrupted beams cause energy feedback
+- Example consequences: Void rift interrupted at 9.0 intensity = 1,800 damage + reality tear + summon 3d6 void horrors + mass madness + portal leak
+- Cross-game: Magical rituals (Godgame), psionic/tech rituals (Space4X), both use same framework
+
+## Environmental Resources & Corruption 🔮☢️ NEW
+
+**Tiberium-like crystal growth** with exponential propagation and environmental consequences:
+- [Concepts/Core/Catalytic_Crystal_System.md](Concepts/Core/Catalytic_Crystal_System.md) - **Complete catalytic crystal system**
+- Crystal types: Green (10× energy), Blue (15× energy, slow growth), Red (8× energy, explosive), Purple (20× energy, extreme mutations)
+- Advanced types: Nexus (accelerates nearby growth), Reactive (explodes when damaged), Psionic (affects minds)
+- Self-propagating: Exponential growth curves, spreads 5-350 m²/hour depending on stage
+- Energy density: 100-200 kWh/kg (10-20× better than coal), massive power source
+- Flora corruption stages: Healthy → Wilting (10-30%) → Infested (30-60%) → Mutated (60-90%) → Crystalline (90-100%, death)
+- Fauna mutations: Minor → Moderate → Major → Abomination (extremely dangerous)
+- Mutation types: Crystalline hide, extra limbs, radioactive bite, enhanced senses, regenerative healing, size increase
+- Terrain corruption: Soil toxicity, water contamination, structural collapse, crystal veins through bedrock
+- Radiation mechanics: Accumulated dose (Sieverts), lethal at 50+ Sv, protective equipment required
+- Growth stages: Seedling (<10kg) → Sprouting (10-100kg) → Mature (100-1000kg) → Blooming (1000-10000kg) → Overgrown (>10000kg) → Critical (unstable)
+- Bloom events: 10× growth rate, creates mutant abominations, devastates biomes
+- Detonations: Explosive crystals create 5,000 kg TNT equivalent blasts, chain reactions
+- Harvesting methods: Manual (safe, 90% recovery), explosives (dangerous, 20% recovery), controlled burn (0% recovery, prevents spread)
+- Containment: Sonic fences (60% reduction), stasis fields (100% reduction), nanite swarms (active removal), underground isolation
+- Excision strategies: Explosive removal, thermal excision, biological agents, teleportation, underground containment
+- Strategic dilemma: Exploit for massive energy vs protect environment from corruption
+- Cross-game: Crystal fields threatening villages (Godgame), asteroid infestations, space station breaches, planetary corruption (Space4X)
+- Deterministic: Same growth conditions → same spread patterns
 
 ## UI/UX & Information Systems 📖🖱️ NEW
 

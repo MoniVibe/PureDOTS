@@ -269,7 +269,11 @@ namespace PureDOTS.Systems.Telemetry
             }
             else if (!_exportEnabled && !_missingExportWarningLogged)
             {
-                UnityDebug.LogWarning("[PerformanceTelemetry] Budget failure detected but PUREDOTS_PERF_TELEMETRY_PATH is not set; telemetry will not be written.");
+                if (!Application.isBatchMode)
+                {
+                    UnityDebug.LogWarning("[PerformanceTelemetry] Budget failure detected but PUREDOTS_PERF_TELEMETRY_PATH is not set; telemetry will not be written.");
+                }
+
                 _missingExportWarningLogged = true;
             }
 

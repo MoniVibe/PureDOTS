@@ -6,7 +6,7 @@ using Unity.Mathematics;
 namespace PureDOTS.Systems.History
 {
     /// <summary>
-    /// Records health history for demo-important entities.
+    /// Records health history for scenario-critical entities.
     /// Runs during Record mode only.
     /// </summary>
     [BurstCompile]
@@ -87,4 +87,3 @@ namespace PureDOTS.Systems.History
         }
     }
 }
-

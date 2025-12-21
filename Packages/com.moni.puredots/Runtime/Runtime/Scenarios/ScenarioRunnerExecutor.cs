@@ -112,11 +112,12 @@ namespace PureDOTS.Runtime.Scenarios
 
             DefaultWorldInitializationInitializationHook(world);
             InjectScenarioMetadata(world.EntityManager, in scenario);
+            var scenarioTickEntity = EnsureScenarioTick(world.EntityManager);
 
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
-            var timeGroup = TryGetGroup(world, RootGroupTypeNames[0]);
             var simulationGroup = world.GetExistingSystemManaged<SimulationSystemGroup>();
             var fixedStepGroup = world.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
+            var lateSimulationGroup = world.GetOrCreateSystemManaged<LateSimulationSystemGroup>();
 
             var entityManager = world.EntityManager;
 
@@ -135,12 +136,14 @@ namespace PureDOTS.Runtime.Scenarios
                     {
                         var elapsed = (i + 1) * FixedDeltaTime;
                         world.Unmanaged.Time = new TimeData(FixedDeltaTime, elapsed);
+                        UpdateScenarioTick(world.EntityManager, scenarioTickEntity, (uint)(i + 1), elapsed);
 
                         FlushCommandsForTick(world.EntityManager, rewindEntity, commandQueue, i);
 
-                        timeGroup?.Update();
+                        initGroup.Update();
                         fixedStepGroup?.Update();
                         simulationGroup?.Update();
+                        lateSimulationGroup?.Update();
 
                         ScenarioRunRecorder.RecordDigest(entityManager);
                     }
@@ -173,6 +176,7 @@ namespace PureDOTS.Runtime.Scenarios
 
             world.GetOrCreateSystemManaged<SimulationSystemGroup>()?.SortSystems();
             world.GetOrCreateSystemManaged<InitializationSystemGroup>()?.SortSystems();
+            world.GetOrCreateSystemManaged<LateSimulationSystemGroup>()?.SortSystems();
 
             return world;
         }
@@ -199,6 +203,37 @@ namespace PureDOTS.Runtime.Scenarios
                 map.Add(command.Tick, command);
             }
             return map;
+        }
+
+        private static Entity EnsureScenarioTick(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ScenarioRunnerTick>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                return query.GetSingletonEntity();
+            }
+
+            var entity = entityManager.CreateEntity(typeof(ScenarioRunnerTick));
+            entityManager.SetComponentData(entity, new ScenarioRunnerTick
+            {
+                Tick = 0,
+                WorldSeconds = 0f
+            });
+            return entity;
+        }
+
+        private static void UpdateScenarioTick(EntityManager entityManager, Entity tickEntity, uint tick, float worldSeconds)
+        {
+            if (tickEntity == Entity.Null || !entityManager.Exists(tickEntity))
+            {
+                return;
+            }
+
+            entityManager.SetComponentData(tickEntity, new ScenarioRunnerTick
+            {
+                Tick = tick,
+                WorldSeconds = worldSeconds
+            });
         }
 
         private static Entity ResolveRewindEntity(EntityManager entityManager)
@@ -302,7 +337,7 @@ namespace PureDOTS.Runtime.Scenarios
                         ScenarioExitUtility.ReportScenarioContract("ScenarioStateUninitialized", "Scenario never reached initialized state.");
                     }
 
-                    if (scenarioState.BootPhase != DemoBootPhase.Done)
+                    if (scenarioState.BootPhase != ScenarioBootPhase.Done)
                     {
                         ScenarioRunIssueReporter.Report(ScenarioIssueKind.ScenarioContract, ScenarioSeverity.Warn, "ScenarioBootIncomplete", $"Boot phase = {scenarioState.BootPhase}");
                     }
@@ -504,6 +539,15 @@ namespace PureDOTS.Runtime.Scenarios
                 entityManager.SetComponentData(overrideEntity, new BehaviorScenarioOverrideComponent
                 {
                     Value = scenario.BehaviorOverride
+                });
+            }
+
+            if (scenario.HasTelemetryOverride)
+            {
+                var overrideEntity = entityManager.CreateEntity(typeof(TelemetryScenarioOverrideComponent));
+                entityManager.SetComponentData(overrideEntity, new TelemetryScenarioOverrideComponent
+                {
+                    Value = scenario.TelemetryOverride
                 });
             }
         }

@@ -25,6 +25,7 @@ namespace PureDOTS.Systems.Perception
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<SensorSignature> _signatureLookup;
         private ComponentLookup<Detectable> _detectableLookup; // Fallback for entities without SensorSignature
+        private ComponentLookup<MediumContext> _mediumLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -38,6 +39,7 @@ namespace PureDOTS.Systems.Perception
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _signatureLookup = state.GetComponentLookup<SensorSignature>(true);
             _detectableLookup = state.GetComponentLookup<Detectable>(true);
+            _mediumLookup = state.GetComponentLookup<MediumContext>(true);
         }
 
         [BurstCompile]
@@ -71,6 +73,7 @@ namespace PureDOTS.Systems.Perception
             _transformLookup.Update(ref state);
             _signatureLookup.Update(ref state);
             _detectableLookup.Update(ref state);
+            _mediumLookup.Update(ref state);
 
             // Collect all detectable entities (with SensorSignature or Detectable fallback)
             var detectableCount = 0;
@@ -95,6 +98,9 @@ namespace PureDOTS.Systems.Perception
             {
                 var threatLevel = (byte)0;
                 var category = DetectableCategory.Neutral;
+                var medium = _mediumLookup.HasComponent(entity)
+                    ? _mediumLookup[entity].Type
+                    : MediumType.Gas;
 
                 // Try to get threat/category from Detectable if present
                 if (_detectableLookup.HasComponent(entity))
@@ -112,7 +118,8 @@ namespace PureDOTS.Systems.Perception
                     Signature = signature.ValueRO,
                     ThreatLevel = threatLevel,
                     Category = category,
-                    HasSignature = true
+                    HasSignature = true,
+                    Medium = medium
                 });
             }
 
@@ -122,6 +129,9 @@ namespace PureDOTS.Systems.Perception
             {
                 if (!_signatureLookup.HasComponent(entity))
                 {
+                    var medium = _mediumLookup.HasComponent(entity)
+                        ? _mediumLookup[entity].Type
+                        : MediumType.Gas;
                     detectables.Add(new DetectableData
                     {
                         Entity = entity,
@@ -130,7 +140,8 @@ namespace PureDOTS.Systems.Perception
                         Signature = SensorSignature.Default, // Use default signature
                         ThreatLevel = detectable.ValueRO.ThreatLevel,
                         Category = detectable.ValueRO.Category,
-                        HasSignature = false
+                        HasSignature = false,
+                        Medium = medium
                     });
                 }
             }
@@ -165,6 +176,11 @@ namespace PureDOTS.Systems.Perception
                 var nearestDistSq = float.MaxValue;
                 var perceptionCount = 0;
 
+                var sensorMedium = _mediumLookup.HasComponent(entity)
+                    ? _mediumLookup[entity].Type
+                    : MediumType.Gas;
+                var enabledChannels = MediumUtilities.FilterChannels(sensorMedium, capability.ValueRO.EnabledChannels);
+
                 // Detect entities on enabled channels
                 for (int i = 0; i < detectables.Length && perceptionCount < capability.ValueRO.MaxTrackedTargets; i++)
                 {
@@ -193,7 +209,6 @@ namespace PureDOTS.Systems.Perception
                     float bestConfidence = 0f;
 
                     // Check each enabled channel
-                    var enabledChannels = capability.ValueRO.EnabledChannels;
                     if ((enabledChannels & PerceptionChannel.Vision) != 0)
                     {
                         var confidence = EvaluateChannelDetection(
@@ -204,7 +219,9 @@ namespace PureDOTS.Systems.Perception
                             distance,
                             effectiveRange,
                             fovCos,
-                            capability.ValueRO.Acuity);
+                            capability.ValueRO.Acuity,
+                            sensorMedium,
+                            target.Medium);
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.Vision;
@@ -222,7 +239,9 @@ namespace PureDOTS.Systems.Perception
                             distance,
                             effectiveRange,
                             fovCos,
-                            capability.ValueRO.Acuity);
+                            capability.ValueRO.Acuity,
+                            sensorMedium,
+                            target.Medium);
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.Hearing;
@@ -240,7 +259,9 @@ namespace PureDOTS.Systems.Perception
                             distance,
                             effectiveRange,
                             fovCos,
-                            capability.ValueRO.Acuity);
+                            capability.ValueRO.Acuity,
+                            sensorMedium,
+                            target.Medium);
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.Smell;
@@ -258,7 +279,9 @@ namespace PureDOTS.Systems.Perception
                             distance,
                             effectiveRange,
                             fovCos,
-                            capability.ValueRO.Acuity);
+                            capability.ValueRO.Acuity,
+                            sensorMedium,
+                            target.Medium);
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.EM;
@@ -336,8 +359,16 @@ namespace PureDOTS.Systems.Perception
             float distance,
             float maxRange,
             float fovCos,
-            float acuity)
+            float acuity,
+            MediumType sensorMedium,
+            MediumType targetMedium)
         {
+            if (!MediumUtilities.SupportsChannel(sensorMedium, channel) ||
+                !MediumUtilities.SupportsChannel(targetMedium, channel))
+            {
+                return 0f;
+            }
+
             // Get signature for this channel
             float signature = target.Signature.GetSignature(channel);
 
@@ -379,7 +410,7 @@ namespace PureDOTS.Systems.Perception
             public DetectableCategory Category;
             [MarshalAs(UnmanagedType.U1)]
             public bool HasSignature;
+            public MediumType Medium;
         }
     }
 }
-

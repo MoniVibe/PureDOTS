@@ -1,24 +1,26 @@
-#if UNITY_EDITOR && PUREDOTS_SCENARIO
+#if UNITY_EDITOR && PUREDOTS_SCENARIO && PUREDOTS_LEGACY_SCENARIO_ASM
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace PureDOTS.Demo.Rendering
+namespace PureDOTS.LegacyScenario.Rendering
 {
     /// <summary>
-    /// DEMO-ONLY: One-shot debug rendering system for demo entities.
+    /// Legacy scenario: One-shot debug rendering system for scenario entities.
     /// Automatically assigns render components to any entity with LocalToWorld but no MaterialMeshInfo.
     ///
-    /// IMPORTANT: This is an example implementation for PureDOTS demo/testing purposes.
+    /// IMPORTANT: This is an example implementation for PureDOTS testing purposes.
     /// Real games should use proper render assignment systems with game-specific RenderKeys.
     ///
-    /// Only runs when PureDOTS demo profile is active.
+    /// Only runs when legacy scenario gates are enabled.
     /// </summary>
     [DisableAutoCreation]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     [UpdateAfter(typeof(SharedRenderBootstrap))]
+    [MovedFrom(true, "PureDOTS.Demo.Rendering", null, "UniversalDebugRenderSetupSystem")]
     public partial struct UniversalDebugRenderSetupSystem : ISystem
     {
         private EntityQuery _noRenderQuery;
@@ -29,9 +31,7 @@ namespace PureDOTS.Demo.Rendering
 
         public void OnCreate(ref SystemState state)
         {
-            // Only run in demo worlds
-            var activeProfile = PureDOTS.Systems.SystemRegistry.ResolveActiveProfile();
-            if (activeProfile.Id != PureDOTS.Systems.SystemRegistry.BuiltinProfiles.Demo.Id)
+            if (!LegacyScenarioGate.IsEnabled)
             {
                 state.Enabled = false;
                 return;
@@ -70,7 +70,7 @@ namespace PureDOTS.Demo.Rendering
             {
                 if (!_warnedNoRma)
                 {
-                    Debug.LogWarning("[UniversalDebugRenderSetupSystem] Missing RenderMeshArraySingleton; demo debug rendering disabled for this world.");
+                    Debug.LogWarning("[UniversalDebugRenderSetupSystem] Missing RenderMeshArraySingleton; legacy scenario debug rendering disabled for this world.");
                     _warnedNoRma = true;
                 }
                 return;
@@ -88,7 +88,7 @@ namespace PureDOTS.Demo.Rendering
             {
                 if (!_warnedEmptyRma)
                 {
-                    Debug.LogWarning("[UniversalDebugRenderSetupSystem] RenderMeshArraySingleton has no meshes/materials; demo debug rendering disabled for this world.");
+                    Debug.LogWarning("[UniversalDebugRenderSetupSystem] RenderMeshArraySingleton has no meshes/materials; legacy scenario debug rendering disabled for this world.");
                     _warnedEmptyRma = true;
                 }
                 return;

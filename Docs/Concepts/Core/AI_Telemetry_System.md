@@ -43,12 +43,15 @@ Your existing telemetry infrastructure provides:
   - `entities.total` (all entities)
   - `units.mobile` (VillagerId + ShipAggregate counts)
   - `buildings.total` (StructureDurability count)
+  - `time.worldSeconds` (TimeState.WorldSeconds heartbeat)
+  - `telemetry.heartbeat` (value = 1)
 - Events (`TelemetryEvent`, cadence: BehaviorTelemetry aggregation):
   - `eventType`: `ai_action`
   - `source`: `ai`
   - Payload schema (FixedString128Bytes, compact JSON):
     - `{"b":<behaviorId>,"k":<metricOrInvariantId>,"v":<value>,"t":<0|1>}`
     - `t=0` metric (value = ValueA), `t=1` invariant (value = Passed)
+  - Payload limit: `TelemetryEvent.Payload` is `FixedString128Bytes` (truncate-safe, keep compact).
 
 **Enable examples**:
 ```

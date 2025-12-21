@@ -62,6 +62,40 @@ namespace PureDOTS.Runtime.Devtools
         }
 
         /// <summary>
+        /// Invoked via -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScenarioExecutorFromArgs
+        /// Expected args: --scenario <name or path> [--report <path>]
+        /// </summary>
+        public static void RunScenarioExecutorFromArgs()
+        {
+            var args = System.Environment.GetCommandLineArgs();
+            var scenarioArg = ReadArg(args, "--scenario");
+            var reportPath = ReadArg(args, "--report");
+
+            if (string.IsNullOrWhiteSpace(scenarioArg))
+            {
+                Debug.LogWarning("ScenarioExecutor: missing --scenario <name or path>");
+                return;
+            }
+
+            var scenarioPath = ResolveScenarioPath(scenarioArg);
+            if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
+            {
+                Debug.LogError($"ScenarioExecutor: scenario not found: {scenarioArg}");
+                return;
+            }
+
+            try
+            {
+                var result = ScenarioRunnerExecutor.RunFromFile(scenarioPath, reportPath);
+                Debug.Log($"ScenarioExecutor: completed {result.ScenarioId} ticks={result.RunTicks} snapshots={result.SnapshotLogCount}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"ScenarioExecutor: run failed: {ex}");
+            }
+        }
+
+        /// <summary>
         /// Run scale test scenario with metrics collection.
         /// Invoked via -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest
         /// Expected args: --scenario <name or path> [--metrics <report path>] [--target-ms <tick time budget>]
@@ -81,8 +115,8 @@ namespace PureDOTS.Runtime.Devtools
                 Debug.LogWarning("ScaleTest: missing --scenario <name or path>");
                 Debug.Log("Available scale scenarios:");
                 Debug.Log("  Scale: scale_baseline_10k, scale_stress_100k, scale_extreme_1m");
-                Debug.Log("  Sanity: scale_mini_lod_demo, scale_mini_aggregate_demo");
-                Debug.Log("  Game Demos: scenario_space_demo_01, scenario_god_demo_01");
+                Debug.Log("  Sanity: scale_mini_lod, scale_mini_aggregate");
+                Debug.Log("  Game scenarios: scenario_space_01, scenario_god_01");
                 return;
             }
 
@@ -190,13 +224,13 @@ namespace PureDOTS.Runtime.Devtools
             Debug.Log("    - scale_stress_100k      : 100k entities, target 30 FPS");
             Debug.Log("    - scale_extreme_1m       : 1M+ entities, target 10 FPS");
             Debug.Log("");
-            Debug.Log("  Sanity Demos:");
-            Debug.Log("    - scale_mini_lod_demo       : 2k test entities with LOD components");
-            Debug.Log("    - scale_mini_aggregate_demo : 5 aggregates with 200 members");
+            Debug.Log("  Sanity scenarios:");
+            Debug.Log("    - scale_mini_lod       : 2k test entities with LOD components");
+            Debug.Log("    - scale_mini_aggregate : 5 aggregates with 200 members");
             Debug.Log("");
-            Debug.Log("  Game Demos:");
-            Debug.Log("    - scenario_space_demo_01    : Space4X demo (carriers/crafts/asteroids/fleets)");
-            Debug.Log("    - scenario_god_demo_01      : Godgame demo (villagers/resources/villages)");
+            Debug.Log("  Game scenarios:");
+            Debug.Log("    - scenario_space_01    : Space4X scenario (carriers/crafts/asteroids/fleets)");
+            Debug.Log("    - scenario_god_01      : Godgame scenario (villagers/resources/villages)");
             Debug.Log("");
             Debug.Log("Usage:");
             Debug.Log("  -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \\");

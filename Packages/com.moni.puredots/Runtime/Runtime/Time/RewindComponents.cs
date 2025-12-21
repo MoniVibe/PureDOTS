@@ -17,7 +17,7 @@ namespace PureDOTS.Runtime.Components
         // Legacy aliases (mapped to canonical values)
         Record = Play,
         Playback = Rewind,
-        CatchUp = Rewind,
+        CatchUp = Step,
         Idle = Paused
     }
 

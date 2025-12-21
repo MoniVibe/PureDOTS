@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
 using Unity.Collections;
@@ -17,7 +18,8 @@ namespace PureDOTS.Systems.Telemetry
     /// Shared NDJSON exporter that flushes telemetry metrics, frame timing samples,
     /// behavior telemetry records, and replay metadata to a single stream.
     /// </summary>
-    [UpdateInGroup(typeof(PureDotsPresentationSystemGroup))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateAfter(typeof(AiTrainingTelemetrySystem))]
     public partial class TelemetryExportSystem : SystemBase
     {
         private bool _headerWritten;
@@ -25,11 +27,14 @@ namespace PureDOTS.Systems.Telemetry
         private FixedString128Bytes _runIdCache;
         private string _runIdString;
         private string _activePath;
+        private string _scenarioIdString;
+        private uint _scenarioSeed;
 
         protected override void OnCreate()
         {
             RequireForUpdate<TelemetryExportConfig>();
             _activePath = string.Empty;
+            _scenarioIdString = string.Empty;
         }
 
         protected override void OnDestroy()
@@ -67,6 +72,8 @@ namespace PureDOTS.Systems.Telemetry
             {
                 return;
             }
+
+            ResolveScenarioMetadata();
 
             try
             {
@@ -137,14 +144,54 @@ namespace PureDOTS.Systems.Telemetry
 
         private uint GetCurrentTick()
         {
-            if (SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
             {
-                return timeState.Tick;
+                return scenarioTick.Tick;
             }
 
             if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
             {
-                return tickState.Tick;
+                var tick = tickState.Tick;
+                if (SystemAPI.TryGetSingleton<TimeState>(out var timeState) && timeState.Tick > tick)
+                {
+                    tick = timeState.Tick;
+                }
+
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var dt = (float)SystemAPI.Time.DeltaTime;
+                    var elapsed = (float)SystemAPI.Time.ElapsedTime;
+                    if (dt > 0f && elapsed > 0f)
+                    {
+                        var elapsedTick = (uint)(elapsed / dt);
+                        if (elapsedTick > tick)
+                        {
+                            tick = elapsedTick;
+                        }
+                    }
+                }
+
+                return tick;
+            }
+
+            if (SystemAPI.TryGetSingleton<TimeState>(out var legacyTime))
+            {
+                var tick = legacyTime.Tick;
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var dt = (float)SystemAPI.Time.DeltaTime;
+                    var elapsed = (float)SystemAPI.Time.ElapsedTime;
+                    if (dt > 0f && elapsed > 0f)
+                    {
+                        var elapsedTick = (uint)(elapsed / dt);
+                        if (elapsedTick > tick)
+                        {
+                            tick = elapsedTick;
+                        }
+                    }
+                }
+
+                return tick;
             }
 
             return 0;
@@ -172,11 +219,23 @@ namespace PureDOTS.Systems.Telemetry
             for (int i = 0; i < buffer.Length; i++)
             {
                 var metric = buffer[i];
-            writer.Write("{\"type\":\"metric\",\"runId\":\"");
-            WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"tick\":");
+                var loopLabel = GetLoopLabel(metric.Key.ToString());
+                if (!ShouldWriteLoop(loopLabel))
+                {
+                    continue;
+                }
+
+                writer.Write("{\"type\":\"metric\",\"runId\":\"");
+                WriteEscapedString(writer, _runIdString);
+                writer.Write("\",\"scenario\":\"");
+                WriteEscapedString(writer, _scenarioIdString);
+                writer.Write("\",\"seed\":");
+                writer.Write(_scenarioSeed);
+                writer.Write(",\"tick\":");
                 writer.Write(tick);
-                writer.Write(",\"key\":\"");
+                writer.Write(",\"loop\":\"");
+                WriteEscapedString(writer, loopLabel);
+                writer.Write("\",\"key\":\"");
                 WriteEscapedString(writer, metric.Key.ToString());
                 writer.Write("\",\"value\":");
                 writer.Write(metric.Value.ToString("R", culture));
@@ -210,8 +269,13 @@ namespace PureDOTS.Systems.Telemetry
                     var label = FrameTimingRecorderSystem.GetGroupLabel(sample.Group).ToString();
                     writer.Write("{\"type\":\"frameTiming\",\"runId\":\"");
                     WriteEscapedString(writer, _runIdString);
-                    writer.Write("\",\"tick\":");
+                    writer.Write("\",\"scenario\":\"");
+                    WriteEscapedString(writer, _scenarioIdString);
+                    writer.Write("\",\"seed\":");
+                    writer.Write(_scenarioSeed);
+                    writer.Write(",\"tick\":");
                     writer.Write(tick);
+                    writer.Write(",\"loop\":\"\"");
                     writer.Write(",\"group\":\"");
                     WriteEscapedString(writer, label);
                     writer.Write("\",\"durationMs\":");
@@ -233,8 +297,13 @@ namespace PureDOTS.Systems.Telemetry
                 var allocations = EntityManager.GetComponentData<AllocationDiagnostics>(frameEntity);
                 writer.Write("{\"type\":\"allocation\",\"runId\":\"");
                 WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"tick\":");
+                writer.Write("\",\"scenario\":\"");
+                WriteEscapedString(writer, _scenarioIdString);
+                writer.Write("\",\"seed\":");
+                writer.Write(_scenarioSeed);
+                writer.Write(",\"tick\":");
                 writer.Write(tick);
+                writer.Write(",\"loop\":\"\"");
                 writer.Write(",\"totalAllocated\":");
                 writer.Write(allocations.TotalAllocatedBytes);
                 writer.Write(",\"totalReserved\":");
@@ -264,11 +333,23 @@ namespace PureDOTS.Systems.Telemetry
             for (int i = 0; i < buffer.Length; i++)
             {
                 ref var record = ref buffer.ElementAt(i);
+                var loopLabel = GetLoopLabel(record.EventType.ToString(), record.Payload.ToString());
+                if (!ShouldWriteLoop(loopLabel))
+                {
+                    continue;
+                }
+
                 writer.Write("{\"type\":\"event\",\"runId\":\"");
                 WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"tick\":");
+                writer.Write("\",\"scenario\":\"");
+                WriteEscapedString(writer, _scenarioIdString);
+                writer.Write("\",\"seed\":");
+                writer.Write(_scenarioSeed);
+                writer.Write(",\"tick\":");
                 writer.Write(record.Tick);
-                writer.Write(",\"event\":\"");
+                writer.Write(",\"loop\":\"");
+                WriteEscapedString(writer, loopLabel);
+                writer.Write("\",\"event\":\"");
                 WriteEscapedString(writer, record.EventType.ToString());
                 writer.Write("\",\"source\":\"");
                 WriteEscapedString(writer, record.Source.ToString());
@@ -328,8 +409,13 @@ namespace PureDOTS.Systems.Telemetry
                 var record = buffer[i];
                 writer.Write("{\"type\":\"behavior\",\"runId\":\"");
                 WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"tick\":");
+                writer.Write("\",\"scenario\":\"");
+                WriteEscapedString(writer, _scenarioIdString);
+                writer.Write("\",\"seed\":");
+                writer.Write(_scenarioSeed);
+                writer.Write(",\"tick\":");
                 writer.Write(record.Tick);
+                writer.Write(",\"loop\":\"\"");
                 writer.Write(",\"behaviorId\":");
                 writer.Write((ushort)record.Behavior);
                 writer.Write(",\"behaviorKind\":");
@@ -358,8 +444,13 @@ namespace PureDOTS.Systems.Telemetry
             var stream = SystemAPI.GetComponent<ReplayCaptureStream>(replayEntity);
             writer.Write("{\"type\":\"replay\",\"runId\":\"");
             WriteEscapedString(writer, _runIdString);
-            writer.Write("\",\"tick\":");
+            writer.Write("\",\"scenario\":\"");
+            WriteEscapedString(writer, _scenarioIdString);
+            writer.Write("\",\"seed\":");
+            writer.Write(_scenarioSeed);
+            writer.Write(",\"tick\":");
             writer.Write(tick);
+            writer.Write(",\"loop\":\"\"");
             writer.Write(",\"eventCount\":");
             writer.Write(stream.EventCount);
             writer.Write(",\"lastEventType\":\"");
@@ -376,8 +467,13 @@ namespace PureDOTS.Systems.Telemetry
                     var evt = events[i];
                     writer.Write("{\"type\":\"replayEvent\",\"runId\":\"");
                     WriteEscapedString(writer, _runIdString);
-                    writer.Write("\",\"tick\":");
+                    writer.Write("\",\"scenario\":\"");
+                    WriteEscapedString(writer, _scenarioIdString);
+                    writer.Write("\",\"seed\":");
+                    writer.Write(_scenarioSeed);
+                    writer.Write(",\"tick\":");
                     writer.Write(evt.Tick);
+                    writer.Write(",\"loop\":\"\"");
                     writer.Write(",\"eventType\":\"");
                     WriteEscapedString(writer, ReplayCaptureSystem.GetEventTypeLabel(evt.Type).ToString());
                     writer.Write("\",\"label\":\"");
@@ -407,6 +503,11 @@ namespace PureDOTS.Systems.Telemetry
             WriteEscapedString(writer, Application.unityVersion);
             writer.Write("\"");
 
+            writer.Write(",\"scenarioId\":\"");
+            WriteEscapedString(writer, _scenarioIdString);
+            writer.Write("\",\"seed\":");
+            writer.Write(_scenarioSeed);
+
             if (SystemAPI.TryGetSingleton<ScenarioState>(out var scenario))
             {
                 writer.Write(",\"scenarioKind\":");
@@ -426,6 +527,117 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             writer.WriteLine("}");
+        }
+
+        private void ResolveScenarioMetadata()
+        {
+            _scenarioSeed = 0;
+            _scenarioIdString = string.Empty;
+            if (SystemAPI.TryGetSingleton<ScenarioInfo>(out var scenarioInfo))
+            {
+                _scenarioSeed = scenarioInfo.Seed;
+                _scenarioIdString = scenarioInfo.ScenarioId.ToString();
+            }
+        }
+
+        private string GetLoopLabel(string metricKey)
+        {
+            if (string.IsNullOrEmpty(metricKey))
+            {
+                return string.Empty;
+            }
+
+            if (metricKey.StartsWith("loop.", StringComparison.OrdinalIgnoreCase))
+            {
+                var slice = metricKey.Substring(5);
+                var dotIndex = slice.IndexOf('.');
+                return dotIndex > 0 ? slice.Substring(0, dotIndex) : slice;
+            }
+
+            return string.Empty;
+        }
+
+        private string GetLoopLabel(string eventType, string payload)
+        {
+            if (string.IsNullOrEmpty(eventType))
+            {
+                return string.Empty;
+            }
+
+            if (eventType.StartsWith("loop_", StringComparison.OrdinalIgnoreCase))
+            {
+                var extracted = ExtractLoopFromPayload(payload);
+                if (!string.IsNullOrEmpty(extracted))
+                {
+                    return extracted;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static string ExtractLoopFromPayload(string payload)
+        {
+            if (string.IsNullOrEmpty(payload))
+            {
+                return string.Empty;
+            }
+
+            const string marker = "\"l\":\"";
+            var index = payload.IndexOf(marker, StringComparison.Ordinal);
+            if (index < 0)
+            {
+                return string.Empty;
+            }
+
+            index += marker.Length;
+            var end = payload.IndexOf('\"', index);
+            if (end <= index)
+            {
+                return string.Empty;
+            }
+
+            return payload.Substring(index, end - index);
+        }
+
+        private bool ShouldWriteLoop(string loopLabel)
+        {
+            if (string.IsNullOrEmpty(loopLabel))
+            {
+                return true;
+            }
+
+            if (!SystemAPI.TryGetSingleton<TelemetryExportConfig>(out var config))
+            {
+                return true;
+            }
+
+            var loopFlag = MapLoopFlag(loopLabel);
+            if (loopFlag == TelemetryLoopFlags.None)
+            {
+                return true;
+            }
+
+            return (config.Loops & loopFlag) != 0;
+        }
+
+        private static TelemetryLoopFlags MapLoopFlag(string loopLabel)
+        {
+            switch (loopLabel.Trim().ToLowerInvariant())
+            {
+                case "extract":
+                    return TelemetryLoopFlags.Extract;
+                case "logistics":
+                    return TelemetryLoopFlags.Logistics;
+                case "construction":
+                    return TelemetryLoopFlags.Construction;
+                case "exploration":
+                    return TelemetryLoopFlags.Exploration;
+                case "combat":
+                    return TelemetryLoopFlags.Combat;
+                default:
+                    return TelemetryLoopFlags.None;
+            }
         }
 
         private static void WriteEscapedString(StreamWriter writer, string value)

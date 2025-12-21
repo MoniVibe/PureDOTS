@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Config;
+using UnityEngine;
 
 #nullable enable
 
@@ -37,6 +38,8 @@ namespace PureDOTS.Runtime.Camera
         private static RuntimeConfigVar? s_ecsCameraVar;
         private static CameraRigState s_currentState;
         private static bool s_hasState;
+        private static int s_lastPublishFrame = -1;
+        private static CameraRigType s_lastPublishRigType = CameraRigType.None;
 
         /// <summary>
         /// Fired whenever a new camera rig state is published.
@@ -72,11 +75,24 @@ namespace PureDOTS.Runtime.Camera
         /// <param name="state">The new camera rig state to apply.</param>
         public static void Publish(CameraRigState state)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            int frame = Time.frameCount;
+            if (s_hasState &&
+                s_lastPublishFrame == frame &&
+                state.RigType != CameraRigType.None &&
+                s_lastPublishRigType != CameraRigType.None &&
+                state.RigType != s_lastPublishRigType)
+            {
+                Debug.LogError($"[CameraRigService] Multiple camera rig publishers in the same frame: {s_lastPublishRigType} -> {state.RigType}. Enforce a single active publisher and let only CameraRigApplier write transforms.");
+            }
+            s_lastPublishFrame = frame;
+            s_lastPublishRigType = state.RigType;
+#endif
+
             s_currentState = state;
             s_hasState = true;
             CameraStateChanged?.Invoke(state);
         }
     }
 }
-
 

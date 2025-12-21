@@ -23,16 +23,17 @@ Unity Camera Transform
 ## Core Components
 
 ### CameraRigState
-The contract struct that represents complete camera state:
+The contract struct that represents canonical camera state (transform is derived):
 
 ```csharp
 public struct CameraRigState
 {
-    public Vector3 Position;        // Camera world position
-    public Quaternion Rotation;     // Camera world rotation
+    public Vector3 Focus;          // World-space pivot/target (authoritative)
     public float Pitch;            // Pitch angle in degrees
     public float Yaw;              // Yaw angle in degrees
-    public float Distance;         // Distance from pivot/target
+    public float Roll;             // Roll angle in degrees (optional)
+    public float Distance;         // Orbit radius (0 = look-in-place / free-fly)
+    public CameraRigMode Mode;     // Orbit vs FreeFly (UX/input hint)
     public bool PerspectiveMode;   // true=perspective, false=orthographic
     public float FieldOfView;      // FOV in degrees (0 = default)
     public CameraRigType RigType;  // Which game rig owns this
@@ -79,8 +80,9 @@ A reusable camera implementation providing B&W2-style controls:
 ```csharp
 public class MyGameCamera : MonoBehaviour
 {
-    private Vector3 _position;
+    private Vector3 _focus;
     private float _yaw, _pitch;
+    private float _distance;
 
     void Update()
     {
@@ -89,27 +91,26 @@ public class MyGameCamera : MonoBehaviour
         Vector2 lookInput = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
 
         // 2. Apply game-specific camera logic
-        _position += transform.right * moveInput.x * speed * Time.deltaTime;
+        _focus += transform.right * moveInput.x * speed * Time.deltaTime;
         _yaw += lookInput.x * sensitivity;
         _pitch = Mathf.Clamp(_pitch - lookInput.y * sensitivity, -80f, 80f);
 
-        // 3. Compute camera transform
-        Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
-
-        // 4. Create and publish CameraRigState
+        // 3. Create and publish canonical CameraRigState
         var rigState = new CameraRigState
         {
-            Position = _position,
-            Rotation = rotation,
+            Focus = _focus,
             Pitch = _pitch,
             Yaw = _yaw,
+            Roll = 0f,
+            Distance = _distance,
+            Mode = CameraRigMode.Orbit,
             PerspectiveMode = true,
             FieldOfView = 60f,
             RigType = CameraRigType.Space4X  // or Godgame
         };
 
         CameraRigService.Publish(rigState);
-        // CameraRigApplier will apply this automatically in LateUpdate
+        // CameraRigApplier derives/apply transform in LateUpdate
     }
 }
 ```
@@ -158,6 +159,10 @@ This prevents accidental coupling between simulation and presentation code.
 - Only `CameraRigService.Publish()` can change camera state
 - Only `CameraRigApplier` can mutate `Camera.main`
 - Prevents conflicts between multiple camera rigs
+
+### Single Publisher (Recommended)
+- Exactly **one** active camera controller should call `CameraRigService.Publish()` per frame.
+- Other systems (selection/control groups) should emit requests (e.g. `PureDOTS.Input.CameraRequestEvent`) and let the active camera rig consume them.
 
 ### Game vs Framework Responsibilities
 - **Game code**: Input interpretation, game-specific behaviors, camera bounds

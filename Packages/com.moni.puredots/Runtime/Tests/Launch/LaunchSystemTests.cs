@@ -115,7 +115,7 @@ namespace PureDOTS.Tests.Launch
         [Test]
         public void SlingshotScenario_ParsesSuccessfully()
         {
-            var path = Path.Combine("Packages", "com.moni.puredots", "Runtime", "Runtime", "Scenarios", "Samples", "slingshot_launch_demo.json");
+            var path = Path.Combine("Packages", "com.moni.puredots", "Runtime", "Runtime", "Scenarios", "Samples", "slingshot_launch.json");
 
             // Skip if file doesn't exist (may not be imported yet)
             if (!File.Exists(path))
@@ -128,7 +128,7 @@ namespace PureDOTS.Tests.Launch
             Assert.IsTrue(ScenarioRunner.TryParse(json, out var data, out var error), error.ToString());
 
             using var scenario = BuildScenario(data);
-            Assert.AreEqual("scenario.puredots.slingshot_launch_demo", scenario.ScenarioId.ToString());
+            Assert.AreEqual("scenario.puredots.slingshot_launch", scenario.ScenarioId.ToString());
             Assert.AreEqual(300, scenario.RunTicks);
             Assert.AreEqual(2, scenario.EntityCounts.Length);
             Assert.AreEqual(6, scenario.InputCommands.Length);
@@ -141,7 +141,6 @@ namespace PureDOTS.Tests.Launch
         }
     }
 }
-
 
 
 

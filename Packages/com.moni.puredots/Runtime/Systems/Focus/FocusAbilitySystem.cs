@@ -237,7 +237,7 @@ namespace PureDOTS.Systems.Focus
                 FocusAbilityType.DeepTeaching => 3f,
                 FocusAbilityType.GroupInstruction => 4f,
                 FocusAbilityType.MentoringBond => 2f,
-                FocusAbilityType.PracticalDemo => 2.5f,
+                FocusAbilityType.PracticalTraining => 2.5f,
                 FocusAbilityType.InspiredTeaching => 3f,
 
                 // Refining abilities
@@ -273,4 +273,3 @@ namespace PureDOTS.Systems.Focus
         }
     }
 }
-

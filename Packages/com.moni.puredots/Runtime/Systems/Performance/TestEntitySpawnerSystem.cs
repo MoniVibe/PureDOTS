@@ -29,7 +29,7 @@ namespace PureDOTS.Runtime.Systems.Performance
         }
 
         /// <summary>
-        /// Spawns test entities with LOD components for the mini LOD demo scenario.
+        /// Spawns test entities with LOD components for the mini LOD scenario.
         /// </summary>
         public static void SpawnLODTestEntities(ref SystemState state, int count, float3 center, float radius)
         {
@@ -82,7 +82,7 @@ namespace PureDOTS.Runtime.Systems.Performance
         }
 
         /// <summary>
-        /// Spawns aggregate entities with members for the mini aggregate demo scenario.
+        /// Spawns aggregate entities with members for the mini aggregate scenario.
         /// </summary>
         public static void SpawnAggregateTestEntities(
             ref SystemState state, 
@@ -196,4 +196,3 @@ namespace PureDOTS.Runtime.Systems.Performance
         }
     }
 }
-

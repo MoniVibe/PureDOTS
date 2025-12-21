@@ -15,6 +15,8 @@ namespace PureDOTS.Systems
     [UpdateInGroup(typeof(TimeSystemGroup))]
     public partial struct RewindControlSystem : ISystem
     {
+        private float _previewAccumulator;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -46,6 +48,19 @@ namespace PureDOTS.Systems
                      .Query<DynamicBuffer<TimeControlCommand>>()
                      .WithEntityAccess())
             {
+                // The TimeControlCommand buffer is permanent on the RewindState singleton entity (core singleton).
+                // Only process/destroy ephemeral command entities created by UI/dev tools.
+                bool isCoreCommandEntity = state.EntityManager.HasComponent<RewindState>(entity)
+                    || state.EntityManager.HasComponent<TimeState>(entity)
+                    || state.EntityManager.HasComponent<TickTimeState>(entity);
+
+                if (isCoreCommandEntity)
+                {
+                    // IMPORTANT: Never destroy or clear the singleton command buffer here.
+                    // Other systems (e.g. RewindCoordinatorSystem / TimeScaleCommandSystem) own processing and clearing.
+                    continue;
+                }
+
                 for (int i = 0; i < cmdBuffer.Length; i++)
                 {
                     var cmd = cmdBuffer[i];
@@ -82,7 +97,8 @@ namespace PureDOTS.Systems
                     }
                 }
 
-                // Defer entity destruction until after iteration
+                // Defer entity destruction until after iteration.
+                // These ephemeral entities are only used as a transport for one-shot commands.
                 ecb.DestroyEntity(entity);
             }
 
@@ -97,7 +113,14 @@ namespace PureDOTS.Systems
             }
 #endif
 
-            // TODO: update PreviewTick while in ScrubbingPreview
+            if (controlRW.ValueRO.Phase == RewindPhase.ScrubbingPreview)
+            {
+                AdvancePreviewTick(ref state, ref controlRW.ValueRW);
+            }
+            else
+            {
+                _previewAccumulator = 0f;
+            }
         }
 
         // Keep these NON-static so SystemAPI is allowed inside
@@ -116,6 +139,43 @@ namespace PureDOTS.Systems
 #endif
 
             EnqueueTimeScaleCommand(ref state, 0f); // freeze
+        }
+
+        [BurstDiscard]
+        private void AdvancePreviewTick(ref SystemState state, ref RewindControlState control)
+        {
+            if (math.abs(control.ScrubSpeed) <= 0f)
+            {
+                _previewAccumulator = 0f;
+                return;
+            }
+
+            var tickState = SystemAPI.GetSingleton<TickTimeState>();
+            float ticksPerSecond = tickState.FixedDeltaTime > 0f
+                ? 1f / tickState.FixedDeltaTime
+                : HistorySettingsDefaults.DefaultTicksPerSecond;
+            float deltaTime = SystemAPI.Time.DeltaTime;
+
+            _previewAccumulator += deltaTime * ticksPerSecond * math.abs(control.ScrubSpeed);
+            int step = (int)math.floor(_previewAccumulator);
+            if (step <= 0)
+            {
+                return;
+            }
+
+            _previewAccumulator -= step;
+
+            int maxTick = math.max(0, control.PresentTickAtStart);
+            int minTick = 0;
+            if (SystemAPI.TryGetSingleton<HistorySettings>(out var settings) && settings.GlobalHorizonTicks > 0)
+            {
+                int horizon = (int)settings.GlobalHorizonTicks;
+                minTick = math.max(0, maxTick - horizon);
+            }
+
+            int direction = control.ScrubSpeed >= 0f ? -1 : 1;
+            int nextTick = math.clamp(control.PreviewTick + direction * step, minTick, maxTick);
+            control.PreviewTick = nextTick;
         }
 
         [BurstDiscard]

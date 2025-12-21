@@ -3,7 +3,7 @@ using Unity.Entities;
 namespace PureDOTS.Runtime
 {
     /// <summary>
-    /// Scenario modes for switching between different test/demo configurations.
+    /// Scenario modes for switching between different simulation/game configurations.
     /// Used to gate systems and control what's active in showcase scenes.
     /// </summary>
     public enum ScenarioKind : byte
@@ -30,10 +30,10 @@ namespace PureDOTS.Runtime
     }
 
     /// <summary>
-    /// Boot phase for demo scenario spawning.
+    /// Boot phase for scenario spawning.
     /// Used to spread spawning across multiple frames.
     /// </summary>
-    public enum DemoBootPhase : byte
+    public enum ScenarioBootPhase : byte
     {
         None = 0,
         SpawnGodgame = 1,
@@ -53,14 +53,14 @@ namespace PureDOTS.Runtime
         public ScenarioKind Current;
 
         /// <summary>
-        /// Whether the demo scenario has been initialized (entities spawned).
+        /// Whether the scenario has been initialized (entities spawned).
         /// </summary>
         public bool IsInitialized;
 
         /// <summary>
         /// Current boot phase for phased spawning.
         /// </summary>
-        public DemoBootPhase BootPhase;
+        public ScenarioBootPhase BootPhase;
 
         /// <summary>
         /// Enable Godgame slice (villages, villagers, terrain).
@@ -78,6 +78,5 @@ namespace PureDOTS.Runtime
         public bool EnableEconomy;
     }
 }
-
 
 

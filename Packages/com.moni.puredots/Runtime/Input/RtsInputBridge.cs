@@ -20,9 +20,6 @@ namespace PureDOTS.Input
         [SerializeField] private float doubleClickMaxTime = 0.3f;
         [SerializeField] private float doubleClickMaxDistPixels = 4f;
 
-        [Header("Pan")]
-        [SerializeField] private float panSpeed = 1.0f;
-
         [Header("Raycast")]
         [SerializeField] private Camera raycastCamera;
         [SerializeField] private LayerMask selectionMask = ~0;
@@ -42,13 +39,11 @@ namespace PureDOTS.Input
         private enum PointerMode
         {
             None,
-            SelectionDrag,
-            PanDrag
+            SelectionDrag
         }
 
         private PointerMode _pointerMode = PointerMode.None;
         private Vector2 _lmbDownScreenPos;
-        private Vector3 _cameraStartPos;
         private float _lastLmbUpTime;
         private Vector2 _lastLmbUpPos;
         private float _lastRmbUpTime;
@@ -164,6 +159,7 @@ namespace PureDOTS.Input
             EnsureBuffer<ControlGroupInputEvent>();
             EnsureBuffer<TimeControlInputEvent>();
             EnsureBuffer<CameraFocusEvent>();
+            EnsureBuffer<CameraRequestEvent>();
             EnsureBuffer<RockBreakEvent>();
             EnsureBuffer<SaveLoadCommandEvent>();
 
@@ -206,7 +202,6 @@ namespace PureDOTS.Input
 
         private void HandleLmb(Vector2 mousePos)
         {
-            bool altDown = (_altAction?.IsPressed() ?? false);
             bool shiftDown = (_shiftAction?.IsPressed() ?? false);
 
             bool currentLeftClick = _leftClickAction?.IsPressed() ?? false;
@@ -220,39 +215,17 @@ namespace PureDOTS.Input
                 }
 
                 _lmbDownScreenPos = mousePos;
-                if (raycastCamera != null)
-                {
-                    _cameraStartPos = raycastCamera.transform.position;
-                }
-
-                if (altDown)
-                {
-                    _pointerMode = PointerMode.PanDrag;
-                }
-                else
-                {
-                    _pointerMode = PointerMode.SelectionDrag;
-                }
+                _pointerMode = PointerMode.SelectionDrag;
             }
 
             if (currentLeftClick)
             {
-                // LMB held
-                if (_pointerMode == PointerMode.PanDrag)
-                {
-                    PanCamera(mousePos);
-                }
+                // LMB held (selection drag only)
             }
 
             if (!currentLeftClick && _lastLeftClickState)
             {
                 // LMB up
-                if (_pointerMode == PointerMode.PanDrag)
-                {
-                    _pointerMode = PointerMode.None;
-                    return;
-                }
-
                 if (_pointerMode == PointerMode.SelectionDrag)
                 {
                     Vector2 delta = mousePos - _lmbDownScreenPos;
@@ -321,25 +294,6 @@ namespace PureDOTS.Input
             }
 
             _lastRightClickState = currentRightClick;
-        }
-
-        private void PanCamera(Vector2 currentMousePos)
-        {
-            if (raycastCamera == null)
-            {
-                return;
-            }
-
-            Vector2 delta = currentMousePos - _lmbDownScreenPos;
-            Vector3 right = raycastCamera.transform.right;
-            Vector3 forward = raycastCamera.transform.forward;
-            right.y = 0f;
-            forward.y = 0f;
-            right.Normalize();
-            forward.Normalize();
-
-            Vector3 offset = (-right * delta.x + -forward * delta.y) * (panSpeed * Time.unscaledDeltaTime);
-            raycastCamera.transform.position = _cameraStartPos + offset;
         }
 
         private void HandleLmbDoubleClick(Vector2 screenPos)

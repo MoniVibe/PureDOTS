@@ -88,6 +88,27 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 
+    public enum CameraRequestKind : byte
+    {
+        None = 0,
+        FocusWorld = 1,
+        RecallBookmark = 2,
+    }
+
+    /// <summary>
+    /// High-level camera requests emitted by ECS systems (selection/control-groups) and consumed by game camera rigs.
+    /// Keeps the camera contract single-writer by avoiding direct Camera.main transform mutation in ECS systems.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct CameraRequestEvent : IBufferElementData
+    {
+        public CameraRequestKind Kind;
+        public float3 WorldPosition; // FocusWorld
+        public float3 BookmarkPosition; // RecallBookmark
+        public quaternion BookmarkRotation; // RecallBookmark
+        public byte PlayerId;
+    }
+
     /// <summary>
     /// Rock break event (double-click RMB on rock).
     /// </summary>
@@ -109,7 +130,6 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 }
-
 
 
 

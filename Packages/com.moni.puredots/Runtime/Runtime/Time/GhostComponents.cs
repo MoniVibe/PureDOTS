@@ -39,5 +39,18 @@ namespace PureDOTS.Runtime.Components
         /// <summary>Color tint for ghost rendering.</summary>
         public Unity.Mathematics.float4 ColorTint;
     }
-}
 
+    /// <summary>
+    /// Tag component marking an entity as a ghost tether line.
+    /// </summary>
+    public struct GhostTetherTag : IComponentData { }
+
+    /// <summary>
+    /// Link data for a ghost tether, tying the tether to its ghost + source entities.
+    /// </summary>
+    public struct GhostTetherLink : IComponentData
+    {
+        public Entity GhostEntity;
+        public Entity SourceEntity;
+    }
+}

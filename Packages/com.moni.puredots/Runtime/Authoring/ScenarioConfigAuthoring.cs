@@ -7,7 +7,7 @@ namespace PureDOTS.Authoring
     [DisallowMultipleComponent]
     public sealed class ScenarioConfigAuthoring : MonoBehaviour
     {
-        [Tooltip("Demo scenario definition asset.")]
+        [Tooltip("Scenario definition asset.")]
         public ScenarioDef scenarioDef;
     }
 
@@ -57,4 +57,3 @@ namespace PureDOTS.Authoring
         }
     }
 }
-

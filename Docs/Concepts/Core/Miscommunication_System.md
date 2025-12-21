@@ -1028,3 +1028,8 @@ Total (100 communications/frame): <15ms per frame
 
 **Key Insight**: Miscommunications add controlled chaos and variety to the simulation. Entities learn from mistakes, improving communication over time. Critical miscommunications are dangerous but preventable through multiple checks and clarification attempts. The system creates emergent narratives of misunderstandings, corrections, and learning.
 
+
+
+
+
+

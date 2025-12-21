@@ -23,6 +23,8 @@ namespace PureDOTS.Input
             public bool RightPressed;
             public bool RightReleased;
             public bool MiddleHeld;
+            public bool MiddlePressed;
+            public bool MiddleReleased;
             public bool EdgeLeft;
             public bool EdgeRight;
             public bool EdgeTop;
@@ -77,6 +79,8 @@ namespace PureDOTS.Input
                 RightPressed = right && !s_prevRight,
                 RightReleased = !right && s_prevRight,
                 MiddleHeld = middle,
+                MiddlePressed = middle && !s_prevMiddle,
+                MiddleReleased = !middle && s_prevMiddle,
                 Frame = UnityEngine.Time.frameCount
             };
 
@@ -99,4 +103,3 @@ namespace PureDOTS.Input
         }
     }
 }
-

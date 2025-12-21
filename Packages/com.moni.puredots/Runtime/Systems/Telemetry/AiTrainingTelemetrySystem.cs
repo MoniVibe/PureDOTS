@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Ships;
 using PureDOTS.Runtime.Structures;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Systems;
@@ -15,9 +16,6 @@ namespace PureDOTS.Systems.Telemetry
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct AiTrainingTelemetrySystem : ISystem
     {
-        private const uint MetricCadenceTicks = 30;
-        private const int MaxEventsPerTick = 64;
-
         private EntityQuery _villagerQuery;
         private EntityQuery _shipQuery;
         private EntityQuery _structureQuery;
@@ -25,6 +23,9 @@ namespace PureDOTS.Systems.Telemetry
         private FixedString64Bytes _metricEntitiesTotal;
         private FixedString64Bytes _metricUnitsMobile;
         private FixedString64Bytes _metricBuildingsTotal;
+        private FixedString64Bytes _metricTick;
+        private FixedString64Bytes _metricWorldSeconds;
+        private FixedString64Bytes _metricHeartbeat;
         private FixedString64Bytes _eventType;
         private FixedString64Bytes _eventSource;
 
@@ -35,13 +36,16 @@ namespace PureDOTS.Systems.Telemetry
 
             _villagerQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<VillagerId>(),
-                ComponentType.Exclude<VillagerDeadTag>());
+                ComponentType.ReadOnly<VillagerFlags>());
             _shipQuery = state.GetEntityQuery(ComponentType.ReadOnly<ShipAggregate>());
             _structureQuery = state.GetEntityQuery(ComponentType.ReadOnly<StructureDurability>());
 
             _metricEntitiesTotal = "entities.total";
             _metricUnitsMobile = "units.mobile";
             _metricBuildingsTotal = "buildings.total";
+            _metricTick = "time.tick";
+            _metricWorldSeconds = "time.worldSeconds";
+            _metricHeartbeat = "telemetry.heartbeat";
             _eventType = "ai_action";
             _eventSource = "ai";
         }
@@ -54,7 +58,23 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.Tick % MetricCadenceTicks != 0)
+            uint effectiveTick = timeState.Tick;
+            float effectiveWorldSeconds = timeState.WorldSeconds;
+            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
+            {
+                effectiveTick = scenarioTick.Tick;
+                effectiveWorldSeconds = scenarioTick.WorldSeconds;
+            }
+            else
+            {
+                var elapsed = (float)SystemAPI.Time.ElapsedTime;
+                var delta = (float)SystemAPI.Time.DeltaTime;
+                effectiveTick = GetEffectiveTick(timeState.Tick, elapsed, delta);
+                effectiveWorldSeconds = GetEffectiveWorldSeconds(timeState.WorldSeconds, elapsed);
+            }
+
+            var cadence = exportConfig.CadenceTicks > 0 ? exportConfig.CadenceTicks : 30u;
+            if (effectiveTick % cadence != 0)
             {
                 return;
             }
@@ -79,15 +99,19 @@ namespace PureDOTS.Systems.Telemetry
                 metrics.AddMetric(_metricEntitiesTotal, totalEntities, TelemetryMetricUnit.Count);
                 metrics.AddMetric(_metricUnitsMobile, mobileUnits, TelemetryMetricUnit.Count);
                 metrics.AddMetric(_metricBuildingsTotal, totalBuildings, TelemetryMetricUnit.Count);
+                metrics.AddMetric(_metricTick, effectiveTick, TelemetryMetricUnit.Count);
+                metrics.AddMetric(_metricWorldSeconds, effectiveWorldSeconds, TelemetryMetricUnit.None);
+                metrics.AddMetric(_metricHeartbeat, 1f, TelemetryMetricUnit.Count);
             }
 
             if ((exportConfig.Flags & TelemetryExportFlags.IncludeTelemetryEvents) != 0)
             {
-                EmitAiActionEvents(ref state);
+                var maxEvents = exportConfig.MaxEventsPerTick > 0 ? exportConfig.MaxEventsPerTick : (ushort)64;
+                EmitAiActionEvents(ref state, maxEvents);
             }
         }
 
-        private void EmitAiActionEvents(ref SystemState state)
+        private void EmitAiActionEvents(ref SystemState state, ushort maxEvents)
         {
             if (!SystemAPI.TryGetSingletonBuffer<BehaviorTelemetryRecord>(out var behaviorBuffer))
             {
@@ -110,7 +134,7 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             var eventBuffer = state.EntityManager.GetBuffer<TelemetryEvent>(streamRef.Stream);
-            var count = behaviorBuffer.Length > MaxEventsPerTick ? MaxEventsPerTick : behaviorBuffer.Length;
+            var count = behaviorBuffer.Length > maxEvents ? maxEvents : behaviorBuffer.Length;
 
             for (int i = 0; i < count; i++)
             {
@@ -135,6 +159,37 @@ namespace PureDOTS.Systems.Telemetry
             payload.Append((byte)record.Kind);
             payload.Append('}');
             return payload;
+        }
+
+        private static uint GetEffectiveTick(uint tick, float elapsed, float delta)
+        {
+            if (tick == 0 && UnityEngine.Application.isBatchMode)
+            {
+                if (delta > 0f && elapsed > 0f)
+                {
+                    var elapsedTick = (uint)(elapsed / delta);
+                    if (elapsedTick > tick)
+                    {
+                        tick = elapsedTick;
+                    }
+                }
+            }
+
+            return tick;
+        }
+
+        private static float GetEffectiveWorldSeconds(float worldSeconds, float elapsed)
+        {
+            var seconds = worldSeconds;
+            if (seconds <= 0f && UnityEngine.Application.isBatchMode)
+            {
+                if (elapsed > seconds)
+                {
+                    seconds = elapsed;
+                }
+            }
+
+            return seconds;
         }
     }
 }
