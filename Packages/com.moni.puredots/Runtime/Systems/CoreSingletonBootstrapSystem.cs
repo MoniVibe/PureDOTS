@@ -13,6 +13,7 @@ using PureDOTS.Runtime.Signals;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Social;
 using PureDOTS.Runtime.Telemetry;
+using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Transport;
 using PureDOTS.Runtime.Villager;
@@ -42,12 +43,14 @@ namespace PureDOTS.Systems
         private EntityQuery _timeStateQuery;
         private EntityQuery _tickTimeStateQuery;
         private EntityQuery _rewindStateQuery;
+        private EntityQuery _rewindLegacyStateQuery;
 
         public void OnCreate(ref SystemState state)
         {
             _timeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TimeState>());
             _tickTimeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TickTimeState>());
             _rewindStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<RewindState>());
+            _rewindLegacyStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<RewindLegacyState>());
             EnsureIfMissing(ref state);
         }
 
@@ -83,7 +86,8 @@ namespace PureDOTS.Systems
             // Only run the heavy singleton seeding path if the critical time singletons are missing.
             if (!_timeStateQuery.IsEmptyIgnoreFilter &&
                 !_tickTimeStateQuery.IsEmptyIgnoreFilter &&
-                !_rewindStateQuery.IsEmptyIgnoreFilter)
+                !_rewindStateQuery.IsEmptyIgnoreFilter &&
+                !_rewindLegacyStateQuery.IsEmptyIgnoreFilter)
             {
                 return;
             }
@@ -102,6 +106,10 @@ namespace PureDOTS.Systems
             if (_rewindStateQuery.IsEmptyIgnoreFilter)
             {
                 UnityEngine.Debug.LogError("[CoreSingletonBootstrapSystem] RewindState singleton is missing! This will cause system failures.");
+            }
+            if (_rewindLegacyStateQuery.IsEmptyIgnoreFilter)
+            {
+                UnityEngine.Debug.LogWarning("[CoreSingletonBootstrapSystem] RewindLegacyState singleton is missing; adding defaults.");
             }
         }
 
@@ -163,6 +171,21 @@ namespace PureDOTS.Systems
                     fixedStep.FixedDeltaTime = TimeSettingsDefaults.FixedDeltaTime;
                     entityManager.SetComponentData(timeEntity, fixedStep);
                 }
+            }
+
+            if (!entityManager.HasComponent<TimeContext>(timeEntity))
+            {
+                var tickState = entityManager.GetComponentData<TickTimeState>(timeEntity);
+                entityManager.AddComponentData(timeEntity, new TimeContext
+                {
+                    PresentTick = tickState.Tick,
+                    ViewTick = tickState.Tick,
+                    TargetTick = tickState.TargetTick,
+                    FixedDeltaTime = tickState.FixedDeltaTime,
+                    IsPaused = tickState.IsPaused,
+                    SpeedMultiplier = tickState.CurrentSpeedMultiplier,
+                    Mode = RewindMode.Record
+                });
             }
 
             if (!entityManager.HasComponent<TimeLogSettings>(timeEntity))
@@ -275,14 +298,28 @@ namespace PureDOTS.Systems
                     entityManager.AddComponentData(rewindEntity, new RewindState
                     {
                         Mode = RewindMode.Record,
-                        StartTick = 0,
                         TargetTick = 0,
-                        PlaybackTick = 0,
-                        PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
-                        ScrubDirection = 0,
-                        ScrubSpeedMultiplier = 1f
+                        TickDuration = TimeSettingsDefaults.FixedDeltaTime,
+                        MaxHistoryTicks = (int)HistorySettingsDefaults.DefaultGlobalHorizonTicks,
+                        PendingStepTicks = 0
                     });
                 }
+            }
+
+            if (!entityManager.HasComponent<RewindLegacyState>(rewindEntity))
+            {
+                entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+                {
+                    PlaybackSpeed = 1f,
+                    CurrentTick = 0,
+                    StartTick = 0,
+                    PlaybackTick = 0,
+                    PlaybackTicksPerSecond = HistorySettingsDefaults.DefaultTicksPerSecond,
+                    ScrubDirection = 0,
+                    ScrubSpeedMultiplier = 1f,
+                    RewindWindowTicks = 0,
+                    ActiveTrack = default
+                });
             }
 
             if (!entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
@@ -534,6 +571,8 @@ namespace PureDOTS.Systems
             {
                 entityManager.AddComponentData(gridEntity, default(SpatialRegistryMetadata));
             }
+
+            EnsureSignalField(entityManager, gridEntity);
         }
 
         private static void EnsureRegistryDirectory(EntityManager entityManager)
@@ -567,6 +606,42 @@ namespace PureDOTS.Systems
                     LastUpdateTick = 0,
                     SampleCount = 0
                 });
+            }
+        }
+
+        private static void EnsureSignalField(EntityManager entityManager, Entity gridEntity)
+        {
+            if (!entityManager.HasComponent<SignalFieldState>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, default(SignalFieldState));
+            }
+
+            if (!entityManager.HasComponent<SignalFieldConfig>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, SignalFieldConfig.Default);
+            }
+
+            if (!entityManager.HasComponent<SignalPerceptionThresholds>(gridEntity))
+            {
+                entityManager.AddComponentData(gridEntity, SignalPerceptionThresholds.Default);
+            }
+
+            EnsureBuffer<SignalFieldCell>(entityManager, gridEntity);
+
+            var config = entityManager.GetComponentData<SpatialGridConfig>(gridEntity);
+            if (config.CellCount <= 0)
+            {
+                return;
+            }
+
+            var cells = entityManager.GetBuffer<SignalFieldCell>(gridEntity);
+            if (cells.Length != config.CellCount)
+            {
+                cells.ResizeUninitialized(config.CellCount);
+                for (int i = 0; i < cells.Length; i++)
+                {
+                    cells[i] = default;
+                }
             }
         }
 

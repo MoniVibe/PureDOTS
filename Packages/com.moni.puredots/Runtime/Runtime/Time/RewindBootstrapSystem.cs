@@ -31,11 +31,22 @@ namespace PureDOTS.Runtime.Time
             em.AddComponentData(e, new RewindState
             {
                 Mode = config.InitialMode,
-                CurrentTick = 0,
                 TargetTick = 0,
                 TickDuration = config.TickDuration,
                 MaxHistoryTicks = config.MaxHistoryTicks,
                 PendingStepTicks = 0
+            });
+            em.AddComponentData(e, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = config.TickDuration > 0f ? 1f / config.TickDuration : 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             state.Enabled = false;
@@ -45,5 +56,3 @@ namespace PureDOTS.Runtime.Time
         public void OnDestroy(ref SystemState state) { }
     }
 }
-
-

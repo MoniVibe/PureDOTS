@@ -34,10 +34,22 @@ namespace PureDOTS.Tests.Integration
                 EntityManager.SetComponentData(rewindEntity, new RewindState
                 {
                     Mode = RewindMode.Record,
-                    PlaybackTick = 0,
-                    StartTick = 0,
                     TargetTick = 0,
-                    PlaybackTicksPerSecond = 60
+                    TickDuration = 1f / 60f,
+                    MaxHistoryTicks = 600,
+                    PendingStepTicks = 0
+                });
+                EntityManager.AddComponentData(rewindEntity, new RewindLegacyState
+                {
+                    PlaybackSpeed = 1f,
+                    CurrentTick = 0,
+                    StartTick = 0,
+                    PlaybackTick = 0,
+                    PlaybackTicksPerSecond = 60f,
+                    ScrubDirection = 0,
+                    ScrubSpeedMultiplier = 1f,
+                    RewindWindowTicks = 0,
+                    ActiveTrack = default
                 });
             }
 
@@ -125,12 +137,14 @@ namespace PureDOTS.Tests.Integration
         {
             var timeState = EntityManager.GetSingleton<TimeState>();
             var rewindState = EntityManager.GetSingleton<RewindState>();
+            var legacy = EntityManager.GetSingleton<RewindLegacyState>();
 
             rewindState.Mode = RewindMode.Playback;
-            rewindState.StartTick = timeState.Tick;
-            rewindState.TargetTick = targetTick;
-            rewindState.PlaybackTick = timeState.Tick;
+            rewindState.TargetTick = (int)targetTick;
             EntityManager.SetSingleton(rewindState);
+            legacy.StartTick = timeState.Tick;
+            legacy.PlaybackTick = timeState.Tick;
+            EntityManager.SetSingleton(legacy);
 
             // Simulate playback (in real implementation, this would replay from history)
             // For now, we'll just set the tick directly
@@ -141,7 +155,7 @@ namespace PureDOTS.Tests.Integration
             World.Update();
 
             // Transition to catch-up if needed
-            if (targetTick < rewindState.StartTick)
+            if (targetTick < legacy.StartTick)
             {
                 rewindState.Mode = RewindMode.CatchUp;
                 EntityManager.SetSingleton(rewindState);

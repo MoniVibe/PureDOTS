@@ -76,12 +76,22 @@ namespace PureDOTS.Tests
             _entityManager.SetComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Playback,
-                StartTick = 10,
                 TargetTick = 50,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 10,
                 PlaybackTick = 25,
                 PlaybackTicksPerSecond = 90f,
                 ScrubDirection = 1,
-                ScrubSpeedMultiplier = 2f
+                ScrubSpeedMultiplier = 2f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             _debugSystem.OnUpdate(ref systemState);

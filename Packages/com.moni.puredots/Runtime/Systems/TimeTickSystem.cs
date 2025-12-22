@@ -14,8 +14,8 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(HistorySettingsConfigSystem))]
     public partial struct TimeTickSystem : ISystem
     {
-        private float _accumulator;
-        private float _lastRealTime;
+        private double _accumulator;
+        private double _lastRealTime;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -25,8 +25,8 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<SimulationScalars>();
             state.RequireForUpdate<SimulationOverrides>();
-            _accumulator = 0f;
-            _lastRealTime = 0f;
+            _accumulator = 0d;
+            _lastRealTime = 0d;
         }
 
         [BurstCompile]
@@ -45,11 +45,11 @@ namespace PureDOTS.Systems
                 ? overrides.TimeScaleOverride
                 : scalars.TimeScale;
 
-            var elapsed = (float)SystemAPI.Time.ElapsedTime;
+            var elapsed = (double)SystemAPI.Time.ElapsedTime;
             if (rewind.Mode != RewindMode.Record)
             {
                 tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
-                _accumulator = 0f;
+                _accumulator = 0d;
                 _lastRealTime = elapsed;
                 SyncLegacyTime(ref tickState, ref timeState);
                 return;
@@ -71,18 +71,26 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            float deltaRealTime = elapsed - _lastRealTime;
+            var deltaRealTime = elapsed - _lastRealTime;
             _lastRealTime = elapsed;
 
-            // Apply speed multiplier and time scale valve
+            // Clamp to avoid pathological catch-up after long stalls.
+            const double maxFrameTimeClamp = 0.25d;
+            if (deltaRealTime > maxFrameTimeClamp)
+            {
+                deltaRealTime = maxFrameTimeClamp;
+            }
+
+            // Speed affects tick rate (accumulator), not per-tick dt.
             float baseSpeedMultiplier = Unity.Mathematics.math.max(0.01f, tickState.CurrentSpeedMultiplier);
-            float scaledDelta = deltaRealTime * baseSpeedMultiplier * effectiveTimeScale;
+            float timeScaleMultiplier = Unity.Mathematics.math.max(0.01f, effectiveTimeScale);
+            var scaledDelta = deltaRealTime * (double)(baseSpeedMultiplier * timeScaleMultiplier);
 
             // Accumulate time for fixed timestep
             _accumulator += scaledDelta;
 
-            var fixedDt = Unity.Mathematics.math.max(tickState.FixedDeltaTime, 1e-4f);
-            const int maxStepsPerFrame = 4; // Prevent spiral of death
+            var fixedDt = (double)Unity.Mathematics.math.max(tickState.FixedDeltaTime, 1e-4f);
+            var maxStepsPerFrame = ResolveMaxSteps(baseSpeedMultiplier * timeScaleMultiplier);
             var steps = 0;
 
             // Advance ticks based on accumulated time
@@ -120,6 +128,21 @@ namespace PureDOTS.Systems
             legacy.IsPaused = tickState.IsPaused;
             legacy.ElapsedTime = tickState.WorldSeconds;
             legacy.WorldSeconds = tickState.WorldSeconds;
+        }
+
+        private static int ResolveMaxSteps(float effectiveSpeed)
+        {
+            if (effectiveSpeed <= 2f)
+            {
+                return 8;
+            }
+
+            if (effectiveSpeed <= 4f)
+            {
+                return 16;
+            }
+
+            return 32;
         }
     }
 }

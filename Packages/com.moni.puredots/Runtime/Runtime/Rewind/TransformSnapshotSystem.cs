@@ -21,12 +21,15 @@ namespace PureDOTS.Runtime.Rewind
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<TimeState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var rewind = SystemAPI.GetSingleton<RewindState>();
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            int currentTick = (int)timeState.Tick;
 
             if (rewind.Mode == RewindMode.Rewind)
             {
@@ -34,7 +37,7 @@ namespace PureDOTS.Runtime.Rewind
                 foreach (var (buffer, lt) in SystemAPI
                              .Query<DynamicBuffer<TransformSnapshot>, RefRW<LocalTransform>>())
                 {
-                    Restore(buffer, ref lt.ValueRW, rewind.CurrentTick);
+                    Restore(buffer, ref lt.ValueRW, currentTick);
                 }
             }
             else
@@ -43,7 +46,7 @@ namespace PureDOTS.Runtime.Rewind
                 foreach (var (buffer, lt) in SystemAPI
                              .Query<DynamicBuffer<TransformSnapshot>, RefRO<LocalTransform>>())
                 {
-                    Capture(buffer, in lt.ValueRO, rewind.CurrentTick, rewind.MaxHistoryTicks);
+                    Capture(buffer, in lt.ValueRO, currentTick, rewind.MaxHistoryTicks);
                 }
             }
         }
@@ -94,5 +97,4 @@ namespace PureDOTS.Runtime.Rewind
         [BurstCompile] public void OnDestroy(ref SystemState state) { }
     }
 }
-
 

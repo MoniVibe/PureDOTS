@@ -38,7 +38,7 @@ namespace PureDOTS.Systems
                 IsPaused = (byte)(tickState.IsPaused ? 1 : 0),
                 RewindMode = rewindState.Mode,
                 RewindTargetTick = (uint)math.max(0, rewindState.TargetTick),
-                RewindPlaybackTick = rewindState.PlaybackTick
+                RewindPlaybackTick = tickState.Tick
             };
 
             TimeLogUtility.AppendSnapshot(ref buffer, ref logState.ValueRW, entry);

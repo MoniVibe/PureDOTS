@@ -112,13 +112,18 @@ var current = env.FlowVelocity;
 - Heightmap-based water level
 - Flow between columns based on height differences
 - Terrain integration (water follows terrain topology)
+- Active set updates (only update cells with activity)
+- Conduit graph for underground tunnels (sparse, graph-based)
 
 **Use Cases:**
 - Terrain water simulation (rivers, lakes, flooding)
 - Coastal dynamics (tides, erosion)
 - Player water manipulation (biosculpting, damming)
+- Underground tunnels and siphoning
 
 **Reference:** Shallow-water equations are specifically designed for this use case (heightfields, not full 3D).
+
+**See:** `Docs/Concepts/Core/Fluid_Dynamics_System.md` for detailed implementation specification.
 
 ---
 

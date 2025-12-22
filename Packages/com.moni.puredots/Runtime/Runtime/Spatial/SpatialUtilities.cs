@@ -467,7 +467,7 @@ namespace PureDOTS.Runtime.Spatial
                                 continue;
                             }
 
-                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, descriptor.Options);
+                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, in descriptor);
                             if (distanceSq > radiusSq)
                             {
                                 continue;
@@ -708,7 +708,7 @@ namespace PureDOTS.Runtime.Spatial
                         continue;
                     }
 
-                    var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, options);
+                    var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, in descriptor);
                     InsertKNearest(results, ref count, capacity, entry.Entity, distanceSq);
                 }
 
@@ -762,7 +762,7 @@ namespace PureDOTS.Runtime.Spatial
                                 continue;
                             }
 
-                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, options);
+                            var distanceSq = ComputeDistanceSq(entry.Position, descriptor.Origin, in descriptor);
                             if (distanceSq > radiusSq)
                             {
                                 continue;
@@ -922,15 +922,34 @@ namespace PureDOTS.Runtime.Spatial
             }
         }
 
-        private static float ComputeDistanceSq(float3 position, float3 origin, SpatialQueryOptions options)
+        private static float ComputeDistanceSq(float3 position, float3 origin, in SpatialQueryDescriptor descriptor)
         {
             var delta = position - origin;
-            if ((options & SpatialQueryOptions.ProjectToXZ) != 0)
+            var options = descriptor.Options;
+            var mode = descriptor.ProjectionMode;
+            if (mode == SpatialProjectionMode.None && (options & SpatialQueryOptions.ProjectToXZ) != 0)
             {
-                delta.y = 0f;
+                mode = SpatialProjectionMode.WorldPlane;
+            }
+
+            if (mode != SpatialProjectionMode.None)
+            {
+                var normal = ResolveProjectionNormal(in descriptor);
+                delta -= normal * math.dot(delta, normal);
             }
 
             return math.lengthsq(delta);
+        }
+
+        private static float3 ResolveProjectionNormal(in SpatialQueryDescriptor descriptor)
+        {
+            var normal = descriptor.ProjectionPlaneNormal;
+            if (math.lengthsq(normal) <= 1e-6f)
+            {
+                return new float3(0f, 1f, 0f);
+            }
+
+            return math.normalize(normal);
         }
 
         private static bool IsWithinBounds(int3 coords, int3 maxCounts)

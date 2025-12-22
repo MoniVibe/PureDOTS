@@ -138,6 +138,7 @@ namespace PureDOTS.Systems.Time.Templates
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<RewindLegacyState>();
             state.RequireForUpdate<RewindConfigSingleton>();
         }
 
@@ -152,11 +153,12 @@ namespace PureDOTS.Systems.Time.Templates
             var configSingleton = SystemAPI.GetSingleton<RewindConfigSingleton>();
             ref var config = ref configSingleton.Config.Value;
 
-            var activeTrack = rewindState.ActiveTrack;
+            var legacy = SystemAPI.GetSingleton<RewindLegacyState>();
+            var activeTrack = legacy.ActiveTrack;
             if (!RewindUtil.TryGetTrackDef(ref config, activeTrack, out var trackDef))
                 return;
 
-            uint targetTick = rewindState.PlaybackTick;
+            uint targetTick = legacy.PlaybackTick;
 
             foreach (var (tag, transform, hp, history, scope) in SystemAPI.Query<
                          RefRO<PosHpRewindTag>,
@@ -214,4 +216,3 @@ namespace PureDOTS.Systems.Time.Templates
         }
     }
 }
-

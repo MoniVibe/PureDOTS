@@ -37,9 +37,7 @@ namespace PureDOTS.Systems.Input
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            uint targetTick = rewindState.Mode == RewindMode.Playback
-                ? rewindState.PlaybackTick
-                : timeState.Tick;
+            uint targetTick = timeState.Tick;
 
             var snapshots = SystemAPI.GetBuffer<InputSnapshotRecord>(historyEntity);
             var handEdges = SystemAPI.GetBuffer<HandInputEdge>(historyEntity);
@@ -126,4 +124,3 @@ namespace PureDOTS.Systems.Input
         }
     }
 }
-

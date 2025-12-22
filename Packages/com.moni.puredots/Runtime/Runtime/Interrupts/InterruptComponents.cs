@@ -27,6 +27,9 @@ namespace PureDOTS.Runtime.Interrupts
         AllyInDanger = 12,
         ResourceSpotted = 13,
         ObjectiveSpotted = 14,
+        SmellSignalDetected = 15,
+        SoundSignalDetected = 16,
+        EMSignalDetected = 17,
 
         // Group/Order interrupts
         NewOrder = 20,
@@ -264,4 +267,3 @@ namespace PureDOTS.Runtime.Interrupts
         }
     }
 }
-

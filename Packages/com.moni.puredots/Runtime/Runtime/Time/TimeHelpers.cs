@@ -223,7 +223,7 @@ namespace PureDOTS.Runtime.Time
             // Global playback
             if (rewindState.Mode == RewindMode.Playback)
             {
-                return rewindState.PlaybackTick;
+                return timeState.Tick;
             }
 
             // Normal simulation
@@ -331,4 +331,3 @@ namespace PureDOTS.Runtime.Time
         }
     }
 }
-

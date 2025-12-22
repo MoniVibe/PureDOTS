@@ -207,8 +207,10 @@ namespace PureDOTS.Tests
 
             var rewind = _entityManager.GetSingleton<RewindState>();
             rewind.Mode = RewindMode.Playback;
-            rewind.PlaybackTick = _entityManager.GetSingleton<TimeState>().Tick;
             _entityManager.SetSingleton(rewind);
+            var rewindLegacy = _entityManager.GetSingleton<RewindLegacyState>();
+            rewindLegacy.PlaybackTick = _entityManager.GetSingleton<TimeState>().Tick;
+            _entityManager.SetSingleton(rewindLegacy);
 
             UpdateSystem(_jobTimeAdapterHandle);
             UpdateSystem(_jobPlaybackHandle);

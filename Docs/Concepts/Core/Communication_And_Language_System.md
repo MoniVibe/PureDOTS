@@ -14,6 +14,7 @@ The Communication and Language System enables entities to exchange information, 
 - **Spell Signs**: Gesture-based magic using hand/limb movements (somatic components)
 - **Miscommunication Gameplay**: Language barriers and sign misinterpretation create emergent narratives
 - **Deterministic**: Same language proficiencies + same communication attempts = same results
+- **No Implicit Acknowledgment**: Emitters only learn they were heard when a recipient explicitly acknowledges (nod, verbal reply, psionic ping, etc.).
 
 ---
 
@@ -1118,6 +1119,21 @@ Total (100 simultaneous): <4.0ms per frame
 
 ---
 
+## Related Systems
+
+### Arguments System
+
+The Communication System provides the foundation for arguments (conflict resolution and decision-making protocols). When entities have conflicting intents or face high-stakes choices, they use the Arguments System to resolve disagreements through structured interactions.
+
+**Integration:**
+- Arguments require valid communication links (spatial proximity or comm channels)
+- Language barriers can prevent arguments (miscommunication blocks structured debate)
+- Argument outcomes emit social events that update relations via the communication system
+
+See `Docs/Concepts/Core/Arguments_System.md` for detailed specification of argument sessions, preference computation, and resolution protocols.
+
+---
+
 ## Summary
 
 The Communication and Language System provides:
@@ -1133,5 +1149,6 @@ The Communication and Language System provides:
 9. **Miscommunication**: Language barriers create emergent narratives
 10. **Cross-Game Support**: NPC dialogue (Godgame), alien diplomacy (Space4X)
 11. **Integration**: Works with reactions (miscommunication affects relations), tooltips (show language proficiency), procedural generation (gods have unique languages)
+12. **Arguments**: Provides communication foundation for structured decision-making protocols
 
 **Key Innovation**: Communication is not guaranteed to succeed - language barriers, cultural differences, and general sign ambiguity create opportunities for misunderstanding, strategic deception, and emergent storytelling where the same gesture can mean peace or war depending on context and interpretation.

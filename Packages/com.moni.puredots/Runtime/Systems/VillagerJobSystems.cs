@@ -1844,6 +1844,7 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<VillagerJobTicket>();
             state.RequireForUpdate<VillagerJobProgress>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<TimeState>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -1863,7 +1864,7 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var targetTick = rewindState.PlaybackTick;
+            var targetTick = SystemAPI.GetSingleton<TimeState>().Tick;
             foreach (var (job, ticket, progress, historyBuffer) in SystemAPI.Query<RefRW<VillagerJob>, RefRW<VillagerJobTicket>, RefRW<VillagerJobProgress>, DynamicBuffer<VillagerJobHistorySample>>())
             {
                 if (historyBuffer.Length == 0)

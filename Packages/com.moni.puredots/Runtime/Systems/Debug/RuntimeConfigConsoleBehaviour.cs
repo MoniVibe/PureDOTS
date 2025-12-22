@@ -382,7 +382,13 @@ namespace PureDOTS.Runtime.Debugging
                 if (!rewindQuery.IsEmptyIgnoreFilter)
                 {
                     var rewindState = rewindQuery.GetSingleton<RewindState>();
-                    rewindInfo = $"mode={rewindState.Mode} start={rewindState.StartTick} target={rewindState.TargetTick}";
+                    var startTick = 0u;
+                    using var legacyQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindLegacyState>());
+                    if (!legacyQuery.IsEmptyIgnoreFilter)
+                    {
+                        startTick = legacyQuery.GetSingleton<RewindLegacyState>().StartTick;
+                    }
+                    rewindInfo = $"mode={rewindState.Mode} start={startTick} target={rewindState.TargetTick}";
                 }
             }
 
@@ -458,6 +464,5 @@ namespace PureDOTS.Runtime.Debugging
         }
     }
 }
-
 
 

@@ -130,12 +130,22 @@ namespace PureDOTS.Tests.Integration
                 EntityManager.SetComponentData(rewindEntity, new RewindState
                 {
                     Mode = RewindMode.Record,
-                    StartTick = 0,
                     TargetTick = 0,
+                    TickDuration = 1f / 60f,
+                    MaxHistoryTicks = 600,
+                    PendingStepTicks = 0
+                });
+                EntityManager.AddComponentData(rewindEntity, new RewindLegacyState
+                {
+                    PlaybackSpeed = 1f,
+                    CurrentTick = 0,
+                    StartTick = 0,
                     PlaybackTick = 0,
                     PlaybackTicksPerSecond = 0f,
                     ScrubDirection = 0,
-                    ScrubSpeedMultiplier = 1f
+                    ScrubSpeedMultiplier = 1f,
+                    RewindWindowTicks = 0,
+                    ActiveTrack = default
                 });
             }
 
@@ -150,9 +160,11 @@ namespace PureDOTS.Tests.Integration
 
             var rewindState = EntityManager.GetSingleton<RewindState>();
             rewindState.Mode = RewindMode.Playback;
-            rewindState.TargetTick = targetTick;
-            rewindState.PlaybackTick = targetTick;
+            rewindState.TargetTick = (int)targetTick;
             EntityManager.SetSingleton(rewindState);
+            var legacy = EntityManager.GetSingleton<RewindLegacyState>();
+            legacy.PlaybackTick = targetTick;
+            EntityManager.SetSingleton(legacy);
 
             World.Update();
 
@@ -633,4 +645,3 @@ namespace PureDOTS.Tests.Integration
         }
     }
 }
-

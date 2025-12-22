@@ -16,11 +16,11 @@ namespace PureDOTS.Runtime.Components
     {
         /// <summary>Current simulation tick (monotonically increasing, canonical world time index).</summary>
         public uint Tick;
-        /// <summary>Frame delta time, scaled by CurrentSpeedMultiplier.</summary>
+        /// <summary>Fixed delta time per tick (not scaled by speed).</summary>
         public float DeltaTime;
         /// <summary>Delta time in seconds (alias for DeltaTime to aid migration).</summary>
         public float DeltaSeconds;
-        /// <summary>Elapsed time in simulation space (wall-clock time scaled by speed).</summary>
+        /// <summary>Elapsed simulation time (Tick * FixedDeltaTime).</summary>
         public float ElapsedTime;
         /// <summary>World time in seconds (Tick * FixedDeltaTime).</summary>
         public float WorldSeconds;
@@ -60,5 +60,28 @@ namespace PureDOTS.Runtime.Components
         public bool IsPlaying;
         /// <summary>World time in seconds (Tick * FixedDeltaTime).</summary>
         public float WorldSeconds;
+    }
+
+    /// <summary>
+    /// Canonical time context overlay for view/present/target tick semantics.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TimeContext : IComponentData
+    {
+        /// <summary>Monotonic max recorded tick (never decreases).</summary>
+        public uint PresentTick;
+        /// <summary>Tick currently being simulated or displayed.</summary>
+        public uint ViewTick;
+        /// <summary>Target tick for rewind/scrub.</summary>
+        public uint TargetTick;
+        /// <summary>Base fixed timestep (seconds per tick).</summary>
+        public float FixedDeltaTime;
+        /// <summary>Whether simulation is paused.</summary>
+        [MarshalAs(UnmanagedType.U1)]
+        public bool IsPaused;
+        /// <summary>Speed multiplier applied to tick rate.</summary>
+        public float SpeedMultiplier;
+        /// <summary>Current rewind mode.</summary>
+        public RewindMode Mode;
     }
 }

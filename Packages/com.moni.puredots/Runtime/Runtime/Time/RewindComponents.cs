@@ -1,3 +1,4 @@
+using System;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Components
@@ -50,20 +51,26 @@ namespace PureDOTS.Runtime.Components
     /// <summary>
     /// Singleton component tracking the global rewind/playback state.
     /// Baseline fields support play/pause/rewind/step and minimal history settings.
-    /// Legacy fields are retained for compatibility.
+    /// View/current ticks live in TimeState/TimeContext (not here).
     /// </summary>
     public struct RewindState : IComponentData
     {
         // Canonical baseline
         public RewindMode Mode;
-        public int CurrentTick;
         public int TargetTick;
         public float TickDuration;
         public int MaxHistoryTicks;
         public byte PendingStepTicks;
+    }
 
-        // Legacy fields (kept to avoid breaking existing call sites; may be deprecated)
+    /// <summary>
+    /// Legacy/compat rewind fields retained for existing call sites.
+    /// </summary>
+    [Obsolete("Use TimeContext and RewindState instead. Will be removed in v2.0.")]
+    public struct RewindLegacyState : IComponentData
+    {
         public float PlaybackSpeed;
+        public int CurrentTick;
         public uint StartTick;
         public uint PlaybackTick;
         public float PlaybackTicksPerSecond;

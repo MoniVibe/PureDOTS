@@ -144,6 +144,19 @@ namespace PureDOTS.Systems
             if (SystemAPI.HasSingleton<RewindState>())
             {
                 var rewindState = SystemAPI.GetSingleton<RewindState>();
+                uint viewTick = 0;
+                if (SystemAPI.HasSingleton<TimeContext>())
+                {
+                    viewTick = SystemAPI.GetSingleton<TimeContext>().ViewTick;
+                }
+                else if (SystemAPI.HasSingleton<TickTimeState>())
+                {
+                    viewTick = SystemAPI.GetSingleton<TickTimeState>().Tick;
+                }
+                else if (SystemAPI.HasSingleton<TimeState>())
+                {
+                    viewTick = SystemAPI.GetSingleton<TimeState>().Tick;
+                }
 
                 var text = new FixedString128Bytes();
                 text.Append("Mode: ");
@@ -163,7 +176,7 @@ namespace PureDOTS.Systems
                         break;
                 }
                 text.Append(" | Playback Tick: ");
-                text.Append(rewindState.PlaybackTick);
+                text.Append(viewTick);
                 text.Append(" → Target: ");
                 text.Append(rewindState.TargetTick);
                 debugData.ValueRW.RewindStateText = text;

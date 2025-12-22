@@ -142,6 +142,21 @@ namespace PureDOTS.Runtime.Spatial
         public SpatialQueryOptions Options;
         public float Tolerance;
         public Entity ExcludedEntity;
+        public SpatialProjectionMode ProjectionMode;
+        public float3 ProjectionPlaneNormal;
+        public byte NavLayerId;
+        public Entity FrameId;
+    }
+
+    /// <summary>
+    /// Policy for projecting distances when evaluating spatial queries.
+    /// </summary>
+    public enum SpatialProjectionMode : byte
+    {
+        None = 0,
+        WorldPlane = 1,
+        GravityTangent = 2,
+        NavLayerPlane = 3
     }
 
     /// <summary>

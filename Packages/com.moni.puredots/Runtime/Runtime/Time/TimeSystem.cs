@@ -6,8 +6,8 @@ using PureDOTS.Runtime.Components;
 namespace PureDOTS.Runtime.Time
 {
     /// <summary>
-    /// Baseline time driver that advances RewindState tick according to mode.
-    /// External systems set Mode/TargetTick/PendingStepTicks; this system mutates CurrentTick/TargetTick.
+    /// Baseline time driver that advances legacy rewind tick according to mode.
+    /// External systems set Mode/TargetTick/PendingStepTicks; this system mutates RewindLegacyState.CurrentTick/TargetTick.
     /// </summary>
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
@@ -18,6 +18,7 @@ namespace PureDOTS.Runtime.Time
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<RewindLegacyState>();
         }
 
         [BurstCompile]
@@ -30,12 +31,13 @@ namespace PureDOTS.Runtime.Time
                 return;
 
             ref var rs = ref rewind.ValueRW;
+            ref var legacy = ref SystemAPI.GetSingletonRW<RewindLegacyState>().ValueRW;
 
             switch (rs.Mode)
             {
                 case RewindMode.Play:
-                    rs.CurrentTick++;
-                    rs.TargetTick = rs.CurrentTick;
+                    legacy.CurrentTick++;
+                    rs.TargetTick = legacy.CurrentTick;
                     break;
 
                 case RewindMode.Paused:
@@ -45,8 +47,8 @@ namespace PureDOTS.Runtime.Time
                 case RewindMode.Step:
                     if (rs.PendingStepTicks > 0)
                     {
-                        rs.CurrentTick++;
-                        rs.TargetTick = rs.CurrentTick;
+                        legacy.CurrentTick++;
+                        rs.TargetTick = legacy.CurrentTick;
                         rs.PendingStepTicks--;
                     }
                     else
@@ -56,9 +58,9 @@ namespace PureDOTS.Runtime.Time
                     break;
 
                 case RewindMode.Rewind:
-                    if (rs.CurrentTick > 0)
+                    if (legacy.CurrentTick > 0)
                     {
-                        rs.CurrentTick--;
+                        legacy.CurrentTick--;
                     }
                     else
                     {
@@ -72,6 +74,4 @@ namespace PureDOTS.Runtime.Time
         public void OnDestroy(ref SystemState state) { }
     }
 }
-
-
 

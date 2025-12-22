@@ -167,4 +167,14 @@ Then downstream AI pulls details on demand (belief query, investigation behavior
 - Encoding high-cardinality data as shared components (chunk fragmentation).
 - Materializing limb entities for everyone (entity count blow-ups).
 - Flooding every mind with raw field data every tick (memory/CPU blow-ups); use interrupts + pull.
+- Assuming emitters know who detected them (no implicit acknowledgments).
 
+---
+
+## Design Note: Detection Is Local, Not Global
+
+- Emitters broadcast into the medium; they do not get "heard/seen" confirmations by default.
+- Receivers only know what their own senses detect (LOS, hearing, smell, EM, etc.).
+- Emitters learn they were heard only when an explicit acknowledgment arrives (nod, verbal reply, psionic ping, etc.).
+- "Someone must have heard me" is an inference, not a system guarantee.
+- Pursuers do not auto-know a fleeing entity's location unless they can sense it or infer it; predators may avoid acknowledging the target.

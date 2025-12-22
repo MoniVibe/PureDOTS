@@ -176,12 +176,18 @@ namespace PureDOTS.Systems.Spatial
             _hasCachedConfig = true;
             _lastDirtyVersionProcessed = dirtyVersion;
 
+            var lastTick = timeState.Tick;
+            if (SystemAPI.TryGetSingleton<TimeContext>(out var timeContext))
+            {
+                lastTick = timeContext.ViewTick;
+            }
+
             var nextState = new SpatialGridState
             {
                 ActiveBufferIndex = (currentState.ActiveBufferIndex + 1) & 1,
                 TotalEntries = totalEntries,
                 Version = currentState.Version + 1,
-                LastUpdateTick = timeState.Tick,
+                LastUpdateTick = lastTick,
                 LastDirtyTick = currentState.LastDirtyTick,
                 DirtyVersion = currentState.DirtyVersion,
                 DirtyAddCount = currentState.DirtyAddCount,

@@ -202,14 +202,32 @@ namespace PureDOTS.Tests
             var rewindState = new RewindState
             {
                 Mode = RewindMode.Record,
-                StartTick = 0,
                 TargetTick = 0,
+                TickDuration = timeState.FixedDeltaTime,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            };
+            _entityManager.SetComponentData(rewindEntity, rewindState);
+            var legacy = new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
                 PlaybackTick = 0,
                 PlaybackTicksPerSecond = 60f,
                 ScrubDirection = 0,
-                ScrubSpeedMultiplier = 1f
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             };
-            _entityManager.SetComponentData(rewindEntity, rewindState);
+            if (_entityManager.HasComponent<RewindLegacyState>(rewindEntity))
+            {
+                _entityManager.SetComponentData(rewindEntity, legacy);
+            }
+            else
+            {
+                _entityManager.AddComponentData(rewindEntity, legacy);
+            }
         }
 
         private void EnsureCommandQueue()

@@ -24,6 +24,7 @@ namespace PureDOTS.Debugging
         private World _world;
         private EntityQuery _rewindQuery;
         private EntityQuery _timeQuery;
+        private EntityQuery _timeContextQuery;
         private EntityQuery _timelineQuery;
         private FixedString64Bytes _modeString;
         private uint _playbackTick;
@@ -43,6 +44,7 @@ namespace PureDOTS.Debugging
             var entityManager = _world.EntityManager;
             _rewindQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>());
             _timeQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>());
+            _timeContextQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeContext>());
             _timelineQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<DebugDisplayData>());
         }
 
@@ -66,6 +68,15 @@ namespace PureDOTS.Debugging
             }
 
             var rewindState = _rewindQuery.GetSingleton<RewindState>();
+            uint viewTick = 0;
+            if (!_timeContextQuery.IsEmptyIgnoreFilter)
+            {
+                viewTick = _timeContextQuery.GetSingleton<TimeContext>().ViewTick;
+            }
+            else if (!_timeQuery.IsEmptyIgnoreFilter)
+            {
+                viewTick = _timeQuery.GetSingleton<TimeState>().Tick;
+            }
             switch (rewindState.Mode)
             {
                 case RewindMode.Play:
@@ -76,7 +87,7 @@ namespace PureDOTS.Debugging
                     break;
                 case RewindMode.Rewind:
                     _modeString.Append("Rewind");
-                    _playbackTick = rewindState.PlaybackTick;
+                    _playbackTick = viewTick;
                     break;
                 case RewindMode.Step:
                     _modeString.Append("Step");

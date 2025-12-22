@@ -26,6 +26,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<VillagerBehavior> _behaviorLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<VillagerAIPipelineBridgeState> _bridgeStateLookup;
+        private BufferLookup<VillagerCommand> _commandLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -42,6 +43,7 @@ namespace PureDOTS.Systems
             _behaviorLookup = state.GetComponentLookup<VillagerBehavior>(true);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _bridgeStateLookup = state.GetComponentLookup<VillagerAIPipelineBridgeState>(true);
+            _commandLookup = state.GetBufferLookup<VillagerCommand>(true);
         }
 
         [BurstCompile]
@@ -72,6 +74,7 @@ namespace PureDOTS.Systems
             _behaviorLookup.Update(ref state);
             _transformLookup.Update(ref state);
             _bridgeStateLookup.Update(ref state);
+            _commandLookup.Update(ref state);
 
             VillagerArchetypeDefaults.CreateFallback(out var fallbackArchetype);
 
@@ -83,6 +86,7 @@ namespace PureDOTS.Systems
                 BehaviorLookup = _behaviorLookup,
                 TransformLookup = _transformLookup,
                 BridgeStateLookup = _bridgeStateLookup,
+                CommandLookup = _commandLookup,
                 FallbackArchetype = fallbackArchetype
             };
 
@@ -98,6 +102,7 @@ namespace PureDOTS.Systems
             [ReadOnly] public ComponentLookup<VillagerBehavior> BehaviorLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public ComponentLookup<VillagerAIPipelineBridgeState> BridgeStateLookup;
+            [ReadOnly] public BufferLookup<VillagerCommand> CommandLookup;
             public VillagerArchetypeData FallbackArchetype;
 
             public void Execute(Entity entity, ref VillagerAIState aiState, ref VillagerNeeds needs, in VillagerJob job, in VillagerJobTicket ticket, in VillagerFlags flags, in LocalTransform transform, in VillagerArchetypeResolved resolved)
@@ -110,17 +115,23 @@ namespace PureDOTS.Systems
                 
                 aiState.StateTimer += DeltaTime;
 
-                // Check if AI pipeline bridge has already set the goal this tick
-                // If so, skip the fallback need-based logic
                 if (BridgeStateLookup.HasComponent(entity))
                 {
                     var bridgeState = BridgeStateLookup[entity];
-                    if (bridgeState.LastBridgedTick == CurrentTick)
+                    if (bridgeState.IsAIPipelineActive != 0 || bridgeState.LastBridgedTick == CurrentTick)
                     {
-                        // AI pipeline has already set the goal - just handle state transitions
-                        HandleStateTransitions(ref aiState, in needs, in job, in ticket);
                         return;
                     }
+                }
+
+                if (CommandLookup.HasBuffer(entity) && CommandLookup[entity].Length > 0)
+                {
+                    return;
+                }
+
+                if (ticket.ResourceEntity != Entity.Null || ticket.Phase != (byte)VillagerJob.JobPhase.Idle)
+                {
+                    return;
                 }
 
                 var behavior = BehaviorLookup.HasComponent(entity)

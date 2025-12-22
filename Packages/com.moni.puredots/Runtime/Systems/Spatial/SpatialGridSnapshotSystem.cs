@@ -25,6 +25,11 @@ namespace PureDOTS.Systems.Spatial
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
+            var captureTick = timeState.Tick;
+            if (SystemAPI.TryGetSingleton<TimeContext>(out var timeContext))
+            {
+                captureTick = timeContext.ViewTick;
+            }
             // Only capture snapshots during Record mode
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
@@ -40,7 +45,7 @@ namespace PureDOTS.Systems.Spatial
             if (SystemAPI.HasComponent<SpatialGridState>(gridEntity))
             {
                 var gridState = SystemAPI.GetComponent<SpatialGridState>(gridEntity);
-                var snapshot = SpatialGridSnapshot.FromState(gridState, timeState.Tick);
+                var snapshot = SpatialGridSnapshot.FromState(gridState, captureTick);
 
                 // Store snapshot as component (replacing previous)
                 if (SystemAPI.HasComponent<SpatialGridSnapshot>(gridEntity))
@@ -60,5 +65,4 @@ namespace PureDOTS.Systems.Spatial
         }
     }
 }
-
 

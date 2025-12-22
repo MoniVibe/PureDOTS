@@ -48,9 +48,22 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Playback,
-                StartTick = 0,
                 TargetTick = 100,
-                PlaybackTick = 50
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 50,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             var hubEntity = _entityManager.CreateEntity();
@@ -93,9 +106,22 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                StartTick = 0,
                 TargetTick = 0,
-                PlaybackTick = 0
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             // Assert - Verify record mode is correctly identified
@@ -285,10 +311,22 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Scrub,
-                StartTick = 0,
                 TargetTick = 100,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
                 PlaybackTick = 75,
-                ScrubDirection = -1 // Rewinding backward
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = ScrubDirection.Backward,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             // Assert - Verify scrub mode is not record mode
@@ -401,4 +439,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

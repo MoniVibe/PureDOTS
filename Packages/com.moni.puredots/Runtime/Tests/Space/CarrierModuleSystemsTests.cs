@@ -218,7 +218,7 @@ namespace PureDOTS.Tests.Space
 
         private static void SetupTimeSingletons(EntityManager entityManager)
         {
-            var timeEntity = entityManager.CreateEntity(typeof(TimeState), typeof(RewindState));
+            var timeEntity = entityManager.CreateEntity(typeof(TimeState), typeof(RewindState), typeof(RewindLegacyState));
             entityManager.SetComponentData(timeEntity, new TimeState
             {
                 FixedDeltaTime = 1f / 60f,
@@ -230,12 +230,22 @@ namespace PureDOTS.Tests.Space
             entityManager.SetComponentData(timeEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                StartTick = 0,
                 TargetTick = 0,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            entityManager.SetComponentData(timeEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
                 PlaybackTick = 0,
                 PlaybackTicksPerSecond = 1f,
                 ScrubDirection = 1,
-                ScrubSpeedMultiplier = 1f
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
         }
     }

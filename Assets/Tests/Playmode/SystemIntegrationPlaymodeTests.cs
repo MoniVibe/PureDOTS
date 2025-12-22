@@ -45,10 +45,26 @@ namespace PureDOTS.Tests
             using var world = new World("RewindGuardTest");
             var entityManager = world.EntityManager;
 
-            var rewindEntity = entityManager.CreateEntity(typeof(RewindState));
+            var rewindEntity = entityManager.CreateEntity(typeof(RewindState), typeof(RewindLegacyState));
             entityManager.SetComponentData(rewindEntity, new RewindState
             {
-                Mode = RewindMode.Record
+                Mode = RewindMode.Record,
+                TargetTick = 0,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            entityManager.SetComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             var simulationGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();

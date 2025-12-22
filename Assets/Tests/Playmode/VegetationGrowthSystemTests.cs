@@ -132,13 +132,32 @@ namespace PureDOTS.Tests
             
             var rewindState = entityManager.GetComponentData<RewindState>(rewindStateEntity);
             rewindState.Mode = RewindMode.Record;
-            rewindState.StartTick = 0;
             rewindState.TargetTick = 0;
-            rewindState.PlaybackTick = 0;
-            rewindState.PlaybackTicksPerSecond = 60f;
-            rewindState.ScrubDirection = 0;
-            rewindState.ScrubSpeedMultiplier = 1f;
+            rewindState.TickDuration = _fixedDeltaTime;
+            rewindState.MaxHistoryTicks = 600;
+            rewindState.PendingStepTicks = 0;
             entityManager.SetComponentData(rewindStateEntity, rewindState);
+
+            var legacy = entityManager.HasComponent<RewindLegacyState>(rewindStateEntity)
+                ? entityManager.GetComponentData<RewindLegacyState>(rewindStateEntity)
+                : new RewindLegacyState();
+            legacy.PlaybackSpeed = 1f;
+            legacy.CurrentTick = 0;
+            legacy.StartTick = 0;
+            legacy.PlaybackTick = 0;
+            legacy.PlaybackTicksPerSecond = 60f;
+            legacy.ScrubDirection = 0;
+            legacy.ScrubSpeedMultiplier = 1f;
+            legacy.RewindWindowTicks = 0;
+            legacy.ActiveTrack = default;
+            if (entityManager.HasComponent<RewindLegacyState>(rewindStateEntity))
+            {
+                entityManager.SetComponentData(rewindStateEntity, legacy);
+            }
+            else
+            {
+                entityManager.AddComponentData(rewindStateEntity, legacy);
+            }
             
             // Set up ECB singleton
             var ecbSingletonEntity = entityManager.CreateEntity();

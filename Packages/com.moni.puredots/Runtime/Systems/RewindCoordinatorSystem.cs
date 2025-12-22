@@ -22,6 +22,7 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<RewindLegacyState>();
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<HistorySettings>();
@@ -36,15 +37,17 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var rewindHandle = SystemAPI.GetSingletonRW<RewindState>();
+            var legacyHandle = SystemAPI.GetSingletonRW<RewindLegacyState>();
             var tickTimeHandle = SystemAPI.GetSingletonRW<TickTimeState>();
             var timeHandle = SystemAPI.GetSingletonRW<TimeState>();
 
             ref var rewindState = ref rewindHandle.ValueRW;
+            ref var legacyState = ref legacyHandle.ValueRW;
             ref var tickTimeState = ref tickTimeHandle.ValueRW;
             ref var timeState = ref timeHandle.ValueRW;
 
             // Process time control commands
-            ProcessCommands(ref state, ref rewindState, ref tickTimeState);
+            ProcessCommands(ref state, ref rewindState, ref legacyState, ref tickTimeState);
 
             // Handle rewind state machine
             switch (rewindState.Mode)
@@ -54,11 +57,11 @@ namespace PureDOTS.Systems
                     break;
 
                 case RewindMode.Rewind:
-                    HandlePlaybackMode(ref state, ref rewindState, ref tickTimeState);
+                    HandlePlaybackMode(ref state, ref rewindState, ref legacyState, ref tickTimeState);
                     break;
 
                 case RewindMode.Step:
-                    HandleCatchUpMode(ref state, ref rewindState, ref tickTimeState);
+                    HandleCatchUpMode(ref state, ref rewindState, ref legacyState, ref tickTimeState);
                     break;
             }
 
@@ -67,7 +70,7 @@ namespace PureDOTS.Systems
 
         [BurstCompile]
         private void ProcessCommands(ref SystemState state,
-            ref RewindState rewindState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
         {
             var commandEntity = SystemAPI.GetSingletonEntity<RewindState>();
             if (!state.EntityManager.HasBuffer<TimeControlCommand>(commandEntity))
@@ -133,14 +136,14 @@ namespace PureDOTS.Systems
                             var maxDepth = ResolveRewindHorizonTicks(tickTimeState);
                             uint minTick = tickTimeState.Tick > maxDepth ? tickTimeState.Tick - maxDepth : 0u;
                             uint clampedTarget = math.max(cmd.UintParam, minTick);
-                            StartRewind(ref rewindState, ref tickTimeState, clampedTarget);
+                            StartRewind(ref rewindState, ref legacyState, ref tickTimeState, clampedTarget);
                         }
                         break;
 
                     case TimeControlCommandType.StopRewind:
                         if (rewindState.Mode == RewindMode.Rewind)
                         {
-                            StopRewind(ref rewindState, ref tickTimeState);
+                            StopRewind(ref rewindState, ref legacyState, ref tickTimeState);
                         }
                         break;
 
@@ -186,14 +189,14 @@ namespace PureDOTS.Systems
 
         [BurstCompile]
         private void HandlePlaybackMode(ref SystemState state,
-            ref RewindState rewindState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
         {
             // Pause normal simulation during playback
             tickTimeState.IsPaused = true;
             tickTimeState.IsPlaying = false;
             uint targetTick = (uint)math.max(0, rewindState.TargetTick);
             tickTimeState.TargetTick = targetTick;
-            tickTimeState.Tick = rewindState.PlaybackTick;
+            tickTimeState.Tick = legacyState.PlaybackTick;
 
             // Add PlaybackGuardTag to all rewindable entities
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -210,20 +213,20 @@ namespace PureDOTS.Systems
             float deltaTime = SystemAPI.Time.DeltaTime;
             _playbackAccumulator += deltaTime;
 
-            float tickInterval = 1f / rewindState.PlaybackTicksPerSecond;
+            float tickInterval = 1f / legacyState.PlaybackTicksPerSecond;
 
             while (_playbackAccumulator >= tickInterval)
             {
                 _playbackAccumulator -= tickInterval;
 
                 // Move playback tick toward target
-                if (rewindState.PlaybackTick < targetTick)
+                if (legacyState.PlaybackTick < targetTick)
                 {
-                    rewindState.PlaybackTick++;
+                    legacyState.PlaybackTick++;
                 }
-                else if (rewindState.PlaybackTick > targetTick)
+                else if (legacyState.PlaybackTick > targetTick)
                 {
-                    rewindState.PlaybackTick--;
+                    legacyState.PlaybackTick--;
                 }
                 else
                 {
@@ -235,20 +238,20 @@ namespace PureDOTS.Systems
                     break;
                 }
 
-                tickTimeState.Tick = rewindState.PlaybackTick;
+                tickTimeState.Tick = legacyState.PlaybackTick;
             }
         }
 
         [BurstCompile]
         private void HandleCatchUpMode(ref SystemState state,
-            ref RewindState rewindState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
         {
             tickTimeState.IsPlaying = false;
             tickTimeState.IsPaused = false;
-            tickTimeState.TargetTick = rewindState.StartTick;
+            tickTimeState.TargetTick = legacyState.StartTick;
 
             // In catch-up mode, rapidly advance to current time
-            uint currentTick = rewindState.StartTick;
+            uint currentTick = legacyState.StartTick;
 
             // Advance up to 6 ticks per frame to catch up
             int catchUpSteps = math.min(6, (int)math.max(0, currentTick - (uint)tickTimeState.Tick));
@@ -287,26 +290,26 @@ namespace PureDOTS.Systems
             legacy.IsPaused = tickTimeState.IsPaused;
         }
 
-        private void StartRewind(ref RewindState rewindState, ref TickTimeState tickTimeState, uint targetTick)
+        private void StartRewind(ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState, uint targetTick)
         {
             rewindState.Mode = RewindMode.Rewind;
-            rewindState.StartTick = tickTimeState.Tick;
+            legacyState.StartTick = tickTimeState.Tick;
             rewindState.TargetTick = (int)targetTick;
-            rewindState.PlaybackTick = tickTimeState.Tick;
+            legacyState.PlaybackTick = tickTimeState.Tick;
             tickTimeState.IsPaused = true;
             tickTimeState.IsPlaying = false;
             tickTimeState.TargetTick = targetTick;
-            tickTimeState.Tick = rewindState.PlaybackTick;
+            tickTimeState.Tick = legacyState.PlaybackTick;
             _playbackAccumulator = 0f;
         }
 
-        private void StopRewind(ref RewindState rewindState, ref TickTimeState tickTimeState)
+        private void StopRewind(ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
         {
             // Transition to catch-up or directly to record
-            if (rewindState.PlaybackTick < rewindState.StartTick)
+            if (legacyState.PlaybackTick < legacyState.StartTick)
             {
                 rewindState.Mode = RewindMode.Step;
-                tickTimeState.Tick = rewindState.PlaybackTick;
+                tickTimeState.Tick = legacyState.PlaybackTick;
             }
             else
             {

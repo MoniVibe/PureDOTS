@@ -105,9 +105,18 @@ namespace PureDOTS.Debugging
             if (showTime && !_rewindQuery.IsEmptyIgnoreFilter)
             {
                 var rewind = _rewindQuery.GetSingleton<RewindState>();
+                uint viewTick = 0;
+                if (!_tickTimeQuery.IsEmptyIgnoreFilter)
+                {
+                    viewTick = _tickTimeQuery.GetSingleton<TickTimeState>().Tick;
+                }
+                else if (!_timeQuery.IsEmptyIgnoreFilter)
+                {
+                    viewTick = _timeQuery.GetSingleton<TimeState>().Tick;
+                }
                 GUILayout.Label("Rewind State", HudStyles.BoldLabel);
                 GUILayout.Label($"Mode: {rewind.Mode}");
-                GUILayout.Label($"Playback Tick: {rewind.PlaybackTick}");
+                GUILayout.Label($"Playback Tick: {viewTick}");
                 GUILayout.Space(6f);
             }
 

@@ -2,13 +2,13 @@ using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Mobility;
 using PureDOTS.Runtime.Miracles;
+using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems.Performance;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 
@@ -107,16 +107,13 @@ namespace PureDOTS.Systems.AI
     }
 
     /// <summary>
-    /// WARM path: Updates AI sensor awareness via spatial queries.
-    /// Group-level sensing: sensor anchors (squad leaders, watchtowers) do the sensing.
-    /// Respects budget and uses spatial hashing for efficient queries.
+    /// DERIVED path: Updates AI sensor awareness from Perception outputs.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(AISystemGroup))]
-    // Removed invalid UpdateAfter: UniversalPerformanceBudgetSystem runs in WarmPathSystemGroup.
+    [UpdateAfter(typeof(PerceptionSystemGroup))]
     public partial struct AISensorUpdateSystem : ISystem
     {
-        private EntityQuery _sensorQuery;
         private ComponentLookup<VillagerId> _villagerLookup;
         private ComponentLookup<ResourceSourceConfig> _resourceLookup;
         private ComponentLookup<StorehouseConfig> _storehouseLookup;
@@ -125,22 +122,17 @@ namespace PureDOTS.Systems.AI
         private ComponentLookup<MiracleRuntimeStateNew> _miracleStateNewLookup;
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
         private ComponentLookup<TransportUnitTag> _transportLookup;
+        private BufferLookup<PerceivedEntity> _perceivedLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _sensorQuery = SystemAPI.QueryBuilder()
-                .WithAll<AISensorConfig, AISensorState, LocalTransform>()
-                .Build();
-
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<SpatialGridConfig>();
-            state.RequireForUpdate<SpatialGridState>();
             state.RequireForUpdate<UniversalPerformanceBudget>();
             state.RequireForUpdate<UniversalPerformanceCounters>();
             state.RequireForUpdate<MindCadenceSettings>();
-            state.RequireForUpdate(_sensorQuery);
+            state.RequireForUpdate<AISensorConfig>();
 
             _villagerLookup = state.GetComponentLookup<VillagerId>(true);
             _resourceLookup = state.GetComponentLookup<ResourceSourceConfig>(true);
@@ -150,6 +142,7 @@ namespace PureDOTS.Systems.AI
             _miracleStateNewLookup = state.GetComponentLookup<MiracleRuntimeStateNew>(true);
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
             _transportLookup = state.GetComponentLookup<TransportUnitTag>(true);
+            _perceivedLookup = state.GetBufferLookup<PerceivedEntity>(true);
         }
 
         [BurstCompile]
@@ -167,17 +160,6 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
-            var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
-            var gridConfig = SystemAPI.GetSingleton<SpatialGridConfig>();
-            var gridState = SystemAPI.GetSingleton<SpatialGridState>();
-            var rangesBuffer = state.EntityManager.GetBuffer<SpatialGridCellRange>(gridEntity);
-            var entriesBuffer = state.EntityManager.GetBuffer<SpatialGridEntry>(gridEntity);
-            if (rangesBuffer.Length == 0 || entriesBuffer.Length == 0)
-            {
-                return;
-            }
-
-            state.EntityManager.CompleteDependencyBeforeRO<SpatialGridResidency>();
             _villagerLookup.Update(ref state);
             _resourceLookup.Update(ref state);
             _storehouseLookup.Update(ref state);
@@ -186,22 +168,17 @@ namespace PureDOTS.Systems.AI
             _miracleStateNewLookup.Update(ref state);
             _residencyLookup.Update(ref state);
             _transportLookup.Update(ref state);
-
-            var descriptorList = new NativeList<SpatialQueryDescriptor>(Allocator.TempJob);
-            var rangeList = new NativeList<SpatialQueryRange>(Allocator.TempJob);
-            var sensorList = new NativeList<Entity>(Allocator.TempJob);
-            var maskList = new NativeList<AISensorCategoryMask>(Allocator.TempJob);
-            var configList = new NativeList<AISensorConfig>(Allocator.TempJob);
+            _perceivedLookup.Update(ref state);
 
             var budget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
             var counters = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
-            
-            var offset = 0;
+            var results = new NativeList<AISensorReading>(Allocator.Temp);
+
             int processedCount = 0;
-            foreach (var (config, sensorState, transform, entity) in SystemAPI.Query<RefRO<AISensorConfig>, RefRW<AISensorState>, RefRO<LocalTransform>>()
+            foreach (var (config, sensorState, readings, entity) in
+                     SystemAPI.Query<RefRO<AISensorConfig>, RefRW<AISensorState>, DynamicBuffer<AISensorReading>>()
                          .WithEntityAccess())
             {
-                // Check budget
                 if (processedCount >= budget.MaxPerceptionChecksPerTick)
                 {
                     break;
@@ -221,146 +198,134 @@ namespace PureDOTS.Systems.AI
                 stateRef.Elapsed = 0f;
                 stateRef.LastSampleTick = timeState.Tick;
                 sensorState.ValueRW = stateRef;
-                
                 processedCount++;
 
-                var capacity = math.max(1, sensorConfig.MaxResults);
-                descriptorList.Add(new SpatialQueryDescriptor
-                {
-                    Origin = transform.ValueRO.Position,
-                    Radius = math.max(sensorConfig.Range, 0.1f),
-                    MaxResults = capacity,
-                    Options = sensorConfig.QueryOptions | SpatialQueryOptions.IgnoreSelf | SpatialQueryOptions.RequireDeterministicSorting,
-                    Tolerance = 1e-4f,
-                    ExcludedEntity = entity
-                });
-
-                rangeList.Add(new SpatialQueryRange
-                {
-                    Start = offset,
-                    Capacity = capacity,
-                    Count = 0
-                });
-
-                sensorList.Add(entity);
-                maskList.Add(AISensorCategoryMask.FromConfig(sensorConfig));
-                configList.Add(sensorConfig);
-
-                offset += capacity;
-            }
-
-            if (descriptorList.Length == 0)
-            {
-                descriptorList.Dispose();
-                rangeList.Dispose();
-                sensorList.Dispose();
-                maskList.Dispose();
-                configList.Dispose();
-                return;
-            }
-
-            var resultsArray = new NativeArray<KNearestResult>(offset, Allocator.TempJob, NativeArrayOptions.ClearMemory);
-
-            var job = new SpatialQueryHelper.SpatialKNearestBatchJob<AISensorCategoryFilter>
-            {
-                Config = gridConfig,
-                CellRanges = rangesBuffer.AsNativeArray(),
-                Entries = entriesBuffer.AsNativeArray(),
-                Descriptors = descriptorList.AsArray(),
-                Ranges = rangeList.AsArray(),
-                Results = resultsArray,
-                Filter = new AISensorCategoryFilter
-                {
-                    Masks = maskList.AsArray(),
-                    VillagerLookup = _villagerLookup,
-                    ResourceLookup = _resourceLookup,
-                    StorehouseLookup = _storehouseLookup,
-                    MiracleDefinitionLookup = _miracleDefinitionLookup,
-                    MiracleStateLookup = _miracleStateLookup,
-                    MiracleStateNewLookup = _miracleStateNewLookup,
-                    TransportLookup = _transportLookup
-                }
-            };
-
-            state.Dependency = job.Schedule(descriptorList.Length, 1, state.Dependency);
-            state.Dependency.Complete();
-
-            var rangeArray = rangeList.AsArray();
-            var maskArray = maskList.AsArray();
-            var configArray = configList.AsArray();
-
-            for (var i = 0; i < sensorList.Length; i++)
-            {
-                var entity = sensorList[i];
-                var range = rangeArray[i];
-                var sensorConfig = configArray[i];
-                var mask = maskArray[i];
-
-                var readings = state.EntityManager.GetBuffer<AISensorReading>(entity);
                 readings.Clear();
 
-                if (range.Count <= 0)
+                if (!_perceivedLookup.HasBuffer(entity))
                 {
                     continue;
                 }
 
-                var slice = new NativeSlice<KNearestResult>(resultsArray, range.Start, math.min(range.Count, range.Capacity));
-                readings.ResizeUninitialized(slice.Length);
-
-                for (var r = 0; r < slice.Length; r++)
+                var perceived = _perceivedLookup[entity];
+                if (perceived.Length == 0)
                 {
-                    var nearest = slice[r];
-                    var category = ResolveCategory(nearest.Entity, mask, _villagerLookup, _resourceLookup, _storehouseLookup,
+                    continue;
+                }
+
+                var maxResults = math.max(1, sensorConfig.MaxResults);
+                if (results.Capacity < maxResults)
+                {
+                    results.Capacity = maxResults;
+                }
+
+                results.Clear();
+                var mask = AISensorCategoryMask.FromConfig(sensorConfig);
+
+                for (int i = 0; i < perceived.Length; i++)
+                {
+                    var contact = perceived[i];
+                    if (contact.TargetEntity == Entity.Null)
+                    {
+                        continue;
+                    }
+
+                    var category = ResolveCategory(contact.TargetEntity, mask, _villagerLookup, _resourceLookup, _storehouseLookup,
                         _miracleDefinitionLookup, _miracleStateLookup, _miracleStateNewLookup, _transportLookup);
-                    var normalized = ComputeSensorScore(nearest.DistanceSq, sensorConfig.Range);
+                    if (category == AISensorCategory.None)
+                    {
+                        continue;
+                    }
+
+                    var distance = math.max(0f, contact.Distance);
+                    var distanceSq = distance * distance;
+                    var normalized = ComputeSensorScore(distanceSq, sensorConfig.Range);
                     var cellId = -1;
                     uint spatialVersion = 0;
 
-                    if (_residencyLookup.HasComponent(nearest.Entity))
+                    if (_residencyLookup.HasComponent(contact.TargetEntity))
                     {
-                        var residency = _residencyLookup[nearest.Entity];
+                        var residency = _residencyLookup[contact.TargetEntity];
                         cellId = residency.CellId;
                         spatialVersion = residency.Version;
                     }
-                    else if (gridConfig.CellCount > 0 && gridConfig.CellSize > 0f && state.EntityManager.HasComponent<LocalTransform>(nearest.Entity))
-                    {
-                        var targetTransform = state.EntityManager.GetComponentData<LocalTransform>(nearest.Entity);
-                        SpatialHash.Quantize(targetTransform.Position, gridConfig, out var coords);
-                        var computedCell = SpatialHash.Flatten(in coords, in gridConfig);
-                        if ((uint)computedCell < (uint)gridConfig.CellCount)
-                        {
-                            cellId = computedCell;
-                            spatialVersion = gridState.Version;
-                        }
-                    }
 
-                    readings[r] = new AISensorReading
+                    InsertSortedByDistance(ref results, new AISensorReading
                     {
-                        Target = nearest.Entity,
-                        DistanceSq = nearest.DistanceSq,
+                        Target = contact.TargetEntity,
+                        DistanceSq = distanceSq,
                         NormalizedScore = normalized,
                         CellId = cellId,
                         SpatialVersion = spatialVersion,
                         Category = category
-                    };
+                    }, maxResults);
+                }
+
+                if (results.Length == 0)
+                {
+                    continue;
+                }
+
+                readings.ResizeUninitialized(results.Length);
+                for (int i = 0; i < results.Length; i++)
+                {
+                    readings[i] = results[i];
                 }
             }
 
-            // Update counters
             counters.ValueRW.PerceptionChecksThisTick += processedCount;
             counters.ValueRW.TotalWarmOperationsThisTick += processedCount;
-            
-            descriptorList.Dispose();
-            rangeList.Dispose();
-            sensorList.Dispose();
-            maskList.Dispose();
-            configList.Dispose();
-            resultsArray.Dispose();
+            results.Dispose();
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
+        }
+
+        private static void InsertSortedByDistance(ref NativeList<AISensorReading> readings, in AISensorReading reading, int maxResults)
+        {
+            if (maxResults <= 0)
+            {
+                return;
+            }
+
+            var length = readings.Length;
+            if (length == 0)
+            {
+                readings.Add(reading);
+                return;
+            }
+
+            if (length >= maxResults && reading.DistanceSq >= readings[length - 1].DistanceSq)
+            {
+                return;
+            }
+
+            if (length < maxResults)
+            {
+                readings.Add(reading);
+                length++;
+            }
+            else
+            {
+                readings.Add(readings[length - 1]);
+                length++;
+            }
+
+            var index = length - 1;
+            while (index > 0 && reading.DistanceSq < readings[index - 1].DistanceSq)
+            {
+                readings[index] = readings[index - 1];
+                index--;
+            }
+
+            readings[index] = reading;
+
+            if (length > maxResults)
+            {
+                readings.RemoveAt(length - 1);
+            }
         }
 
         private static float ComputeSensorScore(float distanceSq, float range)

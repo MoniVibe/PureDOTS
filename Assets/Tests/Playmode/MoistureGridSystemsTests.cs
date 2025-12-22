@@ -32,12 +32,22 @@ namespace PureDOTS.Tests
             entityManager.SetComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                StartTick = 0u,
-                TargetTick = 0u,
-                PlaybackTick = 0u,
+                TargetTick = 0,
+                TickDuration = 1f / 30f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
                 PlaybackTicksPerSecond = 1f,
                 ScrubDirection = 1,
-                ScrubSpeedMultiplier = 1f
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             world.UpdateSystem<EnvironmentGridBootstrapSystem>();
@@ -82,12 +92,22 @@ namespace PureDOTS.Tests
             entityManager.SetComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                StartTick = 0u,
-                TargetTick = 0u,
-                PlaybackTick = 0u,
+                TargetTick = 0,
+                TickDuration = 1f / 30f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
                 PlaybackTicksPerSecond = 1f,
                 ScrubDirection = 1,
-                ScrubSpeedMultiplier = 1f
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             world.UpdateSystem<EnvironmentGridBootstrapSystem>();

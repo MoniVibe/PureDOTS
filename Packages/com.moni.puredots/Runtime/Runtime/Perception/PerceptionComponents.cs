@@ -304,5 +304,163 @@ namespace PureDOTS.Runtime.Perception
             };
         }
     }
-}
 
+    public enum SenseOrganType : byte
+    {
+        Eye = 0,
+        Ear = 1,
+        Nose = 2,
+        EMSuite = 3,
+        GraviticArray = 4,
+        ExoticSensor = 5,
+        ParanormalSense = 6,
+        ProximityArray = 7,
+        Custom0 = 20,
+        Custom1 = 21,
+        Custom2 = 22,
+        Custom3 = 23
+    }
+
+    [InternalBufferCapacity(4)]
+    public struct SenseOrganState : IBufferElementData
+    {
+        public SenseOrganType OrganType;
+        public PerceptionChannel Channels;
+        public float Gain;
+        public float Condition;
+        public float NoiseFloor;
+        public float RangeMultiplier;
+    }
+
+    [InternalBufferCapacity(0)]
+    public struct SignalFieldCell : IBufferElementData
+    {
+        public float Smell;
+        public float Sound;
+        public float EM;
+        public uint LastUpdatedTick;
+    }
+
+    public struct SignalFieldState : IComponentData
+    {
+        public uint LastUpdateTick;
+        public uint Version;
+    }
+
+    public struct SignalFieldConfig : IComponentData
+    {
+        public float SmellDecayPerSecond;
+        public float SoundDecayPerSecond;
+        public float EMDecayPerSecond;
+        public float EmissionScale;
+        public float MaxStrength;
+
+        public static SignalFieldConfig Default => new SignalFieldConfig
+        {
+            SmellDecayPerSecond = 0.15f,
+            SoundDecayPerSecond = 0.9f,
+            EMDecayPerSecond = 1.5f,
+            EmissionScale = 1f,
+            MaxStrength = 1f
+        };
+    }
+
+    public struct SensorySignalEmitter : IComponentData
+    {
+        public PerceptionChannel Channels;
+        public float SmellStrength;
+        public float SoundStrength;
+        public float EMStrength;
+        public byte IsActive;
+
+        public static SensorySignalEmitter Default => new SensorySignalEmitter
+        {
+            Channels = PerceptionChannel.Smell | PerceptionChannel.Hearing,
+            SmellStrength = 0.4f,
+            SoundStrength = 0.4f,
+            EMStrength = 0f,
+            IsActive = 1
+        };
+    }
+
+    public struct SignalPerceptionState : IComponentData
+    {
+        public float SmellLevel;
+        public float SmellConfidence;
+        public float SoundLevel;
+        public float SoundConfidence;
+        public float EMLevel;
+        public float EMConfidence;
+        public uint LastUpdateTick;
+        public uint LastSmellInterruptTick;
+        public uint LastSoundInterruptTick;
+        public uint LastEMInterruptTick;
+    }
+
+    public struct SignalPerceptionThresholds : IComponentData
+    {
+        public float SmellThreshold;
+        public float SoundThreshold;
+        public float EMThreshold;
+        public uint CooldownTicks;
+
+        public static SignalPerceptionThresholds Default => new SignalPerceptionThresholds
+        {
+            SmellThreshold = 0.35f,
+            SoundThreshold = 0.3f,
+            EMThreshold = 0.4f,
+            CooldownTicks = 30u
+        };
+    }
+
+    public static class PerceptionOrganUtilities
+    {
+        public static float GetMaxRangeMultiplier(PerceptionChannel channels, in DynamicBuffer<SenseOrganState> organs)
+        {
+            float maxMult = 1f;
+            for (int i = 0; i < organs.Length; i++)
+            {
+                var organ = organs[i];
+                if ((organ.Channels & channels) == 0)
+                {
+                    continue;
+                }
+
+                var gain = math.max(0.01f, organ.Gain);
+                var range = math.max(0.01f, organ.RangeMultiplier);
+                maxMult = math.max(maxMult, range * gain);
+            }
+
+            return maxMult;
+        }
+
+        public static void GetChannelModifiers(
+            PerceptionChannel channel,
+            in DynamicBuffer<SenseOrganState> organs,
+            out float rangeMult,
+            out float acuityMult,
+            out float noiseFloor)
+        {
+            rangeMult = 1f;
+            acuityMult = 1f;
+            noiseFloor = 0f;
+
+            for (int i = 0; i < organs.Length; i++)
+            {
+                var organ = organs[i];
+                if ((organ.Channels & channel) == 0)
+                {
+                    continue;
+                }
+
+                var gain = math.max(0.01f, organ.Gain);
+                var condition = math.saturate(organ.Condition);
+                var range = math.max(0.01f, organ.RangeMultiplier);
+
+                rangeMult *= range * gain;
+                acuityMult *= gain * condition;
+                noiseFloor = math.max(noiseFloor, math.saturate(organ.NoiseFloor));
+            }
+        }
+    }
+}

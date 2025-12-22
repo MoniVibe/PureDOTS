@@ -197,10 +197,15 @@ namespace PureDOTS.Tests
 
             var rewind = _entityManager.GetSingleton<RewindState>();
             rewind.Mode = RewindMode.Playback;
-            rewind.PlaybackTick = 0;
             rewind.TargetTick = 0;
-            rewind.StartTick = _entityManager.GetSingleton<TimeState>().Tick;
             _entityManager.SetSingleton(rewind);
+            var legacy = _entityManager.GetSingleton<RewindLegacyState>();
+            legacy.PlaybackTick = 0;
+            legacy.StartTick = _entityManager.GetSingleton<TimeState>().Tick;
+            _entityManager.SetSingleton(legacy);
+            var timeState = _entityManager.GetSingleton<TimeState>();
+            timeState.Tick = 0;
+            _entityManager.SetSingleton(timeState);
 
             UpdateSystem(_moistureAdapterHandle);
             UpdateSystem(_storehouseAdapterHandle);

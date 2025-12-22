@@ -138,6 +138,9 @@ namespace PureDOTS.Systems.Interrupts
                 InterruptType.AllyInDanger => IntentMode.Defend,
                 InterruptType.ResourceSpotted => IntentMode.Gather,
                 InterruptType.ObjectiveSpotted => IntentMode.MoveTo,
+                InterruptType.SmellSignalDetected => IntentMode.Custom0,
+                InterruptType.SoundSignalDetected => IntentMode.Custom0,
+                InterruptType.EMSignalDetected => IntentMode.Custom0,
                 InterruptType.NewOrder => IntentMode.ExecuteOrder,
                 InterruptType.OrderCancelled => IntentMode.Idle,
                 InterruptType.ObjectiveChanged => IntentMode.ExecuteOrder,
@@ -169,4 +172,3 @@ namespace PureDOTS.Systems.Interrupts
         }
     }
 }
-

@@ -138,7 +138,7 @@ namespace PureDOTS.Tests.Time
             for (int i = 0; i < 240 && GetRewindState(ctx.World).Mode == RewindMode.Playback; i++)
             {
                 AdvanceFrame(ctx, 1d / 30d);
-                playbackProgressed |= GetRewindState(ctx.World).PlaybackTick != currentTick;
+                playbackProgressed |= GetTick(ctx.World) != currentTick;
             }
 
             Assert.IsTrue(playbackProgressed);

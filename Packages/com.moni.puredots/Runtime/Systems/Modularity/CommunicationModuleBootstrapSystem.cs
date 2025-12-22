@@ -45,9 +45,39 @@ namespace PureDOTS.Runtime.Systems.Modularity
                     ecb.AddBuffer<CommAttempt>(entity);
                 }
 
+                if (!em.HasBuffer<CommSendRequest>(entity))
+                {
+                    ecb.AddBuffer<CommSendRequest>(entity);
+                }
+
                 if (!em.HasBuffer<CommReceipt>(entity))
                 {
                     ecb.AddBuffer<CommReceipt>(entity);
+                }
+
+                if (!em.HasBuffer<CommOutboundEntry>(entity))
+                {
+                    ecb.AddBuffer<CommOutboundEntry>(entity);
+                }
+
+                if (!em.HasBuffer<CommRecentMessage>(entity))
+                {
+                    ecb.AddBuffer<CommRecentMessage>(entity);
+                }
+
+                if (!em.HasBuffer<CommPendingClarify>(entity))
+                {
+                    ecb.AddBuffer<CommPendingClarify>(entity);
+                }
+
+                if (!em.HasBuffer<CommDecision>(entity))
+                {
+                    ecb.AddBuffer<CommDecision>(entity);
+                }
+
+                if (!em.HasComponent<CommBudgetState>(entity))
+                {
+                    ecb.AddComponent(entity, new CommBudgetState());
                 }
             }
 

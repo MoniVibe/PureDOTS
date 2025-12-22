@@ -388,7 +388,6 @@ namespace PureDOTS.Runtime.Scenarios
         {
             uint hash = FnvSeed;
             hash = HashStep(hash, (uint)state.Mode);
-            hash = HashStep(hash, (uint)state.CurrentTick);
             hash = HashStep(hash, (uint)state.TargetTick);
             hash = HashStep(hash, (uint)math.asint(state.TickDuration));
             hash = HashStep(hash, (uint)state.MaxHistoryTicks);

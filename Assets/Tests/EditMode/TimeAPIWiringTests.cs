@@ -39,15 +39,22 @@ namespace PureDOTS.Tests.EditMode
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                CurrentTick = 0,
                 TargetTick = 0,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 3600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
                 PlaybackSpeed = 1f,
+                CurrentTick = 0,
                 StartTick = 0,
                 PlaybackTick = 0,
                 PlaybackTicksPerSecond = 60f,
                 ScrubDirection = ScrubDirection.None,
                 ScrubSpeedMultiplier = 1f,
-                RewindWindowTicks = 3600
+                RewindWindowTicks = 3600,
+                ActiveTrack = default
             });
             _entityManager.AddBuffer<TimeControlCommand>(rewindEntity);
         }
@@ -239,4 +246,3 @@ namespace PureDOTS.Tests.EditMode
         }
     }
 }
-

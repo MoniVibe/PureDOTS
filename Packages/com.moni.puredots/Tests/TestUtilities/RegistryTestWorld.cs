@@ -200,6 +200,12 @@ namespace PureDOTS.TestUtilities
             {
                 Mode = mode
             });
+            if (EntityManager.HasComponent<RewindLegacyState>(RewindStateEntity))
+            {
+                var legacy = EntityManager.GetComponentData<RewindLegacyState>(RewindStateEntity);
+                legacy.PlaybackTick = CurrentTick;
+                EntityManager.SetComponentData(RewindStateEntity, legacy);
+            }
         }
 
         private void BootCoreSingletons()
@@ -217,7 +223,23 @@ namespace PureDOTS.TestUtilities
             RewindStateEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(RewindStateEntity, new RewindState
             {
-                Mode = RewindMode.Record
+                Mode = RewindMode.Record,
+                TargetTick = (int)Config.InitialTick,
+                TickDuration = Config.FixedDeltaTime,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            EntityManager.AddComponentData(RewindStateEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = (int)Config.InitialTick,
+                StartTick = 0,
+                PlaybackTick = Config.InitialTick,
+                PlaybackTicksPerSecond = Config.FixedDeltaTime > 0f ? 1f / Config.FixedDeltaTime : 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             // RegistrySpatialSyncState

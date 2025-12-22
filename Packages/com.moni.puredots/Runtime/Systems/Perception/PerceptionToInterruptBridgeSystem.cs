@@ -39,6 +39,11 @@ namespace PureDOTS.Systems.Perception
                 return;
             }
 
+            var thresholds = SystemAPI.TryGetSingleton<SignalPerceptionThresholds>(out var thresholdConfig)
+                ? thresholdConfig
+                : SignalPerceptionThresholds.Default;
+            var cooldownTicks = thresholds.CooldownTicks == 0 ? 1u : thresholds.CooldownTicks;
+
             // Process entities with perception state
             foreach (var (perceptionState, perceivedBuffer, entity) in
                 SystemAPI.Query<RefRO<PerceptionState>, DynamicBuffer<PerceivedEntity>>()
@@ -86,7 +91,87 @@ namespace PureDOTS.Systems.Perception
                 // Check for lost threats (Phase 1: simple check)
                 // TODO Phase 2: Track previous highest threat and detect when it's lost
             }
+
+            foreach (var (signalState, transform, entity) in
+                SystemAPI.Query<RefRW<SignalPerceptionState>, RefRO<Unity.Transforms.LocalTransform>>()
+                    .WithEntityAccess())
+            {
+                if (signalState.ValueRO.LastUpdateTick != timeState.Tick)
+                {
+                    continue;
+                }
+
+                if (!SystemAPI.HasBuffer<Interrupt>(entity))
+                {
+                    state.EntityManager.AddBuffer<Interrupt>(entity);
+                }
+
+                var interruptBuffer = SystemAPI.GetBuffer<Interrupt>(entity);
+                var position = transform.ValueRO.Position;
+
+                if (signalState.ValueRO.SmellConfidence >= thresholds.SmellThreshold &&
+                    timeState.Tick - signalState.ValueRO.LastSmellInterruptTick >= cooldownTicks &&
+                    !HasPendingInterrupt(ref interruptBuffer, InterruptType.SmellSignalDetected))
+                {
+                    InterruptUtils.Emit(
+                        ref interruptBuffer,
+                        InterruptType.SmellSignalDetected,
+                        InterruptPriority.Low,
+                        entity,
+                        timeState.Tick,
+                        Entity.Null,
+                        position,
+                        signalState.ValueRO.SmellConfidence);
+                    signalState.ValueRW.LastSmellInterruptTick = timeState.Tick;
+                }
+
+                if (signalState.ValueRO.SoundConfidence >= thresholds.SoundThreshold &&
+                    timeState.Tick - signalState.ValueRO.LastSoundInterruptTick >= cooldownTicks &&
+                    !HasPendingInterrupt(ref interruptBuffer, InterruptType.SoundSignalDetected))
+                {
+                    InterruptUtils.Emit(
+                        ref interruptBuffer,
+                        InterruptType.SoundSignalDetected,
+                        InterruptPriority.Low,
+                        entity,
+                        timeState.Tick,
+                        Entity.Null,
+                        position,
+                        signalState.ValueRO.SoundConfidence);
+                    signalState.ValueRW.LastSoundInterruptTick = timeState.Tick;
+                }
+
+                if (signalState.ValueRO.EMConfidence >= thresholds.EMThreshold &&
+                    timeState.Tick - signalState.ValueRO.LastEMInterruptTick >= cooldownTicks &&
+                    !HasPendingInterrupt(ref interruptBuffer, InterruptType.EMSignalDetected))
+                {
+                    InterruptUtils.Emit(
+                        ref interruptBuffer,
+                        InterruptType.EMSignalDetected,
+                        InterruptPriority.Low,
+                        entity,
+                        timeState.Tick,
+                        Entity.Null,
+                        position,
+                        signalState.ValueRO.EMConfidence);
+                    signalState.ValueRW.LastEMInterruptTick = timeState.Tick;
+                }
+            }
+        }
+
+        [BurstCompile]
+        private static bool HasPendingInterrupt(ref DynamicBuffer<Interrupt> interruptBuffer, InterruptType type)
+        {
+            for (int i = 0; i < interruptBuffer.Length; i++)
+            {
+                var interrupt = interruptBuffer[i];
+                if (interrupt.Type == type && interrupt.IsProcessed == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
-

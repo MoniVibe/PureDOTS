@@ -42,7 +42,22 @@ namespace PureDOTS.Tests.Integration
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                PlaybackTick = 0
+                TargetTick = 0,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            _entityManager.AddComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             // Create villager behavior config
@@ -186,8 +201,17 @@ namespace PureDOTS.Tests.Integration
             _entityManager.SetComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Playback,
-                PlaybackTick = 50
+                TargetTick = 50,
+                TickDuration = 1f / 60f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
             });
+            if (_entityManager.HasComponent<RewindLegacyState>(rewindEntity))
+            {
+                var legacy = _entityManager.GetComponentData<RewindLegacyState>(rewindEntity);
+                legacy.PlaybackTick = 50;
+                _entityManager.SetComponentData(rewindEntity, legacy);
+            }
 
             // Simulate playback (systems should skip updates)
             _world.Update();
@@ -270,4 +294,3 @@ namespace PureDOTS.Tests.Integration
         }
     }
 }
-

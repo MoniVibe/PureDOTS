@@ -49,15 +49,20 @@ namespace PureDOTS.Systems.Spatial
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
+            var viewTick = timeState.Tick;
+            if (SystemAPI.TryGetSingleton<TimeContext>(out var timeContext))
+            {
+                viewTick = timeContext.ViewTick;
+            }
             if (timeState.IsPaused)
             {
-                ClearDirtyState(ref state, timeState.Tick);
+                ClearDirtyState(ref state, viewTick);
                 return;
             }
 
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
-                ClearDirtyState(ref state, timeState.Tick);
+                ClearDirtyState(ref state, viewTick);
                 return;
             }
 
@@ -230,5 +235,4 @@ namespace PureDOTS.Systems.Spatial
         }
     }
 }
-
 

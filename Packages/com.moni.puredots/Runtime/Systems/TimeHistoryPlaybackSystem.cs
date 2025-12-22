@@ -68,9 +68,7 @@ namespace PureDOTS.Systems
                 // In MP, this would be disabled
             }
 
-            uint targetTick = rewindState.Mode == RewindMode.Playback 
-                ? rewindState.PlaybackTick 
-                : timeState.Tick;
+            uint targetTick = timeState.Tick;
 
             // Playback transform history
             int restoredCount = PlaybackTransformHistory(ref state, targetTick);
@@ -248,4 +246,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-

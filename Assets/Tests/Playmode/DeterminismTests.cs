@@ -104,6 +104,7 @@ namespace PureDOTS.Tests.Playmode
             var timeEntity = _entityManager.CreateEntity();
             _entityManager.AddComponent<TimeState>(timeEntity);
             _entityManager.AddComponent<RewindState>(timeEntity);
+            _entityManager.AddComponent<RewindLegacyState>(timeEntity);
             
             var timeState = new TimeState
             {
@@ -117,9 +118,24 @@ namespace PureDOTS.Tests.Playmode
             var rewindState = new RewindState
             {
                 Mode = RewindMode.Record,
-                PlaybackTick = 0
+                TargetTick = 0,
+                TickDuration = timeState.FixedDeltaTime,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
             };
             _entityManager.SetComponentData(timeEntity, rewindState);
+            _entityManager.SetComponentData(timeEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
+            });
             
             // Verify state is set
             var retrievedTime = _entityManager.GetComponentData<TimeState>(timeEntity);
@@ -158,4 +174,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

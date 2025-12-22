@@ -33,7 +33,22 @@ namespace PureDOTS.Tests
             entityManager.SetComponentData(rewindEntity, new RewindState
             {
                 Mode = RewindMode.Record,
-                PlaybackTick = 0
+                TargetTick = 0,
+                TickDuration = 0.016f,
+                MaxHistoryTicks = 600,
+                PendingStepTicks = 0
+            });
+            entityManager.SetComponentData(rewindEntity, new RewindLegacyState
+            {
+                PlaybackSpeed = 1f,
+                CurrentTick = 0,
+                StartTick = 0,
+                PlaybackTick = 0,
+                PlaybackTicksPerSecond = 60f,
+                ScrubDirection = 0,
+                ScrubSpeedMultiplier = 1f,
+                RewindWindowTicks = 0,
+                ActiveTrack = default
             });
 
             var spawnerEntity = entityManager.CreateEntity();
