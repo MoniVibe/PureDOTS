@@ -149,7 +149,8 @@ namespace PureDOTS.Systems
                     continue;
                 }
 
-                SpawnGhost(ref state, entity, previewTick, ref historyBuffer, transform.ValueRO, ecb);
+                var historyBufferLocal = historyBuffer;
+                SpawnGhost(ref state, entity, previewTick, ref historyBufferLocal, transform.ValueRO, ecb);
             }
 
             ecb.Playback(state.EntityManager);

@@ -49,7 +49,8 @@ namespace PureDOTS.Runtime.WorldGen
                 return 0f;
             }
 
-            var q01 = SampleQ01(Map.Value.HeightBiasQ, worldXZ);
+            ref var map = ref Map.Value;
+            var q01 = SampleQ01(ref map.HeightBiasQ, worldXZ);
             return (q01 * 2f) - 1f;
         }
 
@@ -60,7 +61,8 @@ namespace PureDOTS.Runtime.WorldGen
                 return 0f;
             }
 
-            return SampleQ01(Map.Value.OceanMaskQ, worldXZ);
+            ref var map = ref Map.Value;
+            return SampleQ01(ref map.OceanMaskQ, worldXZ);
         }
 
         public float SampleRidgeMask01(float2 worldXZ)
@@ -70,10 +72,11 @@ namespace PureDOTS.Runtime.WorldGen
                 return 0f;
             }
 
-            return SampleQ01(Map.Value.RidgeMaskQ, worldXZ);
+            ref var map = ref Map.Value;
+            return SampleQ01(ref map.RidgeMaskQ, worldXZ);
         }
 
-        private float SampleQ01(BlobArray<byte> src, float2 worldXZ)
+        private float SampleQ01(ref BlobArray<byte> src, float2 worldXZ)
         {
             ref var map = ref Map.Value;
             var uv = math.saturate((worldXZ - map.WorldMinXZ) / (map.WorldMaxXZ - map.WorldMinXZ));
@@ -102,4 +105,3 @@ namespace PureDOTS.Runtime.WorldGen
         }
     }
 }
-

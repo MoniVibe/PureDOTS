@@ -27,21 +27,22 @@ namespace PureDOTS.Tests.EditMode
             var chunkCoord = new int3(0, 0, 0);
             ref var recipeBlob = ref recipe.Value;
             ref var stage = ref recipeBlob.Stages[0];
+            ref var definitionsBlob = ref definitions.Value;
 
             var a = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 chunkCoord,
                 Allocator.Persistent);
 
             var b = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 chunkCoord,
                 Allocator.Persistent);
@@ -72,21 +73,22 @@ namespace PureDOTS.Tests.EditMode
 
             ref var recipeBlob = ref recipe.Value;
             ref var stage = ref recipeBlob.Stages[0];
+            ref var definitionsBlob = ref definitions.Value;
 
             var left = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 new int3(0, 0, 0),
                 Allocator.Persistent);
 
             var right = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 new int3(1, 0, 0),
                 Allocator.Persistent);
@@ -130,22 +132,23 @@ namespace PureDOTS.Tests.EditMode
 
             ref var recipeBlob = ref recipe.Value;
             ref var stage = ref recipeBlob.Stages[0];
+            ref var definitionsBlob = ref definitions.Value;
 
             var baseline = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 new int3(0, 0, 0),
                 Allocator.Persistent);
 
             var constraints = BuildOceanConstraintMap(worldMinXZ: float2.zero, worldMaxXZ: new float2(16f, 16f), resolution: new int2(4, 4));
             var constrained = SurfaceFieldsGenerator.GenerateChunk(
-                in recipeBlob,
-                in stage,
+                ref recipeBlob,
+                ref stage,
                 0,
-                in definitions.Value,
+                ref definitionsBlob,
                 in domain,
                 new SurfaceConstraintMapSampler(constraints),
                 new int3(0, 0, 0),
@@ -167,9 +170,9 @@ namespace PureDOTS.Tests.EditMode
             ref var recipeBlob = ref recipe.Value;
             ref var stage = ref recipeBlob.Stages[0];
 
-            var a1 = WorldGenRng.CreateStageChunkRandom(in recipeBlob, in stage, 0, new int3(3, 0, 7), stream: 0);
-            var a2 = WorldGenRng.CreateStageChunkRandom(in recipeBlob, in stage, 0, new int3(3, 0, 7), stream: 0);
-            var b = WorldGenRng.CreateStageChunkRandom(in recipeBlob, in stage, 0, new int3(4, 0, 7), stream: 0);
+            var a1 = WorldGenRng.CreateStageChunkRandom(ref recipeBlob, ref stage, 0, new int3(3, 0, 7), stream: 0);
+            var a2 = WorldGenRng.CreateStageChunkRandom(ref recipeBlob, ref stage, 0, new int3(3, 0, 7), stream: 0);
+            var b = WorldGenRng.CreateStageChunkRandom(ref recipeBlob, ref stage, 0, new int3(4, 0, 7), stream: 0);
 
             var a1First = a1.NextUInt();
             var a2First = a2.NextUInt();
@@ -288,4 +291,3 @@ namespace PureDOTS.Tests.EditMode
         }
     }
 }
-

@@ -78,7 +78,7 @@ namespace PureDOTS.Systems.Knowledge
                     continue;
                 }
 
-                PruneStale(ref entries, tick, config.ValueRO);
+                PruneStale(entries, tick, config.ValueRO);
                 cache.ValueRW.LastPruneTick = tick;
             }
 
@@ -103,7 +103,7 @@ namespace PureDOTS.Systems.Knowledge
 
                 if (tick - emitterState.ValueRO.LastEmitTick >= DefaultEmitIntervalTicks)
                 {
-                    emitted = TryEmitPerceptionEntry(ref entries, tick, config, perceivedBuffer, transform.ValueRO.Position);
+                    emitted = TryEmitPerceptionEntry(entries, tick, config, perceivedBuffer, transform.ValueRO.Position);
                     if (emitted)
                     {
                         emitterState.ValueRW.LastEmitTick = tick;
@@ -115,7 +115,7 @@ namespace PureDOTS.Systems.Knowledge
                     var receipts = _receiptLookup[entity];
                     if (receipts.Length > 0)
                     {
-                        emitted |= TryEmitCommEntries(ref entries, tick, config, receipts);
+                        emitted |= TryEmitCommEntries(entries, tick, config, receipts);
                         receipts.Clear();
                         if (emitted)
                         {
@@ -134,7 +134,7 @@ namespace PureDOTS.Systems.Knowledge
         }
 
         private bool TryEmitPerceptionEntry(
-            ref DynamicBuffer<GroupKnowledgeEntry> entries,
+            DynamicBuffer<GroupKnowledgeEntry> entries,
             uint tick,
             in GroupKnowledgeConfig config,
             DynamicBuffer<PerceivedEntity> perceivedBuffer,
@@ -197,12 +197,12 @@ namespace PureDOTS.Systems.Knowledge
                 return false;
             }
 
-            UpsertEntry(ref entries, tick, config, best);
+            UpsertEntry(entries, tick, config, best);
             return true;
         }
 
         private bool TryEmitCommEntries(
-            ref DynamicBuffer<GroupKnowledgeEntry> entries,
+            DynamicBuffer<GroupKnowledgeEntry> entries,
             uint tick,
             in GroupKnowledgeConfig config,
             DynamicBuffer<CommReceipt> receipts)
@@ -235,14 +235,14 @@ namespace PureDOTS.Systems.Knowledge
                     Flags = flags
                 };
 
-                UpsertEntry(ref entries, tick, config, entry);
+                UpsertEntry(entries, tick, config, entry);
                 emitted = true;
             }
 
             return emitted;
         }
 
-        private static void PruneStale(ref DynamicBuffer<GroupKnowledgeEntry> entries, uint tick, in GroupKnowledgeConfig config)
+        private static void PruneStale(DynamicBuffer<GroupKnowledgeEntry> entries, uint tick, in GroupKnowledgeConfig config)
         {
             if (config.StaleAfterTicks == 0 || entries.Length == 0)
             {
@@ -260,7 +260,7 @@ namespace PureDOTS.Systems.Knowledge
         }
 
         private static void UpsertEntry(
-            ref DynamicBuffer<GroupKnowledgeEntry> entries,
+            DynamicBuffer<GroupKnowledgeEntry> entries,
             uint tick,
             in GroupKnowledgeConfig config,
             GroupKnowledgeEntry candidate)

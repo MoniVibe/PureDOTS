@@ -36,7 +36,7 @@ namespace PureDOTS.Systems.Knowledge
             var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<VillagerVillageRef>, RefRO<PerceptionState>>()
+            foreach (var (_, _, entity) in SystemAPI.Query<RefRO<VillagerVillageRef>, RefRO<PerceptionState>>()
                 .WithNone<GroupKnowledgeEmitterState>()
                 .WithEntityAccess())
             {

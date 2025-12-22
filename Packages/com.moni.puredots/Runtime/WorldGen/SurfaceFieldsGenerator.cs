@@ -49,61 +49,61 @@ namespace PureDOTS.Runtime.WorldGen
             MoistureFromWaterStrength = 0.35f
         };
 
-        public static Settings SettingsFromStage(in WorldGenStageBlob stage)
+        public static Settings SettingsFromStage(ref WorldGenStageBlob stage)
         {
             var settings = DefaultSettings;
-            settings.SeaLevel01 = GetFloat(stage, "sea_level", settings.SeaLevel01);
-            settings.HeightFrequency = GetFloat(stage, "height_frequency", settings.HeightFrequency);
-            settings.HeightWarpFrequency = GetFloat(stage, "height_warp_frequency", settings.HeightWarpFrequency);
-            settings.HeightWarpAmplitude = GetFloat(stage, "height_warp_amplitude", settings.HeightWarpAmplitude);
-            settings.RidgeFrequency = GetFloat(stage, "ridge_frequency", settings.RidgeFrequency);
-            settings.RidgeStrength = GetFloat(stage, "ridge_strength", settings.RidgeStrength);
-            settings.ConstraintHeightStrength = GetFloat(stage, "constraint_height_strength", settings.ConstraintHeightStrength);
-            settings.ConstraintOceanStrength = GetFloat(stage, "constraint_ocean_strength", settings.ConstraintOceanStrength);
-            settings.ConstraintRidgeStrength = GetFloat(stage, "constraint_ridge_strength", settings.ConstraintRidgeStrength);
-            settings.TempNoiseFrequency = GetFloat(stage, "temp_noise_frequency", settings.TempNoiseFrequency);
-            settings.TempNoiseStrength = GetFloat(stage, "temp_noise_strength", settings.TempNoiseStrength);
-            settings.ElevationTempLapse = GetFloat(stage, "elevation_temp_lapse", settings.ElevationTempLapse);
-            settings.MoistureNoiseFrequency = GetFloat(stage, "moisture_noise_frequency", settings.MoistureNoiseFrequency);
-            settings.MoistureNoiseStrength = GetFloat(stage, "moisture_noise_strength", settings.MoistureNoiseStrength);
-            settings.MoistureFromWaterStrength = GetFloat(stage, "moisture_from_water_strength", settings.MoistureFromWaterStrength);
+            settings.SeaLevel01 = GetFloat(ref stage, "sea_level", settings.SeaLevel01);
+            settings.HeightFrequency = GetFloat(ref stage, "height_frequency", settings.HeightFrequency);
+            settings.HeightWarpFrequency = GetFloat(ref stage, "height_warp_frequency", settings.HeightWarpFrequency);
+            settings.HeightWarpAmplitude = GetFloat(ref stage, "height_warp_amplitude", settings.HeightWarpAmplitude);
+            settings.RidgeFrequency = GetFloat(ref stage, "ridge_frequency", settings.RidgeFrequency);
+            settings.RidgeStrength = GetFloat(ref stage, "ridge_strength", settings.RidgeStrength);
+            settings.ConstraintHeightStrength = GetFloat(ref stage, "constraint_height_strength", settings.ConstraintHeightStrength);
+            settings.ConstraintOceanStrength = GetFloat(ref stage, "constraint_ocean_strength", settings.ConstraintOceanStrength);
+            settings.ConstraintRidgeStrength = GetFloat(ref stage, "constraint_ridge_strength", settings.ConstraintRidgeStrength);
+            settings.TempNoiseFrequency = GetFloat(ref stage, "temp_noise_frequency", settings.TempNoiseFrequency);
+            settings.TempNoiseStrength = GetFloat(ref stage, "temp_noise_strength", settings.TempNoiseStrength);
+            settings.ElevationTempLapse = GetFloat(ref stage, "elevation_temp_lapse", settings.ElevationTempLapse);
+            settings.MoistureNoiseFrequency = GetFloat(ref stage, "moisture_noise_frequency", settings.MoistureNoiseFrequency);
+            settings.MoistureNoiseStrength = GetFloat(ref stage, "moisture_noise_strength", settings.MoistureNoiseStrength);
+            settings.MoistureFromWaterStrength = GetFloat(ref stage, "moisture_from_water_strength", settings.MoistureFromWaterStrength);
             return settings;
         }
 
         public static BlobAssetReference<SurfaceFieldsChunkBlob> GenerateChunk<TDomain>(
-            in WorldRecipeBlob recipe,
-            in WorldGenStageBlob stage,
+            ref WorldRecipeBlob recipe,
+            ref WorldGenStageBlob stage,
             uint stageIndex,
-            in WorldGenDefinitionsBlob definitions,
+            ref WorldGenDefinitionsBlob definitions,
             in TDomain domain,
             int3 chunkCoord,
             Allocator allocator)
             where TDomain : struct, IWorldDomainProvider
         {
-            var settings = SettingsFromStage(in stage);
-            return GenerateChunk(in recipe, in stage, stageIndex, in definitions, in domain, in settings, default, chunkCoord, allocator);
+            var settings = SettingsFromStage(ref stage);
+            return GenerateChunk(ref recipe, ref stage, stageIndex, ref definitions, in domain, in settings, default, chunkCoord, allocator);
         }
 
         public static BlobAssetReference<SurfaceFieldsChunkBlob> GenerateChunk<TDomain>(
-            in WorldRecipeBlob recipe,
-            in WorldGenStageBlob stage,
+            ref WorldRecipeBlob recipe,
+            ref WorldGenStageBlob stage,
             uint stageIndex,
-            in WorldGenDefinitionsBlob definitions,
+            ref WorldGenDefinitionsBlob definitions,
             in TDomain domain,
             in SurfaceConstraintMapSampler constraints,
             int3 chunkCoord,
             Allocator allocator)
             where TDomain : struct, IWorldDomainProvider
         {
-            var settings = SettingsFromStage(in stage);
-            return GenerateChunk(in recipe, in stage, stageIndex, in definitions, in domain, in settings, constraints, chunkCoord, allocator);
+            var settings = SettingsFromStage(ref stage);
+            return GenerateChunk(ref recipe, ref stage, stageIndex, ref definitions, in domain, in settings, constraints, chunkCoord, allocator);
         }
 
         public static BlobAssetReference<SurfaceFieldsChunkBlob> GenerateChunk<TDomain>(
-            in WorldRecipeBlob recipe,
-            in WorldGenStageBlob stage,
+            ref WorldRecipeBlob recipe,
+            ref WorldGenStageBlob stage,
             uint stageIndex,
-            in WorldGenDefinitionsBlob definitions,
+            ref WorldGenDefinitionsBlob definitions,
             in TDomain domain,
             in Settings settings,
             in SurfaceConstraintMapSampler constraints,
@@ -125,10 +125,10 @@ namespace PureDOTS.Runtime.WorldGen
             var tempOffset = rnd.NextFloat2(-10000f, 10000f);
             var moistureOffset = rnd.NextFloat2(-10000f, 10000f);
 
-            var oceanBiomeIndex = FindBiomeIndex(definitions, "ocean");
+            var oceanBiomeIndex = FindBiomeIndex(ref definitions, "ocean");
             if (oceanBiomeIndex == ushort.MaxValue)
             {
-                oceanBiomeIndex = FindBiomeIndex(definitions, "water");
+                oceanBiomeIndex = FindBiomeIndex(ref definitions, "water");
             }
 
             using var builder = new BlobBuilder(Allocator.Temp);
@@ -235,7 +235,7 @@ namespace PureDOTS.Runtime.WorldGen
                         landCells++;
                     }
 
-                    var biomeId = ResolveBiome(definitions, cellTempQ, cellMoistureQ);
+                    var biomeId = ResolveBiome(ref definitions, cellTempQ, cellMoistureQ);
                     if (isWater && oceanBiomeIndex != ushort.MaxValue)
                     {
                         biomeId = oceanBiomeIndex;
@@ -358,7 +358,7 @@ namespace PureDOTS.Runtime.WorldGen
             return math.saturate(fertility * (0.7f + 0.3f * altitudePenalty));
         }
 
-        private static ushort ResolveBiome(in WorldGenDefinitionsBlob definitions, byte tempQ, byte moistureQ)
+        private static ushort ResolveBiome(ref WorldGenDefinitionsBlob definitions, byte tempQ, byte moistureQ)
         {
             if (definitions.Biomes.Length == 0)
             {
@@ -384,7 +384,7 @@ namespace PureDOTS.Runtime.WorldGen
             return bestScore < 0f ? (ushort)0 : bestIndex;
         }
 
-        private static ushort FindBiomeIndex(in WorldGenDefinitionsBlob definitions, string id)
+        private static ushort FindBiomeIndex(ref WorldGenDefinitionsBlob definitions, string id)
         {
             if (definitions.Biomes.Length == 0 || string.IsNullOrWhiteSpace(id))
             {
@@ -403,7 +403,7 @@ namespace PureDOTS.Runtime.WorldGen
             return ushort.MaxValue;
         }
 
-        private static float GetFloat(in WorldGenStageBlob stage, string key, float fallback)
+        private static float GetFloat(ref WorldGenStageBlob stage, string key, float fallback)
         {
             var keyFs = new FixedString64Bytes(key);
             for (int i = 0; i < stage.Parameters.Length; i++)

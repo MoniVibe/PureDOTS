@@ -37,12 +37,20 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            if (!SystemAPI.TryGetSingleton(out PresentationContentRegistryReference registryRef))
+            PresentationContentRegistryReference registryRef = default;
+            bool hasRegistry = false;
+
+            foreach (var candidate in SystemAPI.Query<RefRO<PresentationContentRegistryReference>>())
             {
-                return;
+                registryRef = candidate.ValueRO;
+                hasRegistry = true;
+                if (registryRef.Registry.IsCreated)
+                {
+                    break;
+                }
             }
 
-            if (!registryRef.Registry.IsCreated)
+            if (!hasRegistry || !registryRef.Registry.IsCreated)
             {
                 return;
             }

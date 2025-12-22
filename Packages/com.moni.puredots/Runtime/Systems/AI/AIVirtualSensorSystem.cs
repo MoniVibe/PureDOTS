@@ -15,6 +15,7 @@ namespace PureDOTS.Systems.AI
     [BurstCompile]
     [UpdateInGroup(typeof(AISystemGroup))]
     [UpdateAfter(typeof(AISensorUpdateSystem))]
+    [UpdateBefore(typeof(AIUtilityScoringSystem))]
     public partial struct AIVirtualSensorSystem : ISystem
     {
         private EntityQuery _villagerQuery;
@@ -81,30 +82,12 @@ namespace PureDOTS.Systems.AI
 
                 // Store existing readings
                 var existingCount = readings.Length;
-                if (existingCount > 0)
+                readings.ResizeUninitialized(existingCount + 3);
+
+                // Shift existing readings to indices 3+ in-place (backward copy).
+                for (int i = existingCount - 1; i >= 0; i--)
                 {
-                    // Create temporary array to hold existing readings
-                    var existingReadings = new NativeArray<AISensorReading>(existingCount, Allocator.Temp);
-                    for (int i = 0; i < existingCount; i++)
-                    {
-                        existingReadings[i] = readings[i];
-                    }
-
-                    // Resize buffer to accommodate virtual sensors + existing
-                    readings.ResizeUninitialized(existingCount + 3);
-
-                    // Shift existing readings to indices 3+
-                    for (int i = 0; i < existingCount; i++)
-                    {
-                        readings[i + 3] = existingReadings[i];
-                    }
-
-                    existingReadings.Dispose();
-                }
-                else
-                {
-                    // No existing readings, just resize
-                    readings.ResizeUninitialized(3);
+                    readings[i + 3] = readings[i];
                 }
 
                 // Insert virtual sensor readings at fixed indices
@@ -141,4 +124,3 @@ namespace PureDOTS.Systems.AI
         }
     }
 }
-

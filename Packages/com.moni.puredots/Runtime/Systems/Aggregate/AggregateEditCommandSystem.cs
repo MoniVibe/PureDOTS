@@ -7,6 +7,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using SystemEnv = System.Environment;
+using AggregateEntity = PureDOTS.Runtime.Aggregate.AggregateEntity;
 
 namespace PureDOTS.Systems.Aggregate
 {
@@ -512,15 +513,15 @@ namespace PureDOTS.Systems.Aggregate
             };
         }
 
-        private static FixedString16Bytes OpToString(AggregateEditOp op)
+        private static FixedString32Bytes OpToString(AggregateEditOp op)
         {
             return op switch
             {
-                AggregateEditOp.Set => new FixedString16Bytes("set"),
-                AggregateEditOp.Add => new FixedString16Bytes("add"),
-                AggregateEditOp.Multiply => new FixedString16Bytes("mul"),
-                AggregateEditOp.Clamp => new FixedString16Bytes("clamp"),
-                _ => new FixedString16Bytes("unknown")
+                AggregateEditOp.Set => new FixedString32Bytes("set"),
+                AggregateEditOp.Add => new FixedString32Bytes("add"),
+                AggregateEditOp.Multiply => new FixedString32Bytes("mul"),
+                AggregateEditOp.Clamp => new FixedString32Bytes("clamp"),
+                _ => new FixedString32Bytes("unknown")
             };
         }
     }

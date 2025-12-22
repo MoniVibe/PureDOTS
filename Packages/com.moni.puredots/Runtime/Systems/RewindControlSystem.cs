@@ -73,7 +73,7 @@ namespace PureDOTS.Systems
                     switch (cmd.Type)
                     {
                         case TimeControlCommandType.BeginPreviewRewind:
-                            HandleBeginPreview(ref state, ref controlRW.ValueRW, cmd.FloatParam);
+                            HandleBeginPreview(ref state, ref controlRW.ValueRW, cmd.FloatParam, ref ecb);
                             break;
 
                         case TimeControlCommandType.UpdatePreviewRewindSpeed:
@@ -92,7 +92,7 @@ namespace PureDOTS.Systems
                             break;
 
                         case TimeControlCommandType.CancelRewindPreview:
-                            HandleCancel(ref state, ref controlRW.ValueRW);
+                            HandleCancel(ref controlRW.ValueRW, ref ecb);
                             break;
                     }
                 }
@@ -103,17 +103,16 @@ namespace PureDOTS.Systems
             }
 
             // Apply all structural changes after iteration
-            ecb.Playback(em);
-            ecb.Dispose();
+            var phaseAfterCommands = controlRW.ValueRO.Phase;
 
 #if UNITY_EDITOR
             if (commandCount > 0)
             {
-                UnityEngine.Debug.Log($"[RewindControlSystem] Processed {commandCount} command(s), Phase now={controlRW.ValueRO.Phase}");
+                UnityEngine.Debug.Log($"[RewindControlSystem] Processed {commandCount} command(s), Phase now={phaseAfterCommands}");
             }
 #endif
 
-            if (controlRW.ValueRO.Phase == RewindPhase.ScrubbingPreview)
+            if (phaseAfterCommands == RewindPhase.ScrubbingPreview)
             {
                 AdvancePreviewTick(ref state, ref controlRW.ValueRW);
             }
@@ -121,11 +120,14 @@ namespace PureDOTS.Systems
             {
                 _previewAccumulator = 0f;
             }
+
+            ecb.Playback(em);
+            ecb.Dispose();
         }
 
         // Keep these NON-static so SystemAPI is allowed inside
         [BurstDiscard]
-        private void HandleBeginPreview(ref SystemState state, ref RewindControlState control, float scrubSpeed)
+        private void HandleBeginPreview(ref SystemState state, ref RewindControlState control, float scrubSpeed, ref EntityCommandBuffer ecb)
         {
             // Set phase, ticks, and freeze timescale
             var tickState = SystemAPI.GetSingleton<TickTimeState>();
@@ -138,7 +140,7 @@ namespace PureDOTS.Systems
             UnityEngine.Debug.Log($"[RewindControlSystem] BeginPreview -> Phase={control.Phase} Present={control.PresentTickAtStart} Preview={control.PreviewTick} Speed={control.ScrubSpeed:F2}x");
 #endif
 
-            EnqueueTimeScaleCommand(ref state, 0f); // freeze
+            EnqueueTimeScaleCommand(ref ecb, 0f); // freeze
         }
 
         [BurstDiscard]
@@ -204,13 +206,13 @@ namespace PureDOTS.Systems
         }
 
         [BurstDiscard]
-        private void HandleCancel(ref SystemState state, ref RewindControlState control)
+        private void HandleCancel(ref RewindControlState control, ref EntityCommandBuffer ecb)
         {
             if (control.Phase == RewindPhase.ScrubbingPreview ||
                 control.Phase == RewindPhase.FrozenPreview)
             {
                 control.Phase = RewindPhase.Inactive;
-                EnqueueTimeScaleCommand(ref state, 1f); // unfreeze
+                EnqueueTimeScaleCommand(ref ecb, 1f); // unfreeze
 
 #if UNITY_EDITOR
                 UnityEngine.Debug.Log($"[RewindControlSystem] Cancel -> Inactive + speed 1.0");
@@ -219,10 +221,10 @@ namespace PureDOTS.Systems
         }
 
         [BurstDiscard]
-        private void EnqueueTimeScaleCommand(ref SystemState state, float targetScale)
+        private void EnqueueTimeScaleCommand(ref EntityCommandBuffer ecb, float targetScale)
         {
-            var entity = state.EntityManager.CreateEntity();
-            var buffer = state.EntityManager.AddBuffer<TimeControlCommand>(entity);
+            var entity = ecb.CreateEntity();
+            var buffer = ecb.AddBuffer<TimeControlCommand>(entity);
             buffer.Add(new TimeControlCommand
             {
                 Type = TimeControlCommandType.SetSpeed,  // this MUST be the enum your TimeScaleCommandSystem understands

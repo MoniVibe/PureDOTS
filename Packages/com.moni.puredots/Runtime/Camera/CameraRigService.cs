@@ -1,6 +1,7 @@
 using System;
 using PureDOTS.Runtime.Config;
 using UnityEngine;
+using UnityTime = UnityEngine.Time;
 
 #nullable enable
 
@@ -76,7 +77,7 @@ namespace PureDOTS.Runtime.Camera
         public static void Publish(CameraRigState state)
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            int frame = Time.frameCount;
+            int frame = UnityTime.frameCount;
             if (s_hasState &&
                 s_lastPublishFrame == frame &&
                 state.RigType != CameraRigType.None &&
@@ -95,4 +96,3 @@ namespace PureDOTS.Runtime.Camera
         }
     }
 }
-

@@ -57,8 +57,8 @@ namespace PureDOTS.Runtime.WorldGen
         }
 
         public static Random CreateStageChunkRandom(
-            in WorldRecipeBlob recipe,
-            in WorldGenStageBlob stage,
+            ref WorldRecipeBlob recipe,
+            ref WorldGenStageBlob stage,
             uint stageIndex,
             int3 chunkCoord,
             uint stream = 0)
@@ -84,8 +84,8 @@ namespace PureDOTS.Runtime.WorldGen
                 return CreateRandom(1u);
             }
 
-            ref var stage = ref blob.Stages[stageIndex];
-            return CreateStageChunkRandom(in blob, in stage, (uint)stageIndex, chunkCoord, stream);
+            ref var stage = ref blob.Stages[(int)stageIndex];
+            return CreateStageChunkRandom(ref blob, ref stage, (uint)stageIndex, chunkCoord, stream);
         }
     }
 }

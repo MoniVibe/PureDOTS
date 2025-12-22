@@ -113,7 +113,6 @@ namespace PureDOTS.Runtime.Systems.Social
             ecb.Playback(em);
         }
 
-        [BurstCompile]
         private static ControlLink CreateCustodyControlLink(Entity captorScope, in CustodyState custody, uint tick)
         {
             var hostility = (custody.Flags & CustodyFlags.HarshTreatment) != 0 ? 0.75f : 0.25f;
@@ -131,7 +130,6 @@ namespace PureDOTS.Runtime.Systems.Social
             };
         }
 
-        [BurstCompile]
         private static AgencyDomain ResolveCustodyDomains(CustodyKind kind)
         {
             // Default: captor controls outward-facing domains while the captive retains inner self-control.
@@ -144,7 +142,6 @@ namespace PureDOTS.Runtime.Systems.Social
             return domains;
         }
 
-        [BurstCompile]
         private static void UpsertCustodyControlLink(
             ref DynamicBuffer<ControlLink> links,
             Entity captorScope,
@@ -180,7 +177,6 @@ namespace PureDOTS.Runtime.Systems.Social
             links.Add(CreateCustodyControlLink(captorScope, custody, tick));
         }
 
-        [BurstCompile]
         private static void RemoveCustodyControlLink(ref DynamicBuffer<ControlLink> links, Entity captorScope, uint capturedTick)
         {
             if (links.Length == 0)

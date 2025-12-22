@@ -9,7 +9,7 @@ namespace PureDOTS.Systems.Launch
     /// Shared main menu / launch flow state machine.
     /// Inert unless a LaunchRootTag entity exists in the world (wired in by game scenes).
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     public partial struct LaunchMenuSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -226,4 +226,3 @@ namespace PureDOTS.Systems.Launch
         }
     }
 }
-
