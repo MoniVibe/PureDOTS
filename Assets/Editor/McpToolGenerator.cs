@@ -1,3 +1,4 @@
+#if MCP_FOR_UNITY
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -788,3 +789,4 @@ namespace PureDOTS.Editor.Mcp
         }
     }
 }
+#endif

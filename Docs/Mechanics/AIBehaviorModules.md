@@ -6,6 +6,8 @@ The AI Behavior Module Framework is a **composable, data-driven AI system** that
 
 This document defines the universal AI framework that works for villagers, crew, carriers, creatures, and aggregates.
 
+See also: `Docs/Mechanics/Agent_Behavior_Templates.md` (concrete “fantasy loop → components → systems” templates).
+
 ---
 
 ## Core Concept

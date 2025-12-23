@@ -51,4 +51,3 @@ namespace PureDOTS.Runtime.Guild
         public BlobAssetReference<GuildGovernanceCatalog> Catalog;
     }
 }
-

@@ -30,6 +30,8 @@ namespace PureDOTS.Runtime.Interrupts
         SmellSignalDetected = 15,
         SoundSignalDetected = 16,
         EMSignalDetected = 17,
+        CommsMessageReceived = 18,
+        CommsAckReceived = 19,
 
         // Group/Order interrupts
         NewOrder = 20,
@@ -46,6 +48,8 @@ namespace PureDOTS.Runtime.Interrupts
         StatusEffectRemoved = 33,
         AbilityReady = 34,
         AbilityFailed = 35,
+        LieDetected = 36,
+        IdentityExposed = 37,
 
         // Custom interrupts (for game-specific extensions)
         Custom0 = 100,

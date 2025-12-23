@@ -130,6 +130,35 @@ Decode/integrity:
 - Integrity drops with noise + deception + low proficiency.
 - Miscommunication is first-class: low integrity can still produce beliefs/claims, just wrong.
 
+#### Canonical transport bridge (PureDOTS 2025-12)
+
+The semantic `Communication` layer now always rides on the scalable `Comms` transport when
+`SimulationFeatureFlags.LegacyCommunicationDispatchEnabled` is **off** (default).
+
+Data flow:
+
+```mermaid
+flowchart LR
+    sendReq["CommSendRequest (semantic metadata)"]
+    bridgeOut["CommunicationToCommsBridgeSystem"]
+    outbox["CommsOutboxEntry"]
+    stream["CommsMessage stream (signal field + routing)"]
+    inbox["CommsInboxEntry"]
+    bridgeIn["CommsToCommunicationBridgeSystem"]
+    receipt["CommReceipt"]
+    decode["CommunicationDecodeDecideSystem"]
+
+    sendReq --> bridgeOut --> outbox --> stream --> inbox --> bridgeIn --> receipt --> decode
+```
+
+- `CommunicationToCommsBridgeSystem` converts semantic requests into `CommsOutboxEntry`
+  and stores semantics (`CommsMessageSemantic`) keyed by message token.
+- `Comms` transport handles propagation (medium-first, signal field, priority budgeting).
+- `CommsToCommunicationBridgeSystem` reconstructs `CommReceipt` using the stored semantics,
+  feeding the existing decode/miscommunication systems.
+- Setting `LegacyCommunicationDispatchEnabled` re-enables the old direct-distance path
+  (`CommunicationAttemptBuildSystem` + `CommunicationDispatchSystem`) for diagnostic scenarios.
+
 ### Order 7 — Feed perception into reactions/AI via interrupts (don’t flood minds)
 
 Pattern:

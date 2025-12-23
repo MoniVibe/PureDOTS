@@ -2,8 +2,12 @@ using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
 using PureDOTS.Runtime.Components;
+#if INCLUDE_GODGAME_IN_PUREDOTS
 using Godgame.Temporal;
+#endif
+#if INCLUDE_SPACE4X_IN_PUREDOTS
 using Space4X.Temporal;
+#endif
 
 namespace PureDOTS.Tests.EditMode
 {
@@ -65,6 +69,7 @@ namespace PureDOTS.Tests.EditMode
             _world.Dispose();
         }
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_SetGlobalTimeSpeed_SP_SetsCorrectFields()
         {
@@ -84,7 +89,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimePlayerIds.SinglePlayer, cmd.PlayerId);
             Assert.AreEqual(TimeControlSource.Player, cmd.Source);
         }
+#endif
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_SetGlobalTimeSpeed_WithPlayerId_SetsCorrectFields()
         {
@@ -105,7 +112,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(playerId, cmd.PlayerId, "Should use provided playerId");
             Assert.AreEqual(TimeControlSource.Player, cmd.Source);
         }
+#endif
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_RequestGlobalRewind_SP_SetsCorrectFields()
         {
@@ -124,7 +133,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimePlayerIds.SinglePlayer, cmd.PlayerId);
             Assert.AreEqual(TimeControlSource.Player, cmd.Source);
         }
+#endif
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_RequestGlobalRewind_WithPlayerId_SetsCorrectFields()
         {
@@ -143,7 +154,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimeControlScope.Global, cmd.Scope);
             Assert.AreEqual(playerId, cmd.PlayerId, "Should use provided playerId");
         }
+#endif
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_SpawnTimeBubble_SP_SetsOwnerPlayerId()
         {
@@ -159,7 +172,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimePlayerIds.SinglePlayer, params_.OwnerPlayerId);
             Assert.IsFalse(params_.AffectsOwnedEntitiesOnly);
         }
+#endif
 
+#if INCLUDE_GODGAME_IN_PUREDOTS
         [Test]
         public void GodgameTimeAPI_SpawnTimeBubble_WithOwnerPlayerId_SetsCorrectOwner()
         {
@@ -175,7 +190,9 @@ namespace PureDOTS.Tests.EditMode
             var params_ = _entityManager.GetComponentData<TimeBubbleParams>(bubble);
             Assert.AreEqual(ownerPlayerId, params_.OwnerPlayerId, "Should use provided ownerPlayerId");
         }
+#endif
 
+#if INCLUDE_SPACE4X_IN_PUREDOTS
         [Test]
         public void Space4XTimeAPI_SetGlobalTimeSpeed_SP_SetsCorrectFields()
         {
@@ -195,7 +212,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimePlayerIds.SinglePlayer, cmd.PlayerId);
             Assert.AreEqual(TimeControlSource.Player, cmd.Source);
         }
+#endif
 
+#if INCLUDE_SPACE4X_IN_PUREDOTS
         [Test]
         public void Space4XTimeAPI_SetGlobalTimeSpeed_WithPlayerId_SetsCorrectFields()
         {
@@ -212,7 +231,9 @@ namespace PureDOTS.Tests.EditMode
             
             Assert.AreEqual(playerId, cmd.PlayerId, "Should use provided playerId");
         }
+#endif
 
+#if INCLUDE_SPACE4X_IN_PUREDOTS
         [Test]
         public void Space4XTimeAPI_SpawnLocalTimeField_SP_SetsOwnerPlayerId()
         {
@@ -228,7 +249,9 @@ namespace PureDOTS.Tests.EditMode
             Assert.AreEqual(TimePlayerIds.SinglePlayer, params_.OwnerPlayerId);
             Assert.IsFalse(params_.AffectsOwnedEntitiesOnly);
         }
+#endif
 
+#if INCLUDE_SPACE4X_IN_PUREDOTS
         [Test]
         public void Space4XTimeAPI_SpawnLocalTimeField_WithOwnerPlayerId_SetsCorrectOwner()
         {
@@ -244,5 +267,6 @@ namespace PureDOTS.Tests.EditMode
             var params_ = _entityManager.GetComponentData<TimeBubbleParams>(field);
             Assert.AreEqual(ownerPlayerId, params_.OwnerPlayerId, "Should use provided ownerPlayerId");
         }
+#endif
     }
 }

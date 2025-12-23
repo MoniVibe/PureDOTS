@@ -11,6 +11,9 @@ namespace PureDOTS.Runtime.Performance
         // Perception & Knowledge
         public int MaxPerceptionChecksPerTick;
         public int MaxAwarenessUpdatesPerTick;
+        public int MaxLosRaysPerTick;
+        public int MaxAckEventsPerTick;
+        public int MaxCommsMessagesPerTick;
 
         // Combat & Damage
         public int MaxCombatOperationsPerTick;
@@ -71,6 +74,9 @@ namespace PureDOTS.Runtime.Performance
                 // Perception
                 MaxPerceptionChecksPerTick = 20,
                 MaxAwarenessUpdatesPerTick = 15,
+                MaxLosRaysPerTick = 24,
+                MaxAckEventsPerTick = 64,
+                MaxCommsMessagesPerTick = 32,
 
                 // Combat
                 MaxCombatOperationsPerTick = 30,
@@ -133,6 +139,14 @@ namespace PureDOTS.Runtime.Performance
         // Perception & Knowledge
         public int PerceptionChecksThisTick;
         public int AwarenessUpdatesThisTick;
+        public int LosRaysAttemptedThisTick;
+        public int LosRaysGrantedThisTick;
+        public int LosRaysDeferredThisTick;
+        public int AckEventsEmittedThisTick;
+        public int AckEventsDroppedThisTick;
+        public int CommsMessagesEmittedThisTick;
+        public int CommsMessagesDroppedThisTick;
+        public int CommsReceiptsThisTick;
 
         // Combat & Damage
         public int CombatOperationsThisTick;

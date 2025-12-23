@@ -75,17 +75,17 @@ namespace PureDOTS.Tests.Time
             var tickAfterPlay = GetTick(ctx.World);
             Assert.Greater(tickAfterPlay, initialTick);
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Pause);
+            AddCommand(ctx.World, TimeControlCommandType.Pause);
             AdvanceFrame(ctx);
             var pausedTick = GetTick(ctx.World);
             AdvanceFrame(ctx);
             Assert.AreEqual(pausedTick, GetTick(ctx.World));
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.StepTicks, 1);
+            AddCommand(ctx.World, TimeControlCommandType.StepTicks, 1);
             AdvanceFrame(ctx);
             Assert.AreEqual(pausedTick + 1, GetTick(ctx.World));
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Resume);
+            AddCommand(ctx.World, TimeControlCommandType.Resume);
             AdvanceFrame(ctx);
             Assert.Greater(GetTick(ctx.World), pausedTick + 1);
             yield return null;
@@ -101,13 +101,13 @@ namespace PureDOTS.Tests.Time
             var initialCount = ctx.World.EntityManager.GetComponentData<FixedStepCounter>(counterEntity).Count;
             Assert.Greater(initialCount, 0);
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Pause);
+            AddCommand(ctx.World, TimeControlCommandType.Pause);
             AdvanceFrame(ctx);
             var pausedCount = ctx.World.EntityManager.GetComponentData<FixedStepCounter>(counterEntity).Count;
             AdvanceFrame(ctx);
             Assert.AreEqual(pausedCount, ctx.World.EntityManager.GetComponentData<FixedStepCounter>(counterEntity).Count);
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Resume);
+            AddCommand(ctx.World, TimeControlCommandType.Resume);
             AdvanceFrame(ctx);
             Assert.Greater(ctx.World.EntityManager.GetComponentData<FixedStepCounter>(counterEntity).Count, pausedCount);
             yield return null;
@@ -118,7 +118,7 @@ namespace PureDOTS.Tests.Time
         {
             using var ctx = CreateContext();
             AdvanceSeveralFrames(ctx, 8);
-            AddCommand(ctx.World, TimeControlCommand.CommandType.StartRewind, 1);
+            AddCommand(ctx.World, TimeControlCommandType.StartRewind, 1);
             AdvanceFrame(ctx);
             Assert.IsFalse(ctx.SimulationGroup.Enabled);
             Assert.IsFalse(ctx.FixedStepGroup.Enabled);
@@ -133,7 +133,7 @@ namespace PureDOTS.Tests.Time
             var currentTick = GetTick(ctx.World);
             var targetTick = currentTick > 120 ? currentTick - 120 : 0;
 
-            AddCommand(ctx.World, TimeControlCommand.CommandType.StartRewind, targetTick);
+            AddCommand(ctx.World, TimeControlCommandType.StartRewind, targetTick);
             var playbackProgressed = false;
             for (int i = 0; i < 240 && GetRewindState(ctx.World).Mode == RewindMode.Playback; i++)
             {
@@ -165,9 +165,9 @@ namespace PureDOTS.Tests.Time
         public IEnumerator LogsTrackCommandsAndSnapshots()
         {
             using var ctx = CreateContext();
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Pause);
+            AddCommand(ctx.World, TimeControlCommandType.Pause);
             AdvanceFrame(ctx);
-            AddCommand(ctx.World, TimeControlCommand.CommandType.Resume);
+            AddCommand(ctx.World, TimeControlCommandType.Resume);
             AdvanceSeveralFrames(ctx, 3);
 
             var commandLog = ctx.World.EntityManager.CreateEntityQuery(typeof(InputCommandLogState)).GetSingleton<InputCommandLogState>();
@@ -257,7 +257,7 @@ namespace PureDOTS.Tests.Time
             }
         }
 
-        private static void AddCommand(World world, TimeControlCommand.CommandType type, uint uintParam = 0, float floatParam = 0f)
+        private static void AddCommand(World world, TimeControlCommandType type, uint uintParam = 0, float floatParam = 0f)
         {
             var rewindEntity = world.EntityManager.CreateEntityQuery(typeof(RewindState)).GetSingletonEntity();
             var buffer = world.EntityManager.GetBuffer<TimeControlCommand>(rewindEntity);

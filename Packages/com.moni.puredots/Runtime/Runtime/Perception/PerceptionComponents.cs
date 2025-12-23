@@ -224,6 +224,42 @@ namespace PureDOTS.Runtime.Perception
         /// Target's relationship (-128 = enemy, 0 = neutral, +127 = ally).
         /// </summary>
         public sbyte Relationship;
+
+        /// <summary>
+        /// Relation classification for the perceived entity (Unknown/Neutral/Ally/Hostile).
+        /// </summary>
+        public PerceivedRelationKind RelationKind;
+
+        /// <summary>
+        /// Flags describing how the relation was derived.
+        /// </summary>
+        public PerceivedRelationFlags RelationFlags;
+    }
+
+    /// <summary>
+    /// Coarse relation classification for perceived entities.
+    /// Unknown = 0 by design.
+    /// </summary>
+    public enum PerceivedRelationKind : byte
+    {
+        Unknown = 0,
+        Neutral = 1,
+        Ally = 2,
+        Hostile = 3
+    }
+
+    /// <summary>
+    /// Relation derivation flags for perceived entities.
+    /// </summary>
+    [System.Flags]
+    public enum PerceivedRelationFlags : byte
+    {
+        None = 0,
+        FromPersonal = 1 << 0,
+        FromFaction = 1 << 1,
+        FromCategory = 1 << 2,
+        ForcedAlly = 1 << 3,
+        ForcedHostile = 1 << 4
     }
 
     /// <summary>

@@ -120,6 +120,10 @@ namespace PureDOTS.Runtime.AI
         public byte ActionIndex;
         public Entity TargetEntity;
         public float3 TargetPosition;
+
+        // Optional acknowledgement contract (0 token / None flags => no-ack).
+        public uint AckToken;
+        public AIAckRequestFlags AckFlags;
     }
 
     /// <summary>

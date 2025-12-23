@@ -1,5 +1,9 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Comms;
+using PureDOTS.Runtime.Interrupts;
+using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Transport;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -244,6 +248,9 @@ namespace PureDOTS.Systems
         private ComponentLookup<StorehouseInventory> _storeInventoryLookup;
         private BufferLookup<StorehouseCapacityElement> _capacityLookup;
         private BufferLookup<StorehouseInventoryItem> _storeItemsLookup;
+        private ComponentLookup<StorehouseLedgerSettings> _ledgerSettingsLookup;
+        private BufferLookup<StorehouseLedgerEvent> _ledgerEventLookup;
+        private BufferLookup<CommsOutboxEntry> _storehouseOutboxLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -253,6 +260,9 @@ namespace PureDOTS.Systems
             _storeInventoryLookup = state.GetComponentLookup<StorehouseInventory>(false);
             _capacityLookup = state.GetBufferLookup<StorehouseCapacityElement>(true);
             _storeItemsLookup = state.GetBufferLookup<StorehouseInventoryItem>(false);
+            _ledgerSettingsLookup = state.GetComponentLookup<StorehouseLedgerSettings>(true);
+            _ledgerEventLookup = state.GetBufferLookup<StorehouseLedgerEvent>(false);
+            _storehouseOutboxLookup = state.GetBufferLookup<CommsOutboxEntry>(false);
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
@@ -274,6 +284,9 @@ namespace PureDOTS.Systems
             _storeInventoryLookup.Update(ref state);
             _capacityLookup.Update(ref state);
             _storeItemsLookup.Update(ref state);
+            _ledgerSettingsLookup.Update(ref state);
+            _ledgerEventLookup.Update(ref state);
+            _storehouseOutboxLookup.Update(ref state);
 
             // Get resource interaction config or use defaults
             var config = SystemAPI.HasSingleton<ResourceInteractionConfig>()
@@ -290,16 +303,13 @@ namespace PureDOTS.Systems
 
             var withdrawDistance = config.WithdrawDistance;
 
-            foreach (var tuple in
+            foreach (var (requests, inventory, aiState, transform, flags, entity) in
                      SystemAPI.Query<DynamicBuffer<VillagerWithdrawRequest>, DynamicBuffer<VillagerInventoryItem>, VillagerAIState, LocalTransform, VillagerFlags>()
                          .WithNone<PlaybackGuardTag>()
                          .WithEntityAccess())
             {
-                var requests = tuple.Item1;
-                var inventory = tuple.Item2;
-                var aiState = tuple.Item3;
-                var transform = tuple.Item4;
-                var flags = tuple.Item5;
+                var requestsBuffer = requests;
+                var inventoryBuffer = inventory;
                 
                 // Skip dead villagers
                 if (flags.IsDead)
@@ -307,7 +317,7 @@ namespace PureDOTS.Systems
                     continue;
                 }
                 
-                if (requests.Length == 0)
+                if (requestsBuffer.Length == 0)
                 {
                     continue;
                 }
@@ -330,13 +340,15 @@ namespace PureDOTS.Systems
                 var hasInventory = _storeInventoryLookup.HasComponent(target);
                 var storeInventory = hasInventory ? _storeInventoryLookup[target] : default;
                 var storeItems = _storeItemsLookup[target];
+                var hasLedger = _ledgerSettingsLookup.HasComponent(target) && _ledgerEventLookup.HasBuffer(target);
+                var ledgerSettings = hasLedger ? _ledgerSettingsLookup[target] : StorehouseLedgerSettings.Default;
 
-                for (var r = requests.Length - 1; r >= 0; r--)
+                for (var r = requestsBuffer.Length - 1; r >= 0; r--)
                 {
-                    var request = requests[r];
+                    var request = requestsBuffer[r];
                     if (request.Amount <= 0f)
                     {
-                        requests.RemoveAt(r);
+                        requestsBuffer.RemoveAt(r);
                         continue;
                     }
 
@@ -377,9 +389,9 @@ namespace PureDOTS.Systems
                     }
 
                     var inventoryIndex = -1;
-                    for (var i = 0; i < inventory.Length; i++)
+                    for (var i = 0; i < inventoryBuffer.Length; i++)
                     {
-                        if (inventory[i].ResourceTypeIndex == ushortTypeIndex)
+                        if (inventoryBuffer[i].ResourceTypeIndex == ushortTypeIndex)
                         {
                             inventoryIndex = i;
                             break;
@@ -388,16 +400,20 @@ namespace PureDOTS.Systems
 
                     if (inventoryIndex >= 0)
                     {
-                        var invItem = inventory[inventoryIndex];
+                        var invItem = inventoryBuffer[inventoryIndex];
                         var capacity = invItem.MaxCarryCapacity > 0f ? invItem.MaxCarryCapacity : config.DefaultMaxCarryCapacity;
                         var capacityRemaining = math.max(0f, capacity - invItem.Amount);
                         var taken = math.min(toWithdraw, capacityRemaining);
                         if (taken > 0f)
                         {
                             invItem.Amount += taken;
-                            inventory[inventoryIndex] = invItem;
+                            inventoryBuffer[inventoryIndex] = invItem;
                             storeItem.Amount -= taken;
                             request.Amount -= taken;
+                            if (hasLedger)
+                            {
+                                RecordLedgerEvent(target, entity, request.TargetStorehouse, ushortTypeIndex, taken, timeState.Tick, ledgerSettings);
+                            }
                             if (hasInventory)
                             {
                                 storeInventory.TotalStored -= taken;
@@ -409,7 +425,7 @@ namespace PureDOTS.Systems
                         var taken = math.min(toWithdraw, config.DefaultMaxCarryCapacity);
                         if (taken > 0f)
                         {
-                            inventory.Add(new VillagerInventoryItem
+                            inventoryBuffer.Add(new VillagerInventoryItem
                             {
                                 ResourceTypeIndex = ushortTypeIndex,
                                 Amount = taken,
@@ -417,6 +433,10 @@ namespace PureDOTS.Systems
                             });
                             storeItem.Amount -= taken;
                             request.Amount -= taken;
+                            if (hasLedger)
+                            {
+                                RecordLedgerEvent(target, entity, request.TargetStorehouse, ushortTypeIndex, taken, timeState.Tick, ledgerSettings);
+                            }
                             if (hasInventory)
                             {
                                 storeInventory.TotalStored -= taken;
@@ -429,11 +449,11 @@ namespace PureDOTS.Systems
 
                     if (request.Amount <= 0f)
                     {
-                        requests.RemoveAt(r);
+                        requestsBuffer.RemoveAt(r);
                     }
                     else
                     {
-                        requests[r] = request;
+                        requestsBuffer[r] = request;
                     }
                 }
 
@@ -442,6 +462,74 @@ namespace PureDOTS.Systems
                     _storeInventoryLookup[target] = storeInventory;
                 }
             }
+        }
+
+        private void RecordLedgerEvent(
+            Entity storehouse,
+            Entity villager,
+            Entity destination,
+            ushort resourceTypeIndex,
+            float amount,
+            uint tick,
+            in StorehouseLedgerSettings settings)
+        {
+            if (amount < settings.EventThresholdUnits ||
+                !_ledgerEventLookup.HasBuffer(storehouse))
+            {
+                return;
+            }
+
+            var ledger = _ledgerEventLookup[storehouse];
+            ledger.Add(new StorehouseLedgerEvent
+            {
+                Actor = villager,
+                Destination = destination,
+                ResourceTypeIndex = resourceTypeIndex,
+                Amount = amount,
+                Tick = tick
+            });
+
+            if (settings.EmitComms == 0 || !_storehouseOutboxLookup.HasBuffer(storehouse))
+            {
+                return;
+            }
+
+            var outbox = _storehouseOutboxLookup[storehouse];
+            FixedString32Bytes payload = default;
+            payload.Append('s');
+            payload.Append('t');
+            payload.Append('o');
+            payload.Append('r');
+            payload.Append('e');
+            payload.Append('.');
+            payload.Append('a');
+            payload.Append('c');
+            payload.Append('k');
+            payload.Append('.');
+            payload.Append((int)resourceTypeIndex);
+
+            outbox.Add(new CommsOutboxEntry
+            {
+                Token = 0,
+                InterruptType = InterruptType.CommsAckReceived,
+                Priority = InterruptPriority.Low,
+                PayloadId = payload,
+                TransportMaskPreferred = PerceptionChannel.Hearing,
+                Strength01 = 0.6f,
+                Clarity01 = 0.95f,
+                DeceptionStrength01 = 0f,
+                Secrecy01 = 0f,
+                TtlTicks = 10,
+                IntendedReceiver = settings.NotifyTarget,
+                Flags = settings.NotifyTarget == Entity.Null ? CommsMessageFlags.IsBroadcast : CommsMessageFlags.None,
+                FocusCost = 0f,
+                MinCohesion01 = 0f,
+                RepeatCadenceTicks = 0,
+                Attempts = 0,
+                MaxAttempts = 0,
+                NextEmitTick = 0,
+                FirstEmitTick = 0
+            });
         }
     }
 

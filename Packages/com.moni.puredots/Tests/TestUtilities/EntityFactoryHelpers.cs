@@ -33,19 +33,13 @@ namespace PureDOTS.TestUtilities
 
             entityManager.AddComponentData(entity, new MiracleRuntimeState
             {
-                Lifecycle = MiracleLifecycleState.Idle,
+                Lifecycle = MiracleLifecycleState.Charging,
                 ChargePercent = 0f,
                 CurrentRadius = 0f,
                 CurrentIntensity = 0f,
                 CooldownSecondsRemaining = 0f,
                 LastCastTick = 0u,
                 AlignmentDelta = 0
-            });
-
-            entityManager.AddComponentData(entity, new MiracleTarget
-            {
-                TargetPosition = parameters.TargetPosition,
-                TargetEntity = Entity.Null
             });
 
             if (parameters.CasterEntity != Entity.Null)
@@ -242,4 +236,3 @@ namespace PureDOTS.TestUtilities
         }
     }
 }
-

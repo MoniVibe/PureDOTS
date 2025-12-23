@@ -21,12 +21,16 @@ namespace PureDOTS.Systems.Groups
     [UpdateAfter(typeof(GroupFormationSystem))]
     public partial struct GroupCombatIntentSystem : ISystem
     {
+        private ComponentLookup<SquadTacticOrder> _tacticLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ScenarioState>();
+            state.RequireForUpdate<SquadTacticOrder>();
+            _tacticLookup = state.GetComponentLookup<SquadTacticOrder>(true);
         }
 
         [BurstCompile]
@@ -54,7 +58,7 @@ namespace PureDOTS.Systems.Groups
                 return;
             }
 
-            var random = Unity.Mathematics.Random.CreateFromIndex(timeState.Tick);
+            _tacticLookup.Update(ref state);
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             // Query group members with CombatIntent
@@ -80,34 +84,62 @@ namespace PureDOTS.Systems.Groups
                     continue;
                 }
 
-                // Check personality traits (if available) to determine behavior
-                // For now, use simple random chance based on health
-                float healthPercent = health.ValueRO.Current / math.max(1f, health.ValueRO.Max);
-                float randomValue = random.NextFloat();
+                if (_tacticLookup.HasComponent(groupMembership.ValueRO.Group))
+                {
+                    ApplyTacticIntent(_tacticLookup[groupMembership.ValueRO.Group], ref combatIntent.ValueRW);
+                    continue;
+                }
 
-                // Low health + random chance → flee
-                if (healthPercent < 0.3f && randomValue < 0.3f)
+                var healthPercent = health.ValueRO.Current / math.max(1f, health.ValueRO.Max);
+                var hash = math.hash(new uint3(
+                    (uint)entity.Index,
+                    (uint)groupMembership.ValueRO.Group.Index,
+                    (uint)(timeState.Tick >> 2)));
+                var roll = hash % 100u;
+
+                if (healthPercent < 0.25f && roll < 35u)
                 {
                     combatIntent.ValueRW.State = (byte)CombatIntentState.Flee;
+                    combatIntent.ValueRW.Target = Entity.Null;
                 }
-                // High health + random chance → flank
-                else if (healthPercent > 0.7f && randomValue < 0.2f)
+                else if (healthPercent > 0.65f && roll % 3u == 0u)
                 {
                     combatIntent.ValueRW.State = (byte)CombatIntentState.Flank;
+                    combatIntent.ValueRW.Target = Entity.Null;
                 }
-                // Otherwise follow group
                 else
                 {
                     combatIntent.ValueRW.State = (byte)CombatIntentState.FollowGroup;
+                    combatIntent.ValueRW.Target = Entity.Null;
                 }
-
-                // TODO: Integrate with PersonalityAxes and AlignmentTriplet when available
-                // Bold + Chaotic → higher flank chance
-                // Craven + Peaceful → higher flee chance
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+        }
+
+        private static void ApplyTacticIntent(in SquadTacticOrder tactic, ref CombatIntent intent)
+        {
+            switch (tactic.Kind)
+            {
+                case SquadTacticKind.FlankLeft:
+                case SquadTacticKind.FlankRight:
+                    intent.State = (byte)CombatIntentState.Flank;
+                    intent.Target = tactic.Target;
+                    break;
+                case SquadTacticKind.Retreat:
+                    intent.State = (byte)CombatIntentState.Flee;
+                    intent.Target = tactic.Target;
+                    break;
+                case SquadTacticKind.Collapse:
+                    intent.State = (byte)CombatIntentState.HoldPosition;
+                    intent.Target = tactic.Target;
+                    break;
+                default:
+                    intent.State = (byte)CombatIntentState.FollowGroup;
+                    intent.Target = tactic.Target;
+                    break;
+            }
         }
     }
 }

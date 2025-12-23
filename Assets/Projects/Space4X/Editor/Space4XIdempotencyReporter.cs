@@ -1,3 +1,4 @@
+#if UNITY_EDITOR && INCLUDE_SPACE4X_IN_PUREDOTS
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -140,4 +141,4 @@ namespace Space4X.Editor
         }
     }
 }
-
+#endif

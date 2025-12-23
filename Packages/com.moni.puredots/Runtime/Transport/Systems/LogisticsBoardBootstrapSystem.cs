@@ -1,5 +1,4 @@
 using PureDOTS.Runtime.Transport;
-using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,7 +9,7 @@ namespace PureDOTS.Runtime.Transport.Systems
     /// Ensures logistics boards carry the contract components and buffers.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     [UpdateBefore(typeof(LogisticsBoardClaimSystem))]
     public partial struct LogisticsBoardBootstrapSystem : ISystem
     {

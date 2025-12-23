@@ -1,6 +1,5 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Transport;
-using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,7 +10,7 @@ namespace PureDOTS.Runtime.Transport.Systems
     /// Allocates reservations from logistics boards based on claim requests.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(GameplaySystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct LogisticsBoardClaimSystem : ISystem
     {
         [BurstCompile]
@@ -42,11 +41,15 @@ namespace PureDOTS.Runtime.Transport.Systems
                              DynamicBuffer<LogisticsReservationEntry>, DynamicBuffer<LogisticsClaimRequest>>()
                          .WithEntityAccess())
             {
-                ExpireReservations(timeState.Tick, reservations);
+                var demandBuffer = demands;
+                var reservationBuffer = reservations;
+                var claimBuffer = claims;
 
-                if (claims.Length == 0 || demands.Length == 0)
+                ExpireReservations(timeState.Tick, reservationBuffer);
+
+                if (claimBuffer.Length == 0 || demandBuffer.Length == 0)
                 {
-                    claims.Clear();
+                    claimBuffer.Clear();
                     continue;
                 }
 
@@ -54,31 +57,31 @@ namespace PureDOTS.Runtime.Transport.Systems
                 var maxClaims = configValue.MaxClaimsPerTick > 0 ? configValue.MaxClaimsPerTick : (byte)4;
                 var claimsProcessed = 0;
 
-                for (int i = 0; i < claims.Length; i++)
+                for (int i = 0; i < claimBuffer.Length; i++)
                 {
                     if (claimsProcessed >= maxClaims)
                     {
                         break;
                     }
 
-                    var claim = claims[i];
+                    var claim = claimBuffer[i];
                     if (claim.Requester == Entity.Null || !state.EntityManager.Exists(claim.Requester))
                     {
                         continue;
                     }
 
-                    if (HasActiveReservation(reservations, claim.Requester))
+                    if (HasActiveReservation(reservationBuffer, claim.Requester))
                     {
                         continue;
                     }
 
-                    var demandIndex = SelectDemandIndex(demands, claim);
+                    var demandIndex = SelectDemandIndex(demandBuffer, claim);
                     if (demandIndex < 0)
                     {
                         continue;
                     }
 
-                    var demand = demands[demandIndex];
+                    var demand = demandBuffer[demandIndex];
                     var allocation = ComputeAllocation(demand.OutstandingUnits, claim, configValue);
                     if (allocation <= 0f)
                     {
@@ -90,7 +93,7 @@ namespace PureDOTS.Runtime.Transport.Systems
                         ? timeState.Tick + configValue.ReservationExpiryTicks
                         : timeState.Tick + 60u;
 
-                    reservations.Add(new LogisticsReservationEntry
+                    reservationBuffer.Add(new LogisticsReservationEntry
                     {
                         ReservationId = reservationId,
                         HaulerEntity = claim.Requester,
@@ -106,12 +109,12 @@ namespace PureDOTS.Runtime.Transport.Systems
                     demand.ReservedUnits += allocation;
                     demand.OutstandingUnits = math.max(0f, demand.RequiredUnits - demand.DeliveredUnits - demand.ReservedUnits);
                     demand.LastUpdateTick = timeState.Tick;
-                    demands[demandIndex] = demand;
+                    demandBuffer[demandIndex] = demand;
 
                     claimsProcessed++;
                 }
 
-                claims.Clear();
+                claimBuffer.Clear();
                 board.ValueRW.LastUpdateTick = timeState.Tick;
             }
         }

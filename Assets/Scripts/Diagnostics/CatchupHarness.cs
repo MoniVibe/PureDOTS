@@ -2,7 +2,9 @@ using System.Threading;
 using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
+#if INCLUDE_SPACE4X_IN_PUREDOTS
 using Space4X.CameraComponents;
+#endif
 
 namespace PureDOTS.Diagnostics
 {
@@ -57,10 +59,12 @@ namespace PureDOTS.Diagnostics
 
             var entityManager = world.EntityManager;
 
+#if INCLUDE_SPACE4X_IN_PUREDOTS
             if (logCameraDiagnostics && TryGetSingleton(entityManager, out Space4XCameraDiagnostics cameraDiagnostics))
             {
                 Debug.Log($"[CatchupHarness] Hitch {_hitchCount}: Camera frame={cameraDiagnostics.FrameId}, ticks={cameraDiagnostics.TicksThisFrame}, catchUp={cameraDiagnostics.CatchUpTicks}, stale={cameraDiagnostics.InputStaleTicks}, budgetTicks={cameraDiagnostics.BudgetTicksRemaining}, monoOwner={cameraDiagnostics.MonoControllerActive}");
             }
+#endif
 
             if (logVillagerDiagnostics && TryGetSingleton(entityManager, out VillagerJobDiagnostics jobDiagnostics))
             {
@@ -81,6 +85,5 @@ namespace PureDOTS.Diagnostics
         }
     }
 }
-
 
 

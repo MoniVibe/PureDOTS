@@ -16,7 +16,7 @@ namespace PureDOTS.Systems
     {
         public void OnCreate(ref SystemState state)
         {
-            if (!RuntimeMode.IsHeadless)
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
             {
                 state.Enabled = false;
                 return;

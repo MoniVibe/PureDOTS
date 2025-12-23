@@ -7,7 +7,6 @@ using System.IO;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 
 namespace PureDOTS.Tests.Launch
@@ -141,7 +140,6 @@ namespace PureDOTS.Tests.Launch
         }
     }
 }
-
 
 
 

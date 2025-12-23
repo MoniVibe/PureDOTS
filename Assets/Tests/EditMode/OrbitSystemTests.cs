@@ -73,7 +73,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void OrbitAdvanceSystem_AdvancesPhaseCorrectly()
         {
-            var orbitSystem = _world.GetOrCreateSystemManaged<OrbitAdvanceSystem>();
+            var orbitSystem = _world.GetOrCreateSystem<OrbitAdvanceSystem>();
 
             // Advance time by 1 hour (3600 seconds)
             var timeQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<TimeState>());
@@ -97,7 +97,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void OrbitAdvanceSystem_WrapsPhaseCorrectly()
         {
-            var orbitSystem = _world.GetOrCreateSystemManaged<OrbitAdvanceSystem>();
+            var orbitSystem = _world.GetOrCreateSystem<OrbitAdvanceSystem>();
 
             // Set phase near 1.0
             var orbitState = _entityManager.GetComponentData<OrbitState>(_planetEntity);
@@ -124,8 +124,8 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void TimeOfDaySystem_CalculatesPhaseCorrectly()
         {
-            var orbitSystem = _world.GetOrCreateSystemManaged<OrbitAdvanceSystem>();
-            var timeOfDaySystem = _world.GetOrCreateSystemManaged<TimeOfDaySystem>();
+            var orbitSystem = _world.GetOrCreateSystem<OrbitAdvanceSystem>();
+            var timeOfDaySystem = _world.GetOrCreateSystem<TimeOfDaySystem>();
 
             // Set orbital phase to 0.5 (noon)
             var orbitState = _entityManager.GetComponentData<OrbitState>(_planetEntity);
@@ -151,7 +151,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void TimeOfDaySystem_CalculatesSunlightCorrectly()
         {
-            var timeOfDaySystem = _world.GetOrCreateSystemManaged<TimeOfDaySystem>();
+            var timeOfDaySystem = _world.GetOrCreateSystem<TimeOfDaySystem>();
 
             // Set orbital phase to 0.5 (noon) - should give maximum sunlight
             var orbitState = _entityManager.GetComponentData<OrbitState>(_planetEntity);
@@ -159,10 +159,10 @@ namespace PureDOTS.Tests.EditMode
             _entityManager.SetComponentData(_planetEntity, orbitState);
 
             // Update time-of-day system
-            var timeState = _entityManager.GetComponentData<TimeState>(_entityManager.GetSingletonEntity<TimeState>());
+            var timeState = _entityManager.GetComponentData<TimeState>(GetTimeEntity());
             timeState.DeltaTime = 0f;
             timeState.Tick = 1;
-            _entityManager.SetComponentData(_entityManager.GetSingletonEntity<TimeState>(), timeState);
+            _entityManager.SetComponentData(GetTimeEntity(), timeState);
 
             timeOfDaySystem.Update(_world.Unmanaged);
 
@@ -174,7 +174,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void TimeOfDaySystem_CalculatesSunlightAtMidnight()
         {
-            var timeOfDaySystem = _world.GetOrCreateSystemManaged<TimeOfDaySystem>();
+            var timeOfDaySystem = _world.GetOrCreateSystem<TimeOfDaySystem>();
 
             // Set orbital phase to 0.0 (midnight) - should give minimum sunlight
             var orbitState = _entityManager.GetComponentData<OrbitState>(_planetEntity);
@@ -182,10 +182,10 @@ namespace PureDOTS.Tests.EditMode
             _entityManager.SetComponentData(_planetEntity, orbitState);
 
             // Update time-of-day system
-            var timeState = _entityManager.GetComponentData<TimeState>(_entityManager.GetSingletonEntity<TimeState>());
+            var timeState = _entityManager.GetComponentData<TimeState>(GetTimeEntity());
             timeState.DeltaTime = 0f;
             timeState.Tick = 1;
-            _entityManager.SetComponentData(_entityManager.GetSingletonEntity<TimeState>(), timeState);
+            _entityManager.SetComponentData(GetTimeEntity(), timeState);
 
             timeOfDaySystem.Update(_world.Unmanaged);
 
@@ -239,6 +239,12 @@ namespace PureDOTS.Tests.EditMode
                     ActiveTrack = default
                 });
             }
+        }
+
+        private Entity GetTimeEntity()
+        {
+            var query = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TimeState>());
+            return query.GetSingletonEntity();
         }
     }
 }

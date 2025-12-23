@@ -76,10 +76,11 @@ namespace PureDOTS.Systems.Communication
             _pendingClarifyLookup.Update(ref state);
             _outboundLookup.Update(ref state);
 
-            foreach (var (endpoint, receipts, decisions, sendRequests, entity) in
+            foreach (var (endpoint, receipts, decisions, sendRequestsBuffer, entity) in
                 SystemAPI.Query<RefRO<CommEndpoint>, DynamicBuffer<CommReceipt>, DynamicBuffer<CommDecision>, DynamicBuffer<CommSendRequest>>()
                     .WithEntityAccess())
             {
+                var sendRequests = sendRequestsBuffer;
                 if (receipts.Length == 0)
                 {
                     continue;

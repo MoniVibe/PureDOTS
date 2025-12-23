@@ -112,6 +112,7 @@ namespace PureDOTS.Runtime.Scenarios
 
             DefaultWorldInitializationInitializationHook(world);
             InjectScenarioMetadata(world.EntityManager, in scenario);
+            EnsureScenarioState(world.EntityManager);
             var scenarioTickEntity = EnsureScenarioTick(world.EntityManager);
 
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
@@ -137,6 +138,12 @@ namespace PureDOTS.Runtime.Scenarios
                         var elapsed = (i + 1) * FixedDeltaTime;
                         world.Unmanaged.Time = new TimeData(FixedDeltaTime, elapsed);
                         UpdateScenarioTick(world.EntityManager, scenarioTickEntity, (uint)(i + 1), elapsed);
+
+                        if (rewindEntity == Entity.Null || !world.EntityManager.Exists(rewindEntity) ||
+                            !world.EntityManager.HasComponent<RewindState>(rewindEntity))
+                        {
+                            rewindEntity = ResolveRewindEntity(world.EntityManager);
+                        }
 
                         FlushCommandsForTick(world.EntityManager, rewindEntity, commandQueue, i);
 
@@ -344,9 +351,16 @@ namespace PureDOTS.Runtime.Scenarios
                 }
             }
 
-            if (entityManager.HasComponent<TickTimeState>(rewindEntity))
+            using (var tickQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TickTimeState>()))
             {
-                result.FinalTick = entityManager.GetComponentData<TickTimeState>(rewindEntity).Tick;
+                if (tickQuery.TryGetSingleton(out TickTimeState tickTime))
+                {
+                    result.FinalTick = tickTime.Tick;
+                }
+                else
+                {
+                    Debug.LogWarning($"[ScenarioRunner] TickTimeState singleton missing or not unique (count={tickQuery.CalculateEntityCount()}). FinalTick left at {result.FinalTick}.");
+                }
             }
 
             if (entityManager.HasComponent<TelemetryStream>(rewindEntity))
@@ -549,6 +563,32 @@ namespace PureDOTS.Runtime.Scenarios
                 {
                     Value = scenario.TelemetryOverride
                 });
+            }
+        }
+
+        private static void EnsureScenarioState(EntityManager entityManager)
+        {
+            var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ScenarioState>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                var entity = entityManager.CreateEntity(typeof(ScenarioState));
+                entityManager.SetComponentData(entity, new ScenarioState
+                {
+                    Current = ScenarioKind.AllSystemsShowcase,
+                    IsInitialized = true,
+                    BootPhase = ScenarioBootPhase.Done,
+                    EnableGodgame = true,
+                    EnableSpace4x = true,
+                    EnableEconomy = false
+                });
+            }
+            else
+            {
+                var entity = query.GetSingletonEntity();
+                var state = entityManager.GetComponentData<ScenarioState>(entity);
+                state.IsInitialized = true;
+                state.BootPhase = ScenarioBootPhase.Done;
+                entityManager.SetComponentData(entity, state);
             }
         }
 

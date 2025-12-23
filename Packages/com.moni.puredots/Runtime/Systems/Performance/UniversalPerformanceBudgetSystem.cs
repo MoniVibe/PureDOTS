@@ -56,6 +56,14 @@ namespace PureDOTS.Systems.Performance
             // Perception
             counters.ValueRW.PerceptionChecksThisTick = 0;
             counters.ValueRW.AwarenessUpdatesThisTick = 0;
+            counters.ValueRW.LosRaysAttemptedThisTick = 0;
+            counters.ValueRW.LosRaysGrantedThisTick = 0;
+            counters.ValueRW.LosRaysDeferredThisTick = 0;
+            counters.ValueRW.AckEventsEmittedThisTick = 0;
+            counters.ValueRW.AckEventsDroppedThisTick = 0;
+            counters.ValueRW.CommsMessagesEmittedThisTick = 0;
+            counters.ValueRW.CommsMessagesDroppedThisTick = 0;
+            counters.ValueRW.CommsReceiptsThisTick = 0;
 
             // Combat
             counters.ValueRW.CombatOperationsThisTick = 0;

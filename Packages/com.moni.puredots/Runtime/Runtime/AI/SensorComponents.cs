@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Perception;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -82,6 +83,16 @@ namespace PureDOTS.Runtime.AI
         /// Target's relationship (-128 = enemy, 0 = neutral, +127 = ally).
         /// </summary>
         public sbyte Relationship;
+
+        /// <summary>
+        /// Relation classification for the detected entity.
+        /// </summary>
+        public PerceivedRelationKind RelationKind;
+
+        /// <summary>
+        /// Flags describing how the relation was derived.
+        /// </summary>
+        public PerceivedRelationFlags RelationFlags;
     }
 
     /// <summary>
@@ -254,4 +265,3 @@ namespace PureDOTS.Runtime.AI
         Wildlife = 7
     }
 }
-

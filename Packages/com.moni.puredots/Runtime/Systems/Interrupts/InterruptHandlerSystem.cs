@@ -141,12 +141,16 @@ namespace PureDOTS.Systems.Interrupts
                 InterruptType.SmellSignalDetected => IntentMode.Custom0,
                 InterruptType.SoundSignalDetected => IntentMode.Custom0,
                 InterruptType.EMSignalDetected => IntentMode.Custom0,
+                InterruptType.CommsMessageReceived => IntentMode.Custom0,
+                InterruptType.CommsAckReceived => IntentMode.Idle,
                 InterruptType.NewOrder => IntentMode.ExecuteOrder,
                 InterruptType.OrderCancelled => IntentMode.Idle,
                 InterruptType.ObjectiveChanged => IntentMode.ExecuteOrder,
                 InterruptType.LowHealth => IntentMode.Flee,
                 InterruptType.LowResources => IntentMode.Gather,
                 InterruptType.AbilityReady => IntentMode.UseAbility,
+                InterruptType.LieDetected => IntentMode.Custom0,
+                InterruptType.IdentityExposed => IntentMode.Custom0,
                 _ => IntentMode.Idle
             };
         }

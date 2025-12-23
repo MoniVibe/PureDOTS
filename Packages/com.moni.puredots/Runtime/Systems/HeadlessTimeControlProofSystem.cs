@@ -1,6 +1,7 @@
 using System;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Time;
 using PureDOTS.Systems.Telemetry;
@@ -17,8 +18,9 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Headless proof for global time controls (pause/step/resume/speed) and local time bubbles.
     /// </summary>
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-    [UpdateBefore(typeof(TelemetryExportSystem))]
+    [UpdateInGroup(typeof(TimeSystemGroup))]
+    [UpdateAfter(typeof(TimeTickSystem))]
+    [UpdateAfter(typeof(RewindCoordinatorSystem))]
     public partial struct HeadlessTimeControlProofSystem : ISystem
     {
         private const string EnabledEnv = "PUREDOTS_HEADLESS_TIME_PROOF";
@@ -28,6 +30,7 @@ namespace PureDOTS.Systems
 
         private const float DefaultTimeoutSeconds = 10f;
         private const uint DefaultStartTick = 240;
+        private const uint ScenarioStartTick = 10;
         private const int PauseHoldFrames = 4;
         private const int LocalHoldFrames = 4;
         private const int StepTicks = 2;
@@ -77,15 +80,31 @@ namespace PureDOTS.Systems
         private int _baselineUpdates;
         private float _timeoutSeconds;
         private uint _startTick;
+        private byte _startTickFromEnv;
+        private byte _useScenarioTick;
         private byte _loggedWaitingForStart;
         private byte _loggedWaitingForStableMode;
         private byte _rewindSubjectRegistered;
         private byte _rewindPending;
         private byte _rewindPass;
         private float _rewindObserved;
+        private byte _loggedStartup;
+        private byte _loggedPhaseInit;
+        private uint _lastObservedTick;
+        private int _stallFrames;
+        private byte _loggedStall;
+        private Phase _lastPhase;
+        private byte _loggedGlobalPauseEnter;
+        private int _updateCounter;
 
         public void OnCreate(ref SystemState state)
         {
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             if (!ResolveEnabled())
             {
                 state.Enabled = false;
@@ -95,9 +114,26 @@ namespace PureDOTS.Systems
             _enabled = 1;
             _phase = Phase.Init;
             _timeoutSeconds = ReadEnvFloat(TimeoutSecondsEnv, ReadEnvFloat("TIMEOUT_S", DefaultTimeoutSeconds));
-            _startTick = ReadEnvUInt(StartTickEnv, ReadEnvUInt("START_TICK", DefaultStartTick));
+            if (TryReadEnvUInt(StartTickEnv, out var startTick) || TryReadEnvUInt("START_TICK", out startTick))
+            {
+                _startTick = startTick;
+                _startTickFromEnv = 1;
+            }
+            else
+            {
+                _startTick = DefaultStartTick;
+                _startTickFromEnv = 0;
+            }
             _loggedWaitingForStart = 0;
             _loggedWaitingForStableMode = 0;
+            _loggedStartup = 0;
+            _loggedPhaseInit = 0;
+            _lastObservedTick = 0;
+            _stallFrames = 0;
+            _loggedStall = 0;
+            _lastPhase = _phase;
+            _loggedGlobalPauseEnter = 0;
+            _updateCounter = 0;
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<TickTimeState>();
@@ -115,12 +151,69 @@ namespace PureDOTS.Systems
             TryFlushRewindProof(ref state);
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.Tick < _startTick)
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
+            timeState.Tick = tickTimeState.Tick;
+            timeState.FixedDeltaTime = tickTimeState.FixedDeltaTime;
+            timeState.DeltaTime = tickTimeState.FixedDeltaTime;
+            timeState.DeltaSeconds = tickTimeState.FixedDeltaTime;
+            timeState.WorldSeconds = tickTimeState.WorldSeconds;
+            timeState.ElapsedTime = tickTimeState.WorldSeconds;
+            timeState.CurrentSpeedMultiplier = tickTimeState.CurrentSpeedMultiplier;
+            timeState.IsPaused = tickTimeState.IsPaused;
+
+            if (_loggedStartup == 0)
+            {
+                _loggedStartup = 1;
+                var tickCount = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<TickTimeState>()).CalculateEntityCount();
+                var rewindCount = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RewindState>()).CalculateEntityCount();
+                UnityDebug.Log($"[HeadlessTimeControlProof] active startTick={_startTick} timeout_s={_timeoutSeconds} envStart={(_startTickFromEnv != 0 ? "yes" : "no")} world={state.WorldUnmanaged.Name} tickTimeCount={tickCount} rewindCount={rewindCount}");
+            }
+
+            if (_updateCounter < 5)
+            {
+                UnityDebug.Log($"[HeadlessTimeControlProof] update#{_updateCounter} phase={_phase} tickTime={tickTimeState.Tick} paused={tickTimeState.IsPaused} playing={tickTimeState.IsPlaying}");
+                _updateCounter++;
+            }
+
+            var tickSource = tickTimeState.Tick;
+            if (_useScenarioTick == 0 && _startTickFromEnv == 0 && _startTick == DefaultStartTick)
+            {
+                if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick))
+                {
+                    _useScenarioTick = 1;
+                    _startTick = ScenarioStartTick;
+                    tickSource = scenarioTick.Tick;
+                }
+            }
+            else if (_useScenarioTick != 0 && SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick))
+            {
+                tickSource = scenarioTick.Tick;
+            }
+
+            if (_lastObservedTick == tickTimeState.Tick)
+            {
+                _stallFrames++;
+            }
+            else
+            {
+                _stallFrames = 0;
+                _lastObservedTick = tickTimeState.Tick;
+            }
+
+            if (_loggedStall == 0 && _stallFrames >= 120)
+            {
+                _loggedStall = 1;
+                var scenarioTick = SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioState) ? scenarioState.Tick : 0u;
+                UnityDebug.LogWarning($"[HeadlessTimeControlProof] tick stall frames={_stallFrames} tickTime={tickTimeState.Tick} target={tickTimeState.TargetTick} paused={tickTimeState.IsPaused} playing={tickTimeState.IsPlaying} rewind={SystemAPI.GetSingleton<RewindState>().Mode} scenarioTick={scenarioTick}");
+            }
+
+            if (tickSource < _startTick)
             {
                 if (_loggedWaitingForStart == 0)
                 {
                     _loggedWaitingForStart = 1;
-                    UnityDebug.Log($"[HeadlessTimeControlProof] waiting startTick={_startTick} currentTick={timeState.Tick}");
+                    var sourceLabel = _useScenarioTick != 0 ? "scenario" : "time";
+                    UnityDebug.Log($"[HeadlessTimeControlProof] waiting startTick={_startTick} currentTick={tickSource} source={sourceLabel}");
                 }
                 return;
             }
@@ -137,11 +230,17 @@ namespace PureDOTS.Systems
             }
 
             EnsureProbe(ref state);
-            UpdateProbe(ref state);
+            UpdateProbe(ref state, tickTimeState, timeState, rewindState);
 
             if (_phase == Phase.Complete || _phase == Phase.Failed)
             {
                 return;
+            }
+
+            if (_phase == Phase.GlobalPause && _loggedGlobalPauseEnter == 0)
+            {
+                _loggedGlobalPauseEnter = 1;
+                UnityDebug.Log($"[HeadlessTimeControlProof] enter global pause commandIssued={_commandIssued} tickTime={tickTimeState.Tick} paused={tickTimeState.IsPaused}");
             }
 
             var elapsed = SystemAPI.Time.ElapsedTime;
@@ -153,6 +252,12 @@ namespace PureDOTS.Systems
             switch (_phase)
             {
                 case Phase.Init:
+                    if (_loggedPhaseInit == 0)
+                    {
+                        _loggedPhaseInit = 1;
+                        var scenarioTick = SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioState) ? scenarioState.Tick : 0u;
+                        UnityDebug.Log($"[HeadlessTimeControlProof] phase=init tickTime={tickTimeState.Tick} target={tickTimeState.TargetTick} paused={tickTimeState.IsPaused} playing={tickTimeState.IsPlaying} rewind={rewindState.Mode} scenarioTick={scenarioTick}");
+                    }
                     AdvancePhase(Phase.GlobalPause, elapsed);
                     break;
 
@@ -162,6 +267,11 @@ namespace PureDOTS.Systems
                         EnqueueCommand(ref state, TimeControlCommandType.Pause);
                         _commandIssued = 1;
                         _phaseStartTime = elapsed;
+                        var rewindEntity = SystemAPI.GetSingletonEntity<RewindState>();
+                        var bufferLen = state.EntityManager.HasBuffer<TimeControlCommand>(rewindEntity)
+                            ? state.EntityManager.GetBuffer<TimeControlCommand>(rewindEntity).Length
+                            : 0;
+                        UnityDebug.Log($"[HeadlessTimeControlProof] issued pause tickTime={tickTimeState.Tick} bufferLen={bufferLen}");
                     }
 
                     if (timeState.IsPaused)
@@ -184,7 +294,7 @@ namespace PureDOTS.Systems
                         break;
                     }
 
-                    if (TimeHelpers.GetGlobalDelta(SystemAPI.GetSingleton<TickTimeState>(), timeState) <= 0f)
+                    if (TimeHelpers.GetGlobalDelta(tickTimeState, timeState) <= 0f)
                     {
                         _holdFrames++;
                     }
@@ -409,6 +519,13 @@ namespace PureDOTS.Systems
                     }
                     break;
             }
+
+            if (_phase != _lastPhase)
+            {
+                var scenarioTick = SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioState) ? scenarioState.Tick : 0u;
+                UnityDebug.Log($"[HeadlessTimeControlProof] phase={_phase} tickTime={tickTimeState.Tick} target={tickTimeState.TargetTick} paused={tickTimeState.IsPaused} playing={tickTimeState.IsPlaying} rewind={rewindState.Mode} scenarioTick={scenarioTick}");
+                _lastPhase = _phase;
+            }
         }
 
         private void EnsureProbe(ref SystemState state)
@@ -428,16 +545,13 @@ namespace PureDOTS.Systems
             state.EntityManager.SetComponentData(_probeEntity, new HeadlessTimeProofProbe());
         }
 
-        private void UpdateProbe(ref SystemState state)
+        private void UpdateProbe(ref SystemState state, in TickTimeState tickTimeState, in TimeState timeState, in RewindState rewindState)
         {
             if (_probeEntity == Entity.Null || !state.EntityManager.Exists(_probeEntity))
             {
                 return;
             }
 
-            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            var rewindState = SystemAPI.GetSingleton<RewindState>();
             var membership = state.EntityManager.HasComponent<TimeBubbleMembership>(_probeEntity)
                 ? state.EntityManager.GetComponentData<TimeBubbleMembership>(_probeEntity)
                 : default;
@@ -724,6 +838,25 @@ namespace PureDOTS.Systems
             }
 
             return uint.TryParse(env, out var parsed) ? parsed : fallback;
+        }
+
+        private static bool TryReadEnvUInt(string key, out uint value)
+        {
+            var env = SystemEnv.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(env))
+            {
+                value = 0;
+                return false;
+            }
+
+            if (uint.TryParse(env, out var parsed))
+            {
+                value = parsed;
+                return true;
+            }
+
+            value = 0;
+            return false;
         }
 
         private static void ExitIfRequested(ref SystemState state, uint tick, int exitCode)

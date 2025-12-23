@@ -125,4 +125,3 @@ namespace PureDOTS.Authoring.Guild
     }
 }
 #endif
-

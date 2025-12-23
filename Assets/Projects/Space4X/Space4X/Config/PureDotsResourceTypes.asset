@@ -14,7 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: PureDOTS.Authoring:PureDOTS.Authoring:ResourceTypeCatalog
   _schemaVersion: 1
   entries:
-  - id: wood
-    displayColor: {r: 0.7411765, g: 0.5137255, b: 0.25490198, a: 1}
-  - id: stone
-    displayColor: {r: 0.52156866, g: 0.5372549, b: 0.5568628, a: 1}
+  - id: food
+    displayColor: {r: 0.93, g: 0.75, b: 0.2, a: 1}
+  - id: ice
+    displayColor: {r: 0.7, g: 0.88, b: 0.98, a: 1}
+  - id: metals
+    displayColor: {r: 0.58, g: 0.6, b: 0.64, a: 1}
+  - id: nobels
+    displayColor: {r: 0.85, g: 0.72, b: 0.32, a: 1}
+  - id: supplies
+    displayColor: {r: 0.85, g: 0.67, b: 0.45, a: 1}

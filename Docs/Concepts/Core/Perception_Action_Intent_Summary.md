@@ -25,6 +25,22 @@
 
 ---
 
+## Canonical Perception Pipeline (Entities 1.4+)
+
+Perception data must flow through the canonical stack below. `PerceivedEntity` buffers and `SignalPerceptionState`
+are the ONLY approved sensory inputs for AI systems.
+
+1. **PerceptionSignalFieldUpdateSystem** – emitters write smell/sound/EM data into the spatial signal field.
+2. **PerceptionSignalSamplingSystem** – entities sample the signal field into `SignalPerceptionState`.
+3. **PerceptionUpdateSystem** – spatial queries populate `DynamicBuffer<PerceivedEntity>` per sensor cadence.
+4. **AISensorUpdateSystem** – derives `AISensorReading` buffers (category-aware, normalized scores).
+5. **AIVirtualSensorSystem** – injects internal need “virtual sensors” ahead of utility scoring.
+
+> AI systems MUST read from `PerceivedEntity` / `SignalPerceptionState` / `AISensorReading`. Any direct use of
+> `DetectedEntity` or legacy `SensorConfig` is considered a regression.
+
+---
+
 ## File Mapping
 
 ### Core Perception Components
@@ -39,13 +55,16 @@
   - `SignalFieldCell` (buffer: smell/sound/EM levels per spatial cell)
   - `SignalPerceptionState` (signal field sampling results: smell/sound/EM levels and confidence)
 
-### Legacy Sensor Components (Phase 1)
+### Legacy Sensor Components (Deprecated – guarded by `LegacySensorSystemEnabled`)
 - `Packages/com.moni.puredots/Runtime/Runtime/AI/SensorComponents.cs`
   - `DetectionType` (enum: Sight, Sound, Smell, Proximity, Radar, Psychic)
   - `DetectedEntity` (buffer: target, distance, direction, detection type, confidence, threat level, relationship)
   - `SensorConfig` (legacy config: range, FOV, detection mask, update interval, max tracked targets)
   - `SensorState` (legacy state: last update tick, detection count, highest threat)
   - `Detectable` (marker: visibility, audibility, threat level, category)
+> **Deprecated:** `SensorUpdateSystem` + `DetectedEntity` performed O(N²) scans and are now disabled by default via
+> `SimulationFeatureFlags.LegacySensorSystemEnabled`. Enable only for small demo scenes (< 1k entities) and migrate
+> gameplay code to the canonical pipeline above.
 
 ### Action/Utility Components
 - `Packages/com.moni.puredots/Runtime/Runtime/AI/UtilityComponents.cs`

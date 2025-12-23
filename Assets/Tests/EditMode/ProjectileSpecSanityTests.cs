@@ -14,7 +14,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_NonNegativeSpeeds()
         {
-            using var specBlob = CreateProjectileSpecBlob(spec =>
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
                 spec.Id = "test.projectile";
                 spec.Kind = (byte)ProjectileKind.Ballistic;
@@ -36,7 +36,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_NonNegativeLifetime()
         {
-            using var specBlob = CreateProjectileSpecBlob(spec =>
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
                 spec.Id = "test.projectile";
                 spec.Kind = (byte)ProjectileKind.Ballistic;
@@ -58,7 +58,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_NonNegativeRadius()
         {
-            using var specBlob = CreateProjectileSpecBlob(spec =>
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
                 spec.Id = "test.projectile";
                 spec.Kind = (byte)ProjectileKind.Ballistic;
@@ -80,7 +80,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_ValidCollisionFilter()
         {
-            using var specBlob = CreateProjectileSpecBlob(spec =>
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
                 spec.Id = "test.projectile";
                 spec.Kind = (byte)ProjectileKind.Ballistic;
@@ -102,7 +102,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void ProjectileSpec_BeamHasZeroSpeed()
         {
-            using var specBlob = CreateProjectileSpecBlob(spec =>
+            using var specBlob = CreateProjectileSpecBlob((ref ProjectileSpec spec) =>
             {
                 spec.Id = "test.beam";
                 spec.Kind = (byte)ProjectileKind.Beam;

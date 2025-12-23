@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Mobility;
 using PureDOTS.Runtime.Miracles;
 using PureDOTS.Runtime.Perception;
@@ -111,7 +112,6 @@ namespace PureDOTS.Systems.AI
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(AISystemGroup))]
-    [UpdateAfter(typeof(PerceptionSystemGroup))]
     public partial struct AISensorUpdateSystem : ISystem
     {
         private ComponentLookup<VillagerId> _villagerLookup;
@@ -175,10 +175,11 @@ namespace PureDOTS.Systems.AI
             var results = new NativeList<AISensorReading>(Allocator.Temp);
 
             int processedCount = 0;
-            foreach (var (config, sensorState, readings, entity) in
+            foreach (var (config, sensorState, readingsBuffer, entity) in
                      SystemAPI.Query<RefRO<AISensorConfig>, RefRW<AISensorState>, DynamicBuffer<AISensorReading>>()
                          .WithEntityAccess())
             {
+                var readings = readingsBuffer;
                 if (processedCount >= budget.MaxPerceptionChecksPerTick)
                 {
                     break;
@@ -648,6 +649,13 @@ namespace PureDOTS.Systems.AI
     [UpdateAfter(typeof(AISteeringSystem))]
     public partial struct AITaskResolutionSystem : ISystem
     {
+        private ComponentLookup<AIAckConfig> _ackConfigLookup;
+        private ComponentLookup<AlignmentTriplet> _alignmentLookup;
+        private ComponentLookup<FocusBudget> _focusLookup;
+        private ComponentLookup<ResourcePools> _poolsLookup;
+        private ComponentLookup<IndividualStats> _statsLookup;
+        private ComponentLookup<VillagerNeedState> _villagerNeedsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -656,6 +664,13 @@ namespace PureDOTS.Systems.AI
             state.RequireForUpdate<AITargetState>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<MindCadenceSettings>();
+
+            _ackConfigLookup = state.GetComponentLookup<AIAckConfig>(true);
+            _alignmentLookup = state.GetComponentLookup<AlignmentTriplet>(true);
+            _focusLookup = state.GetComponentLookup<FocusBudget>(true);
+            _poolsLookup = state.GetComponentLookup<ResourcePools>(true);
+            _statsLookup = state.GetComponentLookup<IndividualStats>(true);
+            _villagerNeedsLookup = state.GetComponentLookup<VillagerNeedState>(true);
         }
 
         [BurstCompile]
@@ -677,6 +692,28 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
+            _ackConfigLookup.Update(ref state);
+            _alignmentLookup.Update(ref state);
+            _focusLookup.Update(ref state);
+            _poolsLookup.Update(ref state);
+            _statsLookup.Update(ref state);
+            _villagerNeedsLookup.Update(ref state);
+
+            var hasAckStream = SystemAPI.HasSingleton<AIAckStreamTag>();
+            DynamicBuffer<AIAckEvent> ackEvents = default;
+            var ackBudget = int.MaxValue;
+            RefRW<UniversalPerformanceCounters> countersRW = default;
+            if (hasAckStream)
+            {
+                var ackEntity = SystemAPI.GetSingletonEntity<AIAckStreamTag>();
+                ackEvents = state.EntityManager.GetBuffer<AIAckEvent>(ackEntity);
+                if (SystemAPI.HasSingleton<UniversalPerformanceBudget>() && SystemAPI.HasSingleton<UniversalPerformanceCounters>())
+                {
+                    ackBudget = math.max(0, SystemAPI.GetSingleton<UniversalPerformanceBudget>().MaxAckEventsPerTick);
+                    countersRW = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
+                }
+            }
+
             foreach (var (utility, target, entity) in SystemAPI.Query<RefRO<AIUtilityState>, RefRO<AITargetState>>()
                          .WithEntityAccess())
             {
@@ -687,13 +724,83 @@ namespace PureDOTS.Systems.AI
                 }
 
                 var targetState = target.ValueRO;
-                commands.Add(new AICommand
+                var cmd = new AICommand
                 {
                     Agent = entity,
                     ActionIndex = utilityState.BestActionIndex,
                     TargetEntity = targetState.TargetEntity,
-                    TargetPosition = targetState.TargetPosition
-                });
+                    TargetPosition = targetState.TargetPosition,
+                    AckToken = 0u,
+                    AckFlags = AIAckRequestFlags.None
+                };
+
+                if (_ackConfigLookup.HasComponent(entity))
+                {
+                    var config = _ackConfigLookup[entity];
+                    if (config.Enabled != 0)
+                    {
+                        // Deterministic token for this (tick, agent, action, target).
+                        var token = math.hash(new uint4(timeState.Tick, (uint)entity.Index, (uint)cmd.ActionIndex, (uint)cmd.TargetEntity.Index));
+
+                        var hasAlignment = _alignmentLookup.HasComponent(entity);
+                        var alignment = hasAlignment ? _alignmentLookup[entity] : default;
+                        var chaos01 = hasAlignment ? AIAckPolicyUtility.ComputeChaos01(in alignment) : 0.5f;
+
+                        var hasFocus = _focusLookup.HasComponent(entity);
+                        var focus = hasFocus ? _focusLookup[entity] : default;
+                        var hasPools = _poolsLookup.HasComponent(entity);
+                        var pools = hasPools ? _poolsLookup[entity] : default;
+                        var focusRatio01 = AIAckPolicyUtility.ComputeFocusRatio01(hasFocus, in focus, hasPools, in pools);
+
+                        var hasNeeds = _villagerNeedsLookup.HasComponent(entity);
+                        var needs = hasNeeds ? _villagerNeedsLookup[entity] : default;
+                        var hasStats = _statsLookup.HasComponent(entity);
+                        var stats = hasStats ? _statsLookup[entity] : default;
+                        var sleep01 = AIAckPolicyUtility.ComputeSleepPressure01(hasNeeds, in needs, hasPools, in pools, hasStats, in stats);
+
+                        if (AIAckPolicyUtility.ShouldRequestReceiptAcks(in config, focusRatio01, sleep01, chaos01, token))
+                        {
+                            cmd.AckToken = token;
+                            cmd.AckFlags |= AIAckRequestFlags.RequestReceipt;
+                        }
+
+                        if (config.EmitsIssuedAcks != 0)
+                        {
+                            cmd.AckToken = cmd.AckToken == 0u ? token : cmd.AckToken;
+                            cmd.AckFlags |= AIAckRequestFlags.EmitIssuedAck;
+                        }
+
+                        // Optional issued ack stream emission (bounded).
+                        if (hasAckStream && (cmd.AckFlags & AIAckRequestFlags.EmitIssuedAck) != 0 && ackBudget > 0)
+                        {
+                            ackBudget--;
+                            if (countersRW.IsValid)
+                            {
+                                countersRW.ValueRW.AckEventsEmittedThisTick++;
+                                countersRW.ValueRW.TotalWarmOperationsThisTick++;
+                            }
+
+                            ackEvents.Add(new AIAckEvent
+                            {
+                                Tick = timeState.Tick,
+                                Token = cmd.AckToken,
+                                Agent = entity,
+                                TargetEntity = cmd.TargetEntity,
+                                ActionIndex = cmd.ActionIndex,
+                                Stage = AIAckStage.Issued,
+                                Reason = AIAckReason.None,
+                                Flags = (byte)cmd.AckFlags
+                            });
+                        }
+                        else if (hasAckStream && (cmd.AckFlags & AIAckRequestFlags.EmitIssuedAck) != 0 && ackBudget == 0 && countersRW.IsValid)
+                        {
+                            countersRW.ValueRW.AckEventsDroppedThisTick++;
+                            countersRW.ValueRW.TotalOperationsDroppedThisTick++;
+                        }
+                    }
+                }
+
+                commands.Add(cmd);
             }
         }
 

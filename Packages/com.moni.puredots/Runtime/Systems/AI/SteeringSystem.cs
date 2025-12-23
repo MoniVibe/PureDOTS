@@ -12,9 +12,9 @@ namespace PureDOTS.Systems.AI
     /// Calculates steering outputs based on active steering behaviors.
     /// Game-agnostic: works for any moving entity.
     /// </summary>
+    /// <remarks>SteeringTarget is supplied by AI systems or external scripts; no sensor dependency required.</remarks>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(SensorUpdateSystem))]
     public partial struct SteeringSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;

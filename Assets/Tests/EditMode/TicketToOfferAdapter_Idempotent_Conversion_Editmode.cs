@@ -3,6 +3,7 @@ using PureDOTS.Config;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Runtime.Villagers;
+using PureDOTS.Systems;
 using PureDOTS.Systems.Villagers;
 using Unity.Collections;
 using Unity.Entities;
@@ -25,7 +26,7 @@ namespace PureDOTS.Tests.Editmode
         public void SetUp()
         {
             _world = new World("TestWorld", WorldFlags.Game);
-            _world.DefaultGameObjectInjectionWorld = _world;
+            World.DefaultGameObjectInjectionWorld = _world;
             CoreSingletonBootstrapSystem.EnsureSingletons(EntityManager);
             EnsureTimeState();
             EnsureRewindState();
@@ -180,39 +181,42 @@ namespace PureDOTS.Tests.Editmode
         
         private void EnsureTimeState()
         {
-            if (!EntityManager.TryGetSingleton<TimeState>(out var timeState))
+            var query = EntityManager.CreateEntityQuery(ComponentType.ReadWrite<TimeState>());
+            if (query.IsEmptyIgnoreFilter)
             {
                 var entity = EntityManager.CreateEntity();
-                timeState = new TimeState
+                EntityManager.AddComponentData(entity, new TimeState
                 {
                     Tick = 0,
                     FixedDeltaTime = 0.016f,
                     IsPaused = false
-                };
-                EntityManager.AddComponentData(entity, timeState);
+                });
+                return;
             }
-            else
-            {
-                timeState.IsPaused = false;
-                EntityManager.SetSingleton(timeState);
-            }
+
+            var timeEntity = query.GetSingletonEntity();
+            var timeState = EntityManager.GetComponentData<TimeState>(timeEntity);
+            timeState.IsPaused = false;
+            EntityManager.SetComponentData(timeEntity, timeState);
         }
         
         private void EnsureRewindState()
         {
-            if (!EntityManager.TryGetSingleton<RewindState>(out var rewindState))
+            var query = EntityManager.CreateEntityQuery(ComponentType.ReadWrite<RewindState>());
+            if (query.IsEmptyIgnoreFilter)
             {
                 var entity = EntityManager.CreateEntity();
                 EntityManager.AddComponentData(entity, new RewindState
                 {
                     Mode = RewindMode.Record
                 });
+                return;
             }
-            else
-            {
-                rewindState.Mode = RewindMode.Record;
-                EntityManager.SetSingleton(rewindState);
-            }
+
+            var rewindEntity = query.GetSingletonEntity();
+            var rewindState = EntityManager.GetComponentData<RewindState>(rewindEntity);
+            rewindState.Mode = RewindMode.Record;
+            EntityManager.SetComponentData(rewindEntity, rewindState);
         }
         
         private void EnsureJobCatalog()

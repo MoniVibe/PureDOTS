@@ -1,6 +1,7 @@
 using System;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Runtime.Time;
 using PureDOTS.Systems.Telemetry;
@@ -16,8 +17,9 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Headless proof that global rewind enters playback and returns to record, with optional guard checks.
     /// </summary>
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-    [UpdateBefore(typeof(TelemetryExportSystem))]
+    [UpdateInGroup(typeof(TimeSystemGroup))]
+    [UpdateAfter(typeof(TimeTickSystem))]
+    [UpdateAfter(typeof(RewindCoordinatorSystem))]
     public partial struct HeadlessRewindProofSystem : ISystem
     {
         private const string EnabledEnv = "PUREDOTS_HEADLESS_REWIND_PROOF";
@@ -31,16 +33,25 @@ namespace PureDOTS.Systems
         private const uint DefaultTicksBack = 60;
         private const uint DefaultTimeoutTicks = 1800;
         private const uint NoSubjectGraceTicks = 10;
+        private const uint ScenarioTriggerTick = 10;
 
         private static readonly FixedString32Bytes ExpectedDepth = new FixedString32Bytes(">0");
         private static readonly FixedString32Bytes StepCore = new FixedString32Bytes("core");
 
         private byte _enabled;
+        private byte _triggerTickFromEnv;
+        private byte _useScenarioTick;
         private Entity _proofEntity;
         private HeadlessRewindProofConfig _config;
 
         public void OnCreate(ref SystemState state)
         {
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
+            {
+                state.Enabled = false;
+                return;
+            }
+
             if (!ResolveEnabled())
             {
                 state.Enabled = false;
@@ -78,20 +89,35 @@ namespace PureDOTS.Systems
                 return;
             }
 
+            if (_useScenarioTick == 0 && _triggerTickFromEnv == 0 && config.TriggerTick == DefaultTriggerTick)
+            {
+                if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out _))
+                {
+                    config.TriggerTick = ScenarioTriggerTick;
+                    _useScenarioTick = 1;
+                    state.EntityManager.SetComponentData(_proofEntity, config);
+                }
+            }
+
             var proof = state.EntityManager.GetComponentData<HeadlessRewindProofState>(_proofEntity);
             if (proof.Phase == HeadlessRewindProofPhase.Completed || proof.Result != 0)
             {
                 return;
             }
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
+            var tickTimeState = SystemAPI.GetSingleton<TickTimeState>();
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             var rewindEntity = SystemAPI.GetSingletonEntity<RewindState>();
-            var tick = timeState.Tick;
+            var tick = tickTimeState.Tick;
+            var triggerTickSource = tick;
+            if (_useScenarioTick != 0 && SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick))
+            {
+                triggerTickSource = scenarioTick.Tick;
+            }
 
             if (proof.Phase == HeadlessRewindProofPhase.Idle)
             {
-                if (tick < config.TriggerTick || rewindState.Mode != RewindMode.Play)
+                if (triggerTickSource < config.TriggerTick || rewindState.Mode != RewindMode.Play)
                 {
                     return;
                 }
@@ -421,16 +447,27 @@ namespace PureDOTS.Systems
             return entity;
         }
 
-        private static HeadlessRewindProofConfig BuildConfig()
+        private HeadlessRewindProofConfig BuildConfig()
         {
             var config = new HeadlessRewindProofConfig
             {
                 Enabled = 1,
-                TriggerTick = ReadEnvUInt(TriggerTickEnv, DefaultTriggerTick),
                 TicksBack = math.max(1u, ReadEnvUInt(TicksBackEnv, DefaultTicksBack)),
                 TimeoutTicks = ReadEnvUInt(TimeoutTicksEnv, DefaultTimeoutTicks),
                 RequireGuardViolationsClear = ReadEnvFlag(RequireGuardEnv, defaultValue: true) ? (byte)1 : (byte)0
             };
+
+            if (TryReadEnvUInt(TriggerTickEnv, out var triggerTick))
+            {
+                config.TriggerTick = triggerTick;
+                _triggerTickFromEnv = 1;
+            }
+            else
+            {
+                config.TriggerTick = DefaultTriggerTick;
+                _triggerTickFromEnv = 0;
+            }
+
             return config;
         }
 
@@ -473,6 +510,25 @@ namespace PureDOTS.Systems
             }
 
             return uint.TryParse(env, out var parsed) ? parsed : fallback;
+        }
+
+        private static bool TryReadEnvUInt(string key, out uint value)
+        {
+            var env = SystemEnv.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(env))
+            {
+                value = 0;
+                return false;
+            }
+
+            if (uint.TryParse(env, out var parsed))
+            {
+                value = parsed;
+                return true;
+            }
+
+            value = 0;
+            return false;
         }
 
         private static void ExitIfRequested(ref SystemState state, uint tick, int exitCode)

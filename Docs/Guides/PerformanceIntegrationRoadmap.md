@@ -401,7 +401,7 @@ Aggregate Entity:
    - **Status**:
      - `VillageAggregateComponents.cs` with `VillageTag`, `VillageState`, `VillageRenderSummary`
      - `VillageAggregateHelpers` for creating villages and adding members
-     - `VillageAggregateSystem.cs` updates village summaries from member data
+    - `CollectiveAggregateSystem.cs` updates aggregate summaries from member data
      - `FleetAggregateSystem.cs` updates fleet summaries from member data
      - `SpatialInteractionExampleSystem.cs` demonstrates grid-based interactions
 
@@ -910,7 +910,7 @@ python CI/validate_metrics.py CI/Reports/
 
 ### Wave 4: Aggregates & Physics ✅
 - `VillageAggregateComponents.cs` with village helpers
-- `VillageAggregateSystem.cs` and `FleetAggregateSystem.cs`
+- `CollectiveAggregateSystem.cs` and `FleetAggregateSystem.cs`
 - `SpatialInteractionExampleSystem.cs` demonstrating grid usage
 
 ### Wave 5: CI Integration ✅

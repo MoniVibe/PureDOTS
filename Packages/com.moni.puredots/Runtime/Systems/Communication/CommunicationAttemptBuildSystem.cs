@@ -12,6 +12,7 @@ namespace PureDOTS.Systems.Communication
 {
     /// <summary>
     /// Builds CommAttempt entries from explicit CommSendRequest buffers.
+    /// Legacy path used only when <see cref="SimulationFeatureFlags.LegacyCommunicationDispatchEnabled"/> is set.
     /// Resolves language ladder, intent, and transport channel selection.
     /// </summary>
     [BurstCompile]
@@ -46,6 +47,11 @@ namespace PureDOTS.Systems.Communication
         {
             var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
             if ((features.Flags & SimulationFeatureFlags.CommsEnabled) == 0)
+            {
+                return;
+            }
+
+            if ((features.Flags & SimulationFeatureFlags.LegacyCommunicationDispatchEnabled) == 0)
             {
                 return;
             }
@@ -186,7 +192,7 @@ namespace PureDOTS.Systems.Communication
                             var existing = outbound[outboundIndex];
                             existing.LastSentTick = timestamp;
                             existing.TimeoutTick = timestamp + math.max(1u, decisionConfig.AckTimeoutTicks);
-                            existing.RedundancyLevel = math.max(existing.RedundancyLevel, request.RedundancyLevel);
+                            existing.RedundancyLevel = (byte)math.max((int)existing.RedundancyLevel, request.RedundancyLevel);
                             outbound[outboundIndex] = existing;
                         }
                         else

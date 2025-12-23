@@ -23,6 +23,7 @@ namespace PureDOTS.Systems.Telemetry
     public sealed partial class PerformanceTelemetryExportSystem : SystemBase
     {
         private const string ExportEnvVar = "PUREDOTS_PERF_TELEMETRY_PATH";
+        private const uint BudgetWarmupTicks = 5;
         private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
         private EntityQuery _frameTimingQuery;
@@ -191,10 +192,14 @@ namespace PureDOTS.Systems.Telemetry
             var status = EntityManager.GetComponentData<PerformanceBudgetStatus>(timeEntity);
             var statusChanged = false;
 
-            statusChanged |= CheckBudget("timing.fixedTick", totalFrameMs, budgets.FixedTickBudgetMs, timeState.Tick, timestampMs, ref status);
-            statusChanged |= CheckBudget("telemetry.snapshot.capacityBytes", snapshotBytes, budgets.SnapshotRingBudgetBytes, timeState.Tick, timestampMs, ref status);
-            statusChanged |= CheckBudget("telemetry.command.capacityBytes", commandBytes, budgets.CommandRingBudgetBytes, timeState.Tick, timestampMs, ref status);
-            statusChanged |= CheckBudget("presentation.companions.active", companionCount, budgets.CompanionBudget, timeState.Tick, timestampMs, ref status);
+            var allowBudgetChecks = timeState.Tick >= BudgetWarmupTicks;
+            if (allowBudgetChecks)
+            {
+                statusChanged |= CheckBudget("timing.fixedTick", totalFrameMs, budgets.FixedTickBudgetMs, timeState.Tick, timestampMs, ref status);
+                statusChanged |= CheckBudget("telemetry.snapshot.capacityBytes", snapshotBytes, budgets.SnapshotRingBudgetBytes, timeState.Tick, timestampMs, ref status);
+                statusChanged |= CheckBudget("telemetry.command.capacityBytes", commandBytes, budgets.CommandRingBudgetBytes, timeState.Tick, timestampMs, ref status);
+                statusChanged |= CheckBudget("presentation.companions.active", companionCount, budgets.CompanionBudget, timeState.Tick, timestampMs, ref status);
+            }
 
             if (statusChanged)
             {

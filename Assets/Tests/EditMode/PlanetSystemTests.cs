@@ -114,7 +114,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void PlanetAppealSystem_CalculatesAppealCorrectly()
         {
-            var appealSystem = _world.GetOrCreateSystemManaged<PlanetAppealSystem>();
+            var appealSystem = _world.GetOrCreateSystem<PlanetAppealSystem>();
 
             // Update appeal system
             var timeState = GetTimeState();
@@ -135,8 +135,8 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void SpeciesPreferenceMatchingSystem_CalculatesCompatibilityCorrectly()
         {
-            var appealSystem = _world.GetOrCreateSystemManaged<PlanetAppealSystem>();
-            var matchingSystem = _world.GetOrCreateSystemManaged<SpeciesPreferenceMatchingSystem>();
+            var appealSystem = _world.GetOrCreateSystem<PlanetAppealSystem>();
+            var matchingSystem = _world.GetOrCreateSystem<SpeciesPreferenceMatchingSystem>();
 
             // First calculate appeal
             var timeState = GetTimeState();
@@ -172,7 +172,7 @@ namespace PureDOTS.Tests.EditMode
         [Test]
         public void PlanetOrbitHierarchySystem_MaintainsSatelliteBuffers()
         {
-            var hierarchySystem = _world.GetOrCreateSystemManaged<PlanetOrbitHierarchySystem>();
+            var hierarchySystem = _world.GetOrCreateSystem<PlanetOrbitHierarchySystem>();
 
             // Create a moon entity
             var moonEntity = _entityManager.CreateEntity();

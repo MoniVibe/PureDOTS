@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Groups;
 using PureDOTS.Runtime.Interrupts;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Groups
 {
@@ -38,8 +39,14 @@ namespace PureDOTS.Systems.Groups
             }
 
             // Allocate tasks for all groups with active objectives
-            foreach (var (objective, members, groupIdentity) in
-                SystemAPI.Query<RefRO<GroupObjective>, DynamicBuffer<GroupMember>, RefRO<GroupIdentity>>())
+            foreach (var (objective, members, groupIdentity, metrics, tactic, profile) in
+                SystemAPI.Query<
+                        RefRO<GroupObjective>,
+                        DynamicBuffer<GroupMember>,
+                        RefRO<GroupIdentity>,
+                        RefRO<GroupMetrics>,
+                        RefRW<SquadTacticOrder>,
+                        RefRO<SquadCohesionProfile>>())
             {
                 // Skip if objective not active
                 if (objective.ValueRO.IsActive == 0)
@@ -58,6 +65,14 @@ namespace PureDOTS.Systems.Groups
                     ref state,
                     objective.ValueRO,
                     members,
+                    timeState.Tick);
+
+                UpdateSquadTacticOrder(
+                    ref tactic.ValueRW,
+                    objective.ValueRO,
+                    metrics.ValueRO,
+                    profile.ValueRO,
+                    groupIdentity.ValueRO,
                     timeState.Tick);
             }
         }
@@ -146,6 +161,91 @@ namespace PureDOTS.Systems.Groups
                 GroupObjectiveType.Raid => InterruptType.NewOrder,
                 GroupObjectiveType.Mining => InterruptType.NewOrder,
                 _ => InterruptType.NewOrder
+            };
+        }
+
+        [BurstCompile]
+        private static void UpdateSquadTacticOrder(
+            ref SquadTacticOrder tactic,
+            in GroupObjective objective,
+            in GroupMetrics metrics,
+            in SquadCohesionProfile profile,
+            in GroupIdentity identity,
+            uint currentTick)
+        {
+            var newKind = SelectTacticKind(objective, metrics, currentTick);
+            var ackMode = ComputeAckMode(newKind);
+            var focusCost = ComputeFocusCost(newKind);
+            var issueTick = newKind == SquadTacticKind.None ? 0u : currentTick;
+
+            if (tactic.Kind == newKind
+                && tactic.Target == objective.TargetEntity
+                && tactic.AckMode == ackMode
+                && tactic.FocusBudgetCost == focusCost)
+            {
+                return;
+            }
+
+            tactic.Kind = newKind;
+            tactic.AckMode = ackMode;
+            tactic.FocusBudgetCost = focusCost;
+            tactic.DisciplineRequired = math.max(0f, profile.AckDisciplineRequirement);
+            tactic.Target = objective.TargetEntity;
+            tactic.Issuer = profile.CommandAuthority != Entity.Null ? profile.CommandAuthority : identity.LeaderEntity;
+            tactic.IssueTick = issueTick;
+        }
+
+        [BurstCompile]
+        private static SquadTacticKind SelectTacticKind(in GroupObjective objective, in GroupMetrics metrics, uint currentTick)
+        {
+            switch (objective.ObjectiveType)
+            {
+                case GroupObjectiveType.Defend:
+                    return SquadTacticKind.Tighten;
+                case GroupObjectiveType.Retreat:
+                    return SquadTacticKind.Retreat;
+                case GroupObjectiveType.Patrol:
+                case GroupObjectiveType.MoveTo:
+                case GroupObjectiveType.Forage:
+                    return SquadTacticKind.Loosen;
+                case GroupObjectiveType.Raid:
+                case GroupObjectiveType.SecureSystem:
+                case GroupObjectiveType.EscortConvoy:
+                    return (currentTick & 1u) == 0 ? SquadTacticKind.FlankLeft : SquadTacticKind.FlankRight;
+            }
+
+            if (metrics.ThreatLevel >= 150)
+            {
+                return SquadTacticKind.Tighten;
+            }
+
+            if (metrics.ThreatLevel <= 40)
+            {
+                return SquadTacticKind.Loosen;
+            }
+
+            return SquadTacticKind.Collapse;
+        }
+
+        private static byte ComputeAckMode(SquadTacticKind kind)
+        {
+            return kind == SquadTacticKind.Tighten
+                   || kind == SquadTacticKind.FlankLeft
+                   || kind == SquadTacticKind.FlankRight
+                   || kind == SquadTacticKind.Collapse
+                ? (byte)1
+                : (byte)0;
+        }
+
+        private static float ComputeFocusCost(SquadTacticKind kind)
+        {
+            return kind switch
+            {
+                SquadTacticKind.Tighten => 0.05f,
+                SquadTacticKind.FlankLeft => 0.06f,
+                SquadTacticKind.FlankRight => 0.06f,
+                SquadTacticKind.Collapse => 0.04f,
+                _ => 0f
             };
         }
     }

@@ -15,6 +15,9 @@ Documentation is organized by responsibility:
 - `TRI_PROJECT_BRIEFING.md` (root) – project overview and coding patterns
 - `Docs/INDEX.md` (this file) – documentation navigation
 
+## Entity Stats & Archetypes ⭐ NEW
+- [Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md](Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md) – **canonical** stat layers (core vs domain) + archetype schema (tags/weights/policies)
+
 ## UI / Presentation
 - [Presentation/TRI_UI_Launch_MainMenu.md](Presentation/TRI_UI_Launch_MainMenu.md) – shared launch/main menu + worldgen + time-controls contract
 - [Presentation/TRI_UI_BehaviorCloud_Widget.md](Presentation/TRI_UI_BehaviorCloud_Widget.md) – behavior cloud “card shell + RenderTexture” spec

@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using PureDOTS.Runtime.Aggregates;
+using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Village;
 using PureDOTS.Runtime.Villagers;

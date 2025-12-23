@@ -1,13 +1,20 @@
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Armies;
+using PureDOTS.Runtime.Bands;
+using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Deception;
 using PureDOTS.Runtime.Perception;
+using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Spatial;
 using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace PureDOTS.Systems.Perception
@@ -27,6 +34,15 @@ namespace PureDOTS.Systems.Perception
         private ComponentLookup<Detectable> _detectableLookup; // Fallback for entities without SensorSignature
         private ComponentLookup<MediumContext> _mediumLookup;
         private BufferLookup<SenseOrganState> _organLookup;
+        private BufferLookup<PureDOTS.Runtime.Social.EntityRelation> _relationLookup;
+        private ComponentLookup<FactionId> _factionLookup;
+        private ComponentLookup<DisguiseIdentity> _disguiseLookup;
+        private BufferLookup<DisguiseDiscovery> _discoveryLookup;
+        private ComponentLookup<VillagerId> _villagerLookup;
+        private ComponentLookup<VillageId> _villageLookup;
+        private ComponentLookup<BandId> _bandLookup;
+        private ComponentLookup<ArmyId> _armyLookup;
+        private ComponentLookup<AIFidelityTier> _tierLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -42,6 +58,15 @@ namespace PureDOTS.Systems.Perception
             _detectableLookup = state.GetComponentLookup<Detectable>(true);
             _mediumLookup = state.GetComponentLookup<MediumContext>(true);
             _organLookup = state.GetBufferLookup<SenseOrganState>(true);
+            _relationLookup = state.GetBufferLookup<PureDOTS.Runtime.Social.EntityRelation>(true);
+            _factionLookup = state.GetComponentLookup<FactionId>(true);
+            _disguiseLookup = state.GetComponentLookup<DisguiseIdentity>(true);
+            _discoveryLookup = state.GetBufferLookup<DisguiseDiscovery>(true);
+            _villagerLookup = state.GetComponentLookup<VillagerId>(true);
+            _villageLookup = state.GetComponentLookup<VillageId>(true);
+            _bandLookup = state.GetComponentLookup<BandId>(true);
+            _armyLookup = state.GetComponentLookup<ArmyId>(true);
+            _tierLookup = state.GetComponentLookup<AIFidelityTier>(true);
         }
 
         [BurstCompile]
@@ -77,90 +102,108 @@ namespace PureDOTS.Systems.Perception
             _detectableLookup.Update(ref state);
             _mediumLookup.Update(ref state);
             _organLookup.Update(ref state);
+            _relationLookup.Update(ref state);
+            _factionLookup.Update(ref state);
+            _disguiseLookup.Update(ref state);
+            _discoveryLookup.Update(ref state);
+            _villagerLookup.Update(ref state);
+            _villageLookup.Update(ref state);
+            _bandLookup.Update(ref state);
+            _armyLookup.Update(ref state);
+            _tierLookup.Update(ref state);
 
             var useSignalField = SystemAPI.HasSingleton<SignalFieldState>();
-
-            // Collect all detectable entities (with SensorSignature or Detectable fallback)
-            var detectableCount = 0;
-            foreach (var _ in SystemAPI.Query<RefRO<SensorSignature>>())
+            var hasGrid = SystemAPI.HasSingleton<SpatialGridConfig>() && SystemAPI.HasSingleton<SpatialGridState>();
+            SpatialGridConfig gridConfig = default;
+            DynamicBuffer<SpatialGridCellRange> gridRanges = default;
+            DynamicBuffer<SpatialGridEntry> gridEntries = default;
+            if (hasGrid)
             {
-                detectableCount++;
-            }
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<Detectable>>().WithEntityAccess())
-            {
-                // Only count if doesn't have SensorSignature (avoid double-counting)
-                if (!_signatureLookup.HasComponent(entity))
+                gridConfig = SystemAPI.GetSingleton<SpatialGridConfig>();
+                var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+                if (SystemAPI.HasBuffer<SpatialGridCellRange>(gridEntity) && SystemAPI.HasBuffer<SpatialGridEntry>(gridEntity))
                 {
-                    detectableCount++;
+                    gridRanges = SystemAPI.GetBuffer<SpatialGridCellRange>(gridEntity);
+                    gridEntries = SystemAPI.GetBuffer<SpatialGridEntry>(gridEntity);
+                }
+                else
+                {
+                    hasGrid = false;
                 }
             }
 
-            var detectables = new NativeList<DetectableData>(detectableCount, Allocator.TempJob);
-
-            // Collect entities with SensorSignature
-            foreach (var (signature, transform, entity) in SystemAPI.Query<RefRO<SensorSignature>, RefRO<LocalTransform>>()
-                .WithEntityAccess())
+            var relationshipCount = 0;
+            foreach (var _ in SystemAPI.Query<RefRO<FactionRelationships>>())
             {
-                var threatLevel = (byte)0;
-                var category = DetectableCategory.Neutral;
-                var medium = _mediumLookup.HasComponent(entity)
-                    ? _mediumLookup[entity].Type
-                    : MediumType.Gas;
-
-                // Try to get threat/category from Detectable if present
-                if (_detectableLookup.HasComponent(entity))
-                {
-                    var detectable = _detectableLookup[entity];
-                    threatLevel = detectable.ThreatLevel;
-                    category = detectable.Category;
-                }
-
-                detectables.Add(new DetectableData
-                {
-                    Entity = entity,
-                    Position = transform.ValueRO.Position,
-                    Forward = math.forward(transform.ValueRO.Rotation),
-                    Signature = signature.ValueRO,
-                    ThreatLevel = threatLevel,
-                    Category = category,
-                    HasSignature = true,
-                    Medium = medium
-                });
+                relationshipCount++;
             }
 
-            // Collect entities with only Detectable (fallback)
-            foreach (var (detectable, transform, entity) in SystemAPI.Query<RefRO<Detectable>, RefRO<LocalTransform>>()
-                .WithEntityAccess())
+            var factionRelationships = new NativeList<FactionRelationships>(relationshipCount, Allocator.Temp);
+            foreach (var relationship in SystemAPI.Query<RefRO<FactionRelationships>>())
             {
-                if (!_signatureLookup.HasComponent(entity))
+                factionRelationships.Add(relationship.ValueRO);
+            }
+
+            var profile = SystemAPI.HasSingleton<TierProfileSettings>()
+                ? SystemAPI.GetSingleton<TierProfileSettings>()
+                : TierProfileSettings.CreateDefaults(TierProfileId.Mid);
+
+            var hasBroker = SystemAPI.HasSingleton<AIBudgetBrokerState>() && SystemAPI.HasSingleton<UniversalPerformanceCounters>();
+            RefRW<AIBudgetBrokerState> brokerRW = default;
+            RefRW<UniversalPerformanceCounters> countersRW = default;
+            UniversalPerformanceBudget perfBudget = default;
+            if (hasBroker)
+            {
+                brokerRW = SystemAPI.GetSingletonRW<AIBudgetBrokerState>();
+                countersRW = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
+                if (SystemAPI.HasSingleton<UniversalPerformanceBudget>())
                 {
-                    var medium = _mediumLookup.HasComponent(entity)
-                        ? _mediumLookup[entity].Type
-                        : MediumType.Gas;
-                    detectables.Add(new DetectableData
-                    {
-                        Entity = entity,
-                        Position = transform.ValueRO.Position,
-                        Forward = math.forward(transform.ValueRO.Rotation),
-                        Signature = SensorSignature.Default, // Use default signature
-                        ThreatLevel = detectable.ValueRO.ThreatLevel,
-                        Category = detectable.ValueRO.Category,
-                        HasSignature = false,
-                        Medium = medium
-                    });
+                    perfBudget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
                 }
             }
 
-            // Update perception for entities with SenseCapability
+            var hasPhysics = SystemAPI.HasSingleton<PhysicsWorldSingleton>();
+            var collisionWorld = hasPhysics
+                ? SystemAPI.GetSingleton<PhysicsWorldSingleton>().PhysicsWorld.CollisionWorld
+                : default;
+
+            var candidateEntities = hasGrid ? new NativeList<Entity>(64, Allocator.Temp) : default;
+            var rayFilter = CollisionFilter.Default;
+            var remainingPerceptionChecks = hasBroker ? perfBudget.MaxPerceptionChecksPerTick : int.MaxValue;
+
+            // Update perception for entities with SenseCapability (radius → FOV → (budgeted) LOS)
             foreach (var (capability, perceptionState, transform, perceivedBuffer, entity) in
-                SystemAPI.Query<RefRO<SenseCapability>, RefRW<PerceptionState>, RefRO<LocalTransform>, DynamicBuffer<PerceivedEntity>>()
-                .WithEntityAccess())
+                     SystemAPI.Query<RefRO<SenseCapability>, RefRW<PerceptionState>, RefRO<LocalTransform>, DynamicBuffer<PerceivedEntity>>()
+                         .WithEntityAccess())
             {
+                if (remainingPerceptionChecks <= 0)
+                {
+                    if (hasBroker)
+                    {
+                        countersRW.ValueRW.TotalOperationsDroppedThisTick++;
+                    }
+                    break;
+                }
+
+                var tier = _tierLookup.HasComponent(entity) ? _tierLookup[entity].Tier : AILODTier.Tier1_Reduced;
+                if (tier == AILODTier.Tier3_Aggregate)
+                {
+                    continue;
+                }
+
+                var tierCadenceTicks = tier switch
+                {
+                    AILODTier.Tier0_Full => (uint)math.max(1, profile.Tier0SensorCadenceTicks),
+                    AILODTier.Tier1_Reduced => (uint)math.max(1, profile.Tier1SensorCadenceTicks),
+                    AILODTier.Tier2_EventDriven => (uint)math.max(1, profile.Tier2SensorCadenceTicks),
+                    _ => 1u
+                };
+
                 // Check update interval
                 var ticksSinceUpdate = timeState.Tick - perceptionState.ValueRO.LastUpdateTick;
                 var secondsSinceUpdate = ticksSinceUpdate * timeState.FixedDeltaTime;
 
-                if (secondsSinceUpdate < capability.ValueRO.UpdateInterval)
+                if (ticksSinceUpdate < tierCadenceTicks || secondsSinceUpdate < capability.ValueRO.UpdateInterval)
                 {
                     continue;
                 }
@@ -190,18 +233,66 @@ namespace PureDOTS.Systems.Perception
                 var maxRange = baseRange * maxRangeMult;
                 var rangeSq = maxRange * maxRange;
 
-                // Detect entities on enabled channels
-                for (int i = 0; i < detectables.Length && perceptionCount < capability.ValueRO.MaxTrackedTargets; i++)
+                var maxTracked = capability.ValueRO.MaxTrackedTargets;
+                if (tier == AILODTier.Tier1_Reduced)
                 {
-                    var target = detectables[i];
+                    maxTracked = (byte)math.max(1, maxTracked / 2);
+                }
+                else if (tier == AILODTier.Tier2_EventDriven)
+                {
+                    maxTracked = (byte)math.max(1, maxTracked / 4);
+                }
+
+                if (!hasGrid)
+                {
+                    // Fallback: no spatial grid available, keep Phase-1 global scan disabled (avoid N^2 surprises).
+                    perceptionState.ValueRW.LastUpdateTick = timeState.Tick;
+                    perceptionState.ValueRW.PerceivedCount = 0;
+                    perceptionState.ValueRW.HighestThreat = 0;
+                    perceptionState.ValueRW.HighestThreatEntity = Entity.Null;
+                    perceptionState.ValueRW.NearestEntity = Entity.Null;
+                    perceptionState.ValueRW.NearestDistance = 0f;
+                    continue;
+                }
+
+                candidateEntities.Clear();
+                var queryPos = sensorPos;
+                SpatialQueryHelper.GetEntitiesWithinRadius(
+                    ref queryPos,
+                    maxRange,
+                    gridConfig,
+                    gridRanges,
+                    gridEntries,
+                    ref candidateEntities);
+
+                // Detect entities on enabled channels
+                for (int i = 0; i < candidateEntities.Length && perceptionCount < maxTracked; i++)
+                {
+                    if (remainingPerceptionChecks <= 0)
+                    {
+                        if (hasBroker)
+                        {
+                            countersRW.ValueRW.TotalOperationsDroppedThisTick++;
+                        }
+                        break;
+                    }
+
+                    var targetEntity = candidateEntities[i];
 
                     // Skip self
-                    if (target.Entity == entity)
+                    if (targetEntity == entity)
                     {
                         continue;
                     }
 
-                    var toTarget = target.Position - sensorPos;
+                    if (!_transformLookup.HasComponent(targetEntity))
+                    {
+                        continue;
+                    }
+
+                    var targetTransform = _transformLookup[targetEntity];
+                    var targetPos = targetTransform.Position;
+                    var toTarget = targetPos - sensorPos;
                     var distSq = math.lengthsq(toTarget);
 
                     // Range check
@@ -212,6 +303,43 @@ namespace PureDOTS.Systems.Perception
 
                     var distance = math.sqrt(distSq);
                     var direction = distance > 0.001f ? toTarget / distance : float3.zero;
+
+                    // Count this as a perception check once it makes it past radius (and before channel tests).
+                    if (hasBroker)
+                    {
+                        remainingPerceptionChecks--;
+                        countersRW.ValueRW.PerceptionChecksThisTick++;
+                        countersRW.ValueRW.TotalWarmOperationsThisTick++;
+                    }
+
+                    var targetMedium = _mediumLookup.HasComponent(targetEntity)
+                        ? _mediumLookup[targetEntity].Type
+                        : MediumType.Gas;
+
+                    var targetSignature = _signatureLookup.HasComponent(targetEntity)
+                        ? _signatureLookup[targetEntity]
+                        : SensorSignature.Default;
+
+                    var targetThreatLevel = (byte)0;
+                    var targetCategory = DetectableCategory.Neutral;
+                    if (_detectableLookup.HasComponent(targetEntity))
+                    {
+                        var detectable = _detectableLookup[targetEntity];
+                        targetThreatLevel = detectable.ThreatLevel;
+                        targetCategory = detectable.Category;
+                    }
+
+                    var target = new DetectableData
+                    {
+                        Entity = targetEntity,
+                        Position = targetPos,
+                        Forward = math.forward(targetTransform.Rotation),
+                        Signature = targetSignature,
+                        ThreatLevel = targetThreatLevel,
+                        Category = targetCategory,
+                        HasSignature = _signatureLookup.HasComponent(targetEntity),
+                        Medium = targetMedium
+                    };
 
                     // Determine which channels detected this entity
                     PerceptionChannel detectedChannels = PerceptionChannel.None;
@@ -248,6 +376,40 @@ namespace PureDOTS.Systems.Perception
                             channelNoiseFloor,
                             sensorMedium,
                             target.Medium);
+
+                        if (confidence > 0f && hasPhysics)
+                        {
+                            // Budgeted LOS refinement (Radius → FOV → LOS).
+                            if (hasBroker)
+                            {
+                                countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                if (brokerRW.ValueRO.RemainingLosRays > 0)
+                                {
+                                    brokerRW.ValueRW.RemainingLosRays--;
+                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
+
+                                    var input = new RaycastInput
+                                    {
+                                        Start = sensorPos,
+                                        End = target.Position,
+                                        Filter = rayFilter
+                                    };
+
+                                    if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                    {
+                                        confidence = 0f;
+                                    }
+                                }
+                                else
+                                {
+                                    brokerRW.ValueRW.DeferredLosRays++;
+                                    countersRW.ValueRW.LosRaysDeferredThisTick++;
+                                    // Soft-cap degrade: keep a weak visual belief but reduce confidence.
+                                    confidence *= 0.5f;
+                                }
+                            }
+                        }
+
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.Vision;
@@ -359,6 +521,38 @@ namespace PureDOTS.Systems.Perception
                             channelNoiseFloor,
                             sensorMedium,
                             target.Medium);
+
+                        if (confidence > 0f && hasPhysics)
+                        {
+                            if (hasBroker)
+                            {
+                                countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                if (brokerRW.ValueRO.RemainingLosRays > 0)
+                                {
+                                    brokerRW.ValueRW.RemainingLosRays--;
+                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
+
+                                    var input = new RaycastInput
+                                    {
+                                        Start = sensorPos,
+                                        End = target.Position,
+                                        Filter = rayFilter
+                                    };
+
+                                    if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                    {
+                                        confidence = 0f;
+                                    }
+                                }
+                                else
+                                {
+                                    brokerRW.ValueRW.DeferredLosRays++;
+                                    countersRW.ValueRW.LosRaysDeferredThisTick++;
+                                    confidence *= 0.5f;
+                                }
+                            }
+                        }
+
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.EM;
@@ -398,8 +592,19 @@ namespace PureDOTS.Systems.Perception
                     // If detected on any channel, add to perception
                     if (detectedChannels != PerceptionChannel.None)
                     {
-                        var relationship = (sbyte)(target.Category == DetectableCategory.Ally ? 127 :
-                                                  target.Category == DetectableCategory.Enemy ? -128 : 0);
+                        var relation = PerceptionRelationResolver.Resolve(
+                            entity,
+                            target.Entity,
+                            target.Category,
+                            _relationLookup,
+                            _factionLookup,
+                            _disguiseLookup,
+                            _discoveryLookup,
+                            _villagerLookup,
+                            _villageLookup,
+                            _bandLookup,
+                            _armyLookup,
+                            factionRelationships.AsArray());
 
                         perceivedBuffer.Add(new PerceivedEntity
                         {
@@ -411,7 +616,9 @@ namespace PureDOTS.Systems.Perception
                             FirstDetectedTick = timeState.Tick, // TODO: Track persistent first detection
                             LastSeenTick = timeState.Tick,
                             ThreatLevel = target.ThreatLevel,
-                            Relationship = relationship
+                            Relationship = relation.Score,
+                            RelationKind = relation.Kind,
+                            RelationFlags = relation.Flags
                         });
 
                         perceptionCount++;
@@ -441,7 +648,11 @@ namespace PureDOTS.Systems.Perception
                 perceptionState.ValueRW.NearestDistance = math.sqrt(nearestDistSq);
             }
 
-            detectables.Dispose();
+            if (candidateEntities.IsCreated)
+            {
+                candidateEntities.Dispose();
+            }
+            factionRelationships.Dispose();
         }
 
         /// <summary>

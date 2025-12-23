@@ -22,6 +22,8 @@ namespace PureDOTS.Runtime.Core
         public const uint PowerSimEnabled = 1 << 4;
         public const uint RewindEnabled = 1 << 5;
         public const uint FaunaSentienceEnabled = 1 << 6;
+        public const uint LegacySensorSystemEnabled = 1 << 7;
+        public const uint LegacyCommunicationDispatchEnabled = 1 << 8;
 
         /// <summary>Default: all features enabled.</summary>
         public static SimulationFeatureFlags Default => new SimulationFeatureFlags

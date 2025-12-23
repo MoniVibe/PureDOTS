@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Construction;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,6 +22,7 @@ namespace PureDOTS.Systems
         private ComponentLookup<LocalTransform> _transformLookup;
         private BufferLookup<ConstructionCostElement> _costBufferLookup;
         private BufferLookup<ConstructionDeliveredElement> _deliveredBufferLookup;
+        private ComponentLookup<ConstructionSitePhaseSettings> _phaseSettingsLookup;
 
         public void OnCreate(ref SystemState state)
         {
@@ -35,6 +37,7 @@ namespace PureDOTS.Systems
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _costBufferLookup = state.GetBufferLookup<ConstructionCostElement>(true);
             _deliveredBufferLookup = state.GetBufferLookup<ConstructionDeliveredElement>(false);
+            _phaseSettingsLookup = state.GetComponentLookup<ConstructionSitePhaseSettings>(true);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -54,6 +57,7 @@ namespace PureDOTS.Systems
             _transformLookup.Update(ref state);
             _costBufferLookup.Update(ref state);
             _deliveredBufferLookup.Update(ref state);
+            _phaseSettingsLookup.Update(ref state);
 
             var catalog = SystemAPI.GetSingleton<ResourceTypeIndex>().Catalog;
             if (!catalog.IsCreated)
@@ -183,6 +187,28 @@ namespace PureDOTS.Systems
 
                 _progressLookup[siteEntity] = progress;
 
+                var normalizedProgress = progress.RequiredProgress > 0f
+                    ? math.saturate(progress.CurrentProgress / progress.RequiredProgress)
+                    : 0f;
+
+                if (_phaseSettingsLookup.HasComponent(siteEntity) && _flagsLookup.HasComponent(siteEntity))
+                {
+                    var settings = _phaseSettingsLookup[siteEntity];
+                    if (settings.PartialUseThreshold01 > 0f)
+                    {
+                        var flags = _flagsLookup[siteEntity];
+                        if (normalizedProgress >= settings.PartialUseThreshold01)
+                        {
+                            flags.Value |= ConstructionSiteFlags.PartiallyUsable;
+                        }
+                        else
+                        {
+                            flags.Value &= unchecked((byte)~ConstructionSiteFlags.PartiallyUsable);
+                        }
+                        _flagsLookup[siteEntity] = flags;
+                    }
+                }
+
                 // Check for completion
                 if (progress.CurrentProgress >= progress.RequiredProgress)
                 {
@@ -202,7 +228,7 @@ namespace PureDOTS.Systems
                         {
                             // Spawn completion entity
                             var completedEntity = state.EntityManager.Instantiate(completionPrefab.Prefab);
-                            
+
                             // Copy transform from construction site
                             if (_transformLookup.HasComponent(siteEntity) &&
                                 _transformLookup.HasComponent(completedEntity))

@@ -1,3 +1,4 @@
+using System;
 using PureDOTS.Runtime.Scenarios;
 using Unity.Collections;
 using Unity.Entities;
@@ -11,8 +12,11 @@ namespace Space4x.Bootstrap
     /// </summary>
     public class Space4XBootstrap : MonoBehaviour
     {
+        private const string LegacyScenarioId = "scenario.space4x.smoke";
+        private const string SharedScenarioId = "space4x_smoke";
+
         [SerializeField]
-        private string scenarioId = "scenario.space4x.smoke";
+        private string scenarioId = SharedScenarioId;
 
         [SerializeField]
         private uint seed = 77;
@@ -40,9 +44,10 @@ namespace Space4x.Bootstrap
 
             // Inject scenario metadata
             var scenarioEntity = entityManager.CreateEntity(typeof(ScenarioInfo), typeof(ScenarioEntityCountElement));
+            var resolvedScenarioId = ResolveScenarioId();
             entityManager.SetComponentData(scenarioEntity, new ScenarioInfo
             {
-                ScenarioId = new FixedString64Bytes(scenarioId),
+                ScenarioId = new FixedString64Bytes(resolvedScenarioId),
                 Seed = seed,
                 RunTicks = runTicks
             });
@@ -57,7 +62,18 @@ namespace Space4x.Bootstrap
                 });
             }
 
-            Debug.Log($"[Space4XBootstrap] Scenario '{scenarioId}' initialized with {entityCounts.Length} entity count entries.");
+            Debug.Log($"[Space4XBootstrap] Scenario '{resolvedScenarioId}' initialized with {entityCounts.Length} entity count entries.");
+        }
+
+        private string ResolveScenarioId()
+        {
+            if (string.IsNullOrWhiteSpace(scenarioId) ||
+                string.Equals(scenarioId, LegacyScenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                scenarioId = SharedScenarioId;
+            }
+
+            return scenarioId;
         }
     }
 }

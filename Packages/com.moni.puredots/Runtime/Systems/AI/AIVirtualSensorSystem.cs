@@ -10,6 +10,7 @@ namespace PureDOTS.Systems.AI
     /// <summary>
     /// Populates virtual sensor readings for internal villager needs (Hunger, Energy, Morale).
     /// These readings are inserted at fixed indices (0, 1, 2) so utility curves can reference them.
+    /// Prefers VillagerNeedState when present, falls back to legacy VillagerNeeds + VillagerMood.
     /// Runs after AISensorUpdateSystem to inject virtual readings before the scoring stage.
     /// </summary>
     [BurstCompile]
@@ -18,14 +19,20 @@ namespace PureDOTS.Systems.AI
     [UpdateBefore(typeof(AIUtilityScoringSystem))]
     public partial struct AIVirtualSensorSystem : ISystem
     {
-        private EntityQuery _villagerQuery;
+        private EntityQuery _needStateQuery;
+        private EntityQuery _legacyQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _villagerQuery = SystemAPI.QueryBuilder()
-                .WithAll<VillagerNeeds, VillagerMood, AISensorReading>()
+            _needStateQuery = SystemAPI.QueryBuilder()
+                .WithAll<VillagerNeedState, AISensorReading>()
                 .WithNone<PlaybackGuardTag>()
+                .Build();
+
+            _legacyQuery = SystemAPI.QueryBuilder()
+                .WithAll<VillagerNeeds, VillagerMood, AISensorReading>()
+                .WithNone<VillagerNeedState, PlaybackGuardTag>()
                 .Build();
 
             state.RequireForUpdate<TimeState>();
@@ -53,17 +60,42 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
-            if (_villagerQuery.IsEmpty)
+            if (!_needStateQuery.IsEmpty)
             {
-                return;
+                var job = new PopulateNeedStateVirtualSensorsJob();
+                state.Dependency = job.ScheduleParallel(_needStateQuery, state.Dependency);
             }
 
-            var job = new PopulateVirtualSensorsJob();
-            state.Dependency = job.ScheduleParallel(_villagerQuery, state.Dependency);
+            if (!_legacyQuery.IsEmpty)
+            {
+                var job = new PopulateLegacyVirtualSensorsJob();
+                state.Dependency = job.ScheduleParallel(_legacyQuery, state.Dependency);
+            }
         }
 
         [BurstCompile]
-        public partial struct PopulateVirtualSensorsJob : IJobEntity
+        public partial struct PopulateNeedStateVirtualSensorsJob : IJobEntity
+        {
+            public void Execute(
+                Entity entity,
+                in VillagerNeedState needs,
+                DynamicBuffer<AISensorReading> readings)
+            {
+                // Virtual sensor indices:
+                // 0 = Hunger (urgency)
+                // 1 = Energy (rest urgency)
+                // 2 = Morale (max of faith/social urgency)
+
+                var hungerScore = math.saturate(needs.HungerUrgency);
+                var energyScore = math.saturate(needs.RestUrgency);
+                var moraleScore = math.saturate(math.max(needs.FaithUrgency, needs.SocialUrgency));
+
+                UpsertVirtualReadings(entity, readings, hungerScore, energyScore, moraleScore);
+            }
+        }
+
+        [BurstCompile]
+        public partial struct PopulateLegacyVirtualSensorsJob : IJobEntity
         {
             public void Execute(
                 Entity entity,
@@ -80,47 +112,53 @@ namespace PureDOTS.Systems.AI
                 var energyScore = 1f - math.saturate(needs.EnergyFloat / 100f);
                 var moraleScore = 1f - math.saturate(mood.Mood / 100f);
 
-                // Store existing readings
+                UpsertVirtualReadings(entity, readings, hungerScore, energyScore, moraleScore);
+            }
+        }
+
+        private static void UpsertVirtualReadings(
+            Entity entity,
+            DynamicBuffer<AISensorReading> readings,
+            float hungerScore,
+            float energyScore,
+            float moraleScore)
+        {
+            var hasVirtualPrefix = readings.Length >= 3 &&
+                                   IsVirtualReading(readings[0], entity) &&
+                                   IsVirtualReading(readings[1], entity) &&
+                                   IsVirtualReading(readings[2], entity);
+
+            if (!hasVirtualPrefix)
+            {
                 var existingCount = readings.Length;
                 readings.ResizeUninitialized(existingCount + 3);
-
-                // Shift existing readings to indices 3+ in-place (backward copy).
                 for (int i = existingCount - 1; i >= 0; i--)
                 {
                     readings[i + 3] = readings[i];
                 }
-
-                // Insert virtual sensor readings at fixed indices
-                readings[0] = new AISensorReading
-                {
-                    Target = entity, // Self-reference for virtual sensors
-                    DistanceSq = 0f,
-                    NormalizedScore = hungerScore,
-                    CellId = -1,
-                    SpatialVersion = 0,
-                    Category = AISensorCategory.None
-                };
-
-                readings[1] = new AISensorReading
-                {
-                    Target = entity,
-                    DistanceSq = 0f,
-                    NormalizedScore = energyScore,
-                    CellId = -1,
-                    SpatialVersion = 0,
-                    Category = AISensorCategory.None
-                };
-
-                readings[2] = new AISensorReading
-                {
-                    Target = entity,
-                    DistanceSq = 0f,
-                    NormalizedScore = moraleScore,
-                    CellId = -1,
-                    SpatialVersion = 0,
-                    Category = AISensorCategory.None
-                };
             }
+
+            readings[0] = CreateVirtualReading(entity, hungerScore);
+            readings[1] = CreateVirtualReading(entity, energyScore);
+            readings[2] = CreateVirtualReading(entity, moraleScore);
+        }
+
+        private static bool IsVirtualReading(in AISensorReading reading, Entity entity)
+        {
+            return reading.Category == AISensorCategory.None && reading.Target == entity;
+        }
+
+        private static AISensorReading CreateVirtualReading(Entity entity, float score)
+        {
+            return new AISensorReading
+            {
+                Target = entity,
+                DistanceSq = 0f,
+                NormalizedScore = score,
+                CellId = -1,
+                SpatialVersion = 0,
+                Category = AISensorCategory.None
+            };
         }
     }
 }

@@ -7,7 +7,7 @@ namespace PureDOTS.Editor.Presentation
     /// Deprecated placeholder. Original binding editor depended on removed authoring types.
     /// Left empty to prevent compile errors until a new presentation binding workflow is added.
     /// </summary>
-    internal sealed class SwappablePresentationBindingEditor : Editor
+    internal sealed class SwappablePresentationBindingEditor : UnityEditor.Editor
     {
     }
 }

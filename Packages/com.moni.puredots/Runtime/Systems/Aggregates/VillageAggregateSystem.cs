@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Villagers;
@@ -11,19 +12,18 @@ using Unity.Transforms;
 namespace PureDOTS.Runtime.Systems.Aggregates
 {
     /// <summary>
-    /// System that updates village aggregate summaries based on member villagers.
-    /// Runs at configurable intervals to minimize overhead.
+    /// System that updates collective aggregate summaries (villages, etc.) based on member entities.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [BurstCompile]
-    public partial struct VillageAggregateSystem : ISystem
+    public partial struct CollectiveAggregateSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
-            state.RequireForUpdate<VillageTag>();
+            state.RequireForUpdate<CollectiveAggregate>();
         }
 
         [BurstCompile]
@@ -37,22 +37,33 @@ namespace PureDOTS.Runtime.Systems.Aggregates
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
 
-            // Update village aggregates
-            foreach (var (villageState, renderSummary, aggregateState, aggregateSummary, members, entity) in
-                SystemAPI.Query<RefRW<VillageState>, RefRW<VillageRenderSummary>,
-                                RefRW<AggregateState>, RefRW<AggregateRenderSummary>,
-                                DynamicBuffer<AggregateMemberElement>>()
-                    .WithAll<VillageTag>()
-                    .WithEntityAccess())
+            foreach (var (collective, members, entity) in SystemAPI
+                         .Query<RefRW<CollectiveAggregate>, DynamicBuffer<CollectiveAggregateMember>>()
+                         .WithEntityAccess())
             {
-                // Check update interval
-                if (currentTick - villageState.ValueRO.LastUpdateTick < villageState.ValueRO.UpdateInterval)
+                var collectiveValue = collective.ValueRO;
+
+                // Optional: some aggregates also carry VillageState/VillageRenderSummary for presentation.
+                var hasVillageState = SystemAPI.HasComponent<VillageState>(entity);
+                var hasVillageRenderSummary = SystemAPI.HasComponent<VillageRenderSummary>(entity);
+
+                // Early-out if we updated recently (use VillageState interval if available, otherwise default).
+                uint updateInterval = 60;
+                uint lastUpdate = collectiveValue.LastStateChangeTick;
+
+                if (hasVillageState)
+                {
+                    var villageState = SystemAPI.GetComponent<VillageState>(entity);
+                    updateInterval = math.max(1u, villageState.UpdateInterval);
+                    lastUpdate = villageState.LastUpdateTick;
+                }
+
+                if (currentTick - lastUpdate < updateInterval)
                 {
                     continue;
                 }
 
-                // Calculate aggregate statistics
-                int population = 0;
+                int memberCount = 0;
                 float3 totalPosition = float3.zero;
                 float3 minBounds = new float3(float.MaxValue);
                 float3 maxBounds = new float3(float.MinValue);
@@ -64,87 +75,105 @@ namespace PureDOTS.Runtime.Systems.Aggregates
                 for (int i = 0; i < members.Length; i++)
                 {
                     var member = members[i];
-                    if (member.MemberEntity == Entity.Null)
+                    var memberEntity = member.MemberEntity;
+                    if (memberEntity == Entity.Null)
                     {
                         continue;
                     }
 
-                    // Get member position
-                    if (SystemAPI.HasComponent<LocalTransform>(member.MemberEntity))
+                    if (SystemAPI.HasComponent<LocalTransform>(memberEntity))
                     {
-                        var transform = SystemAPI.GetComponent<LocalTransform>(member.MemberEntity);
+                        var transform = SystemAPI.GetComponent<LocalTransform>(memberEntity);
                         totalPosition += transform.Position;
                         minBounds = math.min(minBounds, transform.Position);
                         maxBounds = math.max(maxBounds, transform.Position);
                     }
 
-                    // Get member needs
-                    if (SystemAPI.HasComponent<VillagerNeeds>(member.MemberEntity))
+                    if (SystemAPI.HasComponent<VillagerNeeds>(memberEntity))
                     {
-                        var needs = SystemAPI.GetComponent<VillagerNeeds>(member.MemberEntity);
+                        var needs = SystemAPI.GetComponent<VillagerNeeds>(memberEntity);
                         totalHealth += needs.Health;
                         totalMorale += needs.Morale;
                     }
 
-                    // Get member belief
-                    if (SystemAPI.HasComponent<VillagerBeliefOptimized>(member.MemberEntity))
+                    if (SystemAPI.HasComponent<VillagerBeliefOptimized>(memberEntity))
                     {
-                        var belief = SystemAPI.GetComponent<VillagerBeliefOptimized>(member.MemberEntity);
+                        var belief = SystemAPI.GetComponent<VillagerBeliefOptimized>(memberEntity);
                         totalFaith += belief.FaithNormalized;
                     }
 
-                    totalWealth += member.StrengthContribution;
-                    population++;
+                    totalWealth += (member.Flags & CollectiveAggregateMemberFlags.IsWorker) != 0 ? 1f : 0f;
+                    memberCount++;
                 }
 
-                if (population == 0)
+                if (memberCount == 0)
                 {
                     continue;
                 }
 
-                float3 avgPosition = totalPosition / population;
-                float3 boundsCenter = (minBounds + maxBounds) / 2f;
-                float boundsRadius = math.length(maxBounds - minBounds) / 2f;
+                float3 avgPosition = totalPosition / memberCount;
+                float3 boundsCenter = (minBounds + maxBounds) * 0.5f;
+                float boundsRadius = math.length(maxBounds - minBounds) * 0.5f;
 
-                // Update village state
-                villageState.ValueRW.PopulationCount = population;
-                villageState.ValueRW.CenterPosition = avgPosition;
-                villageState.ValueRW.BoundsMin = minBounds;
-                villageState.ValueRW.BoundsMax = maxBounds;
-                villageState.ValueRW.TotalWealth = totalWealth;
-                villageState.ValueRW.AverageMorale = totalMorale / population;
-                villageState.ValueRW.AverageFaith = totalFaith / population;
-                villageState.ValueRW.LastUpdateTick = currentTick;
+                // Update optional VillageState/VillageRenderSummary if present
+                if (hasVillageState)
+                {
+                    var villageState = SystemAPI.GetComponent<VillageState>(entity);
+                    villageState.PopulationCount = memberCount;
+                    villageState.CenterPosition = avgPosition;
+                    villageState.BoundsMin = minBounds;
+                    villageState.BoundsMax = maxBounds;
+                    villageState.TotalWealth = totalWealth;
+                    villageState.AverageMorale = totalMorale / memberCount;
+                    villageState.AverageFaith = totalFaith / memberCount;
+                    villageState.LastUpdateTick = currentTick;
+                    SystemAPI.SetComponent(entity, villageState);
+                }
 
-                // Update render summary
-                renderSummary.ValueRW.PopulationCount = population;
-                renderSummary.ValueRW.CenterPosition = avgPosition;
-                renderSummary.ValueRW.BoundsCenter = boundsCenter;
-                renderSummary.ValueRW.BoundsRadius = boundsRadius;
-                renderSummary.ValueRW.TotalWealth = totalWealth;
-                renderSummary.ValueRW.AverageMorale = totalMorale / population;
-                renderSummary.ValueRW.AverageFaith = totalFaith / population;
-                renderSummary.ValueRW.LastUpdateTick = currentTick;
+                if (hasVillageRenderSummary)
+                {
+                    var renderSummary = SystemAPI.GetComponent<VillageRenderSummary>(entity);
+                    renderSummary.PopulationCount = memberCount;
+                    renderSummary.CenterPosition = avgPosition;
+                    renderSummary.BoundsCenter = boundsCenter;
+                    renderSummary.BoundsRadius = boundsRadius;
+                    renderSummary.TotalWealth = totalWealth;
+                    renderSummary.AverageMorale = totalMorale / memberCount;
+                    renderSummary.AverageFaith = totalFaith / memberCount;
+                    renderSummary.LastUpdateTick = currentTick;
+                    SystemAPI.SetComponent(entity, renderSummary);
+                }
 
-                // Update generic aggregate state
-                aggregateState.ValueRW.MemberCount = population;
-                aggregateState.ValueRW.AveragePosition = avgPosition;
-                aggregateState.ValueRW.BoundsMin = minBounds;
-                aggregateState.ValueRW.BoundsMax = maxBounds;
-                aggregateState.ValueRW.TotalHealth = totalHealth;
-                aggregateState.ValueRW.AverageMorale = totalMorale / population;
-                aggregateState.ValueRW.LastAggregationTick = currentTick;
+                    // Update generic aggregate state and summary if available
+                if (SystemAPI.HasComponent<AggregateState>(entity))
+                {
+                    var aggregateState = SystemAPI.GetComponent<AggregateState>(entity);
+                    aggregateState.MemberCount = memberCount;
+                    aggregateState.AveragePosition = avgPosition;
+                    aggregateState.BoundsMin = minBounds;
+                    aggregateState.BoundsMax = maxBounds;
+                    aggregateState.TotalHealth = totalHealth;
+                    aggregateState.AverageMorale = totalMorale / memberCount;
+                    aggregateState.LastAggregationTick = currentTick;
+                    SystemAPI.SetComponent(entity, aggregateState);
+                }
 
-                // Update generic render summary
-                aggregateSummary.ValueRW.MemberCount = population;
-                aggregateSummary.ValueRW.AveragePosition = avgPosition;
-                aggregateSummary.ValueRW.BoundsCenter = boundsCenter;
-                aggregateSummary.ValueRW.BoundsRadius = boundsRadius;
-                aggregateSummary.ValueRW.TotalHealth = totalHealth;
-                aggregateSummary.ValueRW.AverageMorale = totalMorale / population;
-                aggregateSummary.ValueRW.LastUpdateTick = currentTick;
+                if (SystemAPI.HasComponent<AggregateRenderSummary>(entity))
+                {
+                    var aggregateSummary = SystemAPI.GetComponent<AggregateRenderSummary>(entity);
+                    aggregateSummary.MemberCount = memberCount;
+                    aggregateSummary.AveragePosition = avgPosition;
+                    aggregateSummary.BoundsCenter = boundsCenter;
+                    aggregateSummary.BoundsRadius = boundsRadius;
+                    aggregateSummary.TotalHealth = totalHealth;
+                    aggregateSummary.AverageMorale = totalMorale / memberCount;
+                    aggregateSummary.LastUpdateTick = currentTick;
+                    SystemAPI.SetComponent(entity, aggregateSummary);
+                }
+
+                collective.ValueRW.MemberCount = memberCount;
+                collective.ValueRW.LastStateChangeTick = currentTick;
             }
         }
     }
 }
-

@@ -49,10 +49,9 @@ namespace PureDOTS.Systems.Perception
                 SystemAPI.Query<RefRO<PerceptionState>, DynamicBuffer<PerceivedEntity>>()
                 .WithEntityAccess())
             {
-                // Ensure entity has interrupt buffer
                 if (!SystemAPI.HasBuffer<Interrupt>(entity))
                 {
-                    state.EntityManager.AddBuffer<Interrupt>(entity);
+                    continue;
                 }
 
                 var interruptBuffer = SystemAPI.GetBuffer<Interrupt>(entity);
@@ -103,7 +102,7 @@ namespace PureDOTS.Systems.Perception
 
                 if (!SystemAPI.HasBuffer<Interrupt>(entity))
                 {
-                    state.EntityManager.AddBuffer<Interrupt>(entity);
+                    continue;
                 }
 
                 var interruptBuffer = SystemAPI.GetBuffer<Interrupt>(entity);

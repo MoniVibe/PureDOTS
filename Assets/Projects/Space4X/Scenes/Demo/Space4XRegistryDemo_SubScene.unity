@@ -356,6 +356,8 @@ GameObject:
   - component: {fileID: 194810423}
   - component: {fileID: 194810424}
   - component: {fileID: 194810425}
+  - component: {fileID: 194810426}
+  - component: {fileID: 194810427}
   m_Layer: 0
   m_Name: RegistryBootstrap
   m_TagString: Untagged
@@ -404,6 +406,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PureDOTS.Authoring::PureDOTS.Authoring.SpatialPartitionAuthoring
   profile: {fileID: 0}
+--- !u!114 &194810426
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 194810419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73ec2146d2ec48168b92b9d77a23e3b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PureDOTS.Authoring.Space::PureDOTS.Authoring.Space.ResourceValueCatalogAuthoring
+  entries:
+  - resourceTypeId: food
+    baseValue: 1
+  - resourceTypeId: ice
+    baseValue: 0.7
+  - resourceTypeId: metals
+    baseValue: 0.9
+  - resourceTypeId: nobels
+    baseValue: 1.4
+  - resourceTypeId: supplies
+    baseValue: 1.1
+--- !u!114 &194810427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 194810419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e24b7c1a2c4a9d8f1b2c3d4e5f6071, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PureDOTS.Authoring.Resource::PureDOTS.Authoring.Resource.ResourceClassCatalogAuthoring
+  entries:
+  - resourceTypeId: food
+    resourceClass: 1
+  - resourceTypeId: ice
+    resourceClass: 1
+  - resourceTypeId: metals
+    resourceClass: 1
+  - resourceTypeId: nobels
+    resourceClass: 1
+  - resourceTypeId: supplies
+    resourceClass: 2
 --- !u!1 &253541333
 GameObject:
   m_ObjectHideFlags: 0

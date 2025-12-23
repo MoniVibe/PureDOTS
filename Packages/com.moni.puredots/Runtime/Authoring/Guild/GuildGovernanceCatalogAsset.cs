@@ -1,7 +1,7 @@
 #if UNITY_EDITOR || UNITY_STANDALONE
 using System.Collections.Generic;
 using System.Linq;
-using PureDOTS.Runtime.Aggregates;
+using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Guild;
 using Unity.Collections;
 using Unity.Entities;

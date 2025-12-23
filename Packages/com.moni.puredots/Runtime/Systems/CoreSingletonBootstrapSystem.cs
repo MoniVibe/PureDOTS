@@ -289,6 +289,59 @@ namespace PureDOTS.Systems
             if (HasSingleton<RewindState>(entityManager))
             {
                 rewindEntity = GetSingletonEntity<RewindState>(entityManager);
+                if (timeEntity != Entity.Null && rewindEntity != timeEntity)
+                {
+                    var rewindState = entityManager.GetComponentData<RewindState>(rewindEntity);
+                    var hasLegacy = entityManager.HasComponent<RewindLegacyState>(rewindEntity);
+                    var legacyState = hasLegacy ? entityManager.GetComponentData<RewindLegacyState>(rewindEntity) : default;
+
+                    if (!entityManager.HasComponent<RewindState>(timeEntity))
+                    {
+                        entityManager.AddComponentData(timeEntity, rewindState);
+                    }
+                    else
+                    {
+                        entityManager.SetComponentData(timeEntity, rewindState);
+                    }
+
+                    if (hasLegacy)
+                    {
+                        if (!entityManager.HasComponent<RewindLegacyState>(timeEntity))
+                        {
+                            entityManager.AddComponentData(timeEntity, legacyState);
+                        }
+                        else
+                        {
+                            entityManager.SetComponentData(timeEntity, legacyState);
+                        }
+                    }
+
+                    if (entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
+                    {
+                        var sourceBuffer = entityManager.GetBuffer<TimeControlCommand>(rewindEntity);
+                        if (!entityManager.HasBuffer<TimeControlCommand>(timeEntity))
+                        {
+                            entityManager.AddBuffer<TimeControlCommand>(timeEntity);
+                        }
+                        var targetBuffer = entityManager.GetBuffer<TimeControlCommand>(timeEntity);
+                        for (int i = 0; i < sourceBuffer.Length; i++)
+                        {
+                            targetBuffer.Add(sourceBuffer[i]);
+                        }
+                    }
+
+                    entityManager.RemoveComponent<RewindState>(rewindEntity);
+                    if (entityManager.HasComponent<RewindLegacyState>(rewindEntity))
+                    {
+                        entityManager.RemoveComponent<RewindLegacyState>(rewindEntity);
+                    }
+                    if (entityManager.HasBuffer<TimeControlCommand>(rewindEntity))
+                    {
+                        entityManager.RemoveComponent<TimeControlCommand>(rewindEntity);
+                    }
+
+                    rewindEntity = timeEntity;
+                }
             }
             else
             {
@@ -912,7 +965,12 @@ namespace PureDOTS.Systems
             {
                 var entity = entityManager.CreateEntity(typeof(RegistryHealthMonitoring), typeof(RegistryHealthThresholds));
                 entityManager.SetComponentData(entity, RegistryHealthMonitoring.CreateDefaults());
-                entityManager.SetComponentData(entity, RegistryHealthThresholds.CreateDefaults());
+                var thresholds = RegistryHealthThresholds.CreateDefaults();
+                if (RuntimeMode.IsHeadless)
+                {
+                    thresholds.DirectoryVersionMismatchWarning = 0;
+                }
+                entityManager.SetComponentData(entity, thresholds);
                 
                 // Ensure villager behavior config singleton
                 EnsureVillagerBehaviorConfig(entityManager);
@@ -927,6 +985,13 @@ namespace PureDOTS.Systems
             if (!entityManager.HasComponent<RegistryHealthThresholds>(monitoringEntity))
             {
                 entityManager.AddComponentData(monitoringEntity, RegistryHealthThresholds.CreateDefaults());
+            }
+
+            if (RuntimeMode.IsHeadless)
+            {
+                var thresholds = entityManager.GetComponentData<RegistryHealthThresholds>(monitoringEntity);
+                thresholds.DirectoryVersionMismatchWarning = 0;
+                entityManager.SetComponentData(monitoringEntity, thresholds);
             }
         }
 

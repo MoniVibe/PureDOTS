@@ -92,4 +92,3 @@ namespace PureDOTS.Runtime.Guild
         public uint FormationCheckFrequency;
     }
 }
-

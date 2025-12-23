@@ -21,6 +21,9 @@
   - success/outcome/crit,
   - planning/decision-making nudges.
 
+See also:
+- `Docs/Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md` (canonical stat layers + archetype schema)
+
 ### Non-goals (PureDOTS)
 - No fixed assumptions about "classes", "magic rules", "combat formulae", or specific gameplay tuning.
 - No UI/UX implementation (game-side concern). PureDOTS exposes observable state + events.

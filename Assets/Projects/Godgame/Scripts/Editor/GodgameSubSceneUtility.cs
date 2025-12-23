@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+#if UNITY_EDITOR && INCLUDE_GODGAME_IN_PUREDOTS
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;

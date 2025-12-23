@@ -9,7 +9,7 @@ using Unity.Mathematics;
 namespace PureDOTS.Systems.Communication
 {
     /// <summary>
-    /// Handles retries/timeouts for outbound messages that require acknowledgements.
+    /// Legacy path: handles retries/timeouts for outbound messages that require acknowledgements.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PerceptionSystemGroup))]
@@ -38,6 +38,11 @@ namespace PureDOTS.Systems.Communication
                 return;
             }
 
+            if ((features.Flags & SimulationFeatureFlags.LegacyCommunicationDispatchEnabled) == 0)
+            {
+                return;
+            }
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
             {
@@ -51,10 +56,12 @@ namespace PureDOTS.Systems.Communication
 
             _configLookup.Update(ref state);
 
-            foreach (var (outbound, sendRequests, entity) in
+            foreach (var (outboundBuffer, sendRequestsBuffer, entity) in
                 SystemAPI.Query<DynamicBuffer<CommOutboundEntry>, DynamicBuffer<CommSendRequest>>()
                     .WithEntityAccess())
             {
+                var outbound = outboundBuffer;
+                var sendRequests = sendRequestsBuffer;
                 if (outbound.Length == 0)
                 {
                     continue;

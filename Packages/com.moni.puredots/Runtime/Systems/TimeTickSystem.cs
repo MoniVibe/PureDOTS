@@ -15,7 +15,6 @@ namespace PureDOTS.Systems
     public partial struct TimeTickSystem : ISystem
     {
         private double _accumulator;
-        private double _lastRealTime;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -26,7 +25,6 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<SimulationScalars>();
             state.RequireForUpdate<SimulationOverrides>();
             _accumulator = 0d;
-            _lastRealTime = 0d;
         }
 
         [BurstCompile]
@@ -45,12 +43,10 @@ namespace PureDOTS.Systems
                 ? overrides.TimeScaleOverride
                 : scalars.TimeScale;
 
-            var elapsed = (double)SystemAPI.Time.ElapsedTime;
             if (rewind.Mode != RewindMode.Record)
             {
                 tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
                 _accumulator = 0d;
-                _lastRealTime = elapsed;
                 SyncLegacyTime(ref tickState, ref timeState);
                 return;
             }
@@ -65,14 +61,16 @@ namespace PureDOTS.Systems
                     tickState.Tick++;
                 }
 
-                _lastRealTime = elapsed;
                 tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
                 SyncLegacyTime(ref tickState, ref timeState);
                 return;
             }
 
-            var deltaRealTime = elapsed - _lastRealTime;
-            _lastRealTime = elapsed;
+            var deltaRealTime = (double)SystemAPI.Time.DeltaTime;
+            if (deltaRealTime < 0d)
+            {
+                deltaRealTime = 0d;
+            }
 
             // Clamp to avoid pathological catch-up after long stalls.
             const double maxFrameTimeClamp = 0.25d;

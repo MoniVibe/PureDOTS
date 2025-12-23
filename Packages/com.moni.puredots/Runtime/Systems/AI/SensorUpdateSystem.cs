@@ -1,5 +1,12 @@
 using PureDOTS.Runtime.AI;
+using PureDOTS.Runtime.Armies;
+using PureDOTS.Runtime.Bands;
+using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Deception;
+using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Perception;
+using PureDOTS.Runtime.Social;
 using PureDOTS.Runtime.Spatial;
 using Unity.Burst;
 using Unity.Collections;
@@ -14,20 +21,41 @@ namespace PureDOTS.Systems.AI
     /// Populates DetectedEntity buffer based on sensor range and capabilities.
     /// Game-agnostic: works for any entity type with sensors.
     /// </summary>
+    /// <remarks>
+    /// Legacy N² sensor pipeline. Prefer PerceptionUpdateSystem → AISensorUpdateSystem for scalable sims and
+    /// only enable this system in small demo scenes.
+    /// </remarks>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct SensorUpdateSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<Detectable> _detectableLookup;
+        private BufferLookup<EntityRelation> _relationLookup;
+        private ComponentLookup<FactionId> _factionLookup;
+        private ComponentLookup<DisguiseIdentity> _disguiseLookup;
+        private BufferLookup<DisguiseDiscovery> _discoveryLookup;
+        private ComponentLookup<VillagerId> _villagerLookup;
+        private ComponentLookup<VillageId> _villageLookup;
+        private ComponentLookup<BandId> _bandLookup;
+        private ComponentLookup<ArmyId> _armyLookup;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<SimulationFeatureFlags>();
             
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _detectableLookup = state.GetComponentLookup<Detectable>(true);
+            _relationLookup = state.GetBufferLookup<EntityRelation>(true);
+            _factionLookup = state.GetComponentLookup<FactionId>(true);
+            _disguiseLookup = state.GetComponentLookup<DisguiseIdentity>(true);
+            _discoveryLookup = state.GetBufferLookup<DisguiseDiscovery>(true);
+            _villagerLookup = state.GetComponentLookup<VillagerId>(true);
+            _villageLookup = state.GetComponentLookup<VillageId>(true);
+            _bandLookup = state.GetComponentLookup<BandId>(true);
+            _armyLookup = state.GetComponentLookup<ArmyId>(true);
         }
 
         [BurstCompile]
@@ -39,6 +67,12 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
+            var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
+            if ((features.Flags & SimulationFeatureFlags.LegacySensorSystemEnabled) == 0)
+            {
+                return;
+            }
+
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
             {
                 return;
@@ -46,6 +80,26 @@ namespace PureDOTS.Systems.AI
 
             _transformLookup.Update(ref state);
             _detectableLookup.Update(ref state);
+            _relationLookup.Update(ref state);
+            _factionLookup.Update(ref state);
+            _disguiseLookup.Update(ref state);
+            _discoveryLookup.Update(ref state);
+            _villagerLookup.Update(ref state);
+            _villageLookup.Update(ref state);
+            _bandLookup.Update(ref state);
+            _armyLookup.Update(ref state);
+
+            var relationshipCount = 0;
+            foreach (var _ in SystemAPI.Query<RefRO<FactionRelationships>>())
+            {
+                relationshipCount++;
+            }
+
+            var factionRelationships = new NativeList<FactionRelationships>(relationshipCount, Allocator.TempJob);
+            foreach (var relationship in SystemAPI.Query<RefRO<FactionRelationships>>())
+            {
+                factionRelationships.Add(relationship.ValueRO);
+            }
 
             // Collect all detectable entities
             var detectableCount = 0;
@@ -154,8 +208,19 @@ namespace PureDOTS.Systems.AI
                     }
 
                     // Add detection
-                    var relationship = (sbyte)(target.Category == DetectableCategory.Ally ? 127 :
-                                              target.Category == DetectableCategory.Enemy ? -128 : 0);
+                    var relation = PerceptionRelationResolver.Resolve(
+                        entity,
+                        target.Entity,
+                        target.Category,
+                        _relationLookup,
+                        _factionLookup,
+                        _disguiseLookup,
+                        _discoveryLookup,
+                        _villagerLookup,
+                        _villageLookup,
+                        _bandLookup,
+                        _armyLookup,
+                        factionRelationships.AsArray());
 
                     detectedBuffer.Add(new DetectedEntity
                     {
@@ -166,7 +231,9 @@ namespace PureDOTS.Systems.AI
                         Confidence = math.saturate(confidence),
                         DetectedAtTick = timeState.Tick,
                         ThreatLevel = target.ThreatLevel,
-                        Relationship = relationship
+                        Relationship = relation.Score,
+                        RelationKind = relation.Kind,
+                        RelationFlags = relation.Flags
                     });
 
                     detectionCount++;
@@ -196,6 +263,7 @@ namespace PureDOTS.Systems.AI
             }
 
             detectables.Dispose();
+            factionRelationships.Dispose();
         }
 
         private struct DetectableData
@@ -210,4 +278,3 @@ namespace PureDOTS.Systems.AI
         }
     }
 }
-

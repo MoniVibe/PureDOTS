@@ -652,3 +652,6 @@ public struct BehavioralTraitsBlob
 - **Sentient Flora-Fauna Hybrids:** `puredots/Docs/Concepts/Core/Sentient_Flora_Fauna_Hybrids.md`
 - **Entity Profile Schema:** `puredots/Docs/Concepts/Core/Entity_Profile_Schema.md`
 
+
+
+

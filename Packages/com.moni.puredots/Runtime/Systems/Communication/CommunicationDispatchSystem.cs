@@ -12,7 +12,8 @@ using Unity.Transforms;
 namespace PureDOTS.Systems.Communication
 {
     /// <summary>
-    /// Dispatches queued comm attempts to receivers, applying medium + endpoint gating.
+    /// Legacy path: dispatches queued comm attempts directly (guarded by LegacyCommunicationDispatchEnabled).
+    /// Apply medium + endpoint gating for message delivery.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PerceptionSystemGroup))]
@@ -47,6 +48,11 @@ namespace PureDOTS.Systems.Communication
         {
             var features = SystemAPI.GetSingleton<SimulationFeatureFlags>();
             if ((features.Flags & SimulationFeatureFlags.CommsEnabled) == 0)
+            {
+                return;
+            }
+
+            if ((features.Flags & SimulationFeatureFlags.LegacyCommunicationDispatchEnabled) == 0)
             {
                 return;
             }

@@ -154,6 +154,7 @@ namespace PureDOTS.Runtime.Components
     public struct ConstructionSiteFlags : IComponentData
     {
         public const byte Completed = 1 << 0;
+        public const byte PartiallyUsable = 1 << 1;
         public byte Value;
     }
 
