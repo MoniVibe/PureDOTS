@@ -1,4 +1,3 @@
-#if PUREDOTS_LEGACY_CAMERA
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Bands;
 using PureDOTS.Runtime.Components;
@@ -7,7 +6,9 @@ using PureDOTS.Runtime.Alignment;
 using PureDOTS.Runtime.Mobility;
 using PureDOTS.Runtime.Pooling;
 using PureDOTS.Runtime.Orders;
+#if CAMERA_RIG_ENABLED
 using PureDOTS.Runtime.Camera;
+#endif
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Transport;
 using PureDOTS.Runtime.Presentation;
@@ -36,6 +37,9 @@ namespace PureDOTS.Systems
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
         private EntityQuery _sunlightQuery;
+#if CAMERA_RIG_ENABLED
+        private EntityQuery _cameraRigTelemetryQuery;
+#endif
         private ComponentLookup<RegistryMetadata> _registryMetadataLookup;
         private BufferLookup<RegistryDirectoryEntry> _registryDirectoryLookup;
         private ComponentLookup<RegistryHealth> _registryHealthLookup;
@@ -65,6 +69,10 @@ namespace PureDOTS.Systems
             _sunlightQuery = SystemAPI.QueryBuilder()
                 .WithAll<SunlightGrid>()
                 .Build();
+
+#if CAMERA_RIG_ENABLED
+            _cameraRigTelemetryQuery = state.GetEntityQuery(ComponentType.ReadOnly<CameraRigTelemetry>());
+#endif
 
             _registryMetadataLookup = state.GetComponentLookup<RegistryMetadata>(isReadOnly: true);
             _registryDirectoryLookup = state.GetBufferLookup<RegistryDirectoryEntry>(isReadOnly: true);
@@ -190,8 +198,10 @@ namespace PureDOTS.Systems
             debugData.ValueRW.CameraRigShake = 0f;
             debugData.ValueRW.CameraRigStateText = default;
 
-            if (SystemAPI.TryGetSingleton(out CameraRigTelemetry cameraRig))
+#if CAMERA_RIG_ENABLED
+            if (!_cameraRigTelemetryQuery.IsEmptyIgnoreFilter)
             {
+                var cameraRig = _cameraRigTelemetryQuery.GetSingleton<CameraRigTelemetry>();
                 debugData.ValueRW.CameraRigActive = 1;
                 debugData.ValueRW.CameraRigPosition = cameraRig.Position;
                 debugData.ValueRW.CameraRigDistance = cameraRig.Distance;
@@ -208,6 +218,7 @@ namespace PureDOTS.Systems
                 cameraText.Append(math.round(cameraRig.Pitch * 100f) / 100f);
                 debugData.ValueRW.CameraRigStateText = cameraText;
             }
+#endif
 
             if (SystemAPI.HasSingleton<InputCommandLogState>() && SystemAPI.HasSingleton<TickSnapshotLogState>())
             {
@@ -2416,4 +2427,3 @@ namespace PureDOTS.Systems
 #endif
     }
 }
-#endif

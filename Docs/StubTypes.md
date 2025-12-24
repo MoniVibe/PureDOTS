@@ -15,7 +15,7 @@ List of stub/compat placeholders currently kept to unblock compilation. Replace 
 | Packages/com.moni.puredots/Runtime/Logistics/Components/LogisticsStubComponents.cs | Logistics placeholder data | Replace with logistics components |
 | Packages/com.moni.puredots/Runtime/Runtime/Systems/CoreStubSystems.cs | Core system placeholders | Remove when real systems exist |
 | Packages/com.moni.puredots/Runtime/Runtime/Time/TimeMultiplayerStubs.cs | Multiplayer time placeholder | Replace with multiplayer time impl |
-| Packages/com.moni.puredots/Runtime/Physics/CameraPhysicsStubs.cs | Camera physics placeholder | Replace with real camera physics or remove |
+| Packages/com.moni.puredots/Runtime/Physics/CameraPhysicsStubs.cs | Camera physics placeholder | ✅ REMOVED (2025-12-XX) |
 | Packages/com.moni.puredots/Runtime/Runtime/MetaRegistryStubs.cs | Meta registry placeholder | Replace when registry finalized |
 | Packages/com.moni.puredots/Runtime/Systems/MetaRegistryStubSystems.cs | Meta registry systems placeholder | Remove when registry finalized |
 # Stub Types Tracking

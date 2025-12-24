@@ -10,6 +10,10 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Orchestrates rewind state transitions and manages playback.
     /// Replaces UnifiedRewindSystem coordination logic.
+    /// 
+    /// TODO: Migrate from RewindLegacyState to TimeContext + RewindState.
+    /// RewindLegacyState is obsolete and will be removed in v2.0.
+    /// Migration path: Use TimeContext for time state and RewindState for rewind mode/target.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(TimeSystemGroup), OrderFirst = true)]
@@ -22,7 +26,9 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<RewindState>();
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
             state.RequireForUpdate<RewindLegacyState>();
+#pragma warning restore CS0618
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<HistorySettings>();
@@ -37,7 +43,9 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var rewindHandle = SystemAPI.GetSingletonRW<RewindState>();
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
             var legacyHandle = SystemAPI.GetSingletonRW<RewindLegacyState>();
+#pragma warning restore CS0618
             var tickTimeHandle = SystemAPI.GetSingletonRW<TickTimeState>();
             var timeHandle = SystemAPI.GetSingletonRW<TimeState>();
 
@@ -70,7 +78,11 @@ namespace PureDOTS.Systems
 
         [BurstCompile]
         private void ProcessCommands(ref SystemState state,
-            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, 
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
+            ref RewindLegacyState legacyState, 
+#pragma warning restore CS0618
+            ref TickTimeState tickTimeState)
         {
             var commandEntity = SystemAPI.GetSingletonEntity<RewindState>();
             if (!state.EntityManager.HasBuffer<TimeControlCommand>(commandEntity))
@@ -189,7 +201,11 @@ namespace PureDOTS.Systems
 
         [BurstCompile]
         private void HandlePlaybackMode(ref SystemState state,
-            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, 
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
+            ref RewindLegacyState legacyState, 
+#pragma warning restore CS0618
+            ref TickTimeState tickTimeState)
         {
             // Pause normal simulation during playback
             tickTimeState.IsPaused = true;
@@ -244,7 +260,11 @@ namespace PureDOTS.Systems
 
         [BurstCompile]
         private void HandleCatchUpMode(ref SystemState state,
-            ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
+            ref RewindState rewindState, 
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
+            ref RewindLegacyState legacyState, 
+#pragma warning restore CS0618
+            ref TickTimeState tickTimeState)
         {
             tickTimeState.IsPlaying = false;
             tickTimeState.IsPaused = false;
@@ -290,7 +310,11 @@ namespace PureDOTS.Systems
             legacy.IsPaused = tickTimeState.IsPaused;
         }
 
-        private void StartRewind(ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState, uint targetTick)
+        private void StartRewind(ref RewindState rewindState, 
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
+            ref RewindLegacyState legacyState, 
+#pragma warning restore CS0618
+            ref TickTimeState tickTimeState, uint targetTick)
         {
             rewindState.Mode = RewindMode.Rewind;
             legacyState.StartTick = tickTimeState.Tick;
@@ -303,7 +327,11 @@ namespace PureDOTS.Systems
             _playbackAccumulator = 0f;
         }
 
-        private void StopRewind(ref RewindState rewindState, ref RewindLegacyState legacyState, ref TickTimeState tickTimeState)
+        private void StopRewind(ref RewindState rewindState, 
+#pragma warning disable CS0618 // RewindLegacyState is obsolete - TODO: Migrate to TimeContext + RewindState
+            ref RewindLegacyState legacyState, 
+#pragma warning restore CS0618
+            ref TickTimeState tickTimeState)
         {
             // Transition to catch-up or directly to record
             if (legacyState.PlaybackTick < legacyState.StartTick)

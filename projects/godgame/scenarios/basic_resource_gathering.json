@@ -1,0 +1,45 @@
+{
+  "scenarioId": "basic_resource_gathering",
+  "seed": 12345,
+  "runTicks": 600,
+  "entityCounts": [
+    {
+      "registryId": "godgame.villager",
+      "count": 5
+    },
+    {
+      "registryId": "godgame.storehouse",
+      "count": 1
+    },
+    {
+      "registryId": "godgame.resource_node",
+      "count": 3
+    }
+  ],
+  "inputCommands": [],
+  "assertions": [
+    {
+      "metricId": "villager.count",
+      "op": 5,
+      "expectedValue": 5.0,
+      "description": "Villager count should remain at 5 (no deaths)"
+    },
+    {
+      "metricId": "deliveries.count",
+      "op": 5,
+      "expectedValue": 10.0,
+      "description": "At least 10 resource deliveries should occur"
+    },
+    {
+      "metricId": "storehouse.inventory",
+      "op": 5,
+      "expectedValue": 0.0,
+      "description": "Storehouse should receive resources (inventory > 0)"
+    }
+  ],
+  "behavior": null,
+  "telemetry": null
+}
+
+
+

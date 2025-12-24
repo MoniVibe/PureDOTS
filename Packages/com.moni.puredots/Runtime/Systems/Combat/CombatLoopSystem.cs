@@ -1,8 +1,10 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using EffectiveDeltaTime = PureDOTS.Runtime.Time.EffectiveDeltaTime;
 
 namespace PureDOTS.Systems.Combat
 {
@@ -19,12 +21,18 @@ namespace PureDOTS.Systems.Combat
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var deltaTime = SystemAPI.Time.DeltaTime;
-            foreach (var (config, loopState, transform) in SystemAPI
-                         .Query<RefRO<CombatLoopConfig>, RefRW<CombatLoopState>, RefRO<LocalTransform>>())
+            var globalDelta = SystemAPI.Time.DeltaTime;
+            var effectiveDeltaLookup = SystemAPI.GetComponentLookup<EffectiveDeltaTime>(true);
+            effectiveDeltaLookup.Update(ref state);
+            
+            foreach (var (config, loopState, transform, entity) in SystemAPI
+                         .Query<RefRO<CombatLoopConfig>, RefRW<CombatLoopState>, RefRO<LocalTransform>>()
+                         .WithEntityAccess())
             {
                 ref var stateRW = ref loopState.ValueRW;
-                stateRW.WeaponCooldown = math.max(0f, stateRW.WeaponCooldown - deltaTime);
+                // Use effective delta for cooldown (Phase 1: time correctness)
+                float delta = TimeAwareHelpers.GetEffectiveDelta(effectiveDeltaLookup, entity, globalDelta);
+                stateRW.WeaponCooldown = math.max(0f, stateRW.WeaponCooldown - delta);
 
                 switch (stateRW.Phase)
                 {
@@ -33,7 +41,7 @@ namespace PureDOTS.Systems.Combat
                         stateRW.PhaseTimer = 1f;
                         break;
                     case CombatLoopPhase.Patrol:
-                        stateRW.PhaseTimer -= deltaTime;
+                        stateRW.PhaseTimer -= delta;
                         if (stateRW.PhaseTimer <= 0f)
                         {
                             stateRW.Phase = CombatLoopPhase.Intercept;
@@ -41,7 +49,7 @@ namespace PureDOTS.Systems.Combat
                         }
                         break;
                     case CombatLoopPhase.Intercept:
-                        stateRW.PhaseTimer -= deltaTime;
+                        stateRW.PhaseTimer -= delta;
                         if (stateRW.PhaseTimer <= 0f)
                         {
                             stateRW.Phase = CombatLoopPhase.Attack;
@@ -56,7 +64,7 @@ namespace PureDOTS.Systems.Combat
                         stateRW.PhaseTimer = 2f;
                         break;
                     case CombatLoopPhase.Retreat:
-                        stateRW.PhaseTimer -= deltaTime;
+                        stateRW.PhaseTimer -= delta;
                         if (stateRW.PhaseTimer <= 0f)
                         {
                             stateRW.Phase = CombatLoopPhase.Patrol;

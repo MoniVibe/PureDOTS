@@ -1,0 +1,121 @@
+using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Hand;
+using PureDOTS.Runtime.Interaction;
+using PureDOTS.Runtime.Time;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Physics.Systems;
+using Unity.Transforms;
+using HandStateData = PureDOTS.Runtime.Hand.HandState;
+
+namespace PureDOTS.Systems.Hand
+{
+    /// <summary>
+    /// Applies critically damped spring forces so held entities follow the hand.
+    /// </summary>
+    [BurstCompile]
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateAfter(typeof(HandPickupSystem))]
+    [UpdateBefore(typeof(PhysicsSimulationGroup))]
+    public partial struct HandHoldFollowSystem : ISystem
+    {
+        private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private ComponentLookup<PhysicsMass> _massLookup;
+        private ComponentLookup<HandPickable> _pickableLookup;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<TimeState>();
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _massLookup = state.GetComponentLookup<PhysicsMass>(true);
+            _pickableLookup = state.GetComponentLookup<HandPickable>(true);
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var timeState = SystemAPI.GetSingleton<TimeState>();
+            uint currentTick = timeState.Tick;
+            float deltaTime = SystemAPI.Time.DeltaTime;
+
+            _transformLookup.Update(ref state);
+            _velocityLookup.Update(ref state);
+            _massLookup.Update(ref state);
+            _pickableLookup.Update(ref state);
+
+            foreach (var (handStateRef, commandBuffer) in SystemAPI.Query<RefRO<HandStateData>, DynamicBuffer<HandCommand>>())
+            {
+                var handState = handStateRef.ValueRO;
+                var buffer = commandBuffer;
+
+                for (int i = buffer.Length - 1; i >= 0; i--)
+                {
+                    var cmd = buffer[i];
+                    if (cmd.Tick != currentTick || cmd.Type != HandCommandType.Hold)
+                    {
+                        continue;
+                    }
+
+                    if (ApplySpring(ref state, ref handState, cmd, deltaTime))
+                    {
+                        buffer.RemoveAt(i);
+                    }
+                }
+            }
+        }
+
+        private bool ApplySpring(ref SystemState state, ref HandStateData handState, HandCommand command, float deltaTime)
+        {
+            var target = command.TargetEntity;
+            if (target == Entity.Null || !_transformLookup.HasComponent(target) || !_velocityLookup.HasComponent(target))
+            {
+                return false;
+            }
+
+            var transform = _transformLookup[target];
+            var velocity = _velocityLookup[target];
+
+            float mass = 1f;
+            if (_massLookup.HasComponent(target))
+            {
+                var physicsMass = _massLookup[target];
+                if (physicsMass.InverseMass > 0f)
+                {
+                    mass = math.max(1f / physicsMass.InverseMass, 0.01f);
+                }
+            }
+            else if (_pickableLookup.HasComponent(target))
+            {
+                mass = math.max(_pickableLookup[target].Mass, 0.01f);
+            }
+
+            float followFactor = 1f;
+            if (_pickableLookup.HasComponent(target))
+            {
+                followFactor = math.clamp(_pickableLookup[target].FollowLerp, 0.05f, 1f);
+            }
+
+            float baseStiffness = 60f;
+            float stiffness = baseStiffness * followFactor;
+            float damping = 2f * math.sqrt(math.max(stiffness * mass, 0.0001f));
+
+            float3 targetPosition = command.TargetPosition + new float3(0f, handState.HoldDistance, 0f);
+            float3 displacement = targetPosition - transform.Position;
+            float3 springForce = displacement * stiffness;
+            float3 dampingForce = velocity.Linear * damping;
+            float3 acceleration = (springForce - dampingForce) / math.max(mass, 0.0001f);
+
+            velocity.Linear += acceleration * deltaTime;
+            _velocityLookup[target] = velocity;
+
+            return true;
+        }
+    }
+}
+

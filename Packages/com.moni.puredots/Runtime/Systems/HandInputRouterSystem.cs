@@ -10,8 +10,10 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Centralises RMB routing by resolving the highest-priority hand interaction request each frame.
     /// Now consumes GodIntent to gate routing deterministically based on player intent.
-    /// Downstream systems rely on the resolved <see cref="DivineHandCommand"/> without duplicating priority logic.
-    /// Note: Runs in HandSystemGroup, which executes after SimulationSystemGroup where IntentMappingSystem runs.
+    /// 
+    /// TODO: Migrate from DivineHandCommand component to HandCommand buffer.
+    /// DivineHandCommand is obsolete - emit commands to DynamicBuffer&lt;HandCommand&gt; instead.
+    /// Downstream systems should consume HandCommand buffer entries with matching Tick.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(HandSystemGroup), OrderFirst = true)]
@@ -21,13 +23,19 @@ namespace PureDOTS.Systems
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HandInputRouteResult>();
+#pragma warning disable CS0618 // DivineHandCommand is obsolete - TODO: Migrate to HandCommand buffer
             state.RequireForUpdate<DivineHandCommand>();
+#pragma warning restore CS0618
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (requests, resultRef, commandRef, intentRef, entity) in SystemAPI
+            foreach (var (requests, resultRef, 
+#pragma warning disable CS0618 // DivineHandCommand is obsolete - TODO: Migrate to HandCommand buffer
+                         commandRef, 
+#pragma warning restore CS0618
+                         intentRef, entity) in SystemAPI
                          .Query<DynamicBuffer<HandInputRouteRequest>, RefRW<HandInputRouteResult>, RefRW<DivineHandCommand>, RefRO<GodIntent>>()
                          .WithEntityAccess())
             {
@@ -39,7 +47,9 @@ namespace PureDOTS.Systems
                 // If intent says cancel, clear command
                 if (intent.CancelAction != 0)
                 {
+#pragma warning disable CS0618 // DivineHandCommandType is obsolete - TODO: Migrate to HandCommandType
                     command.Type = DivineHandCommandType.None;
+#pragma warning restore CS0618
                     command.TargetEntity = Entity.Null;
                     command.TargetPosition = float3.zero;
                     command.TargetNormal = new float3(0f, 1f, 0f);

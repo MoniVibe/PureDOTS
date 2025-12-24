@@ -1,5 +1,6 @@
 using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Skills;
 using PureDOTS.Runtime.Spatial;
@@ -182,6 +183,21 @@ namespace PureDOTS.Authoring
                 StateTimer = 0f,
                 StateStartTick = 0
             });
+
+            // Add EntityIntent component (defaults to Idle)
+            AddComponent(entity, new EntityIntent
+            {
+                Mode = IntentMode.Idle,
+                TargetEntity = Entity.Null,
+                TargetPosition = float3.zero,
+                TriggeringInterrupt = InterruptType.None,
+                IntentSetTick = 0,
+                Priority = InterruptPriority.Low,
+                IsValid = 0
+            });
+
+            // Add Interrupt buffer for interrupt-driven intent system
+            AddBuffer<Interrupt>(entity);
 
             AddComponent(entity, new VillagerJob
             {

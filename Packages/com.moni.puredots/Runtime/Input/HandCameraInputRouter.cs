@@ -79,6 +79,22 @@ namespace PureDOTS.Input
         public InputAction MiddleClickAction => _middleClickAction;
         public InputAction RightClickAction => _rightClickAction;
 
+        /// <summary>
+        /// Tries to get the active router in the scene and return its current context.
+        /// </summary>
+        public static bool TryGetContext(out RmbContext context)
+        {
+            var router = FindFirstObjectByType<HandCameraInputRouter>();
+            if (router != null)
+            {
+                context = router.CurrentContext;
+                return true;
+            }
+
+            context = default;
+            return false;
+        }
+
         public void RegisterHandler(IRmbHandler handler)
         {
             if (handler == null || _handlers.Contains(handler)) return;

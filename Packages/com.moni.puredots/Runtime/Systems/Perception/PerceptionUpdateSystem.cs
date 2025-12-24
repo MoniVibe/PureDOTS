@@ -5,9 +5,12 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Deception;
+using PureDOTS.Runtime.Detection;
+using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Spatial;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
@@ -43,6 +46,10 @@ namespace PureDOTS.Systems.Perception
         private ComponentLookup<BandId> _bandLookup;
         private ComponentLookup<ArmyId> _armyLookup;
         private ComponentLookup<AIFidelityTier> _tierLookup;
+        private ComponentLookup<StealthStats> _stealthStatsLookup;
+        private ComponentLookup<StealthProfile> _stealthProfileLookup;
+        private ComponentLookup<PerceptionStats> _perceptionStatsLookup;
+        private BufferLookup<Interrupt> _interruptLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -67,6 +74,10 @@ namespace PureDOTS.Systems.Perception
             _bandLookup = state.GetComponentLookup<BandId>(true);
             _armyLookup = state.GetComponentLookup<ArmyId>(true);
             _tierLookup = state.GetComponentLookup<AIFidelityTier>(true);
+            _stealthStatsLookup = state.GetComponentLookup<StealthStats>(true);
+            _stealthProfileLookup = state.GetComponentLookup<StealthProfile>(true);
+            _perceptionStatsLookup = state.GetComponentLookup<PerceptionStats>(true);
+            _interruptLookup = state.GetBufferLookup<Interrupt>();
         }
 
         [BurstCompile]
@@ -111,6 +122,10 @@ namespace PureDOTS.Systems.Perception
             _bandLookup.Update(ref state);
             _armyLookup.Update(ref state);
             _tierLookup.Update(ref state);
+            _stealthStatsLookup.Update(ref state);
+            _stealthProfileLookup.Update(ref state);
+            _perceptionStatsLookup.Update(ref state);
+            _interruptLookup.Update(ref state);
 
             var useSignalField = SystemAPI.HasSingleton<SignalFieldState>();
             var hasGrid = SystemAPI.HasSingleton<SpatialGridConfig>() && SystemAPI.HasSingleton<SpatialGridState>();
@@ -166,6 +181,25 @@ namespace PureDOTS.Systems.Perception
             var collisionWorld = hasPhysics
                 ? SystemAPI.GetSingleton<PhysicsWorldSingleton>().PhysicsWorld.CollisionWorld
                 : default;
+
+            // Check for obstacle grid fallback
+            var hasObstacleGrid = false;
+            ObstacleGridConfig obstacleConfig = default;
+            DynamicBuffer<ObstacleGridCell> obstacleCells = default;
+            if (hasGrid)
+            {
+                var gridEntity = SystemAPI.GetSingletonEntity<SpatialGridConfig>();
+                if (SystemAPI.HasComponent<ObstacleGridConfig>(gridEntity) &&
+                    SystemAPI.HasBuffer<ObstacleGridCell>(gridEntity))
+                {
+                    obstacleConfig = SystemAPI.GetComponentRO<ObstacleGridConfig>(gridEntity).ValueRO;
+                    if (obstacleConfig.Enabled != 0)
+                    {
+                        obstacleCells = SystemAPI.GetBuffer<ObstacleGridCell>(gridEntity);
+                        hasObstacleGrid = true;
+                    }
+                }
+            }
 
             var candidateEntities = hasGrid ? new NativeList<Entity>(64, Allocator.Temp) : default;
             var rayFilter = CollisionFilter.Default;
@@ -377,36 +411,70 @@ namespace PureDOTS.Systems.Perception
                             sensorMedium,
                             target.Medium);
 
-                        if (confidence > 0f && hasPhysics)
+                        if (confidence > 0f)
                         {
                             // Budgeted LOS refinement (Radius → FOV → LOS).
-                            if (hasBroker)
+                            bool losBlocked = false;
+                            if (hasPhysics)
                             {
-                                countersRW.ValueRW.LosRaysAttemptedThisTick++;
-                                if (brokerRW.ValueRO.RemainingLosRays > 0)
+                                if (hasBroker)
                                 {
-                                    brokerRW.ValueRW.RemainingLosRays--;
-                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
-
-                                    var input = new RaycastInput
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosChecksPhysicsThisTick++;
+                                    if (brokerRW.ValueRO.RemainingLosRays > 0)
                                     {
-                                        Start = sensorPos,
-                                        End = target.Position,
-                                        Filter = rayFilter
-                                    };
+                                        brokerRW.ValueRW.RemainingLosRays--;
+                                        countersRW.ValueRW.LosRaysGrantedThisTick++;
 
-                                    if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                        var input = new RaycastInput
+                                        {
+                                            Start = sensorPos,
+                                            End = target.Position,
+                                            Filter = rayFilter
+                                        };
+
+                                        if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                        {
+                                            losBlocked = true;
+                                        }
+                                    }
+                                    else
                                     {
-                                        confidence = 0f;
+                                        brokerRW.ValueRW.DeferredLosRays++;
+                                        countersRW.ValueRW.LosRaysDeferredThisTick++;
+                                        // Soft-cap degrade: keep a weak visual belief but reduce confidence.
+                                        confidence *= 0.5f;
                                     }
                                 }
-                                else
+                            }
+                            else if (hasObstacleGrid)
+                            {
+                                // Use obstacle grid fallback
+                                if (!ObstacleGridUtilities.CheckLOS(sensorPos, target.Position, gridConfig, obstacleConfig, obstacleCells))
                                 {
-                                    brokerRW.ValueRW.DeferredLosRays++;
-                                    countersRW.ValueRW.LosRaysDeferredThisTick++;
-                                    // Soft-cap degrade: keep a weak visual belief but reduce confidence.
-                                    confidence *= 0.5f;
+                                    losBlocked = true;
                                 }
+                                if (hasBroker)
+                                {
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
+                                    countersRW.ValueRW.LosChecksObstacleGridThisTick++;
+                                }
+                            }
+                            else
+                            {
+                                // LOS unknown: apply confidence penalty
+                                confidence *= 0.5f;
+                                if (hasBroker)
+                                {
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosChecksUnknownThisTick++;
+                                }
+                            }
+
+                            if (losBlocked)
+                            {
+                                confidence = 0f;
                             }
                         }
 
@@ -522,34 +590,69 @@ namespace PureDOTS.Systems.Perception
                             sensorMedium,
                             target.Medium);
 
-                        if (confidence > 0f && hasPhysics)
+                        if (confidence > 0f)
                         {
-                            if (hasBroker)
+                            // Budgeted LOS refinement for EM channel
+                            bool losBlocked = false;
+                            if (hasPhysics)
                             {
-                                countersRW.ValueRW.LosRaysAttemptedThisTick++;
-                                if (brokerRW.ValueRO.RemainingLosRays > 0)
+                                if (hasBroker)
                                 {
-                                    brokerRW.ValueRW.RemainingLosRays--;
-                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
-
-                                    var input = new RaycastInput
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosChecksPhysicsThisTick++;
+                                    if (brokerRW.ValueRO.RemainingLosRays > 0)
                                     {
-                                        Start = sensorPos,
-                                        End = target.Position,
-                                        Filter = rayFilter
-                                    };
+                                        brokerRW.ValueRW.RemainingLosRays--;
+                                        countersRW.ValueRW.LosRaysGrantedThisTick++;
 
-                                    if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                        var input = new RaycastInput
+                                        {
+                                            Start = sensorPos,
+                                            End = target.Position,
+                                            Filter = rayFilter
+                                        };
+
+                                        if (collisionWorld.CastRay(input, out var hit) && hit.Entity != target.Entity)
+                                        {
+                                            losBlocked = true;
+                                        }
+                                    }
+                                    else
                                     {
-                                        confidence = 0f;
+                                        brokerRW.ValueRW.DeferredLosRays++;
+                                        countersRW.ValueRW.LosRaysDeferredThisTick++;
+                                        confidence *= 0.5f;
                                     }
                                 }
-                                else
+                            }
+                            else if (hasObstacleGrid)
+                            {
+                                // Use obstacle grid fallback
+                                if (!ObstacleGridUtilities.CheckLOS(sensorPos, target.Position, gridConfig, obstacleConfig, obstacleCells))
                                 {
-                                    brokerRW.ValueRW.DeferredLosRays++;
-                                    countersRW.ValueRW.LosRaysDeferredThisTick++;
-                                    confidence *= 0.5f;
+                                    losBlocked = true;
                                 }
+                                if (hasBroker)
+                                {
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosRaysGrantedThisTick++;
+                                    countersRW.ValueRW.LosChecksObstacleGridThisTick++;
+                                }
+                            }
+                            else
+                            {
+                                // LOS unknown: apply confidence penalty
+                                confidence *= 0.5f;
+                                if (hasBroker)
+                                {
+                                    countersRW.ValueRW.LosRaysAttemptedThisTick++;
+                                    countersRW.ValueRW.LosChecksUnknownThisTick++;
+                                }
+                            }
+
+                            if (losBlocked)
+                            {
+                                confidence = 0f;
                             }
                         }
 
@@ -606,35 +709,136 @@ namespace PureDOTS.Systems.Perception
                             _armyLookup,
                             factionRelationships.AsArray());
 
-                        perceivedBuffer.Add(new PerceivedEntity
-                        {
-                            TargetEntity = target.Entity,
-                            DetectedChannels = detectedChannels,
-                            Confidence = math.saturate(bestConfidence),
-                            Distance = distance,
-                            Direction = direction,
-                            FirstDetectedTick = timeState.Tick, // TODO: Track persistent first detection
-                            LastSeenTick = timeState.Tick,
-                            ThreatLevel = target.ThreatLevel,
-                            Relationship = relation.Score,
-                            RelationKind = relation.Kind,
-                            RelationFlags = relation.Flags
-                        });
+                        // Apply stealth check if target is stealthed
+                        float finalConfidence = math.saturate(bestConfidence);
+                        StealthCheckResult stealthResult = StealthCheckResult.RemainsUndetected;
 
-                        perceptionCount++;
-
-                        // Track highest threat
-                        if (target.ThreatLevel > highestThreat)
+                        if (_stealthProfileLookup.HasComponent(target.Entity) || _stealthStatsLookup.HasComponent(target.Entity))
                         {
-                            highestThreat = target.ThreatLevel;
-                            highestThreatEntity = target.Entity;
+                            // Target has stealth - perform stealth check
+                            float stealthRating = 0f;
+                            if (_stealthProfileLookup.HasComponent(target.Entity))
+                            {
+                                stealthRating = _stealthProfileLookup[target.Entity].EffectiveRating;
+                            }
+                            else if (_stealthStatsLookup.HasComponent(target.Entity))
+                            {
+                                var stats = _stealthStatsLookup[target.Entity];
+                                stealthRating = stats.EffectiveRating;
+                            }
+
+                            // Get perception rating for detector
+                            // Primary source: PerceptionStats.EffectiveRating (if available)
+                            // Fallback: Scale sensor acuity to 0-100 range for compatibility
+                            // Note: Acuity is typically 0-1, so scaling by 50 provides conservative fallback
+                            // (50% of max rating) rather than assuming perfect perception (100%).
+                            float perceptionRating = 0f;
+                            if (_perceptionStatsLookup.HasComponent(entity))
+                            {
+                                perceptionRating = _perceptionStatsLookup[entity].EffectiveRating;
+                            }
+                            else
+                            {
+                                // Fallback: convert acuity (0-1) to rating scale (0-100)
+                                // Using 50x multiplier provides conservative baseline (50% max at acuity=1.0)
+                                perceptionRating = capability.ValueRO.Acuity * 50f;
+                            }
+
+                            // Get alertness modifier (0-1)
+                            float alertnessModifier = 0f;
+                            if (_perceptionStatsLookup.HasComponent(entity))
+                            {
+                                alertnessModifier = _perceptionStatsLookup[entity].AlertnessLevel / 2f; // 0-2 scale to 0-1
+                            }
+
+                            // Roll stealth check (deterministic seed from tick + entity IDs)
+                            uint randomSeed = (uint)(timeState.Tick * 7919 + entity.Index * 9973 + target.Entity.Index * 8191);
+                            stealthResult = StealthDetectionService.RollStealthCheck(
+                                stealthRating,
+                                perceptionRating,
+                                alertnessModifier,
+                                randomSeed);
+
+                            // Apply confidence penalty based on stealth check result
+                            finalConfidence = StealthDetectionService.ApplyStealthConfidencePenalty(bestConfidence, stealthResult);
+
+                            // Skip adding to perception buffer if entity remains undetected
+                            if (stealthResult == StealthCheckResult.RemainsUndetected || finalConfidence <= 0f)
+                            {
+                                // Entity remains undetected - do not add to buffer or emit interrupts
+                                continue;
+                            }
+
+                            // Emit interrupts for detection events (only when actually detected)
+                            if (_interruptLookup.HasBuffer(entity))
+                            {
+                                var interruptBuffer = _interruptLookup[entity];
+                                InterruptType interruptType = InterruptType.None;
+                                InterruptPriority priority = InterruptPriority.Normal;
+
+                                switch (stealthResult)
+                                {
+                                    case StealthCheckResult.Suspicious:
+                                        interruptType = InterruptType.NewThreatDetected; // Use existing interrupt type
+                                        priority = InterruptPriority.Low;
+                                        break;
+                                    case StealthCheckResult.Spotted:
+                                        interruptType = InterruptType.NewThreatDetected;
+                                        priority = InterruptPriority.Normal;
+                                        break;
+                                    case StealthCheckResult.Exposed:
+                                        interruptType = InterruptType.IdentityExposed; // Use existing interrupt type
+                                        priority = InterruptPriority.High;
+                                        break;
+                                }
+
+                                if (interruptType != InterruptType.None)
+                                {
+                                    InterruptUtils.EmitPerception(
+                                        ref interruptBuffer,
+                                        interruptType,
+                                        entity,
+                                        target.Entity,
+                                        target.Position,
+                                        timeState.Tick,
+                                        priority);
+                                }
+                            }
                         }
 
-                        // Track nearest
-                        if (distSq < nearestDistSq)
+                        // Only add to buffer if confidence > 0 (entity was actually detected)
+                        if (finalConfidence > 0f)
                         {
-                            nearestDistSq = distSq;
-                            nearestEntity = target.Entity;
+                            perceivedBuffer.Add(new PerceivedEntity
+                            {
+                                TargetEntity = target.Entity,
+                                DetectedChannels = detectedChannels,
+                                Confidence = finalConfidence,
+                                Distance = distance,
+                                Direction = direction,
+                                FirstDetectedTick = timeState.Tick, // TODO: Track persistent first detection
+                                LastSeenTick = timeState.Tick,
+                                ThreatLevel = target.ThreatLevel,
+                                Relationship = relation.Score,
+                                RelationKind = relation.Kind,
+                                RelationFlags = relation.Flags
+                            });
+
+                            perceptionCount++;
+
+                            // Track highest threat
+                            if (target.ThreatLevel > highestThreat)
+                            {
+                                highestThreat = target.ThreatLevel;
+                                highestThreatEntity = target.Entity;
+                            }
+
+                            // Track nearest
+                            if (distSq < nearestDistSq)
+                            {
+                                nearestDistSq = distSq;
+                                nearestEntity = target.Entity;
+                            }
                         }
                     }
                 }
@@ -704,7 +908,8 @@ namespace PureDOTS.Systems.Perception
                 {
                     return 0f; // Outside FOV
                 }
-                // TODO Phase 2: Actual LOS raycast query
+                // Note: LOS raycast/obstacle grid check is performed in caller (PerceptionUpdateSystem)
+                // This method only evaluates channel-specific detection rules
             }
 
             // Range decay (simple linear for Phase 1)
@@ -894,6 +1099,7 @@ namespace PureDOTS.Systems.Perception
         private BufferLookup<SenseOrganState> _organLookup;
         private BufferLookup<SignalFieldCell> _signalFieldLookup;
         private ComponentLookup<SensorySignalEmitter> _emitterLookup;
+        private ComponentLookup<AIFidelityTier> _tierLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -907,6 +1113,7 @@ namespace PureDOTS.Systems.Perception
             _organLookup = state.GetBufferLookup<SenseOrganState>(true);
             _signalFieldLookup = state.GetBufferLookup<SignalFieldCell>(true);
             _emitterLookup = state.GetComponentLookup<SensorySignalEmitter>(true);
+            _tierLookup = state.GetComponentLookup<AIFidelityTier>(true);
         }
 
         [BurstCompile]
@@ -952,8 +1159,14 @@ namespace PureDOTS.Systems.Perception
             _mediumLookup.Update(ref state);
             _organLookup.Update(ref state);
             _emitterLookup.Update(ref state);
+            _tierLookup.Update(ref state);
 
             var cells = _signalFieldLookup[gridEntity];
+
+            // Track signal cells sampled (if counters available)
+            var hasCounters = SystemAPI.HasSingleton<UniversalPerformanceCounters>();
+            var countersRW = hasCounters ? SystemAPI.GetSingletonRW<UniversalPerformanceCounters>() : default;
+            int cellsSampledThisEntity = 0;
 
             foreach (var (capability, signalState, transform, entity) in
                 SystemAPI.Query<RefRO<SenseCapability>, RefRW<SignalPerceptionState>, RefRO<LocalTransform>>()
@@ -978,13 +1191,78 @@ namespace PureDOTS.Systems.Perception
 
                 if ((enabledChannels & (PerceptionChannel.Smell | PerceptionChannel.Hearing | PerceptionChannel.EM)) != 0)
                 {
-                    SpatialHash.Quantize(transform.ValueRO.Position, gridConfig, out var cellCoords);
-                    var cellId = SpatialHash.Flatten(in cellCoords, in gridConfig);
-                    if ((uint)cellId < (uint)gridConfig.CellCount)
+                    // Calculate sampling radius from capability range
+                    var baseRadiusCells = math.min(
+                        signalConfig.MaxSamplingRadiusCells,
+                        (int)math.ceil(capability.ValueRO.Range / math.max(gridConfig.CellSize, 1e-3f)));
+
+                    // Apply tier-based multiplier
+                    var tierMultiplier = 1.0f;
+                    if (_tierLookup.HasComponent(entity))
                     {
-                        var cell = cells[cellId];
-                        SampleDecayed(cell, timeState.Tick, smellDecayPerTick, soundDecayPerTick, emDecayPerTick, out smellLevel, out soundLevel, out emLevel);
+                        var tier = _tierLookup[entity].Tier;
+                        tierMultiplier = tier switch
+                        {
+                            AILODTier.Tier0_Full => signalConfig.Tier0SamplingRadiusMultiplier,
+                            AILODTier.Tier1_Reduced => signalConfig.Tier1SamplingRadiusMultiplier,
+                            AILODTier.Tier2_EventDriven => signalConfig.Tier2SamplingRadiusMultiplier,
+                            AILODTier.Tier3_Aggregate => signalConfig.Tier3SamplingRadiusMultiplier,
+                            _ => 1.0f
+                        };
                     }
+
+                    var radiusCells = (int)math.ceil(baseRadiusCells * tierMultiplier);
+                    radiusCells = math.max(1, math.min(radiusCells, signalConfig.MaxSamplingRadiusCells));
+
+                    // Multi-cell neighborhood sampling with falloff
+                    SpatialHash.Quantize(transform.ValueRO.Position, gridConfig, out var sensorCellCoords);
+                    var sensorPos = transform.ValueRO.Position;
+                    var maxDistance = radiusCells * gridConfig.CellSize;
+                    var falloffExp = signalConfig.SamplingFalloffExponent;
+
+                    cellsSampledThisEntity = 0;
+                    for (int dx = -radiusCells; dx <= radiusCells; dx++)
+                    {
+                        for (int dz = -radiusCells; dz <= radiusCells; dz++)
+                        {
+                            var neighborCoords = sensorCellCoords + new int3(dx, 0, dz);
+                            if (!IsWithinBounds(neighborCoords, gridConfig.CellCounts))
+                            {
+                                continue;
+                            }
+
+                            var cellId = SpatialHash.Flatten(in neighborCoords, in gridConfig);
+                            if ((uint)cellId >= (uint)gridConfig.CellCount)
+                            {
+                                continue;
+                            }
+
+                            cellsSampledThisEntity++;
+                            var cell = cells[cellId];
+                            SampleDecayed(cell, timeState.Tick, smellDecayPerTick, soundDecayPerTick, emDecayPerTick, out var cellSmell, out var cellSound, out var cellEM);
+
+                            // Calculate distance from sensor position to cell center
+                            var cellCenter = gridConfig.WorldMin + (neighborCoords + new float3(0.5f)) * gridConfig.CellSize;
+                            var distance = math.length(sensorPos - cellCenter);
+                            var normalizedDistance = math.min(1f, distance / math.max(maxDistance, 1e-3f));
+                            var weight = math.pow(1f - normalizedDistance, falloffExp);
+
+                            smellLevel += cellSmell * weight;
+                            soundLevel += cellSound * weight;
+                            emLevel += cellEM * weight;
+                        }
+                    }
+
+                    // Track cells sampled
+                    if (hasCounters)
+                    {
+                        countersRW.ValueRW.SignalCellsSampledThisTick += cellsSampledThisEntity;
+                    }
+
+                    // Clamp accumulated levels to MaxStrength
+                    smellLevel = math.min(signalConfig.MaxStrength, smellLevel);
+                    soundLevel = math.min(signalConfig.MaxStrength, soundLevel);
+                    emLevel = math.min(signalConfig.MaxStrength, emLevel);
                 }
 
                 if (_emitterLookup.HasComponent(entity))
@@ -1119,6 +1397,16 @@ namespace PureDOTS.Systems.Perception
             smell = cell.Smell * math.pow(smellDecayPerTick, ticksF);
             sound = cell.Sound * math.pow(soundDecayPerTick, ticksF);
             em = cell.EM * math.pow(emDecayPerTick, ticksF);
+        }
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsWithinBounds(in int3 coords, in int3 maxCounts)
+        {
+            return coords.x >= 0 && coords.y >= 0 && coords.z >= 0
+                && coords.x < maxCounts.x
+                && coords.y < maxCounts.y
+                && coords.z < maxCounts.z;
         }
     }
 }

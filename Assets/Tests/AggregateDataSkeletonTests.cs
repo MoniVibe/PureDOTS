@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using PureDOTS.Runtime.Aggregate;
+using PureDOTS.Runtime.Aggregates;
 using Unity.Entities;
 
 namespace PureDOTS.Tests
@@ -104,4 +104,3 @@ namespace PureDOTS.Tests
         }
     }
 }
-

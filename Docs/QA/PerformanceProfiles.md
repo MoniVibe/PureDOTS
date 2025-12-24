@@ -57,6 +57,55 @@ This document tracks performance metrics for Burst-enabled builds across differe
 - Vessel update time: TBD
 - Camera update time: TBD
 
+## Intent System Performance
+
+**Systems**:
+- `IntentValidationSystem`
+- `IntentProcessingSystem`
+- `EnhancedInterruptHandlerSystem`
+- `InterruptHandlerSystem`
+
+**Configuration**:
+- Burst compilation: Enabled for all intent systems
+- Update group: `InterruptSystemGroup`
+- Memory allocations: Zero per frame (Burst-compiled)
+
+**Performance Targets**:
+
+| Entity Count | Target Time | System |
+|--------------|-------------|--------|
+| 100 | < 0.1ms | IntentValidationSystem |
+| 1,000 | < 1ms | IntentValidationSystem |
+| 10,000 | < 10ms | IntentValidationSystem |
+| 50,000 | < 50ms | IntentValidationSystem |
+| 100,000 | < 100ms | IntentValidationSystem |
+
+**Scaling Characteristics**:
+- Linear scaling expected (performance should scale linearly with entity count)
+- Sublinear scaling acceptable (due to cache efficiency at larger scales)
+
+**Memory Targets**:
+- Zero allocations per frame (verified in Burst-compiled systems)
+- Bounded buffer sizes: Interrupt buffers ≤ 8 elements (InternalBufferCapacity)
+- QueuedIntent buffers ≤ 4 elements (InternalBufferCapacity)
+
+**Current Baselines** (to be measured):
+- 100 entities: TBD
+- 1,000 entities: TBD
+- 10,000 entities: TBD
+- 50,000 entities: TBD
+- 100,000 entities: TBD
+
+**Performance Test Thresholds**:
+- Test thresholds include 2x safety margin for CI variance (Stopwatch precision ~1ms, environment variance, warm-up effects)
+- Actual targets: 100 entities < 1ms, 1,000 entities < 2ms, 10,000 entities < 20ms
+- Stopwatch precision limits sub-millisecond targets (0.1ms target is unrealistic, using 1ms as reasonable approximation)
+
+**Test Coverage**:
+- Performance tests: `IntentSystemIntegrationTests.cs`, `IntentSystemPerformanceTests.cs`
+- Regression detection: CI integration ready (performance thresholds defined with 2x safety margin)
+- Burst compilation: Validated via `[BurstCompile]` attribute checks
+
 ## Profiling Methodology
 
 1. **Setup**: Enable Burst compilation for all hot-path assemblies

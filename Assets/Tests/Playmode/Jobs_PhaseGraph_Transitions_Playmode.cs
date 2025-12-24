@@ -37,7 +37,7 @@ namespace PureDOTS.Tests.Playmode
         }
         
         [Test]
-        public void JobPhase_Transitions_AssignedToActing()
+        public void JobPhase_Transitions_AssignedToGathering()
         {
             // Arrange: Create villager with assigned job
             var villager = EntityManager.CreateEntity();
@@ -48,18 +48,18 @@ namespace PureDOTS.Tests.Playmode
                 Phase = VillagerJob.JobPhase.Assigned
             });
             
-            // Act: Transition to Acting (simulated)
+            // Act: Transition to Gathering (simulated)
             var job = EntityManager.GetComponentData<VillagerJob>(villager);
-            job.Phase = VillagerJob.JobPhase.Acting;
+            job.Phase = VillagerJob.JobPhase.Gathering;
             EntityManager.SetComponentData(villager, job);
             
-            // Assert: Phase should be Acting
+            // Assert: Phase should be Gathering
             job = EntityManager.GetComponentData<VillagerJob>(villager);
-            Assert.AreEqual(VillagerJob.JobPhase.Acting, job.Phase, "Job should transition to Acting phase");
+            Assert.AreEqual(VillagerJob.JobPhase.Gathering, job.Phase, "Job should transition to Gathering phase");
         }
         
         [Test]
-        public void JobPhase_Transitions_ActingToDelivering()
+        public void JobPhase_Transitions_GatheringToDelivering()
         {
             // Arrange: Create villager with acting job
             var villager = EntityManager.CreateEntity();
@@ -67,7 +67,7 @@ namespace PureDOTS.Tests.Playmode
             EntityManager.AddComponentData(villager, new VillagerJob
             {
                 Type = VillagerJob.JobType.Gatherer,
-                Phase = VillagerJob.JobPhase.Acting
+                Phase = VillagerJob.JobPhase.Gathering
             });
             
             // Act: Transition to Delivering (simulated)
@@ -122,15 +122,15 @@ namespace PureDOTS.Tests.Playmode
             job.Phase = VillagerJob.JobPhase.Assigned;
             EntityManager.SetComponentData(villager, job);
             
-            // Assigned → Acting
+            // Assigned → Gathering
             job = EntityManager.GetComponentData<VillagerJob>(villager);
             Assert.AreEqual(VillagerJob.JobPhase.Assigned, job.Phase);
-            job.Phase = VillagerJob.JobPhase.Acting;
+            job.Phase = VillagerJob.JobPhase.Gathering;
             EntityManager.SetComponentData(villager, job);
             
-            // Acting → Delivering
+            // Gathering → Delivering
             job = EntityManager.GetComponentData<VillagerJob>(villager);
-            Assert.AreEqual(VillagerJob.JobPhase.Acting, job.Phase);
+            Assert.AreEqual(VillagerJob.JobPhase.Gathering, job.Phase);
             job.Phase = VillagerJob.JobPhase.Delivering;
             EntityManager.SetComponentData(villager, job);
             
@@ -168,4 +168,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

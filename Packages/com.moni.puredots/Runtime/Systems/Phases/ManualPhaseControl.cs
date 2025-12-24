@@ -1,6 +1,7 @@
-#if PUREDOTS_LEGACY_CAMERA
-using PureDOTS.Runtime.Camera;
 using Unity.Entities;
+#if CAMERA_RIG_ENABLED
+using PureDOTS.Runtime.Camera;
+#endif
 
 namespace PureDOTS.Systems
 {
@@ -17,7 +18,11 @@ namespace PureDOTS.Systems
         {
             var defaults = new ManualPhaseControl
             {
+#if CAMERA_RIG_ENABLED
                 CameraPhaseEnabled = CameraRigService.IsEcsCameraEnabled,
+#else
+                CameraPhaseEnabled = false,
+#endif
                 TransportPhaseEnabled = true,
                 HistoryPhaseEnabled = true
             };
@@ -31,4 +36,3 @@ namespace PureDOTS.Systems
         }
     }
 }
-#endif

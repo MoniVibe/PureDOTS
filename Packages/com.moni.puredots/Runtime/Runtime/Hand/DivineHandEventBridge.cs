@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
+using HandInteractionState = PureDOTS.Runtime.Components.HandState;
 
 namespace PureDOTS.Runtime.Hand
 {
@@ -11,7 +12,7 @@ namespace PureDOTS.Runtime.Hand
     public sealed class DivineHandEventBridge : MonoBehaviour
     {
         [Serializable]
-        public sealed class HandStateUnityEvent : UnityEvent<HandState, HandState> { }
+        public sealed class HandStateUnityEvent : UnityEvent<HandInteractionState, HandInteractionState> { }
 
         [Serializable]
         public sealed class HandTypeUnityEvent : UnityEvent<ushort> { }
@@ -25,7 +26,7 @@ namespace PureDOTS.Runtime.Hand
         [SerializeField] HandAmountUnityEvent onHandAmountChanged;
         [SerializeField] bool logEvents;
 
-        public event Action<HandState, HandState> HandStateChanged;
+        public event Action<HandInteractionState, HandInteractionState> HandStateChanged;
         public event Action<ushort> HandTypeChanged;
         public event Action<int, int> HandAmountChanged;
 

@@ -83,13 +83,19 @@ Per tick update (deterministic):
 5) Adsorb/Desorb: exchange `OdorAir ↔ OdorSurface`.
 
 Sampling:
-- Smell reads local concentration (thresholded) and optionally gradient (directional tracking).
+- Multi-cell neighborhood sampling with range-based radius and distance falloff:
+  - Sampling radius: `min(MaxSamplingRadiusCells, ceil(Range / CellSize))`
+  - Tier-based multiplier: High-tier entities (near camera) sample more cells, low-tier sample fewer
+  - Falloff curve: `weight = pow(1f - distance / maxDistance, SamplingFalloffExponent)`
+  - Accumulated weighted signal levels clamped to `MaxStrength`
+- Smell reads accumulated concentration from neighborhood (thresholded) and optionally gradient (directional tracking).
 - Output can be:
-  - “entity perceived” (if attribution is possible), or
-  - “signal perceived” (smoke smell from NW) if attribution is not possible.
+  - "entity perceived" (if attribution is possible), or
+  - "signal perceived" (smoke smell from NW) if attribution is not possible.
 
 Hard rule:
 - Never scan all odor emitters for every smeller. Always sample the field/graph cache.
+- Multi-cell sampling improves fidelity but increases cost (9-25 cells vs 1 cell per sensor).
 
 ### Order 5 — Sound as impulse events + medium-gated propagation
 
@@ -207,3 +213,44 @@ Then downstream AI pulls details on demand (belief query, investigation behavior
 - Emitters learn they were heard only when an explicit acknowledgment arrives (nod, verbal reply, psionic ping, etc.).
 - "Someone must have heard me" is an inference, not a system guarantee.
 - Pursuers do not auto-know a fleeing entity's location unless they can sense it or infer it; predators may avoid acknowledging the target.
+
+---
+
+## Obstacle Grid Population
+
+The obstacle grid provides deterministic LOS fallback for worlds without physics or for headless testing scenarios.
+
+### Workflow
+
+1. **Bootstrap**: `ObstacleGridBootstrapSystem` runs once at startup (or on-demand via `ObstacleGridRebuildRequest`).
+   - Queries entities with `ObstacleTag` + `LocalTransform`
+   - Quantizes obstacle positions to grid cells
+   - Calculates blocking height from `ObstacleHeight` component or default (1.0)
+   - Updates `ObstacleGridCell.BlockingHeight` for affected cells
+
+2. **Authoring**: Use `ObstacleGridAuthoring` component on GameObjects:
+   - Adds `ObstacleTag` marker at bake time
+   - Optionally adds `ObstacleHeight` (from collider bounds or manual override)
+   - Can be disabled if world uses physics for LOS
+
+3. **Usage**: `PerceptionUpdateSystem` checks obstacle grid when:
+   - Physics world is unavailable
+   - `ObstacleGridConfig.Enabled == 1` on spatial grid entity
+   - Falls back to confidence penalty if neither physics nor obstacle grid available
+
+### When to Use
+
+- **Headless testing**: Deterministic LOS without physics simulation
+- **Deterministic scenarios**: Rewind-compatible LOS checks
+- **Optional**: Can be disabled if using physics for LOS (default fallback)
+
+### Configuration
+
+- `ObstacleGridConfig` on spatial grid entity:
+  - `CellSize`: Should match spatial grid cell size
+  - `ObstacleThreshold`: Height threshold for blocking (default: 0.5)
+  - `Enabled`: 0 = disabled, 1 = enabled
+
+- `ObstacleGridCell` buffer: One element per spatial grid cell
+  - `BlockingHeight`: Maximum height in cell
+  - `LastUpdatedTick`: For invalidation tracking

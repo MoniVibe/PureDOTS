@@ -4,6 +4,7 @@
     "references": [
         "PureDOTS.Systems",
         "PureDOTS.Runtime",
+        "PureDOTS.Core",
         "PureDOTS.Config",
         "PureDOTS.Input",
         "Unity.Entities",

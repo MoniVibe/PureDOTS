@@ -1,7 +1,9 @@
 using NUnit.Framework;
 using PureDOTS.Config;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Villagers;
+using PureDOTS.Systems;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -156,4 +158,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

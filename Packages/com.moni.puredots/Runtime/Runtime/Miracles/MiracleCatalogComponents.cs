@@ -33,7 +33,10 @@ namespace PureDOTS.Runtime.Miracles
         Point = 0,
         Area = 1,
         Actor = 2,
-        Self = 3
+        Self = 3,
+        GroundOnly = 4,
+        FriendlyOnly = 5,
+        EnemyOnly = 6
     }
     
     /// <summary>
@@ -46,6 +49,39 @@ namespace PureDOTS.Runtime.Miracles
         Support = 2,
         Control = 3,
         Epic = 4
+    }
+
+    /// <summary>
+    /// Delivery archetype for how a miracle manifests after activation.
+    /// </summary>
+    public enum MiracleDeliveryType : byte
+    {
+        Instant = 0,
+        Projectile = 1,
+        SustainedArea = 2,
+        Beacon = 3,
+        Chain = 4
+    }
+
+    /// <summary>
+    /// Charging behavior that determines how intensity/radius scale over time.
+    /// </summary>
+    public enum MiracleChargeModel : byte
+    {
+        None = 0,
+        HoldToTier = 1,
+        HoldToContinuous = 2
+    }
+    
+    /// <summary>
+    /// Easing used by miracles that charge continuously over time.
+    /// </summary>
+    public enum MiracleChargeCurveType : byte
+    {
+        Linear = 0,
+        EaseIn = 1,
+        EaseOut = 2,
+        EaseInOut = 3
     }
     
     /// <summary>
@@ -63,6 +99,24 @@ namespace PureDOTS.Runtime.Miracles
         public byte AllowedDispenseModes; // bitmask: Sustained, Throw
         public TargetingMode TargetingMode;
         public MiracleCategory Category;
+        public MiracleDeliveryType DeliveryType;
+        public MiracleChargeModel ChargeModel;
+        public byte TierCount;             // Number of progressive charge tiers (min 1)
+        public BlobArray<float> TierTimeThresholds; // Seconds required per tier (HoldToTier)
+        public float ChargeTimeMax;         // Max seconds to hit full charge (HoldToContinuous)
+        public float RadiusChargeMultiplier;// 1.0 = no change, 2.0 = double radius at max
+        public float StrengthChargeMultiplier;// Intensity multiplier at max charge
+        public MiracleChargeCurveType ChargeCurveType; // Curve for HoldToContinuous
+        public float BaseDuration;         // Base lifetime seconds (0 = instant/persistent)
+        public float BaseStrength;         // Base intensity multiplier
+        public float CostUpfront;          // Explicit upfront cost (mirrors BasePrayerCost for now)
+        public float CostPerSecond;        // Sustained drain per second
+        
+        // Throw mechanics (for Throw dispense mode)
+        public float ThrowSpeedBase;        // Base throw speed (m/s)
+        public float ThrowSpeedChargeMultiplier; // Speed multiplier at max charge (1.0 = no change)
+        public float ThrowArcBoost;         // Upward arc component (0 = flat, >0 = arc)
+        public float ThrowCollisionRadius;  // Collider radius for token (default 0.5f)
     }
     
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Text;
 using Godgame.Registry;
+using PureDOTS.Runtime.Miracles;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Entities;
 using UnityEngine;
@@ -24,6 +25,7 @@ namespace Godgame.Debugging
         private EntityManager _entityManager;
         private EntityQuery _snapshotQuery;
         private EntityQuery _telemetryQuery;
+        private EntityQuery _chargeDisplayQuery;
         private uint _lastTelemetryVersion;
         private readonly StringBuilder _builder = new StringBuilder(256);
 
@@ -79,6 +81,7 @@ namespace Godgame.Debugging
             DisposeQueries();
             _snapshotQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<GodgameRegistrySnapshot>());
             _telemetryQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryStream>());
+            _chargeDisplayQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<MiracleChargeDisplayData>());
             _lastTelemetryVersion = 0;
             return true;
         }
@@ -102,8 +105,14 @@ namespace Godgame.Debugging
                 _telemetryQuery.Dispose();
             }
 
+            if (_chargeDisplayQuery != default)
+            {
+                _chargeDisplayQuery.Dispose();
+            }
+
             _snapshotQuery = default;
             _telemetryQuery = default;
+            _chargeDisplayQuery = default;
         }
 
         private void UpdateSnapshotUI()
@@ -167,6 +176,24 @@ namespace Godgame.Debugging
                 _builder.Append(snapshot.TotalMiracleEnergyCost.ToString("0.0"));
                 _builder.Append("  Cooldown:");
                 _builder.Append(snapshot.TotalMiracleCooldownSeconds.ToString("0.0"));
+
+                // Add charge display if available
+                if (_chargeDisplayQuery != default && !_chargeDisplayQuery.IsEmptyIgnoreFilter)
+                {
+                    var chargeDisplay = _chargeDisplayQuery.GetSingleton<MiracleChargeDisplayData>();
+                    if (chargeDisplay.IsCharging != 0)
+                    {
+                        _builder.Append("  Charge:");
+                        _builder.Append(chargeDisplay.ChargePercent.ToString("0"));
+                        _builder.Append("%");
+                        if (chargeDisplay.CurrentTier > 0)
+                        {
+                            _builder.Append(" Tier:");
+                            _builder.Append(chargeDisplay.CurrentTier);
+                        }
+                    }
+                }
+
                 miracleSummaryText.text = _builder.ToString();
             }
         }

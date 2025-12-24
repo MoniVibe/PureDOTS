@@ -1,5 +1,4 @@
 using PureDOTS.Runtime.Aggregate;
-using PureDOTS.Runtime.Aggregate;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Guild;
 using Unity.Burst;

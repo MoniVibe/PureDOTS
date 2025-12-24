@@ -1,3 +1,4 @@
+#if INCLUDE_PUREDOTS_INTEGRATION_TESTS
 using NUnit.Framework;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
@@ -170,3 +171,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+#endif

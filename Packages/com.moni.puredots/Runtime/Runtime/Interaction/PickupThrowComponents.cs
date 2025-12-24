@@ -54,6 +54,17 @@ namespace PureDOTS.Runtime.Interaction
         /// Time since throw started (in seconds).
         /// </summary>
         public float TimeSinceThrow;
+
+        /// <summary>
+        /// Previous position before integration (for tunneling prevention sweep tests).
+        /// Updated by ThrownObjectTransformIntegratorSystem before moving.
+        /// </summary>
+        public float3 PrevPosition;
+
+        /// <summary>
+        /// Previous rotation before integration (used for swept-orientation casts).
+        /// </summary>
+        public quaternion PrevRotation;
     }
 
     /// <summary>

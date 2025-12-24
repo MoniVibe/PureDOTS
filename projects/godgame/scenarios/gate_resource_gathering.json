@@ -1,0 +1,57 @@
+{
+  "scenarioId": "gate_resource_gathering",
+  "seed": 54321,
+  "runTicks": 1200,
+  "entityCounts": [
+    {
+      "registryId": "godgame.villager",
+      "count": 3
+    },
+    {
+      "registryId": "godgame.storehouse",
+      "count": 1
+    },
+    {
+      "registryId": "godgame.resource_node",
+      "count": 2
+    }
+  ],
+  "inputCommands": [],
+  "assertions": [
+    {
+      "metricId": "villager.count",
+      "op": 5,
+      "expectedValue": 3.0,
+      "description": "Villager count should remain at 3 (no deaths)"
+    },
+    {
+      "metricId": "deliveries.count",
+      "op": 5,
+      "expectedValue": 5.0,
+      "description": "At least 5 resource deliveries should occur (GOAP planning)"
+    },
+    {
+      "metricId": "constraints.respected",
+      "op": 6,
+      "expectedValue": 1.0,
+      "description": "All constraints must be respected (no trespass violations)"
+    },
+    {
+      "metricId": "goap.plans.created",
+      "op": 5,
+      "expectedValue": 3.0,
+      "description": "At least 3 GOAP plans should be created"
+    },
+    {
+      "metricId": "deterministic.replay",
+      "op": 6,
+      "expectedValue": 1.0,
+      "description": "Scenario must pass deterministic replay validation"
+    }
+  ],
+  "behavior": null,
+  "telemetry": null
+}
+
+
+

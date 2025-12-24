@@ -52,6 +52,22 @@ namespace PureDOTS.Systems.Physics
 
             var config = SystemAPI.GetSingleton<PhysicsConfig>();
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Dev-only assert: Unity Physics gravity must be zero to prevent double-gravity
+            // ThrownObjectGravitySystem is the single authority for thrown object gravity
+            if (SystemAPI.TryGetSingleton<PhysicsStep>(out var physicsStep))
+            {
+                if (math.lengthsq(physicsStep.Gravity) > 0.0001f)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        "[PhysicsBootstrap] Unity Physics gravity is non-zero! " +
+                        $"Gravity = {physicsStep.Gravity}. " +
+                        "This will cause double-gravity for thrown objects. " +
+                        "Set PhysicsStep.Gravity = float3.zero to use ECS-authoritative gravity.");
+                }
+            }
+#endif
+
             // Early out if both game modes have physics disabled
             if (!config.IsSpace4XPhysicsEnabled && !config.IsGodgamePhysicsEnabled)
             {

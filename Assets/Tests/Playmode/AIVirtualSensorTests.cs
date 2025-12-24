@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Miracles;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Systems.AI;
@@ -162,7 +161,7 @@ namespace PureDOTS.Tests.Playmode
             _entityManager.SetComponentData(miracle, new MiracleDefinition
             {
                 Type = MiracleType.Rain,
-                CastingMode = MiracleCastingMode.Token,
+                CastingMode = MiracleCastingMode.Instant,
                 BaseRadius = 2f,
                 BaseIntensity = 1f,
                 BaseCost = 1f,

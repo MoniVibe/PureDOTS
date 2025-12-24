@@ -199,8 +199,18 @@ public struct PerceivedEntity : IBufferElementData
 **Flow:**
 1. Emitters update signal field cells (smell/sound/EM strength)
 2. Cells decay over time
-3. Entities with `SenseCapability` sample signal field at their position
+3. Entities with `SenseCapability` sample signal field using multi-cell neighborhood sampling:
+   - Sampling radius calculated from `SenseCapability.Range` (capped by `MaxSamplingRadiusCells`)
+   - Tier-based multiplier applied if `AIFidelityTier` component exists
+   - Distance-based falloff applied: `weight = pow(1f - distance / maxDistance, SamplingFalloffExponent)`
+   - Accumulated weighted signal levels clamped to `MaxStrength`
 4. Signal levels converted to confidence based on acuity/noise floor
+
+**Multi-Cell Sampling:**
+- Default: 5x5 neighborhood (radiusCells=2)
+- High-tier entities sample more cells (1.5x multiplier) for fidelity
+- Low-tier entities sample fewer cells (0.5-0.75x multiplier) for performance
+- Falloff exponent (default 1.5f) controls how quickly signal strength decreases with distance
 
 #### Sense Organs (Optional Enhancement)
 
@@ -232,8 +242,14 @@ public struct SenseOrganState : IBufferElementData
 - Signature-based confidence (signature × range decay × acuity - noise floor)
 - Medium filtering (channels filtered by medium type: gas, liquid, vacuum, solid)
 
+**Line-of-Sight Policy:**
+- **Priority order:** Physics raycast → Obstacle grid → Confidence penalty
+- Vision/EM channels require LOS; other channels don't
+- Obstacle grid is deterministic fallback for headless/non-physics scenarios
+- "LOS unknown" case reduces confidence by 50% but doesn't block detection
+- Implemented via `ObstacleGridUtilities.CheckLOS` using Bresenham/DDA line stepping
+
 **Future (Phase 2):**
-- Line-of-sight raycasts (occlusion)
 - Channel-specific behaviors (smell diffuses, sound propagates, EM blocked by obstacles)
 - Pluggable detection rules (blob assets for custom detection logic)
 
@@ -650,7 +666,14 @@ public enum IntentMode : byte
 
 ---
 
-**For Implementers:** Focus on completing virtual sensors, adding LOS queries, and implementing intent validation  
+**Miracle Detection Contract:**
+- All miracle effect entities MUST have `LocalTransform` component (spatial residency)
+- All miracle effect entities MUST have `SensorSignature` OR `SensorySignalEmitter` (at least one required)
+- **Direct detection:** Use `SensorSignature` for visible/contact miracles (e.g., Fireball with Vision channel)
+- **Field detection:** Use `SensorySignalEmitter` for ambient/area miracles (e.g., Food miracle with Smell channel)
+- Validation enforced by `MiracleDetectabilityBootstrapSystem` (debug builds only)
+
+**For Implementers:** Focus on completing virtual sensors, implementing intent validation, and ensuring miracles are detectable  
 **For Architects:** Review interrupt-driven architecture, consider commitment/anti-thrashing for action stability  
 **For Designers:** Use utility curves for tuning behavior, design interrupt types for reactive behaviors
 

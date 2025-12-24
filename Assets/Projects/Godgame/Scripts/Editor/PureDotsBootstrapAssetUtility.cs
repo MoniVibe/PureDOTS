@@ -64,6 +64,31 @@ namespace Godgame.Editor
                 {
                     id = "ore",
                     displayColor = new Color(0.46f, 0.46f, 0.48f, 1f)
+                },
+                new ResourceTypeDefinition
+                {
+                    id = "planks",
+                    displayColor = new Color(0.76f, 0.53f, 0.28f, 1f)
+                },
+                new ResourceTypeDefinition
+                {
+                    id = "metal_ingots",
+                    displayColor = new Color(0.72f, 0.72f, 0.76f, 1f)
+                },
+                new ResourceTypeDefinition
+                {
+                    id = "furniture",
+                    displayColor = new Color(0.6f, 0.45f, 0.3f, 1f)
+                },
+                new ResourceTypeDefinition
+                {
+                    id = "fur_coats",
+                    displayColor = new Color(0.8f, 0.72f, 0.6f, 1f)
+                },
+                new ResourceTypeDefinition
+                {
+                    id = "luxury_goods",
+                    displayColor = new Color(0.9f, 0.82f, 0.35f, 1f)
                 }
             };
 

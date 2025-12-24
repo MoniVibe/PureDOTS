@@ -11,6 +11,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Core;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -157,6 +158,7 @@ namespace PureDOTS.Runtime.Scenarios
                 }
 
                 PopulateTelemetry(world.EntityManager, rewindEntity, ref result);
+                ApplyScenarioMetricsAndAssertionsInternal(world.EntityManager, in scenario, ref result);
             }
 
             ScenarioRunIssueReporter.FlushToResult(ref result);
@@ -428,6 +430,110 @@ namespace PureDOTS.Runtime.Scenarios
             TryCollectSpace4XMiningTelemetry(entityManager, ref result);
         }
 
+        private static void ApplyScenarioMetricsAndAssertionsInternal(
+            EntityManager entityManager,
+            in ResolvedScenario scenario,
+            ref ScenarioRunResult result)
+        {
+            if (!ScenarioMetricsUtility.TryGetMetricsBuffer(entityManager, out var metricBuffer))
+            {
+                if (scenario.Assertions.Length == 0)
+                {
+                    return;
+                }
+            }
+
+            var metricMap = new NativeHashMap<FixedString64Bytes, double>(
+                math.max(1, metricBuffer.IsCreated ? metricBuffer.Length : 0),
+                Allocator.Temp);
+            try
+            {
+                if (metricBuffer.IsCreated)
+                {
+                    for (int i = 0; i < metricBuffer.Length; i++)
+                    {
+                        var sample = metricBuffer[i];
+                        metricMap[sample.Key] = sample.Value;
+                        result.AddMetric(sample.Key.ToString(), sample.Value);
+                    }
+
+                    metricBuffer.Clear();
+                }
+
+                if (scenario.Assertions.Length == 0)
+                {
+                    return;
+                }
+
+                var assertionResults = new NativeList<ScenarioAssertionResult>(Allocator.Temp);
+                try
+                {
+                    ValidateAssertions(in scenario.Assertions, in metricMap, ref assertionResults);
+                    if (assertionResults.Length == 0)
+                    {
+                        return;
+                    }
+
+                    result.AssertionResults ??= new List<ScenarioAssertionReport>(assertionResults.Length);
+                    for (int i = 0; i < assertionResults.Length; i++)
+                    {
+                        var nativeResult = assertionResults[i];
+                        result.AssertionResults.Add(ScenarioAssertionReport.FromNative(nativeResult));
+
+                        if (!nativeResult.Passed)
+                        {
+                            var message = nativeResult.FailureMessage.ToString();
+                            if (string.IsNullOrWhiteSpace(message))
+                            {
+                                message = $"Assertion failed for metric {nativeResult.MetricId}";
+                            }
+
+                            ScenarioExitUtility.ReportScenarioContract("ScenarioAssertionFailed", message);
+                        }
+                    }
+                }
+                finally
+                {
+                    assertionResults.Dispose();
+                }
+            }
+            finally
+            {
+                metricMap.Dispose();
+            }
+        }
+
+        private static void ValidateAssertions(
+            in NativeList<ScenarioAssertion> assertions,
+            in NativeHashMap<FixedString64Bytes, double> metrics,
+            ref NativeList<ScenarioAssertionResult> results)
+        {
+            results.Clear();
+
+            for (int i = 0; i < assertions.Length; i++)
+            {
+                var assertion = assertions[i];
+                var metricId = assertion.MetricId;
+
+                if (!metrics.TryGetValue(metricId, out var actualValue))
+                {
+                    results.Add(new ScenarioAssertionResult
+                    {
+                        MetricId = metricId,
+                        Passed = false,
+                        ActualValue = 0.0,
+                        ExpectedValue = assertion.ExpectedValue,
+                        Operator = assertion.Operator,
+                        FailureMessage = new FixedString128Bytes($"Metric '{metricId}' not found")
+                    });
+                    continue;
+                }
+
+                var result = ScenarioAssertionEvaluator.Validate(assertion, actualValue);
+                results.Add(result);
+            }
+        }
+
         private static readonly string Space4XTelemetryTypeName = "Space4X.Registry.Space4XMiningTelemetry";
 
         private static Type s_space4xTelemetryType;
@@ -692,6 +798,7 @@ namespace PureDOTS.Runtime.Scenarios
         public uint PerformanceBudgetTick;
         public List<ScenarioMetric> Metrics;
         public List<ScenarioRunIssue> Issues;
+        public List<ScenarioAssertionReport> AssertionResults;
         public ScenarioSeverity HighestSeverity;
         public ExitPolicy ExitPolicy;
 
@@ -719,5 +826,31 @@ namespace PureDOTS.Runtime.Scenarios
     {
         public string Key;
         public double Value;
+    }
+
+    /// <summary>
+    /// Managed-friendly assertion payload included in ScenarioRunResult output.
+    /// </summary>
+    public struct ScenarioAssertionReport
+    {
+        public string MetricId;
+        public bool Passed;
+        public double ActualValue;
+        public double ExpectedValue;
+        public ScenarioAssertionOperator Operator;
+        public string FailureMessage;
+
+        public static ScenarioAssertionReport FromNative(in ScenarioAssertionResult result)
+        {
+            return new ScenarioAssertionReport
+            {
+                MetricId = result.MetricId.ToString(),
+                Passed = result.Passed,
+                ActualValue = result.ActualValue,
+                ExpectedValue = result.ExpectedValue,
+                Operator = result.Operator,
+                FailureMessage = result.FailureMessage.ToString()
+            };
+        }
     }
 }

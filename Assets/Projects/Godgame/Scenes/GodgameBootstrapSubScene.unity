@@ -254,6 +254,16 @@ MonoBehaviour:
     baseValue: 0.6
   - resourceTypeId: ore
     baseValue: 0.8
+  - resourceTypeId: planks
+    baseValue: 0.9
+  - resourceTypeId: metal_ingots
+    baseValue: 1.1
+  - resourceTypeId: furniture
+    baseValue: 1.5
+  - resourceTypeId: fur_coats
+    baseValue: 1.6
+  - resourceTypeId: luxury_goods
+    baseValue: 1.8
 --- !u!114 &446807943
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -275,6 +285,16 @@ MonoBehaviour:
     resourceClass: 1
   - resourceTypeId: ore
     resourceClass: 1
+  - resourceTypeId: planks
+    resourceClass: 2
+  - resourceTypeId: metal_ingots
+    resourceClass: 2
+  - resourceTypeId: furniture
+    resourceClass: 3
+  - resourceTypeId: fur_coats
+    resourceClass: 3
+  - resourceTypeId: luxury_goods
+    resourceClass: 3
 --- !u!1 &1501061591
 GameObject:
   m_ObjectHideFlags: 0

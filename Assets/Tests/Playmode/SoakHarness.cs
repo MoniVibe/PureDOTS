@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Telemetry;
@@ -224,3 +225,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+#endif

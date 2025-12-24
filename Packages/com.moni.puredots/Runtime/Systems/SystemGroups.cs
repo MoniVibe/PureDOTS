@@ -149,6 +149,16 @@ namespace PureDOTS.Systems
     public partial class CombatSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
+    /// System group for thrown object physics setup (velocity, gravity, etc.).
+    /// Runs before BuildPhysicsWorld to ensure thrown objects have proper initial state.
+    /// Game-specific systems (e.g., MiracleTokenVelocitySystem) should use this group for ordering.
+    /// </summary>
+    /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
+    [UpdateInGroup(typeof(PhysicsSystemGroup), OrderFirst = true)]
+    [UpdateBefore(typeof(Unity.Physics.Systems.BuildPhysicsWorld))]
+    public partial class ThrownObjectPrePhysicsSystemGroup : InstrumentedComponentSystemGroup { }
+
+    /// <summary>
     /// System group for divine hand interaction.
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>

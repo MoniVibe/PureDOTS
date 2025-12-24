@@ -77,7 +77,6 @@ namespace PureDOTS.Runtime.Camera
         float pitch;
         float distance;
 
-        EventSystem cachedEventSystem;
         Transform runtimePivot;
         Vector3 pivotPosition;
         bool warnedMissingGroundMask;
@@ -187,11 +186,13 @@ namespace PureDOTS.Runtime.Camera
             if (inputRouter == null)
             {
                 EnsureInputRouter();
-                return;
+                if (inputRouter == null)
+                {
+                    return;
+                }
             }
 
             UpdateInputSnapshot();
-            UpdateRouterContext();
             ConsumeCameraRequests();
 
             // Basic pan/orbit/zoom based on snapshot
@@ -270,36 +271,11 @@ namespace PureDOTS.Runtime.Camera
             _hasSnapshot = BW2CameraInputBridge.TryGetSnapshot(out _inputSnapshot);
         }
 
-        void UpdateRouterContext()
-        {
-            if (!_hasSnapshot) return;
-            if (targetCamera == null) return;
-
-            var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
-
-            // simple ground hit
-            bool hasHit = UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask);
-            _routerContext = new RmbContext(
-                _inputSnapshot.PointerPosition,
-                ray,
-                pointerOverUI: false,
-                hasWorldHit: hasHit,
-                worldHit: hasHit ? hit : default,
-                worldPoint: hasHit ? hit.point : float3.zero,
-                worldLayer: hasHit && hit.collider != null ? hit.collider.gameObject.layer : -1,
-                deltaTime: UnityEngine.Time.deltaTime,
-                unscaledDeltaTime: UnityEngine.Time.unscaledDeltaTime,
-                handHasCargo: false,
-                hitStorehouse: false,
-                hitPile: false,
-                hitDraggable: false,
-                hitGround: hasHit);
-        }
-
         void ApplyInput()
         {
             if (!_hasSnapshot) return;
-            bool pointerOverUI = IsPointerOverUI();
+            var context = inputRouter.CurrentContext;
+            bool pointerOverUI = context.PointerOverUI;
 
             bool panAllowed = allowPanOverUI || !pointerOverUI;
             bool orbitAllowed = allowOrbitOverUI || !pointerOverUI;
@@ -316,22 +292,7 @@ namespace PureDOTS.Runtime.Camera
                 orbitPivotLocked = true;
                 lockedDistance = distance;
 
-                if (targetCamera != null)
-                {
-                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
-                    if (UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask))
-                    {
-                        lockedPivot = hit.point;
-                    }
-                    else
-                    {
-                        lockedPivot = _currentCameraPosition;
-                    }
-                }
-                else
-                {
-                    lockedPivot = _currentCameraPosition;
-                }
+                lockedPivot = context.HasWorldHit ? (Vector3)context.WorldPoint : _currentCameraPosition;
             }
 
             if (orbitPivotLocked)
@@ -349,15 +310,14 @@ namespace PureDOTS.Runtime.Camera
             }
 
             // Grab-land pan (LMB drag): lock a ground plane on press; keep the grabbed point under cursor.
-            if (!orbitHeld && panAllowed && targetCamera != null)
+            if (!orbitHeld && panAllowed)
             {
                 if (_inputSnapshot.LeftPressed)
                 {
-                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
-                    if (UnityEngine.Physics.Raycast(ray, out var hit, groundProbeDistance, groundMask))
+                    if (context.HasWorldHit && context.HitGround)
                     {
                         grabbing = true;
-                        panWorldStart = hit.point;
+                        panWorldStart = (Vector3)context.WorldPoint;
                         panPivotStart = _currentCameraPosition;
                         panPlane = new Plane(Vector3.up, panWorldStart);
                     }
@@ -369,10 +329,13 @@ namespace PureDOTS.Runtime.Camera
 
                 if (grabbing && _inputSnapshot.LeftHeld)
                 {
-                    var ray = targetCamera.ScreenPointToRay(_inputSnapshot.PointerPosition);
-                    if (panPlane.Raycast(ray, out float enter))
+                    if (context.HasWorldHit)
                     {
-                        Vector3 worldNow = ray.GetPoint(enter);
+                        Vector3 worldNow = (Vector3)context.WorldPoint;
+                        if (panPlane.Raycast(context.PointerRay, out float enter))
+                        {
+                            worldNow = context.PointerRay.GetPoint(enter);
+                        }
                         Vector3 deltaWorld = panWorldStart - worldNow;
                         _currentCameraPosition = panPivotStart + deltaWorld;
                     }
@@ -412,20 +375,6 @@ namespace PureDOTS.Runtime.Camera
             _currentCameraWorldPos = camPos;
             Pivot = _currentCameraPosition;
             _currentCameraRotation = rot;
-        }
-
-        bool IsPointerOverUI()
-        {
-            if (cachedEventSystem == null || !cachedEventSystem.enabled)
-            {
-#if UNITY_2023_1_OR_NEWER
-                cachedEventSystem = EventSystem.current ?? UnityEngine.Object.FindFirstObjectByType<EventSystem>();
-#else
-                cachedEventSystem = EventSystem.current ?? UnityEngine.Object.FindObjectOfType<EventSystem>();
-#endif
-            }
-
-            return cachedEventSystem != null && cachedEventSystem.IsPointerOverGameObject();
         }
 
         void PublishRig()

@@ -20,6 +20,7 @@ namespace PureDOTS.Runtime.Scenarios
         public int runTicks = 600;
         public ScenarioEntityCountData[] entityCounts = Array.Empty<ScenarioEntityCountData>();
         public ScenarioInputCommandData[] inputCommands = Array.Empty<ScenarioInputCommandData>();
+        public ScenarioAssertionData[] assertions = Array.Empty<ScenarioAssertionData>();
         public BehaviorScenarioOverrideData behavior = null;
         public TelemetryScenarioOverrideData telemetry = null;
     }
@@ -128,6 +129,7 @@ namespace PureDOTS.Runtime.Scenarios
         public int RunTicks;
         public NativeList<ScenarioEntityCount> EntityCounts;
         public NativeList<ScenarioInputCommand> InputCommands;
+        public NativeList<ScenarioAssertion> Assertions;
         public bool HasBehaviorOverride;
         public BehaviorScenarioOverride BehaviorOverride;
         public bool HasTelemetryOverride;
@@ -143,6 +145,11 @@ namespace PureDOTS.Runtime.Scenarios
             if (InputCommands.IsCreated)
             {
                 InputCommands.Dispose();
+            }
+
+            if (Assertions.IsCreated)
+            {
+                Assertions.Dispose();
             }
         }
     }
@@ -222,6 +229,7 @@ namespace PureDOTS.Runtime.Scenarios
                 RunTicks = math.max(1, data.runTicks),
                 EntityCounts = new NativeList<ScenarioEntityCount>(allocator),
                 InputCommands = new NativeList<ScenarioInputCommand>(allocator),
+                Assertions = new NativeList<ScenarioAssertion>(allocator),
                 HasBehaviorOverride = data.behavior != null,
                 BehaviorOverride = data.behavior != null
                     ? ConvertBehaviorOverride(data.behavior)
@@ -263,6 +271,25 @@ namespace PureDOTS.Runtime.Scenarios
                         Tick = command.tick,
                         CommandId = new FixedString64Bytes(command.commandId),
                         Payload = new FixedString64Bytes(command.payload ?? string.Empty)
+                    });
+                }
+            }
+
+            if (data.assertions != null)
+            {
+                foreach (var assertionData in data.assertions)
+                {
+                    if (string.IsNullOrWhiteSpace(assertionData.metricId))
+                    {
+                        continue;
+                    }
+
+                    scenario.Assertions.Add(new ScenarioAssertion
+                    {
+                        MetricId = new FixedString64Bytes(assertionData.metricId),
+                        Operator = assertionData.op,
+                        ExpectedValue = assertionData.expectedValue,
+                        Description = new FixedString128Bytes(assertionData.description ?? string.Empty)
                     });
                 }
             }

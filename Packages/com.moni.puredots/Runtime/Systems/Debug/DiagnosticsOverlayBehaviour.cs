@@ -1,10 +1,11 @@
-#if PUREDOTS_LEGACY_CAMERA
-using PureDOTS.Runtime.Camera;
 using PureDOTS.Runtime.Config;
 using PureDOTS.Runtime.Debugging;
 using PureDOTS.Systems;
 using Unity.Entities;
 using UnityEngine;
+#if CAMERA_RIG_ENABLED
+using PureDOTS.Runtime.Camera;
+#endif
 
 namespace PureDOTS.Runtime.Debugging
 {
@@ -29,10 +30,10 @@ namespace PureDOTS.Runtime.Debugging
 
         private void DrawWindow(int id)
         {
+#if CAMERA_RIG_ENABLED
             GUILayout.Label($"Camera Mode: {(CameraRigService.IsEcsCameraEnabled ? "ECS" : "Hybrid")}");
-            if (CameraRigService.HasState)
+            if (CameraRigService.TryGetState(out var state))
             {
-                var state = CameraRigService.Current;
                 CameraRigMath.DerivePose(in state, out var position, out _);
                 GUILayout.Label($"Pos: {position.x:F1}, {position.y:F1}, {position.z:F1}");
                 GUILayout.Label($"Focus: {state.Focus.x:F1}, {state.Focus.y:F1}, {state.Focus.z:F1}");
@@ -42,6 +43,9 @@ namespace PureDOTS.Runtime.Debugging
             {
                 GUILayout.Label("Camera state unavailable");
             }
+#else
+            GUILayout.Label("Camera Mode: N/A (CameraRig disabled)");
+#endif
 
             var world = World.DefaultGameObjectInjectionWorld;
             if (world != null && world.IsCreated)
@@ -87,5 +91,4 @@ namespace PureDOTS.Runtime.Debugging
         }
     }
 }
-#endif
 

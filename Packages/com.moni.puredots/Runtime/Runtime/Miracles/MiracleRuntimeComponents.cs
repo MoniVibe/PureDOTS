@@ -96,10 +96,11 @@ namespace PureDOTS.Runtime.Components
     /// <summary>
     /// Token representing an active miracle instance.
     /// Used to track and identify miracles in the system.
+    /// Legacy structure - kept for backward compatibility.
     /// </summary>
-    public struct MiracleToken : IComponentData
+    public struct MiracleTokenLegacy : IComponentData
     {
-        public int Id;
+        public MiracleId Id;
         public MiracleType Type;
         public Entity CasterEntity;
         public Entity ConfigEntity;
@@ -120,7 +121,7 @@ namespace PureDOTS.Runtime.Components
     /// </summary>
     public struct MiracleEffect : IComponentData
     {
-        public MiracleToken Token;
+        public MiracleTokenLegacy Token;
         public float Magnitude;
         public float Duration;
         public float RemainingDuration;
@@ -190,6 +191,8 @@ namespace PureDOTS.Runtime.Components
     {
         public MiracleType Type;
         public float3 Position;
+        public float3 Normal;
+        public Entity TargetEntity;
         public float3 Direction;
         public float Impulse;
         public Entity ConfigEntity;

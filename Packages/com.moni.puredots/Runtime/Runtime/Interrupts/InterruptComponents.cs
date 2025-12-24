@@ -51,6 +51,13 @@ namespace PureDOTS.Runtime.Interrupts
         LieDetected = 36,
         IdentityExposed = 37,
 
+        // Infiltration interrupts
+        InfiltrationExposed = 60,
+        InfiltrationExtractionStarted = 61,
+        InfiltrationExtractionCompleted = 62,
+        InfiltrationExtractionFailed = 63,
+        IntelGathered = 64,
+
         // Custom interrupts (for game-specific extensions)
         Custom0 = 100,
         Custom1 = 101,
@@ -186,6 +193,7 @@ namespace PureDOTS.Runtime.Interrupts
         Defend = 8,
         Patrol = 9,
         Follow = 10,
+        Deliver = 11,
         Custom0 = 100,
         Custom1 = 101,
         Custom2 = 102,

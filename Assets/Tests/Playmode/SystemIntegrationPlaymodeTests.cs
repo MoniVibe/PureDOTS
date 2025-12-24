@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Mathematics;
 using Unity.Entities;
+using PresentationSystemGroup = PureDOTS.Systems.PresentationSystemGroup;
 
 namespace PureDOTS.Tests
 {
@@ -141,7 +142,7 @@ namespace PureDOTS.Tests
                 HandRouteSource.AuthoringBridge,
                 HandRoutePhase.Started,
                 HandRoutePriority.DumpToStorehouse,
-                DivineHandCommandType.DumpToStorehouse,
+                DivineHandCommandType.Dump,
                 Entity.Null,
                 new float3(1f, 0f, 0f),
                 new float3(0f, 1f, 0f)));
@@ -150,7 +151,7 @@ namespace PureDOTS.Tests
                 HandRouteSource.ResourceSystem,
                 HandRoutePhase.Started,
                 HandRoutePriority.ResourceSiphon,
-                DivineHandCommandType.SiphonPile,
+                DivineHandCommandType.Siphon,
                 Entity.Null,
                 new float3(2f, 0f, 0f),
                 new float3(0f, 1f, 0f)));
@@ -159,7 +160,7 @@ namespace PureDOTS.Tests
             router.Update(world.Unmanaged);
 
             var command = entityManager.GetComponentData<DivineHandCommand>(hand);
-            Assert.AreEqual(DivineHandCommandType.SiphonPile, command.Type);
+            Assert.AreEqual(DivineHandCommandType.Siphon, command.Type);
             Assert.That(command.TargetPosition.x, Is.EqualTo(2f).Within(1e-5f));
 
             // Clear buffer automatically, then enqueue cancel to ensure command resets.
@@ -167,7 +168,7 @@ namespace PureDOTS.Tests
                 HandRouteSource.ResourceSystem,
                 HandRoutePhase.Canceled,
                 HandRoutePriority.ResourceSiphon,
-                DivineHandCommandType.SiphonPile,
+                DivineHandCommandType.Siphon,
                 Entity.Null,
                 float3.zero,
                 new float3(0f, 1f, 0f)));

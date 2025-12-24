@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -952,7 +953,9 @@ namespace PureDOTS.Runtime.Spatial
             return math.normalize(normal);
         }
 
-        private static bool IsWithinBounds(int3 coords, int3 maxCounts)
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsWithinBounds(in int3 coords, in int3 maxCounts)
         {
             return coords.x >= 0 && coords.y >= 0 && coords.z >= 0
                 && coords.x < maxCounts.x

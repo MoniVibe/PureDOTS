@@ -18,14 +18,26 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(FormationCombatSystem))]
+    [UpdateAfter(typeof(CohesionEffectSystem))]
     public partial struct GroundCombatSystem : ISystem
     {
+        private ComponentLookup<FormationBonus> _formationBonusLookup;
+        private ComponentLookup<FormationIntegrity> _formationIntegrityLookup;
+        private ComponentLookup<FormationCombatConfig> _formationConfigLookup;
+        private ComponentLookup<CohesionCombatMultipliers> _cohesionMultipliersLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ScenarioState>();
+
+            _formationBonusLookup = state.GetComponentLookup<FormationBonus>(true);
+            _formationIntegrityLookup = state.GetComponentLookup<FormationIntegrity>(true);
+            _formationConfigLookup = state.GetComponentLookup<FormationCombatConfig>(true);
+            _cohesionMultipliersLookup = state.GetComponentLookup<CohesionCombatMultipliers>(true);
         }
 
         [BurstCompile]
@@ -47,6 +59,11 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            _formationBonusLookup.Update(ref state);
+            _formationIntegrityLookup.Update(ref state);
+            _formationConfigLookup.Update(ref state);
+            _cohesionMultipliersLookup.Update(ref state);
+
             var currentTime = timeState.ElapsedTime;
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
@@ -59,12 +76,13 @@ namespace PureDOTS.Systems.Combat
                 .WithEntityAccess())
             {
                 // Check if entity's group has Attack stance
-                if (!state.EntityManager.Exists(groupMembership.ValueRO.Group))
+                var groupEntity = groupMembership.ValueRO.Group;
+                if (!state.EntityManager.Exists(groupEntity))
                 {
                     continue;
                 }
 
-                var groupStance = state.EntityManager.GetComponentData<GroupStanceState>(groupMembership.ValueRO.Group);
+                var groupStance = state.EntityManager.GetComponentData<GroupStanceState>(groupEntity);
                 if (groupStance.Stance != GroupStance.Attack)
                 {
                     continue;
@@ -102,6 +120,24 @@ namespace PureDOTS.Systems.Combat
                 {
                     var enemyHealth = state.EntityManager.GetComponentData<Health>(nearestEnemy);
                     float damage = attackStatsRef.Damage;
+
+                    // Apply formation bonus (if in band with formation)
+                    if (_formationBonusLookup.HasComponent(groupEntity) &&
+                        _formationIntegrityLookup.HasComponent(groupEntity) &&
+                        _formationConfigLookup.HasComponent(groupEntity))
+                    {
+                        var bonus = _formationBonusLookup[groupEntity];
+                        var integrity = _formationIntegrityLookup[groupEntity];
+                        var config = _formationConfigLookup[groupEntity];
+                        damage *= FormationCombatService.GetFormationAttackBonus(bonus, integrity, config);
+                    }
+
+                    // Apply cohesion multipliers (if band has cohesion)
+                    if (_cohesionMultipliersLookup.HasComponent(groupEntity))
+                    {
+                        var cohesion = _cohesionMultipliersLookup[groupEntity];
+                        damage *= cohesion.DamageMultiplier;
+                    }
 
                     // Apply defense if enemy has DefenseStats
                     if (state.EntityManager.HasComponent<DefenseStats>(nearestEnemy))

@@ -310,7 +310,7 @@ namespace PureDOTS.Tests.Playmode
             var rewindEntity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(rewindEntity, new RewindState
             {
-                Mode = RewindMode.Scrub,
+                Mode = RewindMode.Rewind,
                 TargetTick = 100,
                 TickDuration = 1f / 60f,
                 MaxHistoryTicks = 600,

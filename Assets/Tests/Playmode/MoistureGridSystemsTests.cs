@@ -44,7 +44,7 @@ namespace PureDOTS.Tests
                 StartTick = 0,
                 PlaybackTick = 0,
                 PlaybackTicksPerSecond = 1f,
-                ScrubDirection = 1,
+                ScrubDirection = ScrubDirection.Forward,
                 ScrubSpeedMultiplier = 1f,
                 RewindWindowTicks = 0,
                 ActiveTrack = default
@@ -104,7 +104,7 @@ namespace PureDOTS.Tests
                 StartTick = 0,
                 PlaybackTick = 0,
                 PlaybackTicksPerSecond = 1f,
-                ScrubDirection = 1,
+                ScrubDirection = ScrubDirection.Forward,
                 ScrubSpeedMultiplier = 1f,
                 RewindWindowTicks = 0,
                 ActiveTrack = default

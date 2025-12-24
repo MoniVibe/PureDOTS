@@ -50,13 +50,25 @@ namespace Space4X.Systems
 
             var currentTime = timeState.Time;
             var deltaTime = timeState.FixedDeltaTime;
+            var currentTick = timeState.Tick;
+
+            var capabilityStateLookup = SystemAPI.GetComponentLookup<CapabilityState>(true);
+            var effectivenessLookup = SystemAPI.GetComponentLookup<CapabilityEffectiveness>(true);
+            var persistentIdLookup = SystemAPI.GetComponentLookup<PersistentId>(true);
+            capabilityStateLookup.Update(ref state);
+            effectivenessLookup.Update(ref state);
+            persistentIdLookup.Update(ref state);
 
             var job = new WeaponFireJob
             {
                 WeaponCatalog = weaponCatalog.Catalog,
                 ProjectileCatalog = projectileCatalog.Catalog,
                 CurrentTime = currentTime,
-                DeltaTime = deltaTime
+                DeltaTime = deltaTime,
+                CurrentTick = currentTick,
+                CapabilityStateLookup = capabilityStateLookup,
+                EffectivenessLookup = effectivenessLookup,
+                PersistentIdLookup = persistentIdLookup
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -69,6 +81,10 @@ namespace Space4X.Systems
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
             public float CurrentTime;
             public float DeltaTime;
+            public uint CurrentTick;
+            [ReadOnly] public ComponentLookup<CapabilityState> CapabilityStateLookup;
+            [ReadOnly] public ComponentLookup<CapabilityEffectiveness> EffectivenessLookup;
+            [ReadOnly] public ComponentLookup<PersistentId> PersistentIdLookup;
 
             public void Execute(
                 [EntityIndexInQuery] int entityInQueryIndex,
@@ -78,6 +94,17 @@ namespace Space4X.Systems
                 in TurretState turretState,
                 DynamicBuffer<ProjectileSpawnRequest> spawnRequests)
             {
+                // Check Firing capability - if disabled, skip firing
+                if (CapabilityStateLookup.HasComponent(entity))
+                {
+                    var capabilityState = CapabilityStateLookup[entity];
+                    if ((capabilityState.EnabledCapabilities & CapabilityFlags.Firing) == 0)
+                    {
+                        weaponMount.IsFiring = false;
+                        return;
+                    }
+                }
+
                 // Find weapon spec
                 if (!TryFindWeaponSpec(WeaponCatalog, weaponMount.WeaponId, out var weaponSpec))
                 {
@@ -91,13 +118,23 @@ namespace Space4X.Systems
                     return;
                 }
 
+                // Get firing effectiveness multiplier (damaged weapons reduce effectiveness)
+                float effectivenessMultiplier = 1f;
+                if (EffectivenessLookup.HasComponent(entity))
+                {
+                    var effectiveness = EffectivenessLookup[entity];
+                    effectivenessMultiplier = math.max(0f, effectiveness.FiringEffectiveness);
+                }
+
                 // Cooldown heat dissipation
                 var heatDecayRate = 0.5f; // Heat decays at 50% per second
                 weaponMount.HeatLevel = math.max(0f, weaponMount.HeatLevel - heatDecayRate * DeltaTime);
 
                 // Check if weapon can fire (heat limit, energy, cooldown)
+                // Apply effectiveness to fire rate (damaged weapons fire slower)
+                var adjustedFireRate = weaponSpec.FireRate * effectivenessMultiplier;
                 var timeSinceLastFire = CurrentTime - weaponMount.LastFireTime;
-                var fireInterval = 1f / weaponSpec.FireRate;
+                var fireInterval = 1f / math.max(0.1f, adjustedFireRate);
                 var canFire = timeSinceLastFire >= fireInterval &&
                               weaponMount.HeatLevel < 0.95f &&
                               weaponMount.EnergyReserve >= weaponSpec.EnergyCost;
@@ -126,9 +163,9 @@ namespace Space4X.Systems
 
                 // Get persistent ID for deterministic seeding
                 var shooterId = 0u;
-                if (SystemAPI.HasComponent<PersistentId>(entity))
+                if (PersistentIdLookup.HasComponent(entity))
                 {
-                    shooterId = SystemAPI.GetComponent<PersistentId>(entity).Value;
+                    shooterId = PersistentIdLookup[entity].Value;
                 }
 
                 // Create deterministic seed for this shot

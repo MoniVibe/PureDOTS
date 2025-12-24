@@ -12,8 +12,68 @@ namespace PureDOTS.Runtime.Resource
     public static class StorehouseApi
     {
         /// <summary>
-        /// Attempts to deposit resources into a storehouse.
+        /// Attempts to deposit resources into a storehouse by resource ID.
         /// Returns true if deposit was successful.
+        /// </summary>
+        public static bool TryDeposit(
+            Entity storehouseEntity,
+            FixedString64Bytes resourceTypeId,
+            float amount,
+            ref StorehouseInventory inventory,
+            DynamicBuffer<StorehouseInventoryItem> items,
+            out float depositedAmount)
+        {
+            depositedAmount = 0f;
+
+            if (amount <= 0f)
+            {
+                return false;
+            }
+
+            var capacityRemaining = math.max(0f, inventory.TotalCapacity - inventory.TotalStored);
+            if (capacityRemaining <= 0f)
+            {
+                return false;
+            }
+
+            var amountToDeposit = math.min(amount, capacityRemaining);
+            int itemIndex = -1;
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i].ResourceTypeId.Equals(resourceTypeId))
+                {
+                    itemIndex = i;
+                    break;
+                }
+            }
+
+            if (itemIndex >= 0)
+            {
+                var item = items[itemIndex];
+                item.Amount += amountToDeposit;
+                items[itemIndex] = item;
+            }
+            else
+            {
+                items.Add(new StorehouseInventoryItem
+                {
+                    ResourceTypeId = resourceTypeId,
+                    Amount = amountToDeposit,
+                    Reserved = 0f,
+                    TierId = 0,
+                    AverageQuality = 0
+                });
+            }
+
+            inventory.TotalStored += amountToDeposit;
+            depositedAmount = amountToDeposit;
+            return depositedAmount > 0f;
+        }
+
+        /// <summary>
+        /// Attempts to deposit resources into a storehouse using an index.
+        /// Prefer the overload that accepts a resource ID to avoid mismatches.
         /// </summary>
         public static bool TryDeposit(
             Entity storehouseEntity,
@@ -23,57 +83,8 @@ namespace PureDOTS.Runtime.Resource
             DynamicBuffer<StorehouseInventoryItem> items,
             out float depositedAmount)
         {
-            depositedAmount = 0f;
-            
-            if (amount <= 0f)
-            {
-                return false;
-            }
-            
-            // Check capacity
-            var capacityRemaining = inventory.TotalCapacity - inventory.TotalStored;
-            if (capacityRemaining <= 0f)
-            {
-                return false;
-            }
-            
-            // Find or create inventory item for this resource type
-            int itemIndex = -1;
-            for (int i = 0; i < items.Length; i++)
-            {
-                // Note: StorehouseInventoryItem uses ResourceTypeId (string), not index
-                // This is a simplified version - full implementation would map index to ID
-                if (items[i].ResourceTypeId.Length == 0) // Empty slot
-                {
-                    itemIndex = i;
-                    break;
-                }
-            }
-            
-            // Deposit amount (limited by capacity)
-            depositedAmount = math.min(amount, capacityRemaining);
-            inventory.TotalStored += depositedAmount;
-            
-            if (itemIndex >= 0 && itemIndex < items.Length)
-            {
-                var item = items[itemIndex];
-                item.Amount += depositedAmount;
-                items[itemIndex] = item;
-            }
-            else if (items.Length < items.Capacity)
-            {
-                // Add new item
-                items.Add(new StorehouseInventoryItem
-                {
-                    ResourceTypeId = new Unity.Collections.FixedString64Bytes($"Resource_{resourceTypeIndex}"),
-                    Amount = depositedAmount,
-                    Reserved = 0f,
-                    TierId = 0,
-                    AverageQuality = 100
-                });
-            }
-            
-            return depositedAmount > 0f;
+            var resourceTypeId = new FixedString64Bytes($"Resource_{resourceTypeIndex}");
+            return TryDeposit(storehouseEntity, resourceTypeId, amount, ref inventory, items, out depositedAmount);
         }
         
         /// <summary>

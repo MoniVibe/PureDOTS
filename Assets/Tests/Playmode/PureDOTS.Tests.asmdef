@@ -3,9 +3,12 @@
     "rootNamespace": "PureDOTS.Tests",
     "references": [
         "PureDOTS.Runtime",
+        "PureDOTS.Core",
         "PureDOTS.Systems",
         "PureDOTS.Authoring",
+        "PureDOTS.Config",
         "PureDOTS.Input",
+        "PureDOTS.Rendering",
         "PureDOTS.Tests.Support",
         "Unity.Entities",
         "Unity.Collections",
@@ -14,6 +17,7 @@
         "Unity.Physics",
         "Unity.Physics.Hybrid",
         "Unity.Physics.Systems",
+        "Unity.Burst",
         "Unity.Core"
     ],
     "includePlatforms": [

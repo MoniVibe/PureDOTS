@@ -41,6 +41,7 @@ namespace PureDOTS.Runtime.Camera
         private static bool s_hasState;
         private static int s_lastPublishFrame = -1;
         private static CameraRigType s_lastPublishRigType = CameraRigType.None;
+        private static CameraRigDiagnostics s_diagnostics;
 
         /// <summary>
         /// Fired whenever a new camera rig state is published.
@@ -54,6 +55,40 @@ namespace PureDOTS.Runtime.Camera
         /// <summary>The current authoritative camera rig state (valid only if HasState is true).</summary>
         public static CameraRigState Current => s_currentState;
 
+        /// <summary>Current diagnostics snapshot.</summary>
+        public static CameraRigDiagnostics Diagnostics => s_diagnostics;
+
+        /// <summary>
+        /// Safely gets the current camera rig state. Returns false if nothing has published yet.
+        /// </summary>
+        public static bool TryGetState(out CameraRigState state)
+        {
+            if (s_hasState)
+            {
+                state = s_currentState;
+                return true;
+            }
+
+            state = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Safely derives camera transform from the current state. Returns false if no state exists yet.
+        /// </summary>
+        public static bool TryGetTransform(out Vector3 position, out Quaternion rotation)
+        {
+            if (s_hasState)
+            {
+                CameraRigMath.DerivePose(in s_currentState, out position, out rotation);
+                return true;
+            }
+
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            return false;
+        }
+
         /// <summary>True if ECS camera mode is enabled (game-specific configuration).</summary>
         public static bool IsEcsCameraEnabled
         {
@@ -63,7 +98,7 @@ namespace PureDOTS.Runtime.Camera
                 if (s_ecsCameraVar == null)
                 {
                     RuntimeConfigRegistry.Initialize();
-                    s_ecsCameraVar = Space4XCameraConfigVars.EcsModeEnabled;
+                    s_ecsCameraVar = CameraConfigVars.EcsModeEnabled;
                 }
                 return s_ecsCameraVar != null && s_ecsCameraVar.BoolValue;
             }
@@ -78,6 +113,13 @@ namespace PureDOTS.Runtime.Camera
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             int frame = UnityTime.frameCount;
+            if (s_diagnostics.LastPublishFrame != frame)
+            {
+                s_diagnostics.PublishCountThisFrame = 0;
+            }
+
+            s_diagnostics.PublishCountThisFrame++;
+
             if (s_hasState &&
                 s_lastPublishFrame == frame &&
                 state.RigType != CameraRigType.None &&
@@ -92,6 +134,9 @@ namespace PureDOTS.Runtime.Camera
 
             s_currentState = state;
             s_hasState = true;
+            s_diagnostics.LastPublishFrame = UnityTime.frameCount;
+            s_diagnostics.LastRigType = state.RigType;
+            s_diagnostics.TotalPublishCount++;
             CameraStateChanged?.Invoke(state);
         }
     }

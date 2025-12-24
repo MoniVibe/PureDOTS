@@ -36,7 +36,9 @@ namespace PureDOTS.Runtime.Scenarios
             "exitPolicy",
             "highestSeverity",
             "issueCount",
-            "issueCodes");
+            "issueCodes",
+            "assertionCount",
+            "assertionFailures");
 
         public static void Write(string path, in ScenarioRunResult result)
         {
@@ -72,6 +74,32 @@ namespace PureDOTS.Runtime.Scenarios
                 issueCodes = codeBuilder.ToString();
             }
 
+            var assertionCount = result.AssertionResults?.Count ?? 0;
+            var failedAssertions = string.Empty;
+            if (assertionCount > 0)
+            {
+                var builder = new StringBuilder();
+                var failures = 0;
+                for (int i = 0; i < result.AssertionResults.Count; i++)
+                {
+                    var assertion = result.AssertionResults[i];
+                    if (assertion.Passed)
+                    {
+                        continue;
+                    }
+
+                    if (failures > 0)
+                    {
+                        builder.Append('|');
+                    }
+
+                    builder.Append(assertion.MetricId ?? string.Empty);
+                    failures++;
+                }
+
+                failedAssertions = builder.ToString();
+            }
+
             return string.Join(",",
                 Escape(result.ScenarioId ?? string.Empty),
                 result.Seed,
@@ -99,7 +127,9 @@ namespace PureDOTS.Runtime.Scenarios
                 Escape(result.ExitPolicy.ToString()),
                 Escape(result.HighestSeverity.ToString()),
                 issueCount,
-                Escape(issueCodes));
+                Escape(issueCodes),
+                assertionCount,
+                Escape(failedAssertions));
         }
     }
 }

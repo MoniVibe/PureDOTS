@@ -113,7 +113,7 @@ namespace PureDOTS.Runtime.Social
         public Entity EntityB;
         public InteractionOutcome Outcome;
         public sbyte IntensityChange;
-        public byte TrustChange;
+        public sbyte TrustChange;
         public bool IsMutual;             // Apply to both entities
     }
 
@@ -155,4 +155,3 @@ namespace PureDOTS.Runtime.Social
         public ushort NegativeRelations;  // Number of negative relations
     }
 }
-

@@ -2,6 +2,11 @@ using Unity.Entities;
 
 namespace PureDOTS.Runtime.Components
 {
+    /// <summary>
+    /// [OBSOLETE] Legacy hand state enum. Use PureDOTS.Runtime.Hand.HandStateType instead.
+    /// Migration: Map from PureDOTS.Runtime.Hand.HandStateType when syncing HandInteractionState.
+    /// </summary>
+    [System.Obsolete("Use PureDOTS.Runtime.Hand.HandStateType instead. This enum is deprecated and will be removed in a future version.")]
     public enum HandState : byte
     {
         Idle = 0,
@@ -13,6 +18,11 @@ namespace PureDOTS.Runtime.Components
         Cooldown = 6
     }
 
+    /// <summary>
+    /// [OBSOLETE] Legacy divine hand command type enum. Use PureDOTS.Runtime.Hand.HandCommandType instead.
+    /// Migration: Map from PureDOTS.Runtime.Hand.HandCommandType when syncing HandInteractionState.
+    /// </summary>
+    [System.Obsolete("Use PureDOTS.Runtime.Hand.HandCommandType instead. This enum is deprecated and will be removed in a future version.")]
     public enum DivineHandCommandType : byte
     {
         None = 0,
@@ -21,7 +31,11 @@ namespace PureDOTS.Runtime.Components
         Siphon = 3,
         Dump = 4,
         Miracle = 5,
-        Cancel = 6
+        Cancel = 6,
+        SiphonPile = 7,
+        DumpToStorehouse = 8,
+        DumpToConstruction = 9,
+        GroundDrip = 10
     }
 
     /// <summary>

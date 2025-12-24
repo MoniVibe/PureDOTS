@@ -1,6 +1,8 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Miracles;
 using PureDOTS.Systems;
+using GodgameToken = Godgame.Runtime.MiracleToken;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -26,7 +28,7 @@ namespace Godgame.Presentation
         {
             _bindingLookup = state.GetComponentLookup<GodgamePresentationBinding>();
             _miracleTokenQuery = SystemAPI.QueryBuilder()
-                .WithAll<MiracleToken, LocalTransform>()
+                .WithAll<GodgameToken, LocalTransform>()
                 .Build();
             _projectileEntityQuery = SystemAPI.QueryBuilder()
                 .WithAll<ProjectileEntity, LocalTransform>()
@@ -40,9 +42,9 @@ namespace Godgame.Presentation
             _bindingLookup.Update(ref state);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            // Handle MiracleToken projectiles (existing behavior)
+            // Handle Godgame.Runtime.MiracleToken projectiles (existing behavior)
             foreach (var (token, entity) in SystemAPI
-                         .Query<RefRO<MiracleToken>>()
+                         .Query<RefRO<GodgameToken>>()
                          .WithEntityAccess())
             {
                 var descriptor = GodgameMiraclePresentationDescriptors.ResolveProjectile(token.ValueRO.Type);
@@ -81,13 +83,13 @@ namespace Godgame.Presentation
             {
                 // Check if this is a miracle projectile (projectile ID starts with "miracle." or similar pattern)
                 // In practice, this would be determined by catalog or component tags
-                // For now, we'll check if entity also has MiracleToken (hybrid case)
-                bool isMiracleProjectile = state.EntityManager.HasComponent<MiracleToken>(entity);
+                // For now, we'll check if entity also has GodgameToken (hybrid case)
+                bool isMiracleProjectile = state.EntityManager.HasComponent<GodgameToken>(entity);
 
                 if (isMiracleProjectile)
                 {
                     // Get miracle token to determine type
-                    var token = state.EntityManager.GetComponentData<MiracleToken>(entity);
+                    var token = state.EntityManager.GetComponentData<GodgameToken>(entity);
                     var descriptor = GodgameMiraclePresentationDescriptors.ResolveProjectile(token.Type);
                     
                     if (descriptor.IsValid)

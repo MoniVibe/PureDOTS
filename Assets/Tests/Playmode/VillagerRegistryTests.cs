@@ -133,10 +133,7 @@ namespace PureDOTS.Tests
                 {
                     AttackDamage = 10f,
                     AttackSpeed = 1f,
-                    DefenseRating = 5f,
-                    AttackRange = 1.5f,
-                    CurrentTarget = Entity.Null,
-                    LastAttackTime = 0f
+                    CurrentTarget = Entity.Null
                 });
             }
 

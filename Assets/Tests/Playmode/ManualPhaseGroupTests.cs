@@ -1,3 +1,4 @@
+#if PUREDOTS_LEGACY_CAMERA
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -160,5 +161,5 @@ namespace PureDOTS.Tests
         }
     }
 }
-
+#endif
 

@@ -4,6 +4,8 @@ using Unity.Collections;
 using PureDOTS.Runtime.AI.GOAP;
 using PureDOTS.Runtime.Time;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Scenarios;
+using EffectiveDeltaTime = PureDOTS.Runtime.Time.EffectiveDeltaTime;
 
 namespace PureDOTS.Runtime.Systems.AI.GOAP
 {
@@ -24,20 +26,47 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
+            // Phase 2: Enable planning in headless ScenarioRunner sims
+            // Remove Record-mode-only restriction to allow planning in all sim modes
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                return;
+            
+            // Allow planning in Record mode (normal gameplay) and in headless scenarios
+            // Skip planning only in Rewind/CatchUp modes where determinism is critical
+            if (rewindState.Mode == RewindMode.Rewind || rewindState.Mode == RewindMode.CatchUp)
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
-            float deltaTime = timeState.DeltaTime;
+            float globalDelta = timeState.DeltaTime;
 
-            // Update goal insistence
+            // Resolve scenario entity once for Burst-compatible metrics
+            Entity scenarioEntity = Entity.Null;
+            if (SystemAPI.TryGetSingleton<ScenarioEntitySingleton>(out var scenarioSingleton))
+            {
+                scenarioEntity = scenarioSingleton.Value;
+            }
+            else if (SystemAPI.HasSingleton<ScenarioInfo>())
+            {
+                scenarioEntity = SystemAPI.GetSingletonEntity<ScenarioInfo>();
+            }
+
+            // Get metric buffer lookup
+            var metricLookup = SystemAPI.GetBufferLookup<ScenarioMetricSample>(isReadOnly: false);
+            metricLookup.Update(ref state);
+
+            // Update goal insistence (use effective delta for time-aware entities)
+            var effectiveDeltaLookup = SystemAPI.GetComponentLookup<EffectiveDeltaTime>(true);
+            effectiveDeltaLookup.Update(ref state);
+            
             foreach (var (goals, entity) in 
                 SystemAPI.Query<DynamicBuffer<AIGoal>>()
                     .WithEntityAccess())
             {
                 var goalsBuffer = goals;
-                GOAPHelpers.UpdateGoalInsistence(ref goalsBuffer, deltaTime);
+                // Use effective delta if available, otherwise global delta
+                float delta = TimeAwareHelpers.GetEffectiveDelta(effectiveDeltaLookup, entity, globalDelta);
+                GOAPHelpers.UpdateGoalInsistence(ref goalsBuffer, delta);
             }
 
             // Create/update plans
@@ -84,6 +113,10 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
                         if (planLength > 0)
                         {
                             planner.ValueRW.CurrentAction = planBuffer[0].ActionId;
+                            if (scenarioEntity != Entity.Null && metricLookup.HasBuffer(scenarioEntity))
+                            {
+                                ScenarioMetricsUtility.AddMetric(ref metricLookup, scenarioEntity, "goap.plans.created", 1.0);
+                            }
                         }
                     }
                 }
@@ -109,7 +142,12 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
+            // Phase 2: Enable utility evaluation in headless ScenarioRunner sims
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                return;
+            
+            // Allow utility evaluation in Record mode and headless scenarios
+            if (rewindState.Mode == RewindMode.Rewind || rewindState.Mode == RewindMode.CatchUp)
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -177,7 +215,12 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
+            // Phase 2: Enable directive processing in headless ScenarioRunner sims
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
+                return;
+            
+            // Allow directive processing in Record mode and headless scenarios
+            if (rewindState.Mode == RewindMode.Rewind || rewindState.Mode == RewindMode.CatchUp)
                 return;
 
             var timeState = SystemAPI.GetSingleton<TimeState>();

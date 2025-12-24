@@ -221,6 +221,24 @@ All "flexibility" lives here. The kernel expects policies that map:
 
 ---
 
+## Runtime Notes (Implementation Snapshot – Dec 2025)
+
+These notes capture the current PureDOTS implementation so designers know which assumptions are already enforced at runtime.
+
+1. **Birth / Reproduction Pipeline**
+   - Entities that can reproduce must carry both `ReproductionState` and `OffspringConfig`.
+   - `OffspringConfig.OffspringTypeId` is resolved through an `OffspringPrefabRegistry` singleton (`OffspringPrefabEntry { OffspringTypeId, Prefab }`). Register prefab archetypes per game so newborns inherit the full component stack.
+   - When no prefab is registered the kernel falls back to a lightweight spawn path that seeds `LifecycleState`, `VillagerId` (auto-sequenced), `VillagerStats`, `VillagerNeeds`, `VillagerFlags`, alignment/behavior/initiative defaults, and fresh `EntityRelation` buffers. This keeps downstream systems functional even without per-game archetypes.
+   - Parent/child relations are created immediately; breeder disciples only need the mother relation (no father requirement), and these births intentionally stay outside dynasties until promoted later.
+
+2. **Dynasty Promotion Rule**
+   - Families auto-promote to dynasties when **either** (a) the family tree reaches the 4th generation (`generation >= 4`) or (b) `FamilyReputation.ReputationScore >= 50`.
+   - Promotion creates a new dynasty entity, copies lineage/member buffers via `DynastyService`, and marks the family with `DynastyPromotionComplete` so the flow runs exactly once. Additional newborns continue to stream through the dynasty lineage system afterward.
+
+These runtime notes are additive to the policy descriptions above; whenever design changes, update both the policies and this snapshot section.
+
+---
+
 ## Lifecycle State Machines (conceptual)
 
 ### Embodiment

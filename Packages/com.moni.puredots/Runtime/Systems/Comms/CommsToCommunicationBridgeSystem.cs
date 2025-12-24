@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Comms;
 using PureDOTS.Runtime.Communication;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using Unity.Burst;
 using Unity.Collections;

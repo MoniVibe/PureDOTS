@@ -1,3 +1,4 @@
+#if INCLUDE_GODGAME_IN_PUREDOTS
 using NUnit.Framework;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Registry;
@@ -184,3 +185,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+#endif

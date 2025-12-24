@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Comms;
 using PureDOTS.Runtime.Communication;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Perception;
@@ -67,6 +68,7 @@ namespace PureDOTS.Systems.Communication
                          .Query<RefRO<CommEndpoint>, DynamicBuffer<CommSendRequest>>()
                          .WithEntityAccess())
             {
+                var sendRequestsBuffer = sendRequests;
                 if (sendRequests.Length == 0)
                 {
                     continue;
@@ -79,27 +81,28 @@ namespace PureDOTS.Systems.Communication
 
                 var outbox = EnsureOutbox(ref state, entity);
 
-                for (int i = 0; i < sendRequests.Length && remaining > 0; i++)
+                for (int i = 0; i < sendRequestsBuffer.Length && remaining > 0; i++)
                 {
-                    var request = sendRequests[i];
+                    var request = sendRequestsBuffer[i];
+                    var payloadId32 = new FixedString32Bytes(request.PayloadId);
                     if (request.MessageId == 0)
                     {
                         var interruptType = SelectInterruptType(request.MessageType);
                         request.MessageId = CommsDeterminism.ComputeToken(
                             timeState.Tick,
                             entity,
-                            request.PayloadId,
+                            payloadId32,
                             interruptType);
-                        sendRequests[i] = request;
+                        sendRequestsBuffer[i] = request;
                     }
 
-                    var entry = BuildOutboxEntry(in request, endpoint.ValueRO);
+                    var entry = BuildOutboxEntry(in request, endpoint.ValueRO, payloadId32);
                     outbox.Add(entry);
                     UpsertSemantic(ref semanticsBuffer, in request, timeState.Tick);
                     remaining--;
                 }
 
-                sendRequests.Clear();
+                sendRequestsBuffer.Clear();
             }
         }
 
@@ -123,7 +126,10 @@ namespace PureDOTS.Systems.Communication
             return state.EntityManager.GetBuffer<CommsMessageSemantic>(commStreamEntity);
         }
 
-        private static CommsOutboxEntry BuildOutboxEntry(in CommSendRequest request, in CommEndpoint endpoint)
+        private static CommsOutboxEntry BuildOutboxEntry(
+            in CommSendRequest request,
+            in CommEndpoint endpoint,
+            in FixedString32Bytes payloadId32)
         {
             var transport = request.TransportMask != PerceptionChannel.None
                 ? request.TransportMask
@@ -149,7 +155,7 @@ namespace PureDOTS.Systems.Communication
                 Token = request.MessageId,
                 InterruptType = SelectInterruptType(request.MessageType),
                 Priority = SelectPriority(request.OrderPriority),
-                PayloadId = request.PayloadId,
+                PayloadId = payloadId32,
                 TransportMaskPreferred = transport,
                 Strength01 = 1f,
                 Clarity01 = 1f,

@@ -1,6 +1,8 @@
+#if INCLUDE_SPACE4X_IN_PUREDOTS
 using NUnit.Framework;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Runtime.Villagers;
 using PureDOTS.Systems;
@@ -120,6 +122,26 @@ namespace PureDOTS.Tests.Playmode
             Assert.IsTrue(EntityManager.HasBuffer<AICommand>(queueEntity));
         }
 
+        [Test]
+        public void Villager_HasEntityIntentComponent_AfterAuthoring()
+        {
+            var villager = CreateVillagerWithAIComponents();
+            Assert.IsTrue(EntityManager.HasComponent<EntityIntent>(villager),
+                "Villager should have EntityIntent component after authoring");
+            Assert.IsTrue(EntityManager.HasBuffer<Interrupt>(villager),
+                "Villager should have Interrupt buffer after authoring");
+        }
+
+        [Test]
+        public void Vessel_HasEntityIntentComponent_AfterAuthoring()
+        {
+            var vessel = CreateVesselWithAIComponents();
+            Assert.IsTrue(EntityManager.HasComponent<EntityIntent>(vessel),
+                "Vessel should have EntityIntent component after authoring");
+            Assert.IsTrue(EntityManager.HasBuffer<Interrupt>(vessel),
+                "Vessel should have Interrupt buffer after authoring");
+        }
+
         private Entity CreateVillagerWithAIComponents()
         {
             var entity = EntityManager.CreateEntity(
@@ -137,7 +159,8 @@ namespace PureDOTS.Tests.Playmode
                 typeof(AISteeringConfig),
                 typeof(AISteeringState),
                 typeof(AITargetState),
-                typeof(VillagerAIUtilityBinding));
+                typeof(VillagerAIUtilityBinding),
+                typeof(EntityIntent));
 
             EntityManager.SetComponentData(entity, new VillagerId { Value = 1, FactionId = 0 });
             EntityManager.SetComponentData(entity, new VillagerNeeds
@@ -175,6 +198,14 @@ namespace PureDOTS.Tests.Playmode
 
             EntityManager.AddBuffer<AISensorReading>(entity);
             EntityManager.AddBuffer<AIActionState>(entity);
+            EntityManager.AddBuffer<Interrupt>(entity);
+
+            // Set default EntityIntent
+            EntityManager.SetComponentData(entity, new EntityIntent
+            {
+                Mode = IntentMode.Idle,
+                IsValid = 0
+            });
 
             return entity;
         }
@@ -193,7 +224,8 @@ namespace PureDOTS.Tests.Playmode
                 typeof(AISteeringConfig),
                 typeof(AISteeringState),
                 typeof(AITargetState),
-                typeof(VesselAIUtilityBinding));
+                typeof(VesselAIUtilityBinding),
+                typeof(EntityIntent));
 
             EntityManager.SetComponentData(entity, new MinerVessel
             {
@@ -231,6 +263,14 @@ namespace PureDOTS.Tests.Playmode
 
             EntityManager.AddBuffer<AISensorReading>(entity);
             EntityManager.AddBuffer<AIActionState>(entity);
+            EntityManager.AddBuffer<Interrupt>(entity);
+
+            // Set default EntityIntent
+            EntityManager.SetComponentData(entity, new EntityIntent
+            {
+                Mode = IntentMode.Idle,
+                IsValid = 0
+            });
 
             return entity;
         }
@@ -369,4 +409,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-
+#endif

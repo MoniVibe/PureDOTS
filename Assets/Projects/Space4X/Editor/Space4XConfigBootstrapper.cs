@@ -111,6 +111,12 @@ public static class Space4XConfigBootstrapper
         AddResourceEntry(entriesProp, 2, "metals", new Color(0.58f, 0.6f, 0.64f, 1f));
         AddResourceEntry(entriesProp, 3, "nobels", new Color(0.85f, 0.72f, 0.32f, 1f));
         AddResourceEntry(entriesProp, 4, "supplies", new Color(0.85f, 0.67f, 0.45f, 1f));
+        AddResourceEntry(entriesProp, 5, "wires", new Color(0.85f, 0.85f, 0.45f, 1f));
+        AddResourceEntry(entriesProp, 6, "fasteners", new Color(0.7f, 0.72f, 0.75f, 1f));
+        AddResourceEntry(entriesProp, 7, "components", new Color(0.5f, 0.8f, 0.9f, 1f));
+        AddResourceEntry(entriesProp, 8, "furniture", new Color(0.6f, 0.45f, 0.3f, 1f));
+        AddResourceEntry(entriesProp, 9, "fur_coats", new Color(0.78f, 0.7f, 0.6f, 1f));
+        AddResourceEntry(entriesProp, 10, "luxury_goods", new Color(0.9f, 0.82f, 0.35f, 1f));
 
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(catalog);

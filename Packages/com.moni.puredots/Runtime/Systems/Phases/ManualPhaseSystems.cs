@@ -1,6 +1,7 @@
-#if PUREDOTS_LEGACY_CAMERA
 #nullable enable
+#if CAMERA_RIG_ENABLED
 using PureDOTS.Runtime.Camera;
+#endif
 using PureDOTS.Runtime.Config;
 using Unity.Entities;
 
@@ -65,7 +66,11 @@ namespace PureDOTS.Systems
             _historyGroup = World.GetExistingSystemManaged<HistoryPhaseGroup>();
             RuntimeConfigRegistry.Initialize();
             _cameraVar = ManualPhaseConfig.CameraPhaseToggle;
-            _cameraModeVar = Space4XCameraConfigVars.EcsModeEnabled;
+#if CAMERA_RIG_ENABLED
+            _cameraModeVar = CameraConfigVars.EcsModeEnabled;
+#else
+            _cameraModeVar = null;
+#endif
             _transportVar = ManualPhaseConfig.TransportPhaseToggle;
             _historyVar = ManualPhaseConfig.HistoryPhaseToggle;
         }
@@ -128,6 +133,4 @@ namespace PureDOTS.Systems
         }
     }
 }
-
-#endif
 

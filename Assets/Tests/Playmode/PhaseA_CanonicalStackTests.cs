@@ -1,12 +1,14 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Comms;
 using PureDOTS.Runtime.Communication;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Systems.Communication;
 using PureDOTS.Systems.Comms;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -91,7 +93,7 @@ namespace PureDOTS.Tests.Playmode
                 DeceptionStrength = 0f,
                 AckPolicy = CommAckPolicy.Required,
                 RedundancyLevel = 2,
-                CommOrderVerb = CommOrderVerb.MoveTo,
+                OrderVerb = CommOrderVerb.MoveTo,
                 OrderTarget = Entity.Null,
                 OrderTargetPosition = new float3(5f, 0f, 0f),
                 OrderSide = CommOrderSide.Center,
@@ -130,14 +132,14 @@ namespace PureDOTS.Tests.Playmode
             {
                 Receiver = receiver,
                 MessageType = CommMessageType.Order,
-                TrueIntent = CommunicationIntent.Command,
-                StatedIntent = CommunicationIntent.Command,
+                TrueIntent = CommunicationIntent.HostileIntent,
+                StatedIntent = CommunicationIntent.HostileIntent,
                 PayloadId = payload,
                 TransportMask = PerceptionChannel.EM,
                 DeceptionStrength = 0f,
                 AckPolicy = CommAckPolicy.Required,
                 RedundancyLevel = 1,
-                CommOrderVerb = CommOrderVerb.Attack,
+                OrderVerb = CommOrderVerb.Attack,
                 OrderTarget = Entity.Null,
                 OrderTargetPosition = new float3(2f, 0f, 0f),
                 OrderSide = CommOrderSide.Front,
@@ -177,7 +179,7 @@ namespace PureDOTS.Tests.Playmode
             var receipt = receipts[0];
             Assert.AreEqual(CommMessageType.Order, receipt.MessageType);
             Assert.AreEqual(CommOrderVerb.Attack, receipt.OrderVerb);
-            Assert.AreEqual(CommunicationIntent.Command, receipt.Intent);
+            Assert.AreEqual(CommunicationIntent.HostileIntent, receipt.Intent);
             Assert.AreEqual(CommAckPolicy.Required, receipt.AckPolicy);
             Assert.AreEqual(0.92f, receipt.Integrity, 1e-4f);
             Assert.AreEqual(9876u, receipt.ContextHash);

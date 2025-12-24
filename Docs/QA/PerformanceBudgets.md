@@ -114,6 +114,39 @@ python CI/validate_metrics.py CI/Reports/
 | Memory > 4GB | Review component sizes, move to companions |
 | P95 tick time > 1.5x average | Investigate spikes, optimize hot paths |
 
+## Perception-Specific Budgets
+
+### Signal Sampling Budgets
+
+| Metric | Budget | Notes |
+|--------|--------|-------|
+| `MaxSignalCellsSampledPerTick` | 1000 | ~40 entities × 25 cells (5×5 neighborhood) |
+| `MaxSamplingRadiusCells` | 5 | Maximum radius in cells for multi-cell sampling |
+| `TierSamplingRadiusMultiplier` | 0.5-2.0 | Tier-based scaling (Tier0=0.5x, Tier3=2.0x) |
+
+**Warning Thresholds**:
+- `SignalCellsSampledThisTick > MaxSignalCellsSampledPerTick * 0.8` → log warning
+- Multi-cell sampling increases cost but improves fidelity
+
+### LOS Check Budgets
+
+| Metric | Budget | Notes |
+|--------|--------|-------|
+| `MaxLosChecksPerTick` | 24 | Already exists as `MaxLosRaysPerTick` |
+| `MaxLosChecksPhysicsThisTick` | 24 | Physics raycast checks |
+| `MaxLosChecksObstacleGridThisTick` | 24 | Obstacle grid LOS checks |
+| `MaxLosChecksUnknownThisTick` | 12 | Unknown LOS (should be < 50% of total) |
+
+**Warning Thresholds**:
+- `LosChecksUnknownThisTick > MaxLosChecksPerTick * 0.5` → log warning (too many unknown LOS)
+- Unknown LOS applies confidence penalty (0.5x multiplier)
+
+### Miracle Detection Budgets
+
+| Metric | Budget | Notes |
+|--------|--------|-------|
+| `MiracleEntitiesDetectedThisTick` | Unlimited | No hard limit, but should be tracked |
+
 ## See Also
 
 - `Docs/PERFORMANCE_PLAN.md` - Overall performance strategy

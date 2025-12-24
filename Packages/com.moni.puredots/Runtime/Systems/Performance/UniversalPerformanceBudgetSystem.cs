@@ -59,6 +59,11 @@ namespace PureDOTS.Systems.Performance
             counters.ValueRW.LosRaysAttemptedThisTick = 0;
             counters.ValueRW.LosRaysGrantedThisTick = 0;
             counters.ValueRW.LosRaysDeferredThisTick = 0;
+            counters.ValueRW.LosChecksPhysicsThisTick = 0;
+            counters.ValueRW.LosChecksObstacleGridThisTick = 0;
+            counters.ValueRW.LosChecksUnknownThisTick = 0;
+            counters.ValueRW.SignalCellsSampledThisTick = 0;
+            counters.ValueRW.MiracleEntitiesDetectedThisTick = 0;
             counters.ValueRW.AckEventsEmittedThisTick = 0;
             counters.ValueRW.AckEventsDroppedThisTick = 0;
             counters.ValueRW.CommsMessagesEmittedThisTick = 0;

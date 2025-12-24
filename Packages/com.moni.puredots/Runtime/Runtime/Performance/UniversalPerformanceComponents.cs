@@ -12,6 +12,8 @@ namespace PureDOTS.Runtime.Performance
         public int MaxPerceptionChecksPerTick;
         public int MaxAwarenessUpdatesPerTick;
         public int MaxLosRaysPerTick;
+        public int MaxSignalCellsSampledPerTick;
+        public float LosChecksUnknownWarningRatio;
         public int MaxAckEventsPerTick;
         public int MaxCommsMessagesPerTick;
 
@@ -75,6 +77,8 @@ namespace PureDOTS.Runtime.Performance
                 MaxPerceptionChecksPerTick = 20,
                 MaxAwarenessUpdatesPerTick = 15,
                 MaxLosRaysPerTick = 24,
+                MaxSignalCellsSampledPerTick = 1000,
+                LosChecksUnknownWarningRatio = 0.5f,
                 MaxAckEventsPerTick = 64,
                 MaxCommsMessagesPerTick = 32,
 
@@ -142,6 +146,11 @@ namespace PureDOTS.Runtime.Performance
         public int LosRaysAttemptedThisTick;
         public int LosRaysGrantedThisTick;
         public int LosRaysDeferredThisTick;
+        public int LosChecksPhysicsThisTick;
+        public int LosChecksObstacleGridThisTick;
+        public int LosChecksUnknownThisTick;
+        public int SignalCellsSampledThisTick;
+        public int MiracleEntitiesDetectedThisTick;
         public int AckEventsEmittedThisTick;
         public int AckEventsDroppedThisTick;
         public int CommsMessagesEmittedThisTick;

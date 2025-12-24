@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Pooling;
 using PureDOTS.Runtime.Presentation;
 using PureDOTS.Runtime.Telemetry;
@@ -82,6 +83,7 @@ namespace PureDOTS.Systems.Telemetry
             var timeEntity = SystemAPI.GetSingletonEntity<TimeState>();
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var budgets = SystemAPI.GetSingleton<PerformanceBudgetSettings>();
+            var universalBudgets = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
             var timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             if (_exportEnabled && _writer == null)
@@ -177,6 +179,36 @@ namespace PureDOTS.Systems.Telemetry
 
             var companionCount = _companionQuery.CalculateEntityCount();
             WriteMetric("presentation.companions.active", companionCount, "count", timeState.Tick, timestampMs);
+
+            // Export perception counters
+            if (SystemAPI.TryGetSingleton<UniversalPerformanceCounters>(out var counters))
+            {
+                WriteMetric("perception.losChecks.physics", counters.LosChecksPhysicsThisTick, "count", timeState.Tick, timestampMs);
+                WriteMetric("perception.losChecks.obstacleGrid", counters.LosChecksObstacleGridThisTick, "count", timeState.Tick, timestampMs);
+                WriteMetric("perception.losChecks.unknown", counters.LosChecksUnknownThisTick, "count", timeState.Tick, timestampMs);
+                WriteMetric("perception.signalCellsSampled", counters.SignalCellsSampledThisTick, "count", timeState.Tick, timestampMs);
+                WriteMetric("perception.miracleEntitiesDetected", counters.MiracleEntitiesDetectedThisTick, "count", timeState.Tick, timestampMs);
+
+                // Emit budget violation events (read from UniversalPerformanceBudget config)
+                var losTotal = counters.LosChecksPhysicsThisTick + counters.LosChecksObstacleGridThisTick + counters.LosChecksUnknownThisTick;
+                var maxLosChecks = universalBudgets.MaxLosRaysPerTick;
+                if (losTotal > maxLosChecks)
+                {
+                    WriteFailRecord("perception.losChecks.total", losTotal, maxLosChecks, timeState.Tick, timestampMs);
+                }
+
+                var maxSignalCells = universalBudgets.MaxSignalCellsSampledPerTick;
+                if (counters.SignalCellsSampledThisTick > maxSignalCells)
+                {
+                    WriteFailRecord("perception.signalCellsSampled", counters.SignalCellsSampledThisTick, maxSignalCells, timeState.Tick, timestampMs);
+                }
+
+                var unknownWarningThreshold = (int)(maxLosChecks * universalBudgets.LosChecksUnknownWarningRatio);
+                if (counters.LosChecksUnknownThisTick > unknownWarningThreshold)
+                {
+                    WriteFailRecord("perception.losChecks.unknown", counters.LosChecksUnknownThisTick, unknownWarningThreshold, timeState.Tick, timestampMs);
+                }
+            }
 
             if (!EntityManager.Exists(timeEntity))
             {

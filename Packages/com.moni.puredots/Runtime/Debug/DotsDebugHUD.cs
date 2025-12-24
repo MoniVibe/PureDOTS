@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Hand;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using HandInteractionState = PureDOTS.Runtime.Components.HandState;
 
 namespace PureDOTS.Debugging
 {
@@ -31,7 +32,7 @@ namespace PureDOTS.Debugging
         private EntityQuery _villagerQuery;
         private EntityQuery _storehouseQuery;
         private DivineHandEventBridge _handBridge;
-        private HandState _handState = HandState.Idle;
+        private HandInteractionState _handState = HandInteractionState.Idle;
         private int _handAmount;
         private int _handCapacity;
         private ushort _handType = DivineHandConstants.NoResourceType;
@@ -189,7 +190,7 @@ namespace PureDOTS.Debugging
             _handBridge = null;
         }
 
-        void HandleHandStateChanged(HandState from, HandState to)
+        void HandleHandStateChanged(HandInteractionState from, HandInteractionState to)
         {
             _handState = to;
         }

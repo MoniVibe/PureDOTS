@@ -66,7 +66,47 @@ namespace PureDOTS.Runtime.Combat.State
         /// <summary>
         /// Knocked down, must get up.
         /// </summary>
-        KnockedDown = 11
+        KnockedDown = 11,
+
+        /// <summary>
+        /// Formation is engaged in combat.
+        /// </summary>
+        FormationEngaged = 100,
+
+        /// <summary>
+        /// Formation has broken (members scattered).
+        /// </summary>
+        FormationBroken = 101,
+
+        /// <summary>
+        /// Formation has routed (fleeing).
+        /// </summary>
+        FormationRouted = 102,
+
+        /// <summary>
+        /// Formation is reforming after breaking.
+        /// </summary>
+        FormationReforming = 103,
+
+        /// <summary>
+        /// Module has been destroyed.
+        /// </summary>
+        ModuleDestroyed = 100,
+
+        /// <summary>
+        /// Module is damaged.
+        /// </summary>
+        ModuleDamaged = 101,
+
+        /// <summary>
+        /// Module is offline.
+        /// </summary>
+        ModuleOffline = 102,
+
+        /// <summary>
+        /// Module is being repaired.
+        /// </summary>
+        ModuleRepairing = 104
     }
 
     /// <summary>

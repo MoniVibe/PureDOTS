@@ -13,6 +13,11 @@ namespace PureDOTS.Runtime.Components
         public Entity Holder;
     }
 
+    /// <summary>
+    /// [OBSOLETE] Legacy divine hand state component. Use PureDOTS.Runtime.Hand.HandState instead.
+    /// Migration: Read from PureDOTS.Runtime.Hand.HandState for authoritative state.
+    /// </summary>
+    [System.Obsolete("Use PureDOTS.Runtime.Hand.HandState instead. This component is deprecated and will be removed in a future version.")]
     public struct DivineHandState : IComponentData
     {
         public float3 CursorPosition;
@@ -35,4 +40,51 @@ namespace PureDOTS.Runtime.Components
     /// Tag component marking an entity as pickable by the divine hand.
     /// </summary>
     public struct PickableTag : IComponentData { }
+
+    /// <summary>
+    /// Alias for PickableTag (plan uses "Pickable" name).
+    /// </summary>
+    public struct Pickable : IComponentData { }
+
+    /// <summary>
+    /// Hand-specific pickup tuning data.
+    /// </summary>
+    public struct HandPickable : IComponentData
+    {
+        public float Mass;
+        public float MaxHoldDistance;
+        public float ThrowImpulseMultiplier;
+        public float FollowLerp;
+    }
+
+    /// <summary>
+    /// Component marking an entity as a source for siphoning resources.
+    /// </summary>
+    public struct SiphonSource : IComponentData
+    {
+        public ushort ResourceTypeIndex;
+        public float Amount;  // Or reference to aggregate container
+        public float MinChunkSize;
+        public float SiphonResistance;  // Optional rate modifier
+    }
+
+    /// <summary>
+    /// Tag component marking an entity as a valid dump target for storehouses.
+    /// </summary>
+    public struct DumpTargetStorehouse : IComponentData { }
+
+    /// <summary>
+    /// Tag component marking an entity as a valid dump target for construction sites.
+    /// </summary>
+    public struct DumpTargetConstruction : IComponentData { }
+
+    /// <summary>
+    /// Tag component marking an entity as a valid dump target for ground.
+    /// </summary>
+    public struct DumpTargetGround : IComponentData { }
+
+    /// <summary>
+    /// Tag component marking an entity as a valid surface for casting miracles.
+    /// </summary>
+    public struct MiracleSurface : IComponentData { }
 }

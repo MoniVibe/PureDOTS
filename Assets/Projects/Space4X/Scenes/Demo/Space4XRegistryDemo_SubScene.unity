@@ -429,6 +429,18 @@ MonoBehaviour:
     baseValue: 1.4
   - resourceTypeId: supplies
     baseValue: 1.1
+  - resourceTypeId: wires
+    baseValue: 1.1
+  - resourceTypeId: fasteners
+    baseValue: 1
+  - resourceTypeId: components
+    baseValue: 1.3
+  - resourceTypeId: furniture
+    baseValue: 1.5
+  - resourceTypeId: fur_coats
+    baseValue: 1.6
+  - resourceTypeId: luxury_goods
+    baseValue: 1.8
 --- !u!114 &194810427
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -452,6 +464,18 @@ MonoBehaviour:
     resourceClass: 1
   - resourceTypeId: supplies
     resourceClass: 2
+  - resourceTypeId: wires
+    resourceClass: 2
+  - resourceTypeId: fasteners
+    resourceClass: 2
+  - resourceTypeId: components
+    resourceClass: 2
+  - resourceTypeId: furniture
+    resourceClass: 3
+  - resourceTypeId: fur_coats
+    resourceClass: 3
+  - resourceTypeId: luxury_goods
+    resourceClass: 3
 --- !u!1 &253541333
 GameObject:
   m_ObjectHideFlags: 0

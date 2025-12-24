@@ -3,6 +3,7 @@
     "rootNamespace": "PureDOTS.Editor",
     "references": [
         "Unity.Entities",
+        "Unity.Entities.Hybrid",
         "Unity.Scenes",
         "Unity.Collections",
         "Unity.Mathematics",
@@ -30,4 +31,3 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
-

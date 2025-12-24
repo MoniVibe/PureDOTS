@@ -40,15 +40,23 @@ namespace PureDOTS.Runtime.Scenarios
             AppendUInt(sb, "performanceBudgetTick", result.PerformanceBudgetTick); sb.Append(",");
             AppendString(sb, "exitPolicy", result.ExitPolicy.ToString()); sb.Append(",");
             AppendString(sb, "highestSeverity", result.HighestSeverity.ToString());
+            var sectionWritten = false;
             if (result.Metrics != null && result.Metrics.Count > 0)
             {
                 sb.Append(",");
                 AppendMetrics(sb, result.Metrics);
+                sectionWritten = true;
             }
             if (result.Issues != null && result.Issues.Count > 0)
             {
-                sb.Append(",");
+                if (!sectionWritten) sb.Append(",");
                 AppendIssues(sb, result.Issues);
+                sectionWritten = true;
+            }
+            if (result.AssertionResults != null && result.AssertionResults.Count > 0)
+            {
+                if (!sectionWritten) sb.Append(",");
+                AppendAssertions(sb, result.AssertionResults);
             }
             sb.Append("}");
             return sb.ToString();
@@ -115,6 +123,28 @@ namespace PureDOTS.Runtime.Scenarios
                 AppendString(sb, "message", issue.Message.ToString());
                 sb.Append("}");
                 if (i < issues.Count - 1)
+                {
+                    sb.Append(",");
+                }
+            }
+            sb.Append("]");
+        }
+
+        private static void AppendAssertions(StringBuilder sb, List<ScenarioAssertionReport> assertions)
+        {
+            sb.Append("\"assertions\":[");
+            for (int i = 0; i < assertions.Count; i++)
+            {
+                var assertion = assertions[i];
+                sb.Append("{");
+                AppendString(sb, "metricId", assertion.MetricId ?? string.Empty); sb.Append(",");
+                AppendBool(sb, "passed", assertion.Passed); sb.Append(",");
+                AppendDouble(sb, "actual", assertion.ActualValue); sb.Append(",");
+                AppendDouble(sb, "expected", assertion.ExpectedValue); sb.Append(",");
+                AppendString(sb, "operator", assertion.Operator.ToString()); sb.Append(",");
+                AppendString(sb, "message", assertion.FailureMessage ?? string.Empty);
+                sb.Append("}");
+                if (i < assertions.Count - 1)
                 {
                     sb.Append(",");
                 }

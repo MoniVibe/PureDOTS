@@ -138,3 +138,5 @@ State updates must be **written back** (use `ref StrikeCraftState` in job execut
 3. **Threat interrupts**: unify “under attack / new threat / comm receipt” into interrupts used by both games.
 
 
+
+

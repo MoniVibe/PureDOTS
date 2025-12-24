@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using PureDOTS.Runtime.Space;
+using PureDOTS.Runtime.Combat;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -87,7 +88,7 @@ namespace PureDOTS.Authoring.Space
             for (byte i = 0; i < authoring.slots.Length; i++)
             {
                 var slotDef = authoring.slots[i];
-                var moduleEntity = CreateModuleEntity(carrier, slotDef.module, slotDef.mountType, slotDef.mountSize);
+                var moduleEntity = CreateModuleEntity(carrier, slotDef.module, slotDef.mountType, slotDef.mountSize, i);
 
                 slotsBuffer.Add(new CarrierModuleSlot
                 {
@@ -104,7 +105,7 @@ namespace PureDOTS.Authoring.Space
             }
         }
 
-        private Entity CreateModuleEntity(Entity carrier, CarrierModuleLoadoutAuthoring.ModuleDefinition def, MountType mountType, MountSize mountSize)
+        private Entity CreateModuleEntity(Entity carrier, CarrierModuleLoadoutAuthoring.ModuleDefinition def, MountType mountType, MountSize mountSize, byte slotIndex)
         {
             var module = CreateAdditionalEntity(TransformUsageFlags.Dynamic);
 
@@ -133,12 +134,20 @@ namespace PureDOTS.Authoring.Space
                 RepairRateBonus = math.max(0f, def.repairRateBonus)
             });
 
-            AddComponent(module, new ModuleHealth
+            // Use PureDOTS.Runtime.Ships.ModuleHealth (float-based) for combat systems compatibility
+            // PureDOTS.Runtime.Space.ModuleHealth (byte Integrity) is incompatible with combat systems
+            float maxHealth = 100f;
+            float failureThreshold = math.clamp((float)def.failureThreshold, 0f, 100f);
+            
+            AddComponent(module, new PureDOTS.Runtime.Ships.ModuleHealth
             {
-                Integrity = 100,
-                FailureThreshold = (byte)math.clamp((int)def.failureThreshold, 0, 100),
-                RepairPriority = (byte)math.clamp((int)def.repairPriority, 0, 10),
-                Flags = 0
+                MaxHealth = maxHealth,
+                Health = maxHealth,
+                DegradationPerTick = 0f,
+                FailureThreshold = failureThreshold,
+                State = PureDOTS.Runtime.Ships.ModuleHealthState.Nominal,
+                Flags = PureDOTS.Runtime.Ships.ModuleHealthFlags.None,
+                LastProcessedTick = 0
             });
 
             AddComponent(module, new ModuleDegradation
@@ -148,7 +157,50 @@ namespace PureDOTS.Authoring.Space
                 CombatMultiplier = 1f
             });
 
+            // Add ModulePosition for hit detection (stub with slot-based position)
+            AddComponent(module, new ModulePosition
+            {
+                LocalPosition = new float3(0f, slotIndex * 2f, 0f), // Stub: vertical stacking based on slot index
+                Radius = 1.5f
+            });
+
+            // Add ModuleTargetPriority based on module class
+            AddComponent(module, new ModuleTargetPriority
+            {
+                Priority = GetDefaultPriority(def.moduleClass)
+            });
+
             return module;
+        }
+
+        /// <summary>
+        /// Gets default priority for a module class (matches ModuleTargetingService.GetDefaultPriority).
+        /// </summary>
+        private static byte GetDefaultPriority(ModuleClass moduleClass)
+        {
+            return moduleClass switch
+            {
+                // Critical systems - highest priority
+                ModuleClass.Engine => 200, // Engines disable movement
+                // Weapons - high priority
+                ModuleClass.BeamCannon => 150,
+                ModuleClass.MassDriver => 150,
+                ModuleClass.Missile => 150,
+                ModuleClass.PointDefense => 140,
+                // Defense - medium-high priority
+                ModuleClass.Shield => 120,
+                ModuleClass.Armor => 100,
+                // Utility - medium priority
+                ModuleClass.Sensor => 80,
+                ModuleClass.Cargo => 50,
+                ModuleClass.Hangar => 60,
+                // Facilities - lower priority
+                ModuleClass.Fabrication => 40,
+                ModuleClass.Research => 40,
+                ModuleClass.Medical => 30,
+                // Colony - lowest priority
+                _ => 20
+            };
         }
 
         private bool TryCalculatePower(CarrierModuleLoadoutAuthoring.SlotDefinition[] slots, out float draw, out float generation)

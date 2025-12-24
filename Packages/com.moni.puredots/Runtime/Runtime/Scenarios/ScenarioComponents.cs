@@ -23,4 +23,13 @@ namespace PureDOTS.Runtime.Scenarios
         public FixedString64Bytes RegistryId;
         public int Count;
     }
+
+    /// <summary>
+    /// Singleton component storing the scenario entity reference for Burst-compatible access.
+    /// Populated by ScenarioEntityBootstrapSystem.
+    /// </summary>
+    public struct ScenarioEntitySingleton : IComponentData
+    {
+        public Entity Value;
+    }
 }
