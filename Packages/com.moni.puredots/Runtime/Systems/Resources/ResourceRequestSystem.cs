@@ -97,8 +97,9 @@ namespace PureDOTS.Systems.Resources
                 return;
             }
 
-            _requestIdGeneratorEntity = em.CreateEntity(ComponentType.ReadOnly<ResourceRequestIdGenerator>());
-            em.SetComponentData(_requestIdGeneratorEntity, new ResourceRequestIdGenerator
+            // Burst-safe: avoid params-based CreateEntity(ComponentType...) which allocates ComponentType[].
+            _requestIdGeneratorEntity = em.CreateEntity();
+            em.AddComponentData(_requestIdGeneratorEntity, new ResourceRequestIdGenerator
             {
                 NextRequestId = 1
             });

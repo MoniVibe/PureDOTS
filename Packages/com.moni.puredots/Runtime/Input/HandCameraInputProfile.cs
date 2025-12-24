@@ -26,6 +26,22 @@ namespace PureDOTS.Input
         [SerializeField] LayerMask draggableMask = 0;
         [SerializeField, Min(0.1f)] float maxRayDistance = 800f;
 
+        [Header("Action Names")]
+        [SerializeField] string moveActionName = "Move";
+        [SerializeField] string verticalActionName = "Vertical";
+        [SerializeField] string yAxisLockToggleActionName = "YAxisLockToggle";
+        [SerializeField] string orbitActionName = "Orbit";
+        [SerializeField] string panActionName = "Pan";
+        [SerializeField] string zoomActionName = "Zoom";
+
+        [Header("Default Bindings (Optional)")]
+        [SerializeField] string defaultMoveBinding = "<Keyboard>/wasd";
+        [SerializeField] string defaultVerticalBinding = "<Keyboard>/qe";
+        [SerializeField] string defaultYAxisLockToggleBinding = "<Keyboard>/leftAlt";
+        [SerializeField] string defaultOrbitBinding = "<Mouse>/delta";
+        [SerializeField] string defaultPanBinding = "<Mouse>/delta";
+        [SerializeField] string defaultZoomBinding = "<Mouse>/scroll";
+
         public InputActionAsset InputActions => inputActions;
         public string ActionMapName => actionMapName;
         public float HandlerCooldownSeconds => Mathf.Max(0f, handlerCooldownSeconds);
@@ -37,5 +53,19 @@ namespace PureDOTS.Input
         public LayerMask PileMask => pileMask;
         public LayerMask DraggableMask => draggableMask;
         public float MaxRayDistance => Mathf.Max(0.1f, maxRayDistance);
+
+        public string MoveActionName => moveActionName;
+        public string VerticalActionName => verticalActionName;
+        public string YAxisLockToggleActionName => yAxisLockToggleActionName;
+        public string OrbitActionName => orbitActionName;
+        public string PanActionName => panActionName;
+        public string ZoomActionName => zoomActionName;
+
+        public string DefaultMoveBinding => defaultMoveBinding;
+        public string DefaultVerticalBinding => defaultVerticalBinding;
+        public string DefaultYAxisLockToggleBinding => defaultYAxisLockToggleBinding;
+        public string DefaultOrbitBinding => defaultOrbitBinding;
+        public string DefaultPanBinding => defaultPanBinding;
+        public string DefaultZoomBinding => defaultZoomBinding;
     }
 }

@@ -22,8 +22,8 @@ namespace PureDOTS.Systems.Hand
             // Ensure HandAffordances singleton exists
             if (!SystemAPI.TryGetSingletonEntity<HandAffordances>(out _))
             {
-                var entity = state.EntityManager.CreateEntity(typeof(HandAffordances));
-                state.EntityManager.SetComponentData(entity, new HandAffordances());
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new HandAffordances());
             }
         }
 

@@ -575,7 +575,6 @@ namespace PureDOTS.Systems.Identity
 
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildLawfulChaotic()
         {
             var fs = new FixedString32Bytes();
@@ -584,7 +583,6 @@ namespace PureDOTS.Systems.Identity
             return fs;
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildGoodEvil()
         {
             var fs = new FixedString32Bytes();
@@ -593,7 +591,6 @@ namespace PureDOTS.Systems.Identity
             return fs;
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildCorruptPure()
         {
             var fs = new FixedString32Bytes();
@@ -762,7 +759,6 @@ namespace PureDOTS.Systems.Identity
             };
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildVengefulForgiving()
         {
             var fs = new FixedString32Bytes();
@@ -771,7 +767,6 @@ namespace PureDOTS.Systems.Identity
             return fs;
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildBoldCraven()
         {
             var fs = new FixedString32Bytes();
@@ -780,7 +775,6 @@ namespace PureDOTS.Systems.Identity
             return fs;
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildCooperativeCompetitive()
         {
             var fs = new FixedString32Bytes();
@@ -789,7 +783,6 @@ namespace PureDOTS.Systems.Identity
             return fs;
         }
 
-        [BurstCompile]
         private static FixedString32Bytes BuildWarlikePeaceful()
         {
             var fs = new FixedString32Bytes();

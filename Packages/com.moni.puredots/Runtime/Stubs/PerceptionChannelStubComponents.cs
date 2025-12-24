@@ -16,6 +16,7 @@ namespace PureDOTS.Runtime.Perception
         public float Acuity;
         public float UpdateInterval;
         public byte MaxTrackedTargets;
+        public byte Flags;
     }
 
     /// <summary>

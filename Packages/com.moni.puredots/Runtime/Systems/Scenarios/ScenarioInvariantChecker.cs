@@ -1,6 +1,5 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Scenarios;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -13,17 +12,14 @@ namespace PureDOTS.Systems.Scenarios
     /// Validates: NaNs, invalid relations, missing required singletons, broken rewind guards.
     /// Reports violations to ScenarioExitUtility.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct ScenarioInvariantChecker : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var currentTick = SystemAPI.GetSingleton<TimeState>().Tick;
@@ -38,7 +34,6 @@ namespace PureDOTS.Systems.Scenarios
             CheckRewindGuards(ref state, currentTick);
         }
 
-        [BurstCompile]
         private void CheckForNaNs(ref SystemState state, uint currentTick)
         {
             // Check LocalTransform positions for NaNs
@@ -57,7 +52,6 @@ namespace PureDOTS.Systems.Scenarios
             // This is a minimal check - can be extended to check more component types
         }
 
-        [BurstCompile]
         private void CheckRequiredSingletons(ref SystemState state, uint currentTick)
         {
             // Check for required singletons that must exist
@@ -86,7 +80,6 @@ namespace PureDOTS.Systems.Scenarios
             }
         }
 
-        [BurstCompile]
         private void CheckRewindGuards(ref SystemState state, uint currentTick)
         {
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState))
@@ -105,6 +98,5 @@ namespace PureDOTS.Systems.Scenarios
         }
     }
 }
-
 
 

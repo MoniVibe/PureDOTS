@@ -1,7 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Scenarios;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
@@ -12,7 +11,6 @@ namespace PureDOTS.Systems.Scenarios
     /// System that records agent decisions and player inputs each tick for deterministic replay validation.
     /// Logs decisions to ScenarioInputLog buffer on scenario entity.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     [UpdateAfter(typeof(SimulationSystemGroup))]
     public partial struct ScenarioInputRecorder : ISystem
@@ -20,7 +18,6 @@ namespace PureDOTS.Systems.Scenarios
         private EntityQuery _scenarioQuery;
         private EntityQuery _agentDecisionQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _scenarioQuery = state.GetEntityQuery(ComponentType.ReadWrite<ScenarioInfo>());
@@ -30,7 +27,6 @@ namespace PureDOTS.Systems.Scenarios
             );
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (_scenarioQuery.IsEmptyIgnoreFilter)

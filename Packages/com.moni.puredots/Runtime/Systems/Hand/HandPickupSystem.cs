@@ -25,7 +25,6 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<InteractionPickable> _pickableLookup;
         private ComponentLookup<HandHeldTag> _heldLookup;
         private ComponentLookup<PhysicsVelocity> _velocityLookup;
-        private EntityCommandBufferSystem _ecbSystem;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)

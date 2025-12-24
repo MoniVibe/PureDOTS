@@ -42,8 +42,8 @@ namespace PureDOTS.Systems.Scenarios
             // Ensure singleton exists and is set
             if (!SystemAPI.HasSingleton<ScenarioEntitySingleton>())
             {
-                var singletonEntity = state.EntityManager.CreateEntity(typeof(ScenarioEntitySingleton));
-                state.EntityManager.SetComponentData(singletonEntity, new ScenarioEntitySingleton
+                var singletonEntity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(singletonEntity, new ScenarioEntitySingleton
                 {
                     Value = scenarioEntity
                 });
