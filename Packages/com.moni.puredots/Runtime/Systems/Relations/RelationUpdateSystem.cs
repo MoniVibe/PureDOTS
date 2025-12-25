@@ -61,7 +61,6 @@ namespace PureDOTS.Systems.Relations
                 events.Clear();
             }
 
-            ecb.Playback(state.EntityManager);
         }
     }
 }

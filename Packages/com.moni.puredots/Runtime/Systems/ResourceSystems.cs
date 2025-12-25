@@ -9,7 +9,7 @@ using Unity.Transforms;
 
 namespace PureDOTS.Systems
 {
-    [UpdateInGroup(typeof(ResourceSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     public partial struct ResourceReservationBootstrapSystem : ISystem
     {
         private EntityQuery _resourceSourcesWithoutReservationQuery;
@@ -36,6 +36,7 @@ namespace PureDOTS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var entityManager = state.EntityManager;
+            state.CompleteDependency();
 
             using (var sources = _resourceSourcesWithoutReservationQuery.ToEntityArray(Allocator.TempJob))
             {
@@ -55,6 +56,12 @@ namespace PureDOTS.Systems
                     entityManager.AddComponent<StorehouseJobReservation>(entity);
                     entityManager.AddBuffer<StorehouseReservationItem>(entity);
                 }
+            }
+
+            if (_resourceSourcesWithoutReservationQuery.IsEmptyIgnoreFilter &&
+                _storehousesWithoutReservationQuery.IsEmptyIgnoreFilter)
+            {
+                state.Enabled = false;
             }
         }
     }

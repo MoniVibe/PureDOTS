@@ -18,16 +18,12 @@ namespace PureDOTS.Systems.Dynasty
     public partial struct DynastySuccessionSystem : ISystem
     {
         private ComponentLookup<DynastyMember> _dynastyMemberLookup;
-        private BufferLookup<DeathEvent> _deathEventLookup;
-        private BufferLookup<DynastyMemberEntry> _dynastyMemberEntryLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             _dynastyMemberLookup = state.GetComponentLookup<DynastyMember>(true);
-            _deathEventLookup = state.GetBufferLookup<DeathEvent>(true);
-            _dynastyMemberEntryLookup = state.GetBufferLookup<DynastyMemberEntry>(true);
         }
 
         [BurstCompile]
@@ -37,8 +33,6 @@ namespace PureDOTS.Systems.Dynasty
                 return;
 
             _dynastyMemberLookup.Update(ref state);
-            _deathEventLookup.Update(ref state);
-            _dynastyMemberEntryLookup.Update(ref state);
             var successionEventLookup = state.GetComponentLookup<SuccessionEvent>(true);
             successionEventLookup.Update(ref state);
 
@@ -51,7 +45,6 @@ namespace PureDOTS.Systems.Dynasty
                 Ecb = ecb,
                 CurrentTick = timeState.Tick,
                 DynastyMemberLookup = _dynastyMemberLookup,
-                DeathEventLookup = _deathEventLookup,
                 SuccessionEventLookup = successionEventLookup
             };
             deathJob.Run();
@@ -61,7 +54,7 @@ namespace PureDOTS.Systems.Dynasty
             {
                 Ecb = ecb,
                 CurrentTick = timeState.Tick,
-                DynastyMemberEntryLookup = _dynastyMemberEntryLookup
+                DynastyMemberLookup = _dynastyMemberLookup
             };
             successionJob.Run();
         }
@@ -73,8 +66,6 @@ namespace PureDOTS.Systems.Dynasty
             public uint CurrentTick;
             [ReadOnly]
             public ComponentLookup<DynastyMember> DynastyMemberLookup;
-            [ReadOnly]
-            public BufferLookup<DeathEvent> DeathEventLookup;
             [ReadOnly]
             public ComponentLookup<SuccessionEvent> SuccessionEventLookup;
 
@@ -128,8 +119,6 @@ namespace PureDOTS.Systems.Dynasty
         {
             public EntityCommandBuffer Ecb;
             public uint CurrentTick;
-            [ReadOnly]
-            public BufferLookup<DynastyMemberEntry> DynastyMemberEntryLookup;
             [ReadOnly]
             public ComponentLookup<DynastyMember> DynastyMemberLookup;
 

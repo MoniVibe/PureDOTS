@@ -46,8 +46,7 @@ namespace PureDOTS.Systems.Infiltration
                 return;
             }
 
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (infiltration, entity) in SystemAPI.Query<RefRO<InfiltrationState>>().WithEntityAccess())
             {
@@ -139,6 +138,9 @@ namespace PureDOTS.Systems.Infiltration
                     }
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
 
         private static IntelType SelectIntelType(InfiltrationLevel level, uint seed)

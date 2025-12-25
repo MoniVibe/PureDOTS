@@ -37,10 +37,11 @@ namespace PureDOTS.Systems.Lifecycle
 
             // Build offspring prefab lookup if registry exists
             var hasRegistry = SystemAPI.TryGetSingletonBuffer<OffspringPrefabEntry>(out var registryBuffer);
-            NativeHashMap<FixedString64Bytes, Entity> offspringRegistry = default;
+            var capacity = math.max(1, hasRegistry ? registryBuffer.Length : 1);
+            NativeHashMap<FixedString64Bytes, Entity> offspringRegistry =
+                new NativeHashMap<FixedString64Bytes, Entity>(capacity, Allocator.TempJob);
             if (hasRegistry)
             {
-                offspringRegistry = new NativeHashMap<FixedString64Bytes, Entity>(registryBuffer.Length, Allocator.TempJob);
                 for (int i = 0; i < registryBuffer.Length; i++)
                 {
                     var entry = registryBuffer[i];
@@ -65,10 +66,7 @@ namespace PureDOTS.Systems.Lifecycle
 
             _nextVillagerId = job.NextVillagerId;
 
-            if (hasRegistry && offspringRegistry.IsCreated)
-            {
-                offspringRegistry.Dispose();
-            }
+            offspringRegistry.Dispose();
         }
 
         // Note: Not Burst-compiled because EntityManager operations are not Burst-compatible

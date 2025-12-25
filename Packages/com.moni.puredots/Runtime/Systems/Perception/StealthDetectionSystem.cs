@@ -126,6 +126,7 @@ namespace PureDOTS.Systems.Perception
     {
         private ComponentLookup<StealthStats> _stealthStatsLookup;
         private ComponentLookup<StealthModifiers> _modifiersLookup;
+        private ComponentLookup<MovementState> _movementLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -136,6 +137,7 @@ namespace PureDOTS.Systems.Perception
 
             _stealthStatsLookup = state.GetComponentLookup<StealthStats>(true);
             _modifiersLookup = state.GetComponentLookup<StealthModifiers>(true);
+            _movementLookup = state.GetComponentLookup<MovementState>(true);
         }
 
         [BurstCompile]
@@ -160,9 +162,7 @@ namespace PureDOTS.Systems.Perception
 
             _stealthStatsLookup.Update(ref state);
             _modifiersLookup.Update(ref state);
-
-            var movementLookup = state.GetComponentLookup<MovementState>(true);
-            movementLookup.Update(ref state);
+            _movementLookup.Update(ref state);
 
             foreach (var (profile, entity) in SystemAPI.Query<RefRW<StealthProfile>>()
                 .WithEntityAccess())
@@ -182,9 +182,9 @@ namespace PureDOTS.Systems.Perception
 
                 // Get movement speed from MovementState if available
                 float movementSpeed = 0f;
-                if (movementLookup.HasComponent(entity))
+                if (_movementLookup.HasComponent(entity))
                 {
-                    movementSpeed = math.length(movementLookup[entity].Vel);
+                    movementSpeed = math.length(_movementLookup[entity].Vel);
                 }
                 else
                 {

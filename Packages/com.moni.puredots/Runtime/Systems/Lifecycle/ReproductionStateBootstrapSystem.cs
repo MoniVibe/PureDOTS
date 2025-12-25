@@ -14,10 +14,15 @@ namespace PureDOTS.Systems.Lifecycle
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderLast = true)]
     public partial struct ReproductionStateBootstrapSystem : ISystem
     {
+        private ComponentLookup<ReproductionState> _reproductionStateLookup;
+        private ComponentLookup<OffspringConfig> _offspringConfigLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            _reproductionStateLookup = state.GetComponentLookup<ReproductionState>(true);
+            _offspringConfigLookup = state.GetComponentLookup<OffspringConfig>(true);
         }
 
         [BurstCompile]
@@ -26,10 +31,8 @@ namespace PureDOTS.Systems.Lifecycle
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
                 return;
 
-            var reproductionStateLookup = state.GetComponentLookup<ReproductionState>(true);
-            reproductionStateLookup.Update(ref state);
-            var offspringConfigLookup = state.GetComponentLookup<OffspringConfig>(true);
-            offspringConfigLookup.Update(ref state);
+            _reproductionStateLookup.Update(ref state);
+            _offspringConfigLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
@@ -38,8 +41,8 @@ namespace PureDOTS.Systems.Lifecycle
             {
                 Ecb = ecb,
                 CurrentTick = timeState.Tick,
-                ReproductionStateLookup = reproductionStateLookup,
-                OffspringConfigLookup = offspringConfigLookup
+                ReproductionStateLookup = _reproductionStateLookup,
+                OffspringConfigLookup = _offspringConfigLookup
             };
             job.Run();
         }

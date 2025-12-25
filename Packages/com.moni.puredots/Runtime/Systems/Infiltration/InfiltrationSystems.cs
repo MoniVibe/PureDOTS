@@ -231,10 +231,9 @@ namespace PureDOTS.Systems.Infiltration
             _investigationLookup.Update(ref state);
 
             // Phase A: Collect entities that need interrupt buffers
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
-            var entitiesNeedingBuffers = new NativeList<Entity>(64, Allocator.Temp);
+            var entitiesNeedingBuffers = new NativeParallelHashMap<Entity, byte>(64, Allocator.Temp);
             var detectedEntities = new NativeList<(Entity entity, Entity targetOrg, float suspicion)>(64, Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (infiltration, entity) in SystemAPI.Query<RefRW<InfiltrationState>>().WithEntityAccess())
             {
@@ -281,7 +280,7 @@ namespace PureDOTS.Systems.Infiltration
                     // Collect for buffer creation and interrupt emission
                     if (!SystemAPI.HasBuffer<Interrupt>(entity))
                     {
-                        entitiesNeedingBuffers.Add(entity);
+                        entitiesNeedingBuffers.TryAdd(entity, 1);
                     }
 
                     detectedEntities.Add((entity, targetOrg, infiltration.ValueRO.SuspicionLevel));
@@ -296,16 +295,17 @@ namespace PureDOTS.Systems.Infiltration
                 }
             }
 
-            // Add buffers via ECB
-            foreach (var entity in entitiesNeedingBuffers)
+            // Ensure buffers exist via EntityManager after completing current dependencies
+            state.CompleteDependency();
+            foreach (var entry in entitiesNeedingBuffers)
             {
-                ecb.AddBuffer<Interrupt>(entity);
+                ecb.AddBuffer<Interrupt>(entry.Key);
             }
 
-            // Playback ECB to apply structural changes
+            entitiesNeedingBuffers.Dispose();
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-            entitiesNeedingBuffers.Dispose();
 
             // Phase B: Emit interrupts (buffers now guaranteed to exist)
             foreach (var (entity, targetOrg, suspicion) in detectedEntities)
@@ -367,11 +367,10 @@ namespace PureDOTS.Systems.Infiltration
             _investigationLookup.Update(ref state);
 
             // Phase A: Collect entities that need interrupt buffers
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
-            var entitiesNeedingBuffers = new NativeList<Entity>(64, Allocator.Temp);
+            var entitiesNeedingBuffers = new NativeParallelHashMap<Entity, byte>(64, Allocator.Temp);
             var extractionStartedEvents = new NativeList<(Entity entity, float3 position, float successChance)>(64, Allocator.Temp);
             var extractionCompletedEvents = new NativeList<(Entity entity, float3 position, bool success, Entity targetOrg)>(64, Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (infiltration, extractionPlan, entity) in
                 SystemAPI.Query<RefRO<InfiltrationState>, RefRW<ExtractionPlan>>().WithEntityAccess())
@@ -390,7 +389,7 @@ namespace PureDOTS.Systems.Infiltration
                     // Collect for buffer creation and interrupt emission
                     if (!SystemAPI.HasBuffer<Interrupt>(entity))
                     {
-                        entitiesNeedingBuffers.Add(entity);
+                        entitiesNeedingBuffers.TryAdd(entity, 1);
                     }
 
                     extractionStartedEvents.Add((entity, extractionPlan.ValueRO.ExtractionPoint, extractionPlan.ValueRO.SuccessChance));
@@ -427,7 +426,7 @@ namespace PureDOTS.Systems.Infiltration
                     // Collect for buffer creation and interrupt emission
                     if (!SystemAPI.HasBuffer<Interrupt>(entity))
                     {
-                        entitiesNeedingBuffers.Add(entity);
+                        entitiesNeedingBuffers.TryAdd(entity, 1);
                     }
 
                     if (roll < successChance)
@@ -450,16 +449,17 @@ namespace PureDOTS.Systems.Infiltration
                 }
             }
 
-            // Add buffers via ECB
-            foreach (var entity in entitiesNeedingBuffers)
+            // Ensure buffers exist via EntityCommandBuffer after completing current dependencies
+            state.CompleteDependency();
+            foreach (var entry in entitiesNeedingBuffers)
             {
-                ecb.AddBuffer<Interrupt>(entity);
+                ecb.AddBuffer<Interrupt>(entry.Key);
             }
 
-            // Playback ECB to apply structural changes
+            entitiesNeedingBuffers.Dispose();
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-            entitiesNeedingBuffers.Dispose();
 
             // Phase B: Emit interrupts (buffers now guaranteed to exist)
             foreach (var (entity, position, successChance) in extractionStartedEvents)

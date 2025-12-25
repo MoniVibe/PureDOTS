@@ -340,3 +340,4 @@ Entities with RenderSemanticKey + presenters → MaterialMeshInfo + RenderBounds
 **For Graphics Programmers:** Use Full Screen Pass Renderer Feature for post-processing effects, follow Entities Graphics patterns for entity rendering  
 **For Technical Artists:** Materials must use URP shaders (`Universal Render Pipeline/Lit` or `/Unlit`), configure renderer features as needed
 
+

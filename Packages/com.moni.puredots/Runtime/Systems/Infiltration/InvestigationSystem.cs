@@ -57,8 +57,7 @@ namespace PureDOTS.Systems.Infiltration
             _counterIntelLookup.Update(ref state);
             _coverLookup.Update(ref state);
 
-            var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // Build map: TargetOrganization -> SpyEntity (O(N) instead of O(N²))
             var orgToSpies = new NativeParallelMultiHashMap<Entity, Entity>(64, Allocator.Temp);
@@ -179,6 +178,9 @@ namespace PureDOTS.Systems.Infiltration
                     }
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
 
             orgToSpies.Dispose();
             orgsWithCounterIntel.Dispose();

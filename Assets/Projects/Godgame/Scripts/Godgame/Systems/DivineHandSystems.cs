@@ -1,4 +1,5 @@
 using Godgame.Runtime;
+using MiracleToken = Godgame.Runtime.MiracleToken;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
@@ -14,6 +15,7 @@ using Unity.Transforms;
 using Unity.Physics;
 using PureHandState = PureDOTS.Runtime.Hand.HandState;
 using HandStateType = PureDOTS.Runtime.Hand.HandStateType;
+using HandState = PureDOTS.Runtime.Components.HandState;
 using HandCommandElement = PureDOTS.Runtime.Hand.HandCommand;
 using HandCommandKind = PureDOTS.Runtime.Hand.HandCommandType;
 using GodgameHandState = Godgame.Runtime.HandState;
@@ -123,17 +125,19 @@ namespace Godgame.Systems
             _miracleSlotLookup.Update(ref state);
 
             var entityManager = state.EntityManager;
-            using var ecb = new EntityCommandBuffer(Allocator.Temp);
-            var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
-            var catalogRef = resourceCatalog.Catalog;
-
-            // Read HandInputFrame singleton and affordances
-            var inputFrame = SystemAPI.GetSingleton<HandInputFrame>();
-            var hover = SystemAPI.GetSingleton<HandHover>();
-            var affordances = SystemAPI.GetSingleton<HandAffordances>();
-
-            foreach (var hand in SystemAPI.Query<DivineHandAspect>())
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            try
             {
+                var resourceCatalog = SystemAPI.GetSingleton<ResourceTypeIndex>();
+                var catalogRef = resourceCatalog.Catalog;
+
+                // Read HandInputFrame singleton and affordances
+                var inputFrame = SystemAPI.GetSingleton<HandInputFrame>();
+                var hover = SystemAPI.GetSingleton<HandHover>();
+                var affordances = SystemAPI.GetSingleton<HandAffordances>();
+
+                foreach (var hand in SystemAPI.Query<DivineHandAspect>())
+                {
                 var entity = hand.Entity;
                 RefRW<ResourceSiphonState> siphonRef = SystemAPI.GetComponentRW<ResourceSiphonState>(entity);
                 ref var stateData = ref hand.HandState.ValueRW;
@@ -150,6 +154,7 @@ namespace Godgame.Systems
                 commands.Clear(); // Clear commands each tick, state machine will emit new ones
 
                 var previousState = stateData.CurrentState;
+                var previousLegacyState = MapGodgameStateToLegacy(previousState);
                 var previousResourceType = stateData.HeldResourceTypeIndex;
                 int previousAmount = stateData.HeldAmount;
 
@@ -348,30 +353,30 @@ namespace Godgame.Systems
                                            stateData.ChargeTimer >= config.MinChargeSeconds &&
                                            intent.ConfirmPlace == 0 && intent.CancelAction == 0;
 
-                HandState nextState;
+                GodgameHandState nextState;
                 if (wantsDump)
                 {
-                    nextState = HandState.Dumping;
+                    nextState = GodgameHandState.Dumping;
                 }
                 else if (wantsSiphon)
                 {
-                    nextState = HandState.Dragging;
+                    nextState = GodgameHandState.Dragging;
                 }
                 else if (miracleVerbActive)
                 {
-                    nextState = HandState.Holding; // reuse holding state for casting visuals
+                    nextState = GodgameHandState.Holding; // reuse holding state for casting visuals
                 }
                 else if (slingshotAimActive)
                 {
-                    nextState = HandState.SlingshotAim;
+                    nextState = GodgameHandState.SlingshotAim;
                 }
                 else if (hasCargo)
                 {
-                    nextState = HandState.Holding;
+                    nextState = GodgameHandState.Holding;
                 }
                 else
                 {
-                    nextState = HandState.Empty;
+                    nextState = GodgameHandState.Empty;
                 }
 
                 // Sync HandInteractionState from PureDOTS.Runtime.Hand.HandState (authoritative)
@@ -485,19 +490,46 @@ namespace Godgame.Systems
 
                 if (nextState != stateData.CurrentState)
                 {
-                    events.Add(DivineHandEvent.StateChange(stateData.CurrentState, nextState));
+                    var nextLegacyState = MapGodgameStateToLegacy(nextState);
+                    events.Add(new DivineHandEvent
+                    {
+                        Type = DivineHandEventType.StateChanged,
+                        FromState = previousLegacyState,
+                        ToState = nextLegacyState,
+                        ResourceTypeIndex = stateData.HeldResourceTypeIndex,
+                        Amount = stateData.HeldAmount,
+                        Capacity = stateData.HeldCapacity
+                    });
                     stateData.PreviousState = stateData.CurrentState;
                     stateData.CurrentState = nextState;
                 }
 
+                var legacyCurrentState = MapGodgameStateToLegacy(stateData.CurrentState);
+
                 if (previousResourceType != stateData.HeldResourceTypeIndex)
                 {
-                    events.Add(DivineHandEvent.TypeChange(stateData.HeldResourceTypeIndex));
+                    events.Add(new DivineHandEvent
+                    {
+                        Type = DivineHandEventType.TypeChanged,
+                        FromState = previousLegacyState,
+                        ToState = legacyCurrentState,
+                        ResourceTypeIndex = stateData.HeldResourceTypeIndex,
+                        Amount = stateData.HeldAmount,
+                        Capacity = stateData.HeldCapacity
+                    });
                 }
 
                 if (previousAmount != stateData.HeldAmount)
                 {
-                    events.Add(DivineHandEvent.AmountChange(stateData.HeldAmount, stateData.HeldCapacity));
+                    events.Add(new DivineHandEvent
+                    {
+                        Type = DivineHandEventType.AmountChanged,
+                        FromState = previousLegacyState,
+                        ToState = legacyCurrentState,
+                        ResourceTypeIndex = stateData.HeldResourceTypeIndex,
+                        Amount = stateData.HeldAmount,
+                        Capacity = stateData.HeldCapacity
+                    });
                 }
 
                 if (queuedBuffer.Length > 0)
@@ -514,8 +546,12 @@ namespace Godgame.Systems
 
                 hand.Command.ValueRW = command;
             }
-
-            ecb.Playback(entityManager);
+            }
+            finally
+            {
+                ecb.Playback(entityManager);
+                ecb.Dispose();
+            }
         }
 
         private void MaintainHeldTransform(ref DivineHandState state, in DivineHandConfig config)
@@ -1047,23 +1083,28 @@ namespace Godgame.Systems
         /// <summary>
         /// Maps PureDOTS.Runtime.Hand.HandStateType to PureDOTS.Runtime.Components.HandState for HandInteractionState sync.
         /// </summary>
-        private static PureDOTS.Runtime.Components.HandState MapToLegacyHandState(HandStateType state)
+        private static HandState MapToLegacyHandState(HandStateType state)
         {
             return state switch
             {
-                HandStateType.Idle => PureDOTS.Runtime.Components.HandState.Idle,
-                HandStateType.Hovering => PureDOTS.Runtime.Components.HandState.Hovering,
-                HandStateType.AttemptPick => PureDOTS.Runtime.Components.HandState.Grabbing,
-                HandStateType.Holding => PureDOTS.Runtime.Components.HandState.Holding,
-                HandStateType.Releasing => PureDOTS.Runtime.Components.HandState.Placing,
-                HandStateType.CastingMiracle => PureDOTS.Runtime.Components.HandState.Casting,
-                HandStateType.Cooldown => PureDOTS.Runtime.Components.HandState.Cooldown,
-                HandStateType.Siphoning => PureDOTS.Runtime.Components.HandState.Holding, // Approximate
-                HandStateType.Dumping => PureDOTS.Runtime.Components.HandState.Holding, // Approximate
-                HandStateType.Charging => PureDOTS.Runtime.Components.HandState.Holding, // Approximate
-                HandStateType.Aiming => PureDOTS.Runtime.Components.HandState.Holding, // Approximate
-                _ => PureDOTS.Runtime.Components.HandState.Idle
+                HandStateType.Idle => HandState.Idle,
+                HandStateType.Hovering => HandState.Hovering,
+                HandStateType.AttemptPick => HandState.Grabbing,
+                HandStateType.Holding => HandState.Holding,
+                HandStateType.Releasing => HandState.Placing,
+                HandStateType.CastingMiracle => HandState.Casting,
+                HandStateType.Cooldown => HandState.Cooldown,
+                HandStateType.Siphoning => HandState.Holding, // Approximate
+                HandStateType.Dumping => HandState.Holding, // Approximate
+                HandStateType.Charging => HandState.Holding, // Approximate
+                HandStateType.Aiming => HandState.Holding, // Approximate
+                _ => HandState.Idle
             };
+        }
+
+        private static HandState MapGodgameStateToLegacy(GodgameHandState state)
+        {
+            return MapToLegacyHandState(MapToPureState(state));
         }
 
         /// <summary>

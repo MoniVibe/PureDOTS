@@ -80,7 +80,6 @@ namespace PureDOTS.Systems.AI
                 }
             }
 
-            ecb.Playback(state.EntityManager);
         }
     }
 }

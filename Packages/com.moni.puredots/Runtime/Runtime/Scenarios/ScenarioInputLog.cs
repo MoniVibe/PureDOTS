@@ -20,7 +20,7 @@ namespace PureDOTS.Runtime.Scenarios
     /// Input log buffer attached to scenario entity.
     /// Records all decisions made during scenario execution.
     /// </summary>
-    [InternalBufferCapacity(1024)]
+    [InternalBufferCapacity(0)]
     public struct ScenarioInputLog : IBufferElementData
     {
         public ScenarioInputLogEntry Entry;
