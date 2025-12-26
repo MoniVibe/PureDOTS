@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Streaming;
 using PureDOTS.Runtime.WorldGen.Domain;
 using PureDOTS.Systems;
@@ -120,6 +121,7 @@ namespace PureDOTS.Runtime.WorldGen.Systems
             if (toDestroy.Length > 0)
             {
                 state.EntityManager.DestroyEntity(toDestroy.AsArray());
+                MarkChunkCacheDirty(state.EntityManager);
             }
         }
 
@@ -170,6 +172,20 @@ namespace PureDOTS.Runtime.WorldGen.Systems
             }
 
             return false;
+        }
+
+        private static void MarkChunkCacheDirty(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SurfaceFieldsChunkRefCache>());
+            if (!query.TryGetSingletonEntity(out var cacheEntity))
+            {
+                return;
+            }
+
+            if (!entityManager.HasComponent<SurfaceFieldsChunkRefCacheDirty>(cacheEntity))
+            {
+                entityManager.AddComponent<SurfaceFieldsChunkRefCacheDirty>(cacheEntity);
+            }
         }
     }
 }

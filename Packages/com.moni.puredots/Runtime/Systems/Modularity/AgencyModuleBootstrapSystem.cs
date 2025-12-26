@@ -43,7 +43,15 @@ namespace PureDOTS.Runtime.Systems.Modularity
             {
                 if (!em.HasComponent<AgencySelf>(entity))
                 {
-                    ecb.AddComponent(entity, AgencyDefaults.DefaultSelf());
+                    if (em.HasComponent<AgencySelfPreset>(entity))
+                    {
+                        var preset = em.GetComponentData<AgencySelfPreset>(entity);
+                        ecb.AddComponent(entity, AgencySelfPresetUtility.Resolve(preset));
+                    }
+                    else
+                    {
+                        ecb.AddComponent(entity, AgencyDefaults.DefaultSelf());
+                    }
                 }
 
                 if (!em.HasBuffer<ControlLink>(entity))
@@ -66,4 +74,3 @@ namespace PureDOTS.Runtime.Systems.Modularity
         }
     }
 }
-

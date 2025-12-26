@@ -45,7 +45,7 @@ This document defines **tech flavors** - the thematic and mechanical variations 
 
 **1. Cross-Family Flavors:**
 - Universal modifications that apply to multiple tech families
-- Example: "Rapid Fire" can apply to lasers, railguns, missiles, spells
+- Example: "Rapid cooling" can apply to lasers, railguns, missiles, spells, or even limbs.
 
 **2. Divergent Flavors:**
 - Base tech splits into specialized branches
@@ -297,9 +297,167 @@ This document defines **tech flavors** - the thematic and mechanical variations 
 
 ---
 
+## Multi-Family Tech Combinations
+
+### Combining Flavor Families
+
+**Techs can benefit from multiple flavor families simultaneously**, creating unique combinations that stack their effects. This enables procedural generation of interesting tech variants and allows researchers to discover novel combinations.
+
+**Core Principle:** Multiple flavor families can apply to the same tech, with their effects stacking or synergizing. This creates emergent tech variants that weren't explicitly designed but arise from the combination system.
+
+### Combination Examples
+
+**Shredder Turrets:**
+- **Rapid Cooling Family** + **Flak Family**
+- **Mechanical Expression:** Rapid-fire flak-type weapon with advanced cooling systems
+- **Benefits:** High rate of fire (rapid cooling), area effect damage (flak), effective vs small/fast targets
+- **Research Path:** Researcher combines rapid cooling tech with flak weapon tech
+- **Procedural Generation:** Entities researching both families can unlock this combination
+
+**Beam Shotgun:**
+- **Shotgun Family** + **Beam Family**
+- **Mechanical Expression:** Beam weapon with wide spread pattern, close-range area effect
+- **Benefits:** Beam damage type (ignores some defenses), shotgun spread (area effect), close-range specialization
+- **Research Path:** Researcher combines beam tech with shotgun tech
+- **Procedural Generation:** Entities researching both families can unlock this combination
+
+**Precision MIRV:**
+- **Precision Family** + **MIRV Family**
+- **Mechanical Expression:** MIRV missile with precision guidance, high accuracy warheads
+- **Benefits:** Multiple warheads (MIRV), high accuracy (precision), effective vs multiple targets with precision
+- **Research Path:** Researcher combines precision guidance with MIRV warhead tech
+- **Procedural Generation:** Entities researching both families can unlock this combination
+
+**Sustained Flak:**
+- **Sustained Fire Family** + **Flak Family**
+- **Mechanical Expression:** Continuous flak stream, sustained area effect damage
+- **Benefits:** Continuous fire (sustained), area effect (flak), efficient cooling (sustained)
+- **Research Path:** Researcher combines sustained fire tech with flak tech
+- **Procedural Generation:** Entities researching both families can unlock this combination
+
+### Combination Discovery
+
+**How combinations are discovered:**
+
+**1. Research Inspiration:**
+- Researcher studying techs from multiple families gains inspiration
+- Realizes potential synergy between families
+- Unlocks combination tech variant
+
+**2. Procedural Generation:**
+- System checks which flavor families entity has researched
+- Generates potential combinations based on available families
+- Researcher quality determines combination quality
+
+**3. Reverse Engineering:**
+- Entity encounters tech with unknown combination
+- Reverse engineers to discover which families are combined
+- Unlocks combination for their own research
+
+**4. Experimental Research:**
+- Researcher experiments with combining different families
+- May discover new combinations through trial and error
+- Higher Intelligence/Wisdom increases discovery chance
+
+### Combination Synergies
+
+**Some family combinations have natural synergies:**
+
+**Rapid Cooling + Flak:**
+- Rapid cooling enables sustained flak fire
+- Flak benefits from high rate of fire
+- Synergy: High DPS area effect weapon
+
+**Beam + Shotgun:**
+- Beam provides damage type benefits
+- Shotgun provides area effect
+- Synergy: Close-range beam weapon with area effect
+
+**Precision + MIRV:**
+- Precision provides accuracy
+- MIRV provides multiple warheads
+- Synergy: Accurate multi-warhead weapon
+
+**Sustained + Flak:**
+- Sustained provides continuous fire
+- Flak provides area effect
+- Synergy: Continuous area effect weapon
+
+**Armor Piercing + Rapid Fire:**
+- AP provides armor penetration
+- Rapid fire provides high DPS
+- Synergy: High DPS armor-piercing weapon
+
+### Combination Limitations
+
+**Not all combinations are viable:**
+
+**Technical Constraints:**
+- Some families may conflict (e.g., Precision + Area Effect = reduced effectiveness)
+- Some combinations may require specific tech tiers
+- Some combinations may have prohibitive resource costs
+
+**Balance Constraints:**
+- Overpowered combinations may be restricted
+- Some combinations may require special prerequisites
+- Some combinations may have significant drawbacks
+
+**Research Constraints:**
+- Researcher must have knowledge of both families
+- Higher quality research unlocks better combinations
+- Some combinations may require specialized researchers
+
+### Procedural Weapon Generation
+
+**The combination system enables procedural weapon generation:**
+
+**Base Weapon Archetype:**
+- Defined weapon type (Turret, Missile, Laser, etc.)
+
+**Applied Flavor Families:**
+- Multiple families can apply (Rapid Cooling, Flak, Precision, etc.)
+
+**Generated Variant:**
+- System generates unique weapon variant based on combination
+- Quality determined by researcher capabilities
+- Attributes derived from combined families
+
+**Example Procedural Generation:**
+1. Base: "Turret" archetype
+2. Families: Rapid Cooling + Flak + Precision
+3. Generated: "Precision Rapid-Fire Flak Turret"
+4. Attributes: High RoF (rapid cooling), area effect (flak), high accuracy (precision)
+5. Quality: Determined by researcher Intelligence/Wisdom
+
+### Research & Reverse Engineering
+
+**Entities can research and reverse engineer combinations:**
+
+**Research Process:**
+1. Entity researches multiple flavor families
+2. System identifies potential combinations
+3. Researcher experiments with combining families
+4. Unlocks combination tech variant
+5. Quality determined by researcher capabilities
+
+**Reverse Engineering Process:**
+1. Entity encounters tech with unknown combination
+2. Analyzes tech to identify component families
+3. Unlocks combination for own research
+4. Can improve combination through own research
+5. May discover improved variant
+
+**Discovery Benefits:**
+- Unique tech variants not available to others
+- Competitive advantage through novel combinations
+- Research quality determines variant quality
+- Can trade/sell combination knowledge
+
+---
+
 ## Cross-Family Tech Flavors
 
-These are **universal modifications** that can apply across multiple tech families. They represent general principles that transcend specific technologies.
+These are **universal modifications** that can apply across multiple tech families. They represent general principles that transcend specific technologies. Multiple families can be combined on the same tech to create unique variants.
 
 ### Rapid Fire / Sustained Fire
 
@@ -399,6 +557,397 @@ These are **universal modifications** that can apply across multiple tech famili
 - **Integrated Railgun:** Fixed design, optimized for specific role
 - **Modular Spells:** Can combine spell components, flexible casting
 - **Integrated Spells:** Fixed spell design, optimized for specific purpose
+
+### Flak / Point Defense
+
+**Applies To:** Weapons (turrets, missiles, spells), Defense systems
+
+**Mechanical Expression:**
+- **Flak:** Area effect damage, effective vs small/fast targets, anti-fighter/anti-missile
+- **Point Defense:** Defensive weapon, intercepts incoming projectiles, protects friendly units
+
+**Outlook Influence:**
+- **Warlike:** Prefers flak (aggressive area denial)
+- **Peaceful:** Prefers point defense (defensive, protective)
+- **Xenophobic:** Prefers flak (area denial, keep threats away)
+- **Xenophilic:** Prefers point defense (protective, inclusive)
+
+**Examples:**
+- **Flak Turret:** Area effect damage, effective vs fighters/missiles
+- **Point Defense Turret:** Intercepts incoming projectiles, defensive
+- **Flak Missiles:** Area effect missiles, anti-swarm
+- **Flak Spells:** Area effect magic, anti-swarm (Godgame)
+
+**Combination Potential:**
+- **Flak + Rapid Cooling:** Sustained flak fire, high DPS area effect
+- **Flak + Precision:** Accurate flak, better targeting
+- **Flak + Sustained:** Continuous flak stream, area denial
+
+### Shotgun / Spread Pattern
+
+**Applies To:** Weapons (beams, projectiles, spells), Close-range weapons
+
+**Mechanical Expression:**
+- **Shotgun:** Wide spread pattern, close-range, high damage at close range, area effect
+- **Spread Pattern:** Multiple projectiles/beams, wider coverage, lower accuracy per projectile
+
+**Outlook Influence:**
+- **Warlike:** Prefers shotgun (aggressive close-range)
+- **Peaceful:** May avoid shotgun (too aggressive)
+- **Chaotic:** Prefers shotgun (unpredictable spread)
+- **Lawful:** Prefers precision over spread
+
+**Examples:**
+- **Shotgun Railgun:** Multiple projectiles, wide spread, close-range
+- **Beam Shotgun:** Beam weapon with wide spread, close-range area effect
+- **Shotgun Missiles:** Multiple small missiles, spread pattern
+- **Shotgun Spells:** Multiple spell projectiles, wide spread (Godgame)
+
+**Combination Potential:**
+- **Shotgun + Beam:** Beam shotgun, close-range area effect beam
+- **Shotgun + Rapid Fire:** Rapid-fire shotgun, high DPS close-range
+- **Shotgun + Flak:** Wide-area flak, extreme area effect
+
+### Rapid Cooling / Heat Management
+
+**Applies To:** Weapons (all types), Facilities (production, power generation), Equipment (all types)
+
+**Mechanical Expression:**
+- **Rapid Cooling:** Fast heat dissipation, enables sustained fire, higher rate of fire
+- **Heat Management:** Efficient cooling systems, sustained operation, reduced cooldowns
+
+**Outlook Influence:**
+- **Materialist:** Prefers rapid cooling (efficiency, optimization)
+- **Warlike:** Prefers rapid cooling (sustained fire, aggressive)
+- **Competitive:** Prefers rapid cooling (maximum performance)
+- **Cooperative:** Prefers heat management (sustainable, shared resources)
+
+**Examples:**
+- **Rapid Cooling Laser:** Sustained laser fire, no overheating
+- **Rapid Cooling Railgun:** High rate of fire, sustained operation
+- **Rapid Cooling Missiles:** Rapid missile launch, sustained barrage
+- **Rapid Cooling Spells:** Sustained spell casting, no mana burnout (Godgame)
+
+**Combination Potential:**
+- **Rapid Cooling + Flak:** Sustained flak fire, high DPS area effect
+- **Rapid Cooling + Rapid Fire:** Extreme rate of fire, maximum DPS
+- **Rapid Cooling + Sustained:** Continuous operation, no downtime
+
+### Explosion / Area Effect
+
+**Applies To:** Weapons (missiles, projectiles, spells), Damage types
+
+**Mechanical Expression:**
+- **Explosion:** Instant AoE damage on impact, blast radius, affects multiple targets
+- **Area Effect:** Damage in area, affects all targets in radius, may have falloff
+
+**Outlook Influence:**
+- **Warlike:** Prefers explosions (aggressive, overwhelming)
+- **Peaceful:** May avoid explosions (too destructive)
+- **Competitive:** Prefers explosions (maximum damage)
+- **Cooperative:** Prefers controlled area effect (measured response)
+
+**Examples:**
+- **Explosive Missiles:** Blast damage on impact, area effect
+- **Explosive Projectiles:** Railgun rounds with explosive warheads
+- **Explosive Spells:** Fireball, explosion magic (Godgame)
+
+**Combination Potential:**
+- **Explosion + MIRV:** Multiple explosive warheads, massive area effect
+- **Explosion + Rapid Fire:** Rapid explosive barrage, sustained area damage
+- **Explosion + Flak:** Explosive flak, area denial
+
+### Delayed Explosion / Timed Detonation
+
+**Applies To:** Weapons (missiles, projectiles, traps), Damage types
+
+**Mechanical Expression:**
+- **Delayed Explosion:** Explodes after time delay, can penetrate before detonation
+- **Timed Detonation:** Programmed detonation time, strategic timing
+
+**Outlook Influence:**
+- **Authoritarian:** Prefers delayed explosions (strategic, controlled)
+- **Chaotic:** May avoid delayed explosions (too predictable)
+- **Warlike:** Prefers delayed explosions (tactical advantage)
+- **Peaceful:** May avoid delayed explosions (too destructive)
+
+**Examples:**
+- **Delayed Explosive Missiles:** Penetrate armor, then explode
+- **Timed Projectiles:** Explode at specific time, strategic placement
+- **Delayed Explosion Spells:** Time-delayed magic, tactical advantage (Godgame)
+
+**Combination Potential:**
+- **Delayed Explosion + Armor Piercing:** Penetrate then explode, maximum damage
+- **Delayed Explosion + Homing:** Track target, then explode on delay
+- **Delayed Explosion + Phasing:** Phase through defenses, then explode
+
+### Proximity Activation / Proximity Fuse
+
+**Applies To:** Weapons (missiles, projectiles, mines), Defense systems
+
+**Mechanical Expression:**
+- **Proximity Activation:** Detonates when near target, no direct hit required
+- **Proximity Fuse:** Explodes when within range of target, effective vs evasive targets
+
+**Outlook Influence:**
+- **Materialist:** Prefers proximity activation (efficient, reliable)
+- **Warlike:** Prefers proximity activation (effective vs evasive targets)
+- **Spiritual:** May prefer direct hit (more "honorable")
+- **Competitive:** Prefers proximity activation (maximum effectiveness)
+
+**Examples:**
+- **Proximity Missiles:** Explode near target, no direct hit needed
+- **Proximity Projectiles:** Explode when near target, area effect
+- **Proximity Mines:** Explode when enemy approaches, defensive
+- **Proximity Spells:** Magic that activates near targets (Godgame)
+
+**Combination Potential:**
+- **Proximity + Explosion:** Proximity-triggered explosion, effective vs evasive
+- **Proximity + Flak:** Proximity flak, area denial
+- **Proximity + MIRV:** Multiple proximity warheads, overwhelming
+
+### Multishot / Multiple Projectiles
+
+**Applies To:** Weapons (all types), Spells (magic projectiles)
+
+**Mechanical Expression:**
+- **Multishot:** Fires multiple projectiles simultaneously, wider coverage
+- **Multiple Projectiles:** Several projectiles per shot, increased hit chance
+
+**Outlook Influence:**
+- **Warlike:** Prefers multishot (overwhelming firepower)
+- **Competitive:** Prefers multishot (maximum damage output)
+- **Materialist:** May prefer efficiency over multishot (resource cost)
+- **Peaceful:** May prefer single shot (measured response)
+
+**Examples:**
+- **Multishot Railgun:** Fires multiple projectiles, wider spread
+- **Multishot Laser:** Multiple laser beams, area coverage
+- **Multishot Missiles:** Fires multiple missiles, swarm attack
+- **Multishot Spells:** Multiple magic projectiles, area effect (Godgame)
+
+**Combination Potential:**
+- **Multishot + Shotgun:** Extreme spread, maximum coverage
+- **Multishot + Rapid Fire:** Rapid multishot barrage, overwhelming
+- **Multishot + Homing:** Multiple homing projectiles, effective vs multiple targets
+
+### Chain / Chaining
+
+**Applies To:** Weapons (beams, projectiles, spells), Damage types
+
+**Mechanical Expression:**
+- **Chain:** Damage chains between targets, jumps from one to another
+- **Chaining:** Projectile/beam chains between multiple targets, area effect
+
+**Outlook Influence:**
+- **Egalitarian:** Prefers chain (affects all equally)
+- **Warlike:** Prefers chain (damage multiple targets)
+- **Competitive:** Prefers chain (maximum damage spread)
+- **Peaceful:** May avoid chain (too indiscriminate)
+
+**Examples:**
+- **Chain Lightning:** Jumps between targets, area effect
+- **Chain Beam:** Beam chains between targets, multiple hits
+- **Chain Projectiles:** Projectile chains between targets, area damage
+- **Chain Spells:** Magic that chains between targets (Godgame)
+
+**Combination Potential:**
+- **Chain + Multishot:** Multiple chaining projectiles, extreme area coverage
+- **Chain + Rapid Fire:** Rapid chaining attacks, sustained area damage
+- **Chain + Homing:** Chaining homing projectiles, effective vs groups
+
+### Focused / Concentrated
+
+**Applies To:** Weapons (beams, projectiles, spells), Damage types
+
+**Mechanical Expression:**
+- **Focused:** Concentrated damage, single target, high damage, precise
+- **Concentrated:** All damage focused on single point, maximum penetration
+
+**Outlook Influence:**
+- **Authoritarian:** Prefers focused (surgical, precise)
+- **Warlike:** Prefers focused (maximum single-target damage)
+- **Xenophobic:** Prefers focused (targeted elimination)
+- **Egalitarian:** May prefer area effect over focused
+
+**Examples:**
+- **Focused Beam:** Concentrated laser, high single-target damage
+- **Focused Projectile:** Concentrated railgun, maximum penetration
+- **Focused Spell:** Concentrated magic, high single-target damage (Godgame)
+
+**Combination Potential:**
+- **Focused + Sniper:** Extreme precision, maximum single-target damage
+- **Focused + Armor Piercing:** Concentrated armor penetration, maximum damage
+- **Focused + Precision:** Ultimate precision, surgical strike
+
+### Ricocheting / Bouncing
+
+**Applies To:** Weapons (projectiles, beams), Damage types
+
+**Mechanical Expression:**
+- **Ricocheting:** Projectiles bounce off surfaces, can hit multiple targets
+- **Bouncing:** Projectiles bounce between targets, unpredictable trajectory
+
+**Outlook Influence:**
+- **Chaotic:** Prefers ricocheting (unpredictable, wild)
+- **Warlike:** Prefers ricocheting (damage multiple targets)
+- **Lawful:** May avoid ricocheting (too unpredictable)
+- **Competitive:** Prefers ricocheting (maximum damage potential)
+
+**Examples:**
+- **Ricocheting Railgun:** Projectiles bounce off surfaces, multiple hits
+- **Ricocheting Projectiles:** Bounce between targets, unpredictable
+- **Ricocheting Spells:** Magic that bounces between targets (Godgame)
+
+**Combination Potential:**
+- **Ricocheting + Multishot:** Multiple bouncing projectiles, extreme coverage
+- **Ricocheting + Chain:** Bouncing chaining projectiles, area effect
+- **Ricocheting + Random Moving:** Unpredictable bouncing, chaotic damage
+
+### Random Moving / Erratic Trajectory
+
+**Applies To:** Weapons (projectiles, missiles), Movement patterns
+
+**Mechanical Expression:**
+- **Random Moving:** Unpredictable trajectory, hard to intercept, evasive
+- **Erratic Trajectory:** Random movement pattern, difficult to predict
+
+**Outlook Influence:**
+- **Chaotic:** Prefers random moving (unpredictable, wild)
+- **Warlike:** Prefers random moving (hard to intercept)
+- **Lawful:** May avoid random moving (too unpredictable)
+- **Competitive:** Prefers random moving (tactical advantage)
+
+**Examples:**
+- **Random Moving Missiles:** Erratic trajectory, hard to intercept
+- **Random Moving Projectiles:** Unpredictable path, evasive
+- **Random Moving Spells:** Magic with unpredictable trajectory (Godgame)
+
+**Combination Potential:**
+- **Random Moving + Homing:** Erratic homing, extremely hard to intercept
+- **Random Moving + Ricocheting:** Unpredictable bouncing, chaotic
+- **Random Moving + Multishot:** Multiple erratic projectiles, overwhelming
+
+### Homing / Dumb Fire
+
+**Applies To:** Weapons (missiles, projectiles, spells), Guidance systems
+
+**Mechanical Expression:**
+- **Homing:** Tracks and follows target, high accuracy, guided
+- **Dumb Fire:** No guidance, straight trajectory, faster, cheaper
+
+**Outlook Influence:**
+- **Authoritarian:** Prefers homing (precise, controlled)
+- **Materialist:** May prefer dumb fire (cheaper, efficient)
+- **Warlike:** Prefers homing (effective vs evasive targets)
+- **Competitive:** Prefers homing (maximum accuracy)
+
+**Examples:**
+- **Homing Missiles:** Track and follow targets, high accuracy
+- **Homing Projectiles:** Guided projectiles, track targets
+- **Dumb Fire Missiles:** Straight trajectory, fast, cheap
+- **Homing Spells:** Magic that tracks targets (Godgame)
+
+**Combination Potential:**
+- **Homing + MIRV:** Multiple homing warheads, effective vs multiple targets
+- **Homing + Rapid Fire:** Rapid homing barrage, sustained tracking
+- **Homing + Proximity:** Homing with proximity fuse, maximum effectiveness
+
+### Flamethrower / Liquid Sprayer
+
+**Applies To:** Weapons (close-range, area denial), Damage types
+
+**Mechanical Expression:**
+- **Flamethrower:** Continuous fire stream, area denial, damage over time
+- **Liquid Sprayer:** Continuous liquid stream, area effect, persistent damage
+
+**Outlook Influence:**
+- **Warlike:** Prefers flamethrower (aggressive, area denial)
+- **Xenophobic:** Prefers flamethrower (defensive, area denial)
+- **Peaceful:** May avoid flamethrower (too destructive)
+- **Materialist:** Prefers liquid sprayer (efficient, versatile)
+
+**Examples:**
+- **Flamethrower Weapon:** Continuous fire stream, area denial
+- **Liquid Sprayer:** Continuous liquid stream, area effect
+- **Flamethrower Spells:** Continuous fire magic, area denial (Godgame)
+
+**Combination Potential:**
+- **Flamethrower + Sustained:** Continuous fire stream, area denial
+- **Flamethrower + Rapid Fire:** Rapid fire bursts, sustained area damage
+- **Flamethrower + Shotgun:** Wide fire spread, extreme area coverage
+
+### Phasing / Phase Through
+
+**Applies To:** Weapons (projectiles, beams, spells), Defense bypass
+
+**Mechanical Expression:**
+- **Phasing:** Passes through physical barriers, ignores armor, phase through shields
+- **Phase Through:** Projectiles/beams phase through defenses, direct damage
+
+**Outlook Influence:**
+- **Spiritual:** Prefers phasing (transcendent, ethereal)
+- **Warlike:** Prefers phasing (bypasses defenses)
+- **Materialist:** May prefer physical damage over phasing
+- **Competitive:** Prefers phasing (tactical advantage)
+
+**Examples:**
+- **Phasing Projectiles:** Pass through armor/shields, direct damage
+- **Phasing Beams:** Phase through defenses, ignore barriers
+- **Phasing Spells:** Magic that phases through defenses (Godgame)
+
+**Combination Potential:**
+- **Phasing + Delayed Explosion:** Phase through, then explode inside
+- **Phasing + Homing:** Phasing homing projectiles, bypass defenses
+- **Phasing + Focused:** Phasing focused beam, maximum penetration
+
+### Teleporting / Instant Travel
+
+**Applies To:** Weapons (projectiles, beams, spells), Movement types
+
+**Mechanical Expression:**
+- **Teleporting:** Projectiles/beams teleport to target, instant travel, no trajectory
+- **Instant Travel:** Appears at target instantly, bypasses interceptors
+
+**Outlook Influence:**
+- **Spiritual:** Prefers teleporting (transcendent, ethereal)
+- **Warlike:** Prefers teleporting (impossible to intercept)
+- **Materialist:** May prefer physical projectiles over teleporting
+- **Competitive:** Prefers teleporting (tactical advantage)
+
+**Examples:**
+- **Teleporting Projectiles:** Appear at target instantly, no trajectory
+- **Teleporting Beams:** Instant beam delivery, no travel time
+- **Teleporting Spells:** Magic that teleports to target (Godgame)
+
+**Combination Potential:**
+- **Teleporting + Explosion:** Teleport then explode, instant area damage
+- **Teleporting + Homing:** Teleporting homing, impossible to intercept
+- **Teleporting + Multishot:** Multiple teleporting projectiles, instant barrage
+
+### Ambient / Environmental
+
+**Applies To:** Weapons (area denial, environmental), Damage types
+
+**Mechanical Expression:**
+- **Ambient:** Creates persistent environmental effect, area denial, damage over time
+- **Environmental:** Alters battlefield environment, persistent effects
+
+**Outlook Influence:**
+- **Peaceful:** Prefers ambient (non-violent, environmental)
+- **Spiritual:** Prefers ambient (transcendent, ethereal)
+- **Warlike:** Prefers ambient (area denial, tactical)
+- **Materialist:** May prefer direct damage over ambient
+
+**Examples:**
+- **Ambient Weapon:** Creates persistent damage field, area denial
+- **Environmental Effect:** Alters battlefield, persistent damage
+- **Ambient Spells:** Magic that creates persistent environmental effects (Godgame)
+
+**Combination Potential:**
+- **Ambient + Sustained:** Continuous ambient effect, area denial
+- **Ambient + Explosion:** Explosion creates ambient effect, persistent damage
+- **Ambient + Flamethrower:** Persistent fire field, extreme area denial
 
 ---
 

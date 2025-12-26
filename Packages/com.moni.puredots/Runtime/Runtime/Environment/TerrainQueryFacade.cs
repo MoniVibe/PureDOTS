@@ -39,6 +39,11 @@ namespace PureDOTS.Environment
         public NativeArray<SurfaceFieldsChunkRef> SurfaceFieldsChunks;
         public NativeArray<TerrainSurfaceTileVersion> SurfaceTileVersions;
         public NativeArray<TerrainUndergroundChunkVersion> UndergroundChunkVersions;
+        public TerrainVoxelAccessor VoxelAccessor;
+        public Entity VolumeEntity;
+        public float3 VolumeOrigin;
+        public float4x4 VolumeWorldToLocal;
+        public byte VolumeEnabled;
     }
 
     public enum TerrainHitKind : byte
@@ -63,7 +68,7 @@ namespace PureDOTS.Environment
         public float Radius;
     }
 
-    public struct SurfaceFieldsChunkRef
+    public struct SurfaceFieldsChunkRef : IBufferElementData
     {
         public int3 ChunkCoord;
         public BlobAssetReference<SurfaceFieldsChunkBlob> Chunk;
@@ -169,6 +174,25 @@ namespace PureDOTS.Environment
 
         public static bool IsSolid(in TerrainQueryContext context, float3 worldPosition)
         {
+            if (context.VolumeEnabled != 0 &&
+                context.VolumeEntity != Entity.Null &&
+                context.VoxelAccessor.ChunkLookup.IsCreated)
+            {
+                var local = math.transform(context.VolumeWorldToLocal, worldPosition) - context.VolumeOrigin;
+                var chunkSize = new float3(context.WorldConfig.VoxelsPerChunk) * context.WorldConfig.VoxelSize;
+                if (context.WorldConfig.VoxelSize > 0f && math.all(chunkSize > 0f))
+                {
+                    var chunkCoord = (int3)math.floor(local / chunkSize);
+                    var chunkOrigin = new float3(chunkCoord) * chunkSize;
+                    var voxelCoord = (int3)math.floor((local - chunkOrigin) / context.WorldConfig.VoxelSize);
+
+                    if (context.VoxelAccessor.IsSolid(context.VolumeEntity, chunkCoord, voxelCoord))
+                    {
+                        return true;
+                    }
+                }
+            }
+
             if (context.SolidSphere.Enabled == 0)
             {
                 return false;
@@ -252,13 +276,14 @@ namespace PureDOTS.Environment
             return context.GlobalTerrainVersion;
         }
 
-        public static uint GetUndergroundChunkVersion(in TerrainQueryContext context, int3 chunkCoord)
+        public static uint GetUndergroundChunkVersion(in TerrainQueryContext context, Entity volumeEntity, int3 chunkCoord)
         {
             if (context.UndergroundChunkVersions.IsCreated)
             {
                 for (int i = 0; i < context.UndergroundChunkVersions.Length; i++)
                 {
-                    if (context.UndergroundChunkVersions[i].ChunkCoord.Equals(chunkCoord))
+                    if (context.UndergroundChunkVersions[i].VolumeEntity == volumeEntity &&
+                        context.UndergroundChunkVersions[i].ChunkCoord.Equals(chunkCoord))
                     {
                         return context.UndergroundChunkVersions[i].Version;
                     }

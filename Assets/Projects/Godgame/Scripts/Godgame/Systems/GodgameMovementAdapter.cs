@@ -1,6 +1,7 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
+using PureDOTS.Runtime.WorldGen;
 using PureDOTS.Systems;
 using PureDOTS.Systems.Movement;
 using Unity.Burst;
@@ -52,10 +53,18 @@ namespace Godgame.Systems
             SystemAPI.TryGetSingleton(out solidSphere);
             var terrainConfig = TerrainWorldConfig.Default;
             SystemAPI.TryGetSingleton(out terrainConfig);
+            var surfaceDomain = default(SurfaceFieldsDomainConfig);
+            SystemAPI.TryGetSingleton(out surfaceDomain);
             var globalTerrainVersion = 0u;
             if (SystemAPI.TryGetSingleton<TerrainVersion>(out var terrainVersion))
             {
                 globalTerrainVersion = terrainVersion.Value;
+            }
+
+            var surfaceChunks = default(NativeArray<SurfaceFieldsChunkRef>);
+            if (SystemAPI.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var surfaceCacheEntity))
+            {
+                surfaceChunks = SystemAPI.GetBuffer<SurfaceFieldsChunkRef>(surfaceCacheEntity).AsNativeArray();
             }
 
             var terrainContext = new TerrainQueryContext
@@ -65,7 +74,9 @@ namespace Godgame.Systems
                 FlatSurface = flatSurface,
                 SolidSphere = solidSphere,
                 WorldConfig = terrainConfig,
-                GlobalTerrainVersion = globalTerrainVersion
+                GlobalTerrainVersion = globalTerrainVersion,
+                SurfaceFieldsDomain = surfaceDomain,
+                SurfaceFieldsChunks = surfaceChunks
             };
 
             var groundConfigs = SystemAPI.GetComponentLookup<GroundMovementConfig>(true);
@@ -98,7 +109,7 @@ namespace Godgame.Systems
         public partial struct GodgameGroundMovementJob : IJobEntity
         {
             public float DeltaTime;
-            public TerrainQueryContext TerrainContext;
+            [ReadOnly] public TerrainQueryContext TerrainContext;
             [ReadOnly] public ComponentLookup<GroundMovementConfig> GroundConfigs;
 
             void Execute(
@@ -170,7 +181,7 @@ namespace Godgame.Systems
         public partial struct GodgameFlyingMovementJob : IJobEntity
         {
             public float DeltaTime;
-            public TerrainQueryContext TerrainContext;
+            [ReadOnly] public TerrainQueryContext TerrainContext;
 
             void Execute(
                 Entity entity,

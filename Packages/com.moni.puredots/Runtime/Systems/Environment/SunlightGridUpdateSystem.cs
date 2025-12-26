@@ -1,5 +1,6 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Environment;
 using PureDOTS.Runtime.Time;
 using Unity.Burst;
 using Unity.Collections;
@@ -84,6 +85,16 @@ namespace PureDOTS.Systems.Environment
             var climate = SystemAPI.GetSingleton<ClimateState>();
             CalculateSunlight(climate, out var sunDirection, out var directLight, out var ambientLight, out var sunScalar);
 
+            var globalSunlight = 1f;
+            if (SystemAPI.TryGetSingleton<SunlightState>(out var sunlightState))
+            {
+                globalSunlight = math.saturate(sunlightState.GlobalIntensity);
+            }
+
+            directLight *= globalSunlight;
+            ambientLight *= globalSunlight;
+            sunScalar = math.saturate(sunScalar * globalSunlight);
+
             var samples = runtimeBuffer.Reinterpret<SunlightSample>().AsNativeArray();
 
             var baselineJob = new SunlightBaselineJob
@@ -125,10 +136,127 @@ namespace PureDOTS.Systems.Environment
             state.Dependency = occlusionJob.ScheduleParallel(samples.Length, 128, state.Dependency);
             occluderCounts.Dispose(state.Dependency);
 
+            var terrainContext = BuildTerrainContext(ref state, out var chunkLookup);
+            var shadowJob = new ApplyTerrainShadowJob
+            {
+                Samples = samples,
+                Metadata = sunlightGrid.Metadata,
+                TerrainContext = terrainContext,
+                ProbeDepth = math.max(0.25f, terrainContext.WorldConfig.VoxelSize * 0.5f)
+            };
+            state.Dependency = shadowJob.ScheduleParallel(samples.Length, 128, state.Dependency);
+            if (chunkLookup.IsCreated)
+            {
+                chunkLookup.Dispose(state.Dependency);
+            }
+
             sunlightGrid.SunDirection = sunDirection;
             sunlightGrid.SunIntensity = sunScalar;
             sunlightGrid.LastUpdateTick = currentTick;
             SystemAPI.SetComponent(sunlightEntity, sunlightGrid);
+        }
+
+        private static TerrainQueryContext BuildTerrainContext(ref SystemState state, out NativeParallelHashMap<TerrainChunkKey, Entity> chunkLookup)
+        {
+            var moistureGrid = default(MoistureGrid);
+            SystemAPI.TryGetSingleton(out moistureGrid);
+
+            var terrainPlane = default(TerrainHeightPlane);
+            SystemAPI.TryGetSingleton(out terrainPlane);
+
+            var flatSurface = default(TerrainFlatSurface);
+            SystemAPI.TryGetSingleton(out flatSurface);
+
+            var solidSphere = default(TerrainSolidSphere);
+            SystemAPI.TryGetSingleton(out solidSphere);
+
+            var terrainConfig = TerrainWorldConfig.Default;
+            SystemAPI.TryGetSingleton(out terrainConfig);
+
+            var surfaceDomain = default(SurfaceFieldsDomainConfig);
+            SystemAPI.TryGetSingleton(out surfaceDomain);
+
+            var globalTerrainVersion = 0u;
+            if (SystemAPI.TryGetSingleton<TerrainVersion>(out var terrainVersion))
+            {
+                globalTerrainVersion = terrainVersion.Value;
+            }
+
+            var surfaceChunks = default(NativeArray<SurfaceFieldsChunkRef>);
+            if (SystemAPI.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var surfaceCacheEntity))
+            {
+                surfaceChunks = SystemAPI.GetBuffer<SurfaceFieldsChunkRef>(surfaceCacheEntity).AsNativeArray();
+            }
+
+            var volumeEntity = Entity.Null;
+            var volumeOrigin = terrainConfig.VolumeWorldOrigin;
+            var volumeWorldToLocal = float4x4.identity;
+            byte volumeEnabled = 0;
+
+            foreach (var (volume, entity) in SystemAPI.Query<RefRO<TerrainVolume>>().WithEntityAccess())
+            {
+                volumeEntity = entity;
+                volumeOrigin = volume.ValueRO.LocalOrigin;
+                volumeEnabled = 1;
+                break;
+            }
+
+            if (volumeEnabled != 0 && SystemAPI.HasComponent<LocalToWorld>(volumeEntity))
+            {
+                var localToWorld = SystemAPI.GetComponent<LocalToWorld>(volumeEntity);
+                volumeWorldToLocal = math.inverse(localToWorld.Value);
+            }
+
+            chunkLookup = BuildChunkLookup(ref state);
+            var chunkComponentLookup = state.GetComponentLookup<TerrainChunk>(true);
+            chunkComponentLookup.Update(ref state);
+            var voxelRuntimeLookup = state.GetBufferLookup<TerrainVoxelRuntime>(true);
+            voxelRuntimeLookup.Update(ref state);
+            var voxelAccessor = new TerrainVoxelAccessor
+            {
+                ChunkLookup = chunkLookup,
+                Chunks = chunkComponentLookup,
+                RuntimeVoxels = voxelRuntimeLookup,
+                WorldConfig = terrainConfig
+            };
+
+            return new TerrainQueryContext
+            {
+                MoistureGrid = moistureGrid,
+                HeightPlane = terrainPlane,
+                FlatSurface = flatSurface,
+                SolidSphere = solidSphere,
+                WorldConfig = terrainConfig,
+                GlobalTerrainVersion = globalTerrainVersion,
+                SurfaceFieldsDomain = surfaceDomain,
+                SurfaceFieldsChunks = surfaceChunks,
+                VoxelAccessor = voxelAccessor,
+                VolumeEntity = volumeEntity,
+                VolumeOrigin = volumeOrigin,
+                VolumeWorldToLocal = volumeWorldToLocal,
+                VolumeEnabled = volumeEnabled
+            };
+        }
+
+        private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state)
+        {
+            var chunkCount = SystemAPI.Query<RefRO<TerrainChunk>>().CalculateEntityCount();
+            if (chunkCount <= 0)
+            {
+                return default;
+            }
+
+            var map = new NativeParallelHashMap<TerrainChunkKey, Entity>(chunkCount, Allocator.TempJob);
+            foreach (var (chunk, entity) in SystemAPI.Query<RefRO<TerrainChunk>>().WithEntityAccess())
+            {
+                map.TryAdd(new TerrainChunkKey
+                {
+                    VolumeEntity = chunk.ValueRO.VolumeEntity,
+                    ChunkCoord = chunk.ValueRO.ChunkCoord
+                }, entity);
+            }
+
+            return map;
         }
 
         private static void CalculateSunlight(in PureDOTS.Environment.ClimateState climate, out float3 direction, out float direct, out float ambient, out float scalar)
@@ -217,6 +345,34 @@ namespace PureDOTS.Systems.Environment
 
                 var ambient = sample.AmbientLight + count * AmbientBoostPerOccluder;
                 sample.AmbientLight = math.clamp(ambient, 5f, 100f);
+
+                Samples[index] = sample;
+            }
+        }
+
+        [BurstCompile]
+        private struct ApplyTerrainShadowJob : IJobFor
+        {
+            public NativeArray<SunlightSample> Samples;
+            public EnvironmentGridMetadata Metadata;
+            public TerrainQueryContext TerrainContext;
+            public float ProbeDepth;
+
+            public void Execute(int index)
+            {
+                var sample = Samples[index];
+                var probe = EnvironmentGridMath.GetCellCenter(Metadata, index);
+
+                if (TerrainQueryFacade.TrySampleHeight(TerrainContext, probe, out var height))
+                {
+                    probe.y = height - ProbeDepth;
+                }
+
+                if (TerrainQueryFacade.IsSolid(TerrainContext, probe))
+                {
+                    sample.DirectLight = 0f;
+                    sample.AmbientLight = 0f;
+                }
 
                 Samples[index] = sample;
             }

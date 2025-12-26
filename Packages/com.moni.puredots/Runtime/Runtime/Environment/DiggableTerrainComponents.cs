@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,7 +12,13 @@ namespace PureDOTS.Environment
     {
         public int3 ChunkCoord;
         public int3 VoxelsPerChunk;
+        public Entity VolumeEntity;
         public BlobAssetReference<TerrainChunkBlob> BaseBlob;
+    }
+
+    public struct TerrainVolume : IComponentData
+    {
+        public float3 LocalOrigin;
     }
 
     public struct TerrainChunkBlob
@@ -62,6 +69,12 @@ namespace PureDOTS.Environment
         Ramp = 2
     }
 
+    public enum TerrainModificationSpace : byte
+    {
+        World = 0,
+        VolumeLocal = 1
+    }
+
     [InternalBufferCapacity(32)]
     public struct TerrainModificationRequest : IBufferElementData
     {
@@ -75,6 +88,8 @@ namespace PureDOTS.Environment
         public TerrainModificationFlags Flags;
         public uint RequestedTick;
         public Entity Actor;
+        public Entity VolumeEntity;
+        public TerrainModificationSpace Space;
     }
 
     public struct TerrainModificationQueue : IComponentData { }
@@ -110,7 +125,26 @@ namespace PureDOTS.Environment
     [InternalBufferCapacity(0)]
     public struct TerrainUndergroundChunkVersion : IBufferElementData
     {
+        public Entity VolumeEntity;
         public int3 ChunkCoord;
         public uint Version;
+    }
+
+    public struct TerrainChunkKey : IEquatable<TerrainChunkKey>
+    {
+        public Entity VolumeEntity;
+        public int3 ChunkCoord;
+
+        public bool Equals(TerrainChunkKey other)
+        {
+            return VolumeEntity.Equals(other.VolumeEntity) && ChunkCoord.Equals(other.ChunkCoord);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = math.hash(new int4(VolumeEntity.Index, VolumeEntity.Version, ChunkCoord.x, ChunkCoord.y));
+            hash = math.hash(new int2((int)hash, ChunkCoord.z));
+            return (int)hash;
+        }
     }
 }

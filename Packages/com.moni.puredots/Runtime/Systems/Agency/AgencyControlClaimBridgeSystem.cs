@@ -129,7 +129,15 @@ namespace PureDOTS.Systems.Agency
 
             if (!em.HasComponent<AgencySelf>(entity))
             {
-                ecb.AddComponent(entity, AgencyDefaults.DefaultSelf());
+                if (em.HasComponent<AgencySelfPreset>(entity))
+                {
+                    var preset = em.GetComponentData<AgencySelfPreset>(entity);
+                    ecb.AddComponent(entity, AgencySelfPresetUtility.Resolve(preset));
+                }
+                else
+                {
+                    ecb.AddComponent(entity, AgencyDefaults.DefaultSelf());
+                }
             }
 
             if (!em.HasBuffer<ResolvedControl>(entity))

@@ -70,6 +70,23 @@ namespace PureDOTS.Runtime.Celestial
     }
 
     /// <summary>
+    /// Spatial pose derived from orbital state for system-map placement.
+    /// Separate from time-of-day orbit parameters.
+    /// </summary>
+    public struct CelestialOrbitPose : IComponentData
+    {
+        public float3 Position;
+        public float3 Forward;
+        public float3 Up;
+        public uint LastUpdateTick;
+    }
+
+    /// <summary>
+    /// Tag to apply celestial orbit pose to LocalTransform (opt-in for moving entities).
+    /// </summary>
+    public struct ApplyCelestialPoseToLocalTransform : IComponentData { }
+
+    /// <summary>
     /// Light emission properties for celestial bodies.
     /// </summary>
     public struct CelestialLightSource : IComponentData
@@ -196,4 +213,3 @@ namespace PureDOTS.Runtime.Celestial
         public float LowTideLevel;
     }
 }
-

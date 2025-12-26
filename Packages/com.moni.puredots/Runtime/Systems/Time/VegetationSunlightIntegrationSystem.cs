@@ -1,7 +1,12 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Environment;
 using PureDOTS.Runtime.Time;
+using PureDOTS.Systems.Environment;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace PureDOTS.Systems.Time
 {
@@ -15,11 +20,15 @@ namespace PureDOTS.Systems.Time
     [UpdateBefore(typeof(VegetationHealthSystem))]
     public partial struct VegetationSunlightIntegrationSystem : ISystem
     {
+        private EnvironmentSampler _environmentSampler;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+
+            _environmentSampler = new EnvironmentSampler(ref state);
         }
 
         [BurstCompile]
@@ -37,37 +46,44 @@ namespace PureDOTS.Systems.Time
                 return;
             }
 
-            // For now, we'll use a simple approach:
-            // - Find the first planet with SunlightFactor (could be singleton or per-planet)
-            // - Apply that sunlight to all vegetation entities
-            // 
-            // Future enhancement: Link vegetation entities to specific planets via a component
-            // For now, assume a single global sunlight source
+            _environmentSampler.Update(ref state);
 
-            float globalSunlight = 1.0f; // Default to full sunlight if no planet found
+            var globalSunlight = ResolveGlobalSunlight(ref state);
+            var fallbackSample = new SunlightSample
+            {
+                DirectLight = globalSunlight * 100f,
+                AmbientLight = globalSunlight * 20f,
+                OccluderCount = 0
+            };
 
-            // Try to find a planet with sunlight factor (prefer singleton if exists)
-            if (SystemAPI.HasSingleton<SunlightFactor>())
+            foreach (var (envState, transform) in SystemAPI.Query<RefRW<VegetationEnvironmentState>, RefRO<LocalTransform>>())
             {
-                globalSunlight = SystemAPI.GetSingleton<SunlightFactor>().Sunlight;
-            }
-            else
-            {
-                // Find first planet with sunlight factor
-                foreach (var sunlightFactor in SystemAPI.Query<RefRO<SunlightFactor>>())
-                {
-                    globalSunlight = sunlightFactor.ValueRO.Sunlight;
-                    break; // Use first found
-                }
-            }
+                var sunlight = _environmentSampler.SampleSunlightDetailed(transform.ValueRO.Position, fallbackSample).Value;
+                var lightScalar = math.saturate((sunlight.DirectLight + sunlight.AmbientLight) / 100f);
 
-            // Update all vegetation environment states with sunlight
-            foreach (var envState in SystemAPI.Query<RefRW<VegetationEnvironmentState>>())
-            {
-                envState.ValueRW.Light = globalSunlight;
+                envState.ValueRW.Light = lightScalar;
                 envState.ValueRW.LastSampleTick = timeState.Tick;
             }
         }
+
+        private static float ResolveGlobalSunlight(ref SystemState state)
+        {
+            if (SystemAPI.TryGetSingleton<SunlightState>(out var sunlightState))
+            {
+                return math.saturate(sunlightState.GlobalIntensity);
+            }
+
+            if (SystemAPI.TryGetSingleton<SunlightFactor>(out var sunlightFactor))
+            {
+                return math.saturate(sunlightFactor.Sunlight);
+            }
+
+            foreach (var sunlight in SystemAPI.Query<RefRO<SunlightFactor>>())
+            {
+                return math.saturate(sunlight.ValueRO.Sunlight);
+            }
+
+            return 1f;
+        }
     }
 }
-

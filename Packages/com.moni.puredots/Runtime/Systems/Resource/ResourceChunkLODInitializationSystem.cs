@@ -1,10 +1,12 @@
 using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.WorldGen;
 using PureDOTS.Systems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace PureDOTS.Runtime.Systems.Resource
@@ -89,10 +91,18 @@ namespace PureDOTS.Runtime.Systems.Resource
             SystemAPI.TryGetSingleton(out solidSphere);
             var terrainConfig = TerrainWorldConfig.Default;
             SystemAPI.TryGetSingleton(out terrainConfig);
+            var surfaceDomain = default(SurfaceFieldsDomainConfig);
+            SystemAPI.TryGetSingleton(out surfaceDomain);
             var globalTerrainVersion = 0u;
             if (SystemAPI.TryGetSingleton<TerrainVersion>(out var terrainVersion))
             {
                 globalTerrainVersion = terrainVersion.Value;
+            }
+
+            var surfaceChunks = default(NativeArray<SurfaceFieldsChunkRef>);
+            if (SystemAPI.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var surfaceCacheEntity))
+            {
+                surfaceChunks = SystemAPI.GetBuffer<SurfaceFieldsChunkRef>(surfaceCacheEntity).AsNativeArray();
             }
 
             var terrainContext = new TerrainQueryContext
@@ -102,7 +112,14 @@ namespace PureDOTS.Runtime.Systems.Resource
                 FlatSurface = flatSurface,
                 SolidSphere = solidSphere,
                 WorldConfig = terrainConfig,
-                GlobalTerrainVersion = globalTerrainVersion
+                GlobalTerrainVersion = globalTerrainVersion,
+                SurfaceFieldsDomain = surfaceDomain,
+                SurfaceFieldsChunks = surfaceChunks,
+                VoxelAccessor = default,
+                VolumeEntity = Entity.Null,
+                VolumeOrigin = terrainConfig.VolumeWorldOrigin,
+                VolumeWorldToLocal = float4x4.identity,
+                VolumeEnabled = 0
             };
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);

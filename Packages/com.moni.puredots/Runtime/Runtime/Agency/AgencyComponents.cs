@@ -104,6 +104,22 @@ namespace PureDOTS.Runtime.Agency
 
     public static class AgencyDefaults
     {
+        public static AgencySelf ToolSelf() =>
+            new()
+            {
+                BaseResistance = 0.1f,
+                SelfNeedUrgency = 0.05f,
+                DominationAffinity = 0.85f
+            };
+
+        public static AgencySelf SentientSelf() =>
+            new()
+            {
+                BaseResistance = 0.65f,
+                SelfNeedUrgency = 0.45f,
+                DominationAffinity = 0.1f
+            };
+
         public static AgencySelf DefaultSelf() =>
             new()
             {

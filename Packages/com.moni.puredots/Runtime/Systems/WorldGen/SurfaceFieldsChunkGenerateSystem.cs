@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.WorldGen.Domain;
 using PureDOTS.Systems;
 using Unity.Collections;
@@ -155,6 +156,11 @@ namespace PureDOTS.Runtime.WorldGen.Systems
             {
                 requestBuffer.AddRange(pending.AsArray());
             }
+
+            if (generatedCount > 0)
+            {
+                MarkChunkCacheDirty(entityManager);
+            }
         }
 
         private static SphereCubeQuadDomainProvider CreateSphereDomain(
@@ -206,6 +212,20 @@ namespace PureDOTS.Runtime.WorldGen.Systems
             }
 
             return default;
+        }
+
+        private static void MarkChunkCacheDirty(EntityManager entityManager)
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SurfaceFieldsChunkRefCache>());
+            if (!query.TryGetSingletonEntity(out var cacheEntity))
+            {
+                return;
+            }
+
+            if (!entityManager.HasComponent<SurfaceFieldsChunkRefCacheDirty>(cacheEntity))
+            {
+                entityManager.AddComponent<SurfaceFieldsChunkRefCacheDirty>(cacheEntity);
+            }
         }
     }
 }

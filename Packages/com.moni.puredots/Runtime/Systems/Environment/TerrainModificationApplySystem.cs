@@ -4,6 +4,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace PureDOTS.Systems.Environment
 {
@@ -53,6 +54,12 @@ namespace PureDOTS.Systems.Environment
             var undergroundChunkVersions = SystemAPI.GetBuffer<TerrainUndergroundChunkVersion>(queueEntity);
 
             var terrainConfig = SystemAPI.GetSingleton<TerrainWorldConfig>();
+            var volumeLookup = SystemAPI.GetComponentLookup<TerrainVolume>(true);
+            volumeLookup.Update(ref state);
+            var localToWorldLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true);
+            localToWorldLookup.Update(ref state);
+            var localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            localTransformLookup.Update(ref state);
 
             if (!SystemAPI.TryGetSingletonEntity<TerrainVersion>(out var terrainVersionEntity))
             {
@@ -75,14 +82,41 @@ namespace PureDOTS.Systems.Environment
                 var request = requests[0];
                 requests.RemoveAt(0);
 
-                var bounds = ComputeBounds(request);
                 var flags = ResolveChangeEventFlags(request);
+                var changeFlags = ResolveChangeFlags(request);
+                var volumeEntity = request.VolumeEntity;
+                var volumeOrigin = ResolveVolumeOrigin(volumeEntity, terrainConfig, volumeLookup);
+                var hasVolumeTransform = false;
+                var volumeLocalToWorld = float4x4.identity;
+                if (volumeEntity != Entity.Null)
+                {
+                    if (localToWorldLookup.HasComponent(volumeEntity))
+                    {
+                        volumeLocalToWorld = localToWorldLookup[volumeEntity].Value;
+                        hasVolumeTransform = true;
+                    }
+                    else if (localTransformLookup.HasComponent(volumeEntity))
+                    {
+                        var localTransform = localTransformLookup[volumeEntity];
+                        volumeLocalToWorld = float4x4.TRS(localTransform.Position, localTransform.Rotation, new float3(localTransform.Scale));
+                        hasVolumeTransform = true;
+                    }
+                }
+
+                var volumeWorldToLocal = hasVolumeTransform ? math.inverse(volumeLocalToWorld) : float4x4.identity;
+
+                ResolveBounds(request, hasVolumeTransform, volumeLocalToWorld, volumeWorldToLocal,
+                    out var localBounds, out var worldBounds, out var localStart, out var localEnd);
+
+                var localRequest = request;
+                localRequest.Start = localStart;
+                localRequest.End = localEnd;
 
                 changeEvents.Add(new TerrainChangeEvent
                 {
                     Version = nextVersion,
-                    WorldMin = bounds.min,
-                    WorldMax = bounds.max,
+                    WorldMin = worldBounds.Min,
+                    WorldMax = worldBounds.Max,
                     Flags = flags
                 });
 
@@ -90,17 +124,26 @@ namespace PureDOTS.Systems.Environment
                 {
                     dirtyRegions.Add(new TerrainDirtyRegion
                     {
-                        WorldMin = bounds.min,
-                        WorldMax = bounds.max,
+                        WorldMin = worldBounds.Min,
+                        WorldMax = worldBounds.Max,
                         Version = nextVersion,
                         Flags = flags
                     });
                 }
 
-                UpdateSurfaceTileVersions(surfaceTileVersions, terrainConfig, bounds.min, bounds.max, nextVersion);
-                UpdateUndergroundChunkVersions(undergroundChunkVersions, terrainConfig, bounds.min, bounds.max, nextVersion);
+                if ((changeFlags & TerrainModificationFlags.AffectsSurface) != 0)
+                {
+                    UpdateSurfaceTileVersions(surfaceTileVersions, terrainConfig, worldBounds.Min, worldBounds.Max, nextVersion);
+                }
 
-                ApplyModificationToChunks(ref state, chunkMap, terrainConfig, request, bounds.min, bounds.max, nextVersion, timeState.Tick);
+                if ((changeFlags & TerrainModificationFlags.AffectsVolume) != 0)
+                {
+                    UpdateUndergroundChunkVersions(undergroundChunkVersions, terrainConfig, volumeEntity, volumeOrigin,
+                        localBounds.Min, localBounds.Max, nextVersion);
+                }
+
+                ApplyModificationToChunks(ref state, chunkMap, terrainConfig, volumeOrigin, volumeEntity, localRequest,
+                    localBounds.Min, localBounds.Max, nextVersion, timeState.Tick);
             }
         }
 
@@ -137,26 +180,100 @@ namespace PureDOTS.Systems.Environment
             return result;
         }
 
-        private static (float3 min, float3 max) ComputeBounds(in TerrainModificationRequest request)
+        private static MinMaxAABB ComputeBounds(in TerrainModificationRequest request, float3 start, float3 end)
         {
-            var min = math.min(request.Start, request.End);
-            var max = math.max(request.Start, request.End);
+            var min = math.min(start, end);
+            var max = math.max(start, end);
 
             var extent = new float3(math.max(0f, request.Radius), math.max(0f, request.Depth), math.max(0f, request.Radius));
             min -= extent;
             max += extent;
 
-            return (min, max);
+            return new MinMaxAABB { Min = min, Max = max };
         }
 
-        private static NativeParallelHashMap<int3, Entity> BuildChunkLookup(ref SystemState state)
+        private static float3 ResolveVolumeOrigin(Entity volumeEntity, in TerrainWorldConfig config, ComponentLookup<TerrainVolume> volumeLookup)
+        {
+            if (volumeEntity != Entity.Null && volumeLookup.HasComponent(volumeEntity))
+            {
+                return volumeLookup[volumeEntity].LocalOrigin;
+            }
+
+            return config.VolumeWorldOrigin;
+        }
+
+        private static void ResolveBounds(
+            in TerrainModificationRequest request,
+            bool hasVolumeTransform,
+            in float4x4 volumeLocalToWorld,
+            in float4x4 volumeWorldToLocal,
+            out MinMaxAABB localBounds,
+            out MinMaxAABB worldBounds,
+            out float3 localStart,
+            out float3 localEnd)
+        {
+            if (request.Space == TerrainModificationSpace.VolumeLocal)
+            {
+                localStart = request.Start;
+                localEnd = request.End;
+                localBounds = ComputeBounds(request, localStart, localEnd);
+                worldBounds = hasVolumeTransform ? TransformBounds(localBounds, volumeLocalToWorld) : localBounds;
+                return;
+            }
+
+            worldBounds = ComputeBounds(request, request.Start, request.End);
+            if (hasVolumeTransform)
+            {
+                localStart = TransformPoint(volumeWorldToLocal, request.Start);
+                localEnd = TransformPoint(volumeWorldToLocal, request.End);
+                localBounds = ComputeBounds(request, localStart, localEnd);
+            }
+            else
+            {
+                localStart = request.Start;
+                localEnd = request.End;
+                localBounds = worldBounds;
+            }
+        }
+
+        private static MinMaxAABB TransformBounds(in MinMaxAABB bounds, in float4x4 matrix)
+        {
+            var min = bounds.Min;
+            var max = bounds.Max;
+
+            var v0 = TransformPoint(matrix, new float3(min.x, min.y, min.z));
+            var v1 = TransformPoint(matrix, new float3(max.x, min.y, min.z));
+            var v2 = TransformPoint(matrix, new float3(min.x, max.y, min.z));
+            var v3 = TransformPoint(matrix, new float3(min.x, min.y, max.z));
+            var v4 = TransformPoint(matrix, new float3(max.x, max.y, min.z));
+            var v5 = TransformPoint(matrix, new float3(min.x, max.y, max.z));
+            var v6 = TransformPoint(matrix, new float3(max.x, min.y, max.z));
+            var v7 = TransformPoint(matrix, new float3(max.x, max.y, max.z));
+
+            var newMin = math.min(math.min(math.min(v0, v1), math.min(v2, v3)), math.min(math.min(v4, v5), math.min(v6, v7)));
+            var newMax = math.max(math.max(math.max(v0, v1), math.max(v2, v3)), math.max(math.max(v4, v5), math.max(v6, v7)));
+
+            return new MinMaxAABB { Min = newMin, Max = newMax };
+        }
+
+        private static float3 TransformPoint(in float4x4 matrix, float3 point)
+        {
+            var result = math.mul(matrix, new float4(point, 1f));
+            return result.xyz;
+        }
+
+        private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state)
         {
             var chunkCount = SystemAPI.Query<RefRO<TerrainChunk>>().CalculateEntityCount();
-            var map = new NativeParallelHashMap<int3, Entity>(math.max(1, chunkCount), Allocator.Temp);
+            var map = new NativeParallelHashMap<TerrainChunkKey, Entity>(math.max(1, chunkCount), Allocator.Temp);
 
             foreach (var (chunk, entity) in SystemAPI.Query<RefRO<TerrainChunk>>().WithEntityAccess())
             {
-                map.TryAdd(chunk.ValueRO.ChunkCoord, entity);
+                map.TryAdd(new TerrainChunkKey
+                {
+                    VolumeEntity = chunk.ValueRO.VolumeEntity,
+                    ChunkCoord = chunk.ValueRO.ChunkCoord
+                }, entity);
             }
 
             return map;
@@ -164,11 +281,13 @@ namespace PureDOTS.Systems.Environment
 
         private static void ApplyModificationToChunks(
             ref SystemState state,
-            in NativeParallelHashMap<int3, Entity> chunkMap,
+            in NativeParallelHashMap<TerrainChunkKey, Entity> chunkMap,
             in TerrainWorldConfig config,
+            float3 volumeOrigin,
+            Entity volumeEntity,
             in TerrainModificationRequest request,
-            float3 worldMin,
-            float3 worldMax,
+            float3 localMin,
+            float3 localMax,
             uint version,
             uint currentTick)
         {
@@ -178,8 +297,8 @@ namespace PureDOTS.Systems.Environment
             }
 
             var chunkSize = new float3(config.VoxelsPerChunk.x, config.VoxelsPerChunk.y, config.VoxelsPerChunk.z) * config.VoxelSize;
-            var minChunk = (int3)math.floor((worldMin - config.VolumeWorldOrigin) / chunkSize);
-            var maxChunk = (int3)math.floor((worldMax - config.VolumeWorldOrigin) / chunkSize);
+            var minChunk = (int3)math.floor((localMin - volumeOrigin) / chunkSize);
+            var maxChunk = (int3)math.floor((localMax - volumeOrigin) / chunkSize);
 
             for (int z = minChunk.z; z <= maxChunk.z; z++)
             {
@@ -188,7 +307,8 @@ namespace PureDOTS.Systems.Environment
                     for (int x = minChunk.x; x <= maxChunk.x; x++)
                     {
                         var coord = new int3(x, y, z);
-                        if (!chunkMap.TryGetValue(coord, out var chunkEntity))
+                        var key = new TerrainChunkKey { VolumeEntity = volumeEntity, ChunkCoord = coord };
+                        if (!chunkMap.TryGetValue(key, out var chunkEntity))
                         {
                             continue;
                         }
@@ -218,7 +338,7 @@ namespace PureDOTS.Systems.Environment
                             }
                         }
 
-                        ApplyModificationToChunkBuffer(config, coord, voxelsPerChunk, request, worldMin, worldMax, runtime);
+                        ApplyModificationToChunkBuffer(config, volumeOrigin, coord, voxelsPerChunk, request, localMin, localMax, runtime);
                         MarkChunkDirty(ref state, chunkEntity, version, currentTick);
                     }
                 }
@@ -252,18 +372,19 @@ namespace PureDOTS.Systems.Environment
 
         private static void ApplyModificationToChunkBuffer(
             in TerrainWorldConfig config,
+            float3 volumeOrigin,
             int3 chunkCoord,
             int3 voxelsPerChunk,
             in TerrainModificationRequest request,
-            float3 worldMin,
-            float3 worldMax,
+            float3 localMin,
+            float3 localMax,
             DynamicBuffer<TerrainVoxelRuntime> runtime)
         {
             var chunkSize = new float3(voxelsPerChunk.x, voxelsPerChunk.y, voxelsPerChunk.z) * config.VoxelSize;
-            var chunkOrigin = config.VolumeWorldOrigin + new float3(chunkCoord.x * chunkSize.x, chunkCoord.y * chunkSize.y, chunkCoord.z * chunkSize.z);
+            var chunkOrigin = volumeOrigin + new float3(chunkCoord.x * chunkSize.x, chunkCoord.y * chunkSize.y, chunkCoord.z * chunkSize.z);
 
-            var minLocal = (worldMin - chunkOrigin) / config.VoxelSize;
-            var maxLocal = (worldMax - chunkOrigin) / config.VoxelSize;
+            var minLocal = (localMin - chunkOrigin) / config.VoxelSize;
+            var maxLocal = (localMax - chunkOrigin) / config.VoxelSize;
             var minVoxel = new int3(
                 math.clamp((int)math.floor(minLocal.x), 0, voxelsPerChunk.x - 1),
                 math.clamp((int)math.floor(minLocal.y), 0, voxelsPerChunk.y - 1),
@@ -284,13 +405,13 @@ namespace PureDOTS.Systems.Environment
                 {
                     for (int x = minVoxel.x; x <= maxVoxel.x; x++)
                     {
-                        var worldPos = chunkOrigin + new float3((x + 0.5f) * voxelSize, (y + 0.5f) * voxelSize, (z + 0.5f) * voxelSize);
-                        if (request.Depth > 0f && (worldPos.y < minDepthY || worldPos.y > maxDepthY))
+                        var localPos = chunkOrigin + new float3((x + 0.5f) * voxelSize, (y + 0.5f) * voxelSize, (z + 0.5f) * voxelSize);
+                        if (request.Depth > 0f && (localPos.y < minDepthY || localPos.y > maxDepthY))
                         {
                             continue;
                         }
 
-                        if (!IsInsideShape(request, worldPos, radiusSq))
+                        if (!IsInsideShape(request, localPos, radiusSq))
                         {
                             continue;
                         }
@@ -418,13 +539,15 @@ namespace PureDOTS.Systems.Environment
         private static void UpdateUndergroundChunkVersions(
             DynamicBuffer<TerrainUndergroundChunkVersion> buffer,
             in TerrainWorldConfig config,
-            float3 worldMin,
-            float3 worldMax,
+            Entity volumeEntity,
+            float3 volumeOrigin,
+            float3 localMin,
+            float3 localMax,
             uint version)
         {
             var chunkSize = new float3(config.VoxelsPerChunk.x, config.VoxelsPerChunk.y, config.VoxelsPerChunk.z) * config.VoxelSize;
-            var minCoord = (int3)math.floor((worldMin - config.VolumeWorldOrigin) / chunkSize);
-            var maxCoord = (int3)math.floor((worldMax - config.VolumeWorldOrigin) / chunkSize);
+            var minCoord = (int3)math.floor((localMin - volumeOrigin) / chunkSize);
+            var maxCoord = (int3)math.floor((localMax - volumeOrigin) / chunkSize);
 
             for (int z = minCoord.z; z <= maxCoord.z; z++)
             {
@@ -432,17 +555,21 @@ namespace PureDOTS.Systems.Environment
                 {
                     for (int x = minCoord.x; x <= maxCoord.x; x++)
                     {
-                        SetUndergroundChunkVersion(buffer, new int3(x, y, z), version);
+                        SetUndergroundChunkVersion(buffer, volumeEntity, new int3(x, y, z), version);
                     }
                 }
             }
         }
 
-        private static void SetUndergroundChunkVersion(DynamicBuffer<TerrainUndergroundChunkVersion> buffer, int3 coord, uint version)
+        private static void SetUndergroundChunkVersion(
+            DynamicBuffer<TerrainUndergroundChunkVersion> buffer,
+            Entity volumeEntity,
+            int3 coord,
+            uint version)
         {
             for (int i = 0; i < buffer.Length; i++)
             {
-                if (buffer[i].ChunkCoord.Equals(coord))
+                if (buffer[i].VolumeEntity == volumeEntity && buffer[i].ChunkCoord.Equals(coord))
                 {
                     var entry = buffer[i];
                     entry.Version = version;
@@ -453,6 +580,7 @@ namespace PureDOTS.Systems.Environment
 
             buffer.Add(new TerrainUndergroundChunkVersion
             {
+                VolumeEntity = volumeEntity,
                 ChunkCoord = coord,
                 Version = version
             });
