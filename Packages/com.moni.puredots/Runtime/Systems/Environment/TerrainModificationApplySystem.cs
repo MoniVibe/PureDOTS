@@ -41,28 +41,6 @@ namespace PureDOTS.Systems.Environment
                 return;
             }
 
-            var requests = SystemAPI.GetBuffer<TerrainModificationRequest>(queueEntity);
-            if (requests.Length == 0)
-            {
-                return;
-            }
-
-            var budget = SystemAPI.GetComponent<TerrainModificationBudget>(queueEntity);
-            var dirtyRegions = SystemAPI.GetBuffer<TerrainDirtyRegion>(queueEntity);
-            dirtyRegions.Clear();
-            var modificationEvents = SystemAPI.GetBuffer<TerrainModificationEvent>(queueEntity);
-            modificationEvents.Clear();
-            var surfaceTileVersions = SystemAPI.GetBuffer<TerrainSurfaceTileVersion>(queueEntity);
-            var undergroundChunkVersions = SystemAPI.GetBuffer<TerrainUndergroundChunkVersion>(queueEntity);
-
-            var terrainConfig = SystemAPI.GetSingleton<TerrainWorldConfig>();
-            var volumeLookup = SystemAPI.GetComponentLookup<TerrainVolume>(true);
-            volumeLookup.Update(ref state);
-            var localToWorldLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true);
-            localToWorldLookup.Update(ref state);
-            var localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-            localTransformLookup.Update(ref state);
-
             if (!SystemAPI.TryGetSingletonEntity<TerrainVersion>(out var terrainVersionEntity))
             {
                 return;
@@ -73,16 +51,42 @@ namespace PureDOTS.Systems.Environment
                 state.EntityManager.AddBuffer<TerrainChangeEvent>(terrainVersionEntity);
             }
 
+            var budget = SystemAPI.GetComponent<TerrainModificationBudget>(queueEntity);
+            var dirtyRegions = SystemAPI.GetBuffer<TerrainDirtyRegion>(queueEntity);
+            dirtyRegions.Clear();
+            var modificationEvents = SystemAPI.GetBuffer<TerrainModificationEvent>(queueEntity);
+            modificationEvents.Clear();
+
+            var requests = SystemAPI.GetBuffer<TerrainModificationRequest>(queueEntity);
+            if (requests.Length == 0)
+            {
+                return;
+            }
+
+            var requestsCopy = new NativeList<TerrainModificationRequest>(requests.Length, Allocator.Temp);
+            for (int i = 0; i < requests.Length; i++)
+            {
+                requestsCopy.Add(requests[i]);
+            }
+            requests.Clear();
+
+            var terrainConfig = SystemAPI.GetSingleton<TerrainWorldConfig>();
+            var volumeLookup = SystemAPI.GetComponentLookup<TerrainVolume>(true);
+            volumeLookup.Update(ref state);
+            var localToWorldLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true);
+            localToWorldLookup.Update(ref state);
+            var localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            localTransformLookup.Update(ref state);
+
             var changeEvents = state.EntityManager.GetBuffer<TerrainChangeEvent>(terrainVersionEntity);
             var terrainVersion = SystemAPI.GetComponent<TerrainVersion>(terrainVersionEntity);
             uint nextVersion = terrainVersion.Value + 1u;
 
-            var processed = math.min(requests.Length, budget.MaxEditsPerTick);
+            var processed = math.min(requestsCopy.Length, budget.MaxEditsPerTick);
             using var chunkMap = BuildChunkLookup(ref state);
             for (int i = 0; i < processed; i++)
             {
-                var request = requests[0];
-                requests.RemoveAt(0);
+                var request = requestsCopy[i];
 
                 var flags = ResolveChangeEventFlags(request);
                 var changeFlags = ResolveChangeFlags(request);
@@ -114,6 +118,16 @@ namespace PureDOTS.Systems.Environment
                 localRequest.Start = localStart;
                 localRequest.End = localEnd;
 
+                var clearedVoxels = ApplyModificationToChunks(ref state, chunkMap, terrainConfig, volumeOrigin, volumeEntity, localRequest,
+                    localBounds.Min, localBounds.Max, nextVersion, timeState.Tick);
+
+                // Reacquire buffers after any structural changes performed during chunk updates.
+                dirtyRegions = SystemAPI.GetBuffer<TerrainDirtyRegion>(queueEntity);
+                modificationEvents = SystemAPI.GetBuffer<TerrainModificationEvent>(queueEntity);
+                var surfaceTileVersions = SystemAPI.GetBuffer<TerrainSurfaceTileVersion>(queueEntity);
+                var undergroundChunkVersions = SystemAPI.GetBuffer<TerrainUndergroundChunkVersion>(queueEntity);
+                changeEvents = state.EntityManager.GetBuffer<TerrainChangeEvent>(terrainVersionEntity);
+
                 changeEvents.Add(new TerrainChangeEvent
                 {
                     Version = nextVersion,
@@ -144,9 +158,6 @@ namespace PureDOTS.Systems.Environment
                         localBounds.Min, localBounds.Max, nextVersion);
                 }
 
-                var clearedVoxels = ApplyModificationToChunks(ref state, chunkMap, terrainConfig, volumeOrigin, volumeEntity, localRequest,
-                    localBounds.Min, localBounds.Max, nextVersion, timeState.Tick);
-
                 if (clearedVoxels > 0)
                 {
                     var worldStart = request.Space == TerrainModificationSpace.VolumeLocal
@@ -169,6 +180,8 @@ namespace PureDOTS.Systems.Environment
                     });
                 }
             }
+
+            requestsCopy.Dispose();
         }
 
         private static TerrainModificationFlags ResolveChangeFlags(in TerrainModificationRequest request)
@@ -288,15 +301,20 @@ namespace PureDOTS.Systems.Environment
 
         private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state)
         {
-            var chunkCount = SystemAPI.Query<RefRO<TerrainChunk>>().CalculateEntityCount();
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<TerrainChunk>());
+            var chunkCount = query.CalculateEntityCount();
             var map = new NativeParallelHashMap<TerrainChunkKey, Entity>(math.max(1, chunkCount), Allocator.Temp);
 
-            foreach (var (chunk, entity) in SystemAPI.Query<RefRO<TerrainChunk>>().WithEntityAccess())
+            using var chunkData = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
+            using var chunkEntities = query.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < chunkData.Length; i++)
             {
+                var chunk = chunkData[i];
+                var entity = chunkEntities[i];
                 map.TryAdd(new TerrainChunkKey
                 {
-                    VolumeEntity = chunk.ValueRO.VolumeEntity,
-                    ChunkCoord = chunk.ValueRO.ChunkCoord
+                    VolumeEntity = chunk.VolumeEntity,
+                    ChunkCoord = chunk.ChunkCoord
                 }, entity);
             }
 
@@ -338,7 +356,7 @@ namespace PureDOTS.Systems.Environment
                             continue;
                         }
 
-                        var chunk = SystemAPI.GetComponentRO<TerrainChunk>(chunkEntity).ValueRO;
+                        var chunk = state.EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
                         var voxelsPerChunk = chunk.VoxelsPerChunk;
                         if (voxelsPerChunk.x <= 0 || voxelsPerChunk.y <= 0 || voxelsPerChunk.z <= 0)
                         {
@@ -374,9 +392,18 @@ namespace PureDOTS.Systems.Environment
 
         private static void InitializeRuntimeBuffer(in TerrainChunk chunk, DynamicBuffer<TerrainVoxelRuntime> runtime, int voxelCount)
         {
-            if (chunk.BaseBlob.IsCreated && chunk.BaseBlob.Value.SolidMask.Length >= voxelCount)
+            if (chunk.BaseBlob.IsCreated)
             {
-                var baseBlob = chunk.BaseBlob.Value;
+                ref var baseBlob = ref chunk.BaseBlob.Value;
+                if (baseBlob.SolidMask.Length < voxelCount)
+                {
+                    for (int i = 0; i < voxelCount; i++)
+                    {
+                        runtime[i] = default;
+                    }
+                    return;
+                }
+
                 for (int i = 0; i < voxelCount; i++)
                 {
                     runtime[i] = new TerrainVoxelRuntime

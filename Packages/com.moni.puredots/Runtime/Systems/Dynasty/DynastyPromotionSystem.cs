@@ -19,12 +19,14 @@ namespace PureDOTS.Systems.Dynasty
         private const float RENOWN_THRESHOLD = 50.0f; // Family reputation threshold for promotion
         private const byte GENERATION_THRESHOLD = 4; // 4th generation (0-indexed, so generation 3 = 4th gen)
         private FixedString64Bytes _defaultDynastyName;
+        private ComponentLookup<DynastyMember> _dynastyMemberLookup;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             // Initialize default dynasty name in non-Burst context
             _defaultDynastyName = new FixedString64Bytes("Dynasty");
+            _dynastyMemberLookup = state.GetComponentLookup<DynastyMember>(true);
         }
 
         [BurstCompile]
@@ -33,8 +35,7 @@ namespace PureDOTS.Systems.Dynasty
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
                 return;
 
-            var dynastyMemberLookup = state.GetComponentLookup<DynastyMember>(true);
-            dynastyMemberLookup.Update(ref state);
+            _dynastyMemberLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
@@ -45,7 +46,7 @@ namespace PureDOTS.Systems.Dynasty
                 CurrentTick = timeState.Tick,
                 RenownThreshold = RENOWN_THRESHOLD,
                 GenerationThreshold = GENERATION_THRESHOLD,
-                DynastyMemberLookup = dynastyMemberLookup,
+                DynastyMemberLookup = _dynastyMemberLookup,
                 DefaultDynastyName = _defaultDynastyName
             };
             job.Run();

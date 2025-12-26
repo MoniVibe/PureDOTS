@@ -42,10 +42,10 @@
 - Added `Application.isPlaying` guards to skip heavy work in edit mode
 
 **Files Modified:**
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Demo/Village/VillagerWalkLoopSystem.cs`
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Demo/Village/VillageDebugSystem.cs`
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Demo/Village/VillageDemoBootstrapSystem.cs`
-- `PureDOTS/Packages/com.moni.puredots/Runtime/Demo/Village/VillageVisualSetupSystem.cs`
+- `PureDOTS/Packages/com.moni.puredots/Runtime/legacy/Village/VillagerWalkLoopSystem.cs`
+- `PureDOTS/Packages/com.moni.puredots/Runtime/legacy/Village/VillageDebugSystem.cs`
+- `PureDOTS/Packages/com.moni.puredots/Runtime/legacy/Village/VillageDemoBootstrapSystem.cs`
+- `PureDOTS/Packages/com.moni.puredots/Runtime/legacy/Village/VillageVisualSetupSystem.cs`
 
 ## Verification Checklist
 

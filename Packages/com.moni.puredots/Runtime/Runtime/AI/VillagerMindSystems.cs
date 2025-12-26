@@ -198,6 +198,8 @@ namespace PureDOTS.Runtime.AI
 
             var threatLookup = SystemAPI.GetComponentLookup<VillagerThreatState>(true);
             threatLookup.Update(ref state);
+            var biasLookup = SystemAPI.GetComponentLookup<VillagerNeedBias>(true);
+            biasLookup.Update(ref state);
 
             foreach (var (needs, focus, goal, entity) in SystemAPI
                      .Query<RefRO<VillagerNeedState>, RefRO<FocusBudget>, RefRW<VillagerGoalState>>()
@@ -221,7 +223,14 @@ namespace PureDOTS.Runtime.AI
 
                 if (nextGoal != VillagerGoal.Flee && canAct)
                 {
-                    EvaluateNeeds(needs.ValueRO, ref nextGoal, ref maxUrgency);
+                    if (biasLookup.HasComponent(entity))
+                    {
+                        EvaluateNeeds(needs.ValueRO, biasLookup[entity], ref nextGoal, ref maxUrgency);
+                    }
+                    else
+                    {
+                        EvaluateNeeds(needs.ValueRO, ref nextGoal, ref maxUrgency);
+                    }
                 }
 
                 if (!canAct)
@@ -249,6 +258,22 @@ namespace PureDOTS.Runtime.AI
             SelectGoal(needs.SafetyUrgency, VillagerGoal.SeekShelter, ref nextGoal, ref maxUrgency);
             SelectGoal(needs.SocialUrgency, VillagerGoal.Socialize, ref nextGoal, ref maxUrgency);
             SelectGoal(needs.WorkUrgency, VillagerGoal.Work, ref nextGoal, ref maxUrgency);
+        }
+
+        private static void EvaluateNeeds(in VillagerNeedState needs, in VillagerNeedBias bias, ref VillagerGoal nextGoal, ref float maxUrgency)
+        {
+            SelectGoal(ApplyBias(needs.HungerUrgency, bias.HungerWeight), VillagerGoal.Eat, ref nextGoal, ref maxUrgency);
+            SelectGoal(ApplyBias(needs.RestUrgency, bias.RestWeight), VillagerGoal.Sleep, ref nextGoal, ref maxUrgency);
+            SelectGoal(ApplyBias(needs.FaithUrgency, bias.FaithWeight), VillagerGoal.Pray, ref nextGoal, ref maxUrgency);
+            SelectGoal(ApplyBias(needs.SafetyUrgency, bias.SafetyWeight), VillagerGoal.SeekShelter, ref nextGoal, ref maxUrgency);
+            SelectGoal(ApplyBias(needs.SocialUrgency, bias.SocialWeight), VillagerGoal.Socialize, ref nextGoal, ref maxUrgency);
+            SelectGoal(ApplyBias(needs.WorkUrgency, bias.WorkWeight), VillagerGoal.Work, ref nextGoal, ref maxUrgency);
+        }
+
+        private static float ApplyBias(float urgency, float weight)
+        {
+            var clampedWeight = weight <= 0f ? 1f : weight;
+            return urgency * clampedWeight;
         }
 
         private static void SelectGoal(float urgency, VillagerGoal goal, ref VillagerGoal nextGoal, ref float maxUrgency)

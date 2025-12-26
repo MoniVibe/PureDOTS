@@ -11,12 +11,10 @@ namespace PureDOTS.Systems.Environment
     /// <summary>
     /// Stub updater for derived nav caches (surface tiles + underground chunks).
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(EnvironmentSystemGroup))]
     [UpdateAfter(typeof(TerrainModificationApplySystem))]
     public partial struct TerrainDerivedNavCacheSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -25,7 +23,6 @@ namespace PureDOTS.Systems.Environment
             state.RequireForUpdate<TerrainWorldConfig>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -61,12 +58,15 @@ namespace PureDOTS.Systems.Environment
 
         private static NativeParallelHashMap<int2, Entity> BuildSurfaceTileLookup(ref SystemState state)
         {
-            var count = SystemAPI.Query<RefRO<SurfaceNavTile>>().CalculateEntityCount();
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<SurfaceNavTile>());
+            var count = query.CalculateEntityCount();
             var map = new NativeParallelHashMap<int2, Entity>(math.max(1, count), Allocator.Temp);
 
-            foreach (var (tile, entity) in SystemAPI.Query<RefRO<SurfaceNavTile>>().WithEntityAccess())
+            using var tiles = query.ToComponentDataArray<SurfaceNavTile>(Allocator.Temp);
+            using var entities = query.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < tiles.Length; i++)
             {
-                map.TryAdd(tile.ValueRO.TileCoord, entity);
+                map.TryAdd(tiles[i].TileCoord, entities[i]);
             }
 
             return map;
@@ -74,12 +74,15 @@ namespace PureDOTS.Systems.Environment
 
         private static NativeParallelHashMap<int3, Entity> BuildUndergroundChunkLookup(ref SystemState state)
         {
-            var count = SystemAPI.Query<RefRO<UndergroundNavChunk>>().CalculateEntityCount();
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<UndergroundNavChunk>());
+            var count = query.CalculateEntityCount();
             var map = new NativeParallelHashMap<int3, Entity>(math.max(1, count), Allocator.Temp);
 
-            foreach (var (chunk, entity) in SystemAPI.Query<RefRO<UndergroundNavChunk>>().WithEntityAccess())
+            using var chunks = query.ToComponentDataArray<UndergroundNavChunk>(Allocator.Temp);
+            using var entities = query.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < chunks.Length; i++)
             {
-                map.TryAdd(chunk.ValueRO.ChunkCoord, entity);
+                map.TryAdd(chunks[i].ChunkCoord, entities[i]);
             }
 
             return map;

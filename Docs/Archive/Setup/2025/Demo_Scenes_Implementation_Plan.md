@@ -1,8 +1,8 @@
-# Demo Scenes Implementation Plan
+# legacy Scenes Implementation Plan
 
 **Status:** Implementation Plan  
 **Date:** 2025-01-27  
-**Goal:** Create complete demo scenes with basic logic loops for both Godgame and Space4x, adhering to DOTS 1.4 and Burst compliance
+**Goal:** Create complete legacy scenes with basic logic loops for both Godgame and Space4x, adhering to DOTS 1.4 and Burst compliance
 
 ---
 
@@ -27,7 +27,7 @@
 
 ---
 
-## Demo Scene Requirements
+## legacy Scene Requirements
 
 ### Godgame_VillagerDemo Scene
 
@@ -185,16 +185,16 @@
 
 ### Phase 5: Documentation
 
-1. **Create Demo Scene Guides**
-   - [ ] Document Godgame demo scene setup
-   - [ ] Document Space4X demo scene setup
+1. **Create legacy Scene Guides**
+   - [ ] Document Godgame legacy scene setup
+   - [ ] Document Space4X legacy scene setup
    - [ ] Create troubleshooting guides
 
 ---
 
 ## Success Criteria
 
-### Godgame Demo Scene
+### Godgame legacy Scene
 
 - [ ] Villagers gather resources from nodes
 - [ ] Villagers deposit resources to storehouses
@@ -205,7 +205,7 @@
 - [ ] All systems are Burst-compiled
 - [ ] No GC allocations in gameplay systems
 
-### Space4X Demo Scene
+### Space4X legacy Scene
 
 - [ ] Vessels mine resources from deposits
 - [ ] Resources spawn as piles

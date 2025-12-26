@@ -177,7 +177,7 @@ namespace PureDOTS.Runtime.WorldGen.Systems
         private static void MarkChunkCacheDirty(EntityManager entityManager)
         {
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SurfaceFieldsChunkRefCache>());
-            if (!query.TryGetSingletonEntity(out var cacheEntity))
+            if (!query.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var cacheEntity))
             {
                 return;
             }

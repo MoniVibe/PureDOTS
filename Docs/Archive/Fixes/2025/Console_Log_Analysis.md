@@ -2,7 +2,7 @@
 
 ## Summary
 
-The console log reveals **TWO CRITICAL ISSUES** preventing the mining demo from working:
+The console log reveals **TWO CRITICAL ISSUES** preventing the mining legacy from working:
 
 1. ✅ **No Scriptable Render Pipeline** → Entities Graphics disabled → Camera renders only background
 2. ❌ **No Entities Exist** → Scene setup incomplete → Nothing to render even if pipeline was fixed
@@ -58,7 +58,7 @@ Line 1172:   Entities with rendering components: 0
 #### B. **Authoring Components Missing** (CRITICAL)
 - GameObjects in scene have only `Transform` components
 - No authoring components → No entities created during baking
-- **Fix**: Run `Space4X > Setup Mining Demo Scene` or manually add:
+- **Fix**: Run `Space4X > Setup Mining legacy Scene` or manually add:
   - `VillagerAuthoring` → Converts to `Villager` entity
   - `MiningVesselAuthoring` → Converts to `MinerVessel` entity
   - `ResourceSourceAuthoring` → Converts to `ResourceSource` entity
@@ -70,8 +70,8 @@ Line 1172:   Entities with rendering components: 0
 - Only validation subscene has it → `SceneSpawnSystem` never receives requests
 - **Fix**: Add `SceneSpawnAuthoring` → Point to `SceneSpawnProfile.asset`
 
-#### D. **Demo Prefabs Lack Authoring Data**
-- Fleet and villager demo prefabs contain only `Transform`
+#### D. **legacy Prefabs Lack Authoring Data**
+- Fleet and villager legacy prefabs contain only `Transform`
 - No authoring components → Conversion emits no DOTS entities
 - **Fix**: Clone authored prefabs (`Villager.prefab`, etc.) that have authoring components
 
@@ -113,7 +113,7 @@ Line 1172:   Entities with rendering components: 0
 
 5. **Run Setup Helper**:
    ```
-   - Unity Menu: Space4X > Setup Mining Demo Scene
+   - Unity Menu: Space4X > Setup Mining legacy Scene
    - This adds missing authoring components automatically
    ```
 
@@ -188,7 +188,7 @@ Line 173: TogglePerspectiveMode action not found
 
 2. ⚠️ **Set Up Scene** (Follow `demoscenefix.md` checklist):
    - Add `PureDotsConfigAuthoring` GameObject → Link to `PureDotsRuntimeConfig.asset`
-   - Run: `Space4X > Setup Mining Demo Scene` (adds authoring components)
+   - Run: `Space4X > Setup Mining legacy Scene` (adds authoring components)
    - OR manually add authoring components to all GameObjects
    - Add `SceneSpawnAuthoring` → Link to `SceneSpawnProfile.asset`
    - Verify SubScene is closed during Play Mode

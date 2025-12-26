@@ -1,4 +1,4 @@
-# Mining Demo Diagnosis Report
+# Mining legacy Diagnosis Report
 
 ## Critical Issues Found
 

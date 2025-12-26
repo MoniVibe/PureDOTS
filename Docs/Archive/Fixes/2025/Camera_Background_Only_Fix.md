@@ -155,7 +155,7 @@ void Start()
 }
 ```
 
-## Expected Camera Setup for Mining Demo
+## Expected Camera Setup for Mining legacy
 
 - **Position:** (0, 15, -20) - Above and behind scene center
 - **Rotation:** (60, 0, 0) - Looking down at 60-degree angle

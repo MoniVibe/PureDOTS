@@ -1,6 +1,6 @@
 # Godgame Prefab Creation Checklist
 
-This document provides step-by-step instructions for creating all prefabs needed for the Godgame demo.
+This document provides step-by-step instructions for creating all prefabs needed for the Godgame legacy.
 
 **Related Documentation:**
 - [Space4X Prefab Checklist](./Space4X_PrefabChecklist.md) - For comparison with Space4X's data-only entity prefabs

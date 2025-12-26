@@ -67,6 +67,12 @@ namespace PureDOTS.Systems.Groups
             _cohesionLookup.Update(ref state);
             _outboxLookup.Update(ref state);
             _ackStateLookup.Update(ref state);
+            _ackConfigLookup.Update(ref state);
+            _alignmentLookup.Update(ref state);
+            _focusLookup.Update(ref state);
+            _poolsLookup.Update(ref state);
+            _needsLookup.Update(ref state);
+            _statsLookup.Update(ref state);
 
             foreach (var (tactic, entity) in SystemAPI.Query<RefRO<SquadTacticOrder>>().WithEntityAccess())
             {
@@ -156,5 +162,4 @@ namespace PureDOTS.Systems.Groups
         }
     }
 }
-
 

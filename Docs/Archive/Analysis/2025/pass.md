@@ -212,7 +212,7 @@ Pluggable prioritizer: interface so a game can swap the score function (e.g., fa
 
 “Go/No-go” checklist for calling the feature “engine-ready”
 
-✅ First-play demo scene loads/unloads deterministically with overlay visible
+✅ First-play legacy scene loads/unloads deterministically with overlay visible
 
 ✅ Four tests pass (smoke, zig-zag, union, validator) + optional replay determinism
 

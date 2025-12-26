@@ -53,8 +53,8 @@ namespace PureDOTS.Systems.Agency
                 {
                     if (_claimLookup.HasBuffer(entity))
                     {
-                        var claims = _claimLookup[entity];
-                        RemoveHostileClaims(ref claims);
+                        var claimBuffer = _claimLookup[entity];
+                        RemoveHostileClaims(ref claimBuffer);
                     }
 
                     if (data.Active != 0 && (data.Controller == Entity.Null || data.Domains == AgencyDomain.None))
@@ -71,8 +71,8 @@ namespace PureDOTS.Systems.Agency
                 {
                     if (_claimLookup.HasBuffer(entity))
                     {
-                        var claims = _claimLookup[entity];
-                        RemoveHostileClaims(ref claims);
+                        var claimBuffer = _claimLookup[entity];
+                        RemoveHostileClaims(ref claimBuffer);
                     }
 
                     overrideRef.ValueRW.Active = 0;
@@ -102,8 +102,8 @@ namespace PureDOTS.Systems.Agency
                     overrideRef.ValueRW.ExpireTick = 0u;
                     if (_claimLookup.HasBuffer(entity))
                     {
-                        var claims = _claimLookup[entity];
-                        RemoveHostileClaims(ref claims);
+                        var claimBuffer = _claimLookup[entity];
+                        RemoveHostileClaims(ref claimBuffer);
                     }
                     continue;
                 }

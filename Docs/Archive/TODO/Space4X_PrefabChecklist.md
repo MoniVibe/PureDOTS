@@ -1,6 +1,6 @@
 # Space4X Prefab Creation Checklist
 
-This document provides step-by-step instructions for creating all prefabs needed for the Space4X demo. Note that Space4X entities are **purely data** - they have no visual representation and are managed entirely by ECS systems.
+This document provides step-by-step instructions for creating all prefabs needed for the Space4X legacy. Note that Space4X entities are **purely data** - they have no visual representation and are managed entirely by ECS systems.
 
 **Related Documentation:**
 - [Godgame Prefab Checklist](./Godgame_PrefabChecklist.md) - For comparison with Godgame's visual entity prefabs
@@ -502,7 +502,7 @@ Anomalies:
 
 **Settings:**
 - Configure spatial grid dimensions and cell size
-- Ensure coverage matches demo scene bounds
+- Ensure coverage matches legacy scene bounds
 
 ---
 
@@ -580,7 +580,7 @@ After creating all prefabs:
 ## Quick Reference: Component Namespaces
 
 - `Space4X.Authoring.*` - Authoring components
-- `Space4X.Registry.*` - Registry and demo components
+- `Space4X.Registry.*` - Registry and legacy components
 - `Space4X.Runtime.*` - Runtime vessel components
 - `PureDOTS.Authoring.*` - Shared PureDOTS authoring
 - `PureDOTS.Runtime.*` - Shared PureDOTS runtime

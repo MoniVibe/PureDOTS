@@ -1,15 +1,15 @@
-# Burst Coverage for Demo-Relevant Systems
+# Burst Coverage for legacy-Relevant Systems
 
 **Last Updated:** 2025-01-27  
-**Purpose:** Track Burst compilation status for all hot-path systems used in demo scenes.
+**Purpose:** Track Burst compilation status for all hot-path systems used in legacy scenes.
 
 ---
 
-## Demo-Relevant Hot-Path Systems
+## legacy-Relevant Hot-Path Systems
 
 ### Core Time & Rewind Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `TimeTickSystem` | ✅ Burst | TimeSystemGroup | All demos | Core tick advancement |
 | `TimeStepSystem` | ✅ Burst | TimeSystemGroup | All demos | Fixed timestep gating |
@@ -23,7 +23,7 @@
 
 ### Resource Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `ResourceGatheringSystem` | ✅ Burst | ResourceSystemGroup | PureDotsTemplate | Hot path - gathering logic |
 | `ResourceDepositSystem` | ✅ Burst | ResourceSystemGroup | PureDotsTemplate | Hot path - deposit logic |
@@ -39,7 +39,7 @@
 
 ### Villager Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `VillagerAISystem` | ✅ Burst | VillagerSystemGroup | PureDotsTemplate | Hot path - AI decisions |
 | `VillagerMovementSystem` | ✅ Burst | VillagerSystemGroup | PureDotsTemplate | Hot path - movement |
@@ -55,7 +55,7 @@
 
 ### Spatial Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `SpatialGridBuildSystem` | ✅ Burst | SpatialSystemGroup | All demos | Hot path - grid updates |
 | `SpatialGridSnapshotSystem` | ✅ Burst | SpatialSystemGroup | RewindSandbox | Hot path - snapshot |
@@ -69,7 +69,7 @@
 
 ### Mining & Hauling Systems (Space4X)
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `MiningLoopSystem` | ✅ Burst | SpaceSystemGroup | Space4XMineLoop | Hot path - mining logic |
 | `HaulingLoopSystem` | ✅ Burst | SpaceSystemGroup | Space4XMineLoop | Hot path - hauling logic |
@@ -84,7 +84,7 @@
 
 ### Spawner Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `SceneSpawnSystem` | ✅ Burst | SimulationSystemGroup | SpawnerDemoScene | Hot path - deterministic spawning |
 | `SpawnerLifecycleSystem` | ✅ Burst | SimulationSystemGroup | SpawnerDemoScene | Hot path - lifecycle management |
@@ -95,7 +95,7 @@
 
 ### Presentation Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `PresentationBridgePlaybackSystem` | ⚠️ No Burst | PresentationSystemGroup | All demos | Requires MonoBehaviour bridge (acceptable) |
 | `PresentationSpawnSystem` | ⚠️ No Burst | SimulationSystemGroup | All demos | Structural changes (acceptable) |
@@ -108,7 +108,7 @@
 
 ### Environment Systems
 
-| System | Burst Status | Group | Demo Usage | Notes |
+| System | Burst Status | Group | legacy Usage | Notes |
 |--------|--------------|-------|------------|-------|
 | `MoistureGridSystems` | ✅ Burst | EnvironmentSystemGroup | EnvironmentDemo | Hot path - moisture updates |
 | `MoistureEvaporationSystem` | ✅ Burst | EnvironmentSystemGroup | EnvironmentDemo | Hot path - evaporation |
@@ -164,7 +164,7 @@ The following systems are intentionally non-Burst for valid reasons:
 
 ---
 
-## Demo Readiness Assessment
+## legacy Readiness Assessment
 
 **Burst Compliance:** ✅ **READY**
 
@@ -173,7 +173,7 @@ The following systems are intentionally non-Burst for valid reasons:
 - No performance-critical systems are missing Burst compilation
 
 **Recommendations:**
-- ✅ No changes needed for demo readiness
+- ✅ No changes needed for legacy readiness
 - Monitor Burst compilation warnings in CI
 - Validate Burst compilation in release builds
 

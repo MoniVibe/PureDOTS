@@ -473,11 +473,11 @@ ResourceChunkLODHelpers.AddBallisticMotion(
 
 ---
 
-## Demo Scenarios
+## legacy Scenarios
 
-PureDOTS provides game-flavored demo scenarios that showcase the LOD/aggregate/physics infrastructure:
+PureDOTS provides game-flavored legacy scenarios that showcase the LOD/aggregate/physics infrastructure:
 
-### Space4X Demo (`scenario_space_demo_01.json`)
+### Space4X legacy (`scenario_space_demo_01.json`)
 
 **Purpose**: Demonstrates Space4X entities with full performance infrastructure.
 
@@ -494,9 +494,9 @@ PureDOTS provides game-flavored demo scenarios that showcase the LOD/aggregate/p
 - Asteroids use LOD for distance culling
 - Projectiles use spatial grid (not physics) for interactions
 
-**Run**: `PureDOTS > Scale Tests > Game Demos > Space4X Demo`
+**Run**: `PureDOTS > Scale Tests > Game Demos > Space4X legacy`
 
-### Godgame Demo (`scenario_god_demo_01.json`)
+### Godgame legacy (`scenario_god_demo_01.json`)
 
 **Purpose**: Demonstrates Godgame entities with full performance infrastructure.
 
@@ -512,7 +512,7 @@ PureDOTS provides game-flavored demo scenarios that showcase the LOD/aggregate/p
 - Resource chunks support ballistic motion for thrown objects
 - All entities use spatial grid (`UsesSpatialGrid`) for interactions
 
-**Run**: `PureDOTS > Scale Tests > Game Demos > Godgame Demo`
+**Run**: `PureDOTS > Scale Tests > Game Demos > Godgame legacy`
 
 ---
 
@@ -523,15 +523,15 @@ PureDOTS provides game-flavored demo scenarios that showcase the LOD/aggregate/p
 Use menu: **PureDOTS > Scale Tests > ...**
 
 **Scale Tests:**
-- **Run Mini LOD Demo**: 2k test entities with LOD
-- **Run Mini Aggregate Demo**: 5 aggregates with members
+- **Run Mini LOD legacy**: 2k test entities with LOD
+- **Run Mini Aggregate legacy**: 5 aggregates with members
 - **Run Baseline 10k**: 10k entities, 60 FPS target
 - **Run Stress 100k**: 100k entities, 30 FPS target
 - **Run Extreme 1M**: 1M entities, 10 FPS target
 
 **Game Demos:**
-- **Space4X Demo**: Carriers, crafts, asteroids, fleets with LOD/aggregate infrastructure
-- **Godgame Demo**: Villagers, resource chunks, villages with LOD/aggregate infrastructure
+- **Space4X legacy**: Carriers, crafts, asteroids, fleets with LOD/aggregate infrastructure
+- **Godgame legacy**: Villagers, resource chunks, villages with LOD/aggregate infrastructure
 
 ### From CLI
 

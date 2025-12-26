@@ -2,6 +2,7 @@ using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Environment;
 using PureDOTS.Runtime.Time;
+using PureDOTS.Runtime.WorldGen;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -15,7 +16,6 @@ namespace PureDOTS.Systems.Environment
     /// Updates the sunlight grid based on climate time-of-day, seasonal variation, and simple vegetation occlusion.
     /// Produces deterministic direct/ambient light values that other environment systems can consume.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(EnvironmentSystemGroup))]
     [UpdateAfter(typeof(ClimateStateUpdateSystem))]
     public partial struct SunlightGridUpdateSystem : ISystem
@@ -24,7 +24,6 @@ namespace PureDOTS.Systems.Environment
         private TimeAwareController _timeAware;
         private EntityQuery _vegetationQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -42,7 +41,6 @@ namespace PureDOTS.Systems.Environment
                 TimeAwareExecutionOptions.SkipWhenPaused);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -257,19 +255,24 @@ namespace PureDOTS.Systems.Environment
 
         private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state)
         {
-            var chunkCount = SystemAPI.Query<RefRO<TerrainChunk>>().CalculateEntityCount();
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<TerrainChunk>());
+            var chunkCount = query.CalculateEntityCount();
             if (chunkCount <= 0)
             {
                 return default;
             }
 
             var map = new NativeParallelHashMap<TerrainChunkKey, Entity>(chunkCount, Allocator.TempJob);
-            foreach (var (chunk, entity) in SystemAPI.Query<RefRO<TerrainChunk>>().WithEntityAccess())
+            using var chunkData = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
+            using var chunkEntities = query.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < chunkData.Length; i++)
             {
+                var chunk = chunkData[i];
+                var entity = chunkEntities[i];
                 map.TryAdd(new TerrainChunkKey
                 {
-                    VolumeEntity = chunk.ValueRO.VolumeEntity,
-                    ChunkCoord = chunk.ValueRO.ChunkCoord
+                    VolumeEntity = chunk.VolumeEntity,
+                    ChunkCoord = chunk.ChunkCoord
                 }, entity);
             }
 

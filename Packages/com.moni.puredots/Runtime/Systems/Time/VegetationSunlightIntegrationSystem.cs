@@ -66,7 +66,7 @@ namespace PureDOTS.Systems.Time
             }
         }
 
-        private static float ResolveGlobalSunlight(ref SystemState state)
+        private float ResolveGlobalSunlight(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<SunlightState>(out var sunlightState))
             {

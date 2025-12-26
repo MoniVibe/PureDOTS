@@ -1,4 +1,4 @@
-# Quick Fix Guide - Mining Demo Scene
+# Quick Fix Guide - Mining legacy Scene
 
 ## Problem
 Nothing is moving because GameObjects are missing authoring components that convert them to DOTS entities.

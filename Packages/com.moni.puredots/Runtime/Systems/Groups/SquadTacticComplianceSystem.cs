@@ -75,8 +75,9 @@ namespace PureDOTS.Systems.Groups
             var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
+            ProfileActionEventStreamConfig streamConfig = default;
             var canEmitActions = SystemAPI.TryGetSingletonEntity<ProfileActionEventStream>(out var streamEntity) &&
-                                 SystemAPI.TryGetSingleton<ProfileActionEventStreamConfig>(out var streamConfig);
+                                 SystemAPI.TryGetSingleton(out streamConfig);
             DynamicBuffer<ProfileActionEvent> actionBuffer = default;
             RefRW<ProfileActionEventStream> actionStream = default;
             if (canEmitActions)

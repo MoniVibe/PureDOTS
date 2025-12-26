@@ -94,12 +94,144 @@ namespace PureDOTS.Runtime.Knowledge
     /// </summary>
     public static class IncidentLearningCategories
     {
-        public static readonly FixedString64Bytes TreeFall = new FixedString64Bytes("tree_fall");
-        public static readonly FixedString64Bytes TreeFallNearMiss = new FixedString64Bytes("tree_fall_near_miss");
-        public static readonly FixedString64Bytes FallingDebris = new FixedString64Bytes("falling_debris");
-        public static readonly FixedString64Bytes ConstructionIncident = new FixedString64Bytes("construction_incident");
-        public static readonly FixedString64Bytes ConstructionCollapse = new FixedString64Bytes("construction_collapse");
-        public static readonly FixedString64Bytes ToolFailure = new FixedString64Bytes("tool_failure");
+        public static readonly FixedString64Bytes TreeFall = BuildTreeFall();
+        public static readonly FixedString64Bytes TreeFallNearMiss = BuildTreeFallNearMiss();
+        public static readonly FixedString64Bytes FallingDebris = BuildFallingDebris();
+        public static readonly FixedString64Bytes ConstructionIncident = BuildConstructionIncident();
+        public static readonly FixedString64Bytes ConstructionCollapse = BuildConstructionCollapse();
+        public static readonly FixedString64Bytes ToolFailure = BuildToolFailure();
+
+        private static FixedString64Bytes BuildTreeFall()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('t');
+            id.Append('r');
+            id.Append('e');
+            id.Append('e');
+            id.Append('_');
+            id.Append('f');
+            id.Append('a');
+            id.Append('l');
+            id.Append('l');
+            return id;
+        }
+
+        private static FixedString64Bytes BuildTreeFallNearMiss()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('t');
+            id.Append('r');
+            id.Append('e');
+            id.Append('e');
+            id.Append('_');
+            id.Append('f');
+            id.Append('a');
+            id.Append('l');
+            id.Append('l');
+            id.Append('_');
+            id.Append('n');
+            id.Append('e');
+            id.Append('a');
+            id.Append('r');
+            id.Append('_');
+            id.Append('m');
+            id.Append('i');
+            id.Append('s');
+            id.Append('s');
+            return id;
+        }
+
+        private static FixedString64Bytes BuildFallingDebris()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('f');
+            id.Append('a');
+            id.Append('l');
+            id.Append('l');
+            id.Append('i');
+            id.Append('n');
+            id.Append('g');
+            id.Append('_');
+            id.Append('d');
+            id.Append('e');
+            id.Append('b');
+            id.Append('r');
+            id.Append('i');
+            id.Append('s');
+            return id;
+        }
+
+        private static FixedString64Bytes BuildConstructionIncident()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('c');
+            id.Append('o');
+            id.Append('n');
+            id.Append('s');
+            id.Append('t');
+            id.Append('r');
+            id.Append('u');
+            id.Append('c');
+            id.Append('t');
+            id.Append('i');
+            id.Append('o');
+            id.Append('n');
+            id.Append('_');
+            id.Append('i');
+            id.Append('n');
+            id.Append('c');
+            id.Append('i');
+            id.Append('d');
+            id.Append('e');
+            id.Append('n');
+            id.Append('t');
+            return id;
+        }
+
+        private static FixedString64Bytes BuildConstructionCollapse()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('c');
+            id.Append('o');
+            id.Append('n');
+            id.Append('s');
+            id.Append('t');
+            id.Append('r');
+            id.Append('u');
+            id.Append('c');
+            id.Append('t');
+            id.Append('i');
+            id.Append('o');
+            id.Append('n');
+            id.Append('_');
+            id.Append('c');
+            id.Append('o');
+            id.Append('l');
+            id.Append('l');
+            id.Append('a');
+            id.Append('p');
+            id.Append('s');
+            id.Append('e');
+            return id;
+        }
+
+        private static FixedString64Bytes BuildToolFailure()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('t');
+            id.Append('o');
+            id.Append('o');
+            id.Append('l');
+            id.Append('_');
+            id.Append('f');
+            id.Append('a');
+            id.Append('i');
+            id.Append('l');
+            id.Append('u');
+            id.Append('r');
+            id.Append('e');
+            return id;
+        }
     }
 
     public static class IncidentLearningUtility

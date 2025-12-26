@@ -7,11 +7,9 @@ namespace PureDOTS.Systems.Environment
     /// <summary>
     /// Ensures the TerrainWorldConfig singleton exists.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     public partial struct TerrainWorldBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<TerrainWorldConfig>());

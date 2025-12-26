@@ -365,7 +365,7 @@ Large World (16km²): 1024x1024 cells = ~16m resolution (requires streaming)
 - Test raise/lower at single point
 - Measure performance (update time, memory footprint)
 - Validate rewind (command replay determinism)
-**Deliverable**: Tech demo video showing terrain sculpting
+**Deliverable**: Tech legacy video showing terrain sculpting
 
 ### Prototype Phase 2: Hand Sculpting UI (2 weeks)
 **Goal**: Player can sculpt with divine hand
@@ -373,7 +373,7 @@ Large World (16km²): 1024x1024 cells = ~16m resolution (requires streaming)
 - Implement brush system (size, intensity, falloff)
 - Visual feedback (brush circle, height preview wireframe)
 - Test user experience (feel test with designer)
-**Deliverable**: Playable sculpting demo
+**Deliverable**: Playable sculpting legacy
 
 ### Prototype Phase 3: Biome Transitions (2-3 weeks)
 **Goal**: Climate manipulation changes biome types

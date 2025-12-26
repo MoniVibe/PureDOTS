@@ -55,7 +55,7 @@ The project split has been completed. Godgame and Space4x are now fully independ
 
 ### Space4x Project
 - **Status**: Independent Unity project
-- **Scenes**: Active demo scenes + archived hybrid scenes
+- **Scenes**: Active legacy scenes + archived hybrid scenes
 - **Package**: References PureDOTS correctly
 
 ## Next Steps

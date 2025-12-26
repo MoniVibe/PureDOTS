@@ -82,7 +82,7 @@ Open `GodgameShowcase_SubScene.unity`:
 
 Open `Space4XShowcase_SubScene.unity`:
 
-1. **Mining Demo Authoring** (right side, positive X):
+1. **Mining legacy Authoring** (right side, positive X):
    - Create empty GameObject at position `(120, 0, 20)`
    - Add component: `Space4XMiningDemoAuthoring`
    - Add component: `PureDotsConfigAuthoring` (required dependency)

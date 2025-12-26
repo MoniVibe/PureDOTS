@@ -44,7 +44,7 @@ Camera bootstrap runs in `Awake()` and:
 2. Instantiates camera prefab if assigned
 3. Falls back to basic camera setup if no prefab
 
-Scene setup menu automatically adds camera bootstrap to new demo scenes.
+Scene setup menu automatically adds camera bootstrap to new legacy scenes.
 
 ## Validation
 

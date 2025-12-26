@@ -145,9 +145,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                     counters.ValueRW.ExpiredReservationCount += 1;
                     if (hasStream)
                     {
-                        LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                        ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = time.Tick,
                             Subject = entry.Owner,
                             ReservationId = entry.ReservationId,
@@ -164,14 +164,12 @@ namespace PureDOTS.Systems.Logistics.Contracts
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ContractReservationLedgerSystem))]
     public partial struct ContractLedgerInvariantSystem : ISystem
     {
         private EntityQuery _inventoryQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ContractHarnessEnabled>();
@@ -181,7 +179,6 @@ namespace PureDOTS.Systems.Logistics.Contracts
             _inventoryQuery = state.GetEntityQuery(typeof(ContractInventory));
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var tick = SystemAPI.GetSingleton<TimeState>().Tick;
@@ -206,9 +203,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                     counters.DuplicateReservationIdCount += 1;
                     if (hasStream)
                     {
-                        LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                        ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = tick,
                             Subject = entry.Owner,
                             ReservationId = entry.ReservationId,
@@ -222,9 +219,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                     counters.IllegalStateTransitionCount += 1;
                     if (hasStream)
                     {
-                        LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                        ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = tick,
                             Subject = entry.Owner,
                             ReservationId = entry.ReservationId,
@@ -238,9 +235,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                     counters.IllegalStateTransitionCount += 1;
                     if (hasStream)
                     {
-                        LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                        ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = tick,
                             Subject = entry.Owner,
                             ReservationId = entry.ReservationId,
@@ -262,9 +259,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                         counters.NegativeInventoryCount += 1;
                         if (hasStream)
                         {
-                            LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                            ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                             {
-                                ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                                ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                                 Tick = tick,
                                 Subject = entity,
                                 ReservationId = 0,
@@ -293,9 +290,9 @@ namespace PureDOTS.Systems.Logistics.Contracts
                         counters.ReservedOverAvailableCount += 1;
                         if (hasStream)
                         {
-                            LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
+                            ContractViolationLogger.LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                             {
-                                ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                                ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                                 Tick = tick,
                                 Subject = entity,
                                 ReservationId = 0,
@@ -313,7 +310,49 @@ namespace PureDOTS.Systems.Logistics.Contracts
             }
         }
 
-        private static void LogViolation(ref DynamicBuffer<ContractViolationEvent> buffer, ref ContractViolationRingState ringState, in ContractViolationEvent entry)
+    }
+
+    internal static class ContractLedgerConstants
+    {
+        internal static readonly FixedString64Bytes ResourceLedgerContractId = BuildResourceLedgerContractId();
+
+        private static FixedString64Bytes BuildResourceLedgerContractId()
+        {
+            var id = new FixedString64Bytes();
+            id.Append('C');
+            id.Append('O');
+            id.Append('N');
+            id.Append('T');
+            id.Append('R');
+            id.Append('A');
+            id.Append('C');
+            id.Append('T');
+            id.Append(':');
+            id.Append('R');
+            id.Append('E');
+            id.Append('S');
+            id.Append('O');
+            id.Append('U');
+            id.Append('R');
+            id.Append('C');
+            id.Append('E');
+            id.Append('.');
+            id.Append('L');
+            id.Append('E');
+            id.Append('D');
+            id.Append('G');
+            id.Append('E');
+            id.Append('R');
+            id.Append('.');
+            id.Append('V');
+            id.Append('1');
+            return id;
+        }
+    }
+
+    internal static class ContractViolationLogger
+    {
+        internal static void LogViolation(ref DynamicBuffer<ContractViolationEvent> buffer, ref ContractViolationRingState ringState, in ContractViolationEvent entry)
         {
             if (ringState.Capacity <= 0 || buffer.Length == 0)
             {

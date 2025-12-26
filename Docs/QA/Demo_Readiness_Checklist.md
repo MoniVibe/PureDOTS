@@ -1,7 +1,7 @@
-# Demo Readiness Checklist
+# legacy Readiness Checklist
 
 **Last Updated:** 2025-01-27  
-**Purpose:** Operator checklist for running and validating PureDOTS demo scenes.
+**Purpose:** Operator checklist for running and validating PureDOTS legacy scenes.
 
 ---
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Demo Scene Execution
+## legacy Scene Execution
 
 ### 1. PureDotsTemplate.unity
 
@@ -127,7 +127,7 @@
 
 ---
 
-## Conditional Demo Scenes
+## Conditional legacy Scenes
 
 ### 5. Space4XMineLoop.unity
 
@@ -319,7 +319,7 @@ Run CI script: `CI/run_playmode_tests.sh`
 
 ---
 
-## Demo Readiness Summary
+## legacy Readiness Summary
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -328,16 +328,16 @@ Run CI script: `CI/run_playmode_tests.sh`
 | Integration Tests | ✅ Ready | Determinism validated |
 | Budget Tests | ✅ Ready | CI integration complete |
 | Burst Compliance | ✅ Ready | All hot paths Burst-compiled |
-| Demo Scenes | ✅ Ready | PureDotsTemplate, SpawnerDemoScene, RewindSandbox |
+| legacy Scenes | ✅ Ready | PureDotsTemplate, SpawnerDemoScene, RewindSandbox |
 | Performance Soak | ✅ Ready | PerformanceSoakScene validated |
 
-**Overall Status:** ✅ **DEMO READY**
+**Overall Status:** ✅ **legacy READY**
 
 ---
 
 ## Next Steps
 
-1. ✅ Run demo scenes and verify behaviors
+1. ✅ Run legacy scenes and verify behaviors
 2. ✅ Check console for errors/warnings
 3. ✅ Validate performance budgets
 4. ✅ Run automated tests (integration, budget, presentation bridge)

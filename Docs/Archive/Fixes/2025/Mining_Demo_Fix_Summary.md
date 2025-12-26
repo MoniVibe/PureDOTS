@@ -1,10 +1,10 @@
-# Mining Demo Fix Summary
+# Mining legacy Fix Summary
 
 ## Issues Identified
 
 1. **Authoring Components Missing** ✅ FIXED
    - GameObjects had Transform but no authoring components
-   - Fixed by running `Space4X/Setup Mining Demo Scene` menu item
+   - Fixed by running `Space4X/Setup Mining legacy Scene` menu item
 
 2. **Scene Structure Issue** ⚠️ CRITICAL
    - **Problem**: `GameEntities.unity` is being opened directly as the main scene
@@ -13,7 +13,7 @@
 
 3. **PureDotsConfigAuthoring Setup** ⚠️ NEEDS VERIFICATION
    - Config must be in the MAIN scene (SpawnerDemoScene), not the subscene
-   - Run `Space4X/Fix Mining Demo Scene Setup` to add it
+   - Run `Space4X/Fix Mining legacy Scene Setup` to add it
 
 4. **Camera Rendering** ⚠️ POTENTIAL ISSUE
    - Camera is seeing only background color, suggesting entities aren't rendering
@@ -34,7 +34,7 @@
 3. If SubScene is open (checkbox checked), close it (uncheck) for Play mode
 
 ### Step 3: Add PureDotsConfigAuthoring
-1. In SpawnerDemoScene (main scene), run menu: `Space4X/Fix Mining Demo Scene Setup`
+1. In SpawnerDemoScene (main scene), run menu: `Space4X/Fix Mining legacy Scene Setup`
 2. This creates a "PureDotsConfig" GameObject with PureDotsConfigAuthoring
 3. Verify it has the PureDotsRuntimeConfig asset assigned
 

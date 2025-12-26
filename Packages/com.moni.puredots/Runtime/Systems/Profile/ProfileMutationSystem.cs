@@ -9,23 +9,32 @@ using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Profile
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct ProfileMutationBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             EnsureEventStream(ref state);
             EnsureMutationConfig(ref state);
             EnsureCatalog(ref state);
             state.Enabled = false;
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            foreach (var catalogRef in SystemAPI.Query<RefRW<ProfileActionCatalogSingleton>>())
+            {
+                if (catalogRef.ValueRO.Catalog.IsCreated)
+                {
+                    catalogRef.ValueRO.Catalog.Dispose();
+                    catalogRef.ValueRW.Catalog = default;
+                }
+            }
         }
 
         private static void EnsureEventStream(ref SystemState state)
@@ -140,9 +149,7 @@ namespace PureDOTS.Systems.Profile
                 Weight = 0f
             };
 
-            var blob = builder.CreateBlobAssetReference<ProfileActionCatalogBlob>(Allocator.Persistent);
-            builder.Dispose();
-            return blob;
+            return builder.CreateBlobAssetReference<ProfileActionCatalogBlob>(Allocator.Persistent);
         }
     }
 
@@ -191,29 +198,69 @@ namespace PureDOTS.Systems.Profile
                 return;
             }
 
-            _alignmentLookup.Update(ref state);
-            _outlookLookup.Update(ref state);
-            _behaviorDispositionLookup.Update(ref state);
-
             var streamEntity = SystemAPI.GetSingletonEntity<ProfileActionEventStream>();
             var stream = SystemAPI.GetComponentRW<ProfileActionEventStream>(streamEntity);
             var events = SystemAPI.GetBuffer<ProfileActionEvent>(streamEntity);
+            var pendingAccumulatorAdds = new NativeParallelHashMap<Entity, ProfileActionAccumulator>(
+                math.max(16, events.Length),
+                Allocator.Temp);
+            var pendingTagAdds = new NativeList<Entity>(Allocator.Temp);
+            var hasPendingAccumulatorAdds = false;
 
             if (events.Length > 0)
             {
                 for (int i = 0; i < events.Length; i++)
                 {
-                    ApplyEvent(ref state, catalog.Catalog, config, events[i]);
+                    ApplyEvent(ref state, catalog.Catalog, config, events[i], ref pendingAccumulatorAdds, ref pendingTagAdds, ref hasPendingAccumulatorAdds);
                 }
 
                 events.Clear();
                 stream.ValueRW.EventCount = 0;
             }
 
+            if (hasPendingAccumulatorAdds || pendingTagAdds.Length > 0)
+            {
+                var entityManager = state.EntityManager;
+                var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+                foreach (var pending in pendingAccumulatorAdds)
+                {
+                    if (!entityManager.HasComponent<ProfileActionAccumulator>(pending.Key))
+                    {
+                        ecb.AddComponent(pending.Key, pending.Value);
+                    }
+                }
+
+                for (int i = 0; i < pendingTagAdds.Length; i++)
+                {
+                    var entity = pendingTagAdds[i];
+                    if (!entityManager.HasComponent<ProfileMutationPending>(entity))
+                    {
+                        ecb.AddComponent<ProfileMutationPending>(entity);
+                    }
+                }
+
+                ecb.Playback(entityManager);
+                ecb.Dispose();
+            }
+
+            pendingAccumulatorAdds.Dispose();
+            pendingTagAdds.Dispose();
+
+            _alignmentLookup.Update(ref state);
+            _outlookLookup.Update(ref state);
+            _behaviorDispositionLookup.Update(ref state);
             ApplyAccumulatedDrift(ref state, config, timeState.Tick);
         }
 
-        private void ApplyEvent(ref SystemState state, BlobAssetReference<ProfileActionCatalogBlob> catalog, ProfileMutationConfig config, in ProfileActionEvent actionEvent)
+        private void ApplyEvent(
+            ref SystemState state,
+            BlobAssetReference<ProfileActionCatalogBlob> catalog,
+            ProfileMutationConfig config,
+            in ProfileActionEvent actionEvent,
+            ref NativeParallelHashMap<Entity, ProfileActionAccumulator> pendingAccumulatorAdds,
+            ref NativeList<Entity> pendingTagAdds,
+            ref bool hasPendingAccumulatorAdds)
         {
             if (actionEvent.Actor == Entity.Null || actionEvent.Token == ProfileActionToken.None)
             {
@@ -241,11 +288,14 @@ namespace PureDOTS.Systems.Profile
 
             var entityManager = state.EntityManager;
             ProfileActionAccumulator accumulator;
-            if (!entityManager.HasComponent<ProfileActionAccumulator>(actionEvent.Actor))
+            var hasAccumulator = entityManager.HasComponent<ProfileActionAccumulator>(actionEvent.Actor);
+            if (!hasAccumulator)
             {
-                accumulator = default;
-                accumulator.LastAppliedTick = actionEvent.Tick;
-                entityManager.AddComponentData(actionEvent.Actor, accumulator);
+                if (!pendingAccumulatorAdds.TryGetValue(actionEvent.Actor, out accumulator))
+                {
+                    accumulator = default;
+                    accumulator.LastAppliedTick = actionEvent.Tick;
+                }
             }
             else
             {
@@ -261,17 +311,21 @@ namespace PureDOTS.Systems.Profile
                                             math.csum(math.abs(dispositionDeltaA)) +
                                             math.csum(math.abs(dispositionDeltaB));
 
-            entityManager.SetComponentData(actionEvent.Actor, accumulator);
-
-            if (!entityManager.HasComponent<ProfileMutationPending>(actionEvent.Actor))
+            if (hasAccumulator)
             {
-                entityManager.AddComponent<ProfileMutationPending>(actionEvent.Actor);
+                entityManager.SetComponentData(actionEvent.Actor, accumulator);
             }
+            else
+            {
+                pendingAccumulatorAdds[actionEvent.Actor] = accumulator;
+                hasPendingAccumulatorAdds = true;
+            }
+            pendingTagAdds.Add(actionEvent.Actor);
         }
 
         private static bool TryResolveDefinition(BlobAssetReference<ProfileActionCatalogBlob> catalog, ProfileActionToken token, out ProfileActionDefinition definition)
         {
-            var actions = catalog.Value.Actions;
+            ref var actions = ref catalog.Value.Actions;
             for (int i = 0; i < actions.Length; i++)
             {
                 var candidate = actions[i];
@@ -319,6 +373,7 @@ namespace PureDOTS.Systems.Profile
         private void ApplyAccumulatedDrift(ref SystemState state, ProfileMutationConfig config, uint currentTick)
         {
             var entityManager = state.EntityManager;
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (accumulator, entity) in SystemAPI.Query<RefRW<ProfileActionAccumulator>>()
                          .WithAll<ProfileMutationPending>()
@@ -372,9 +427,12 @@ namespace PureDOTS.Systems.Profile
 
                 if (updated.PendingMagnitude <= 0.0005f)
                 {
-                    entityManager.RemoveComponent<ProfileMutationPending>(entity);
+                    ecb.RemoveComponent<ProfileMutationPending>(entity);
                 }
             }
+
+            ecb.Playback(entityManager);
+            ecb.Dispose();
         }
 
         private static float3 ClampVector(float3 value, float maxDelta)

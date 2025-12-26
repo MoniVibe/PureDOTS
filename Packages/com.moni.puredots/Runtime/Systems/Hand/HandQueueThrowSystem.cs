@@ -135,7 +135,7 @@ namespace PureDOTS.Systems.Hand
                 {
                     for (int i = 0; i < throwQueue.Length; i++)
                     {
-                        EmitThrow(ref commandBuffer, currentTick, throwQueue[i].Value);
+                        EmitThrow(commandBuffer, currentTick, throwQueue[i].Value);
                     }
 
                     throwQueue.Clear();
@@ -144,12 +144,12 @@ namespace PureDOTS.Systems.Hand
                 {
                     var entry = throwQueue[0].Value;
                     throwQueue.RemoveAt(0);
-                    EmitThrow(ref commandBuffer, currentTick, entry);
+                    EmitThrow(commandBuffer, currentTick, entry);
                 }
             }
         }
 
-        private static void EmitThrow(ref DynamicBuffer<HandCommand> commands, uint currentTick, in ThrowQueueEntry entry)
+        private static void EmitThrow(DynamicBuffer<HandCommand> commands, uint currentTick, in ThrowQueueEntry entry)
         {
             commands.Add(new HandCommand
             {

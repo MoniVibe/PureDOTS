@@ -192,7 +192,7 @@ PureDOTS includes opt-in “single tag” modules that bootstrap required compon
 
 These are intended as the baseline pattern for future modules: **blank entity + one opt-in tag + bootstrap system**.
 
-Demo scenario:
+legacy scenario:
 - `puredots/Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/modularity_blank_entities_demo.json`
 
 Recommended template:

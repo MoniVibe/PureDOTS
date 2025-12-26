@@ -11,7 +11,7 @@ PureDOTS core framework is **functionally ready** for game development, with sol
 
 **Overall Status:** ✅ **Ready for game logic implementation** with noted optimization opportunities
 
-**Demo Readiness Status:** ✅ **DEMO READY** - All core demo scenes validated, Burst-compiled, and tested
+**legacy Readiness Status:** ✅ **legacy READY** - All core legacy scenes validated, Burst-compiled, and tested
 
 ---
 
@@ -153,7 +153,7 @@ state.Dependency = job.ScheduleParallel(_villagerQuery, state.Dependency);
 4. **Authoring & Tooling** (Planned)
    - Need: Shared enum registry generation
    - Need: Inspector validation helpers
-   - Need: Sample mutiny/desertion demo scene
+   - Need: Sample mutiny/desertion legacy scene
    - Priority: Medium (developer experience)
    - Status: Not started
 
@@ -341,13 +341,13 @@ state.Dependency = job.ScheduleParallel(_villagerQuery, state.Dependency);
 
 ---
 
-## 9. Demo Readiness Assessment
+## 9. legacy Readiness Assessment
 
-### ✅ **Status: DEMO READY**
+### ✅ **Status: legacy READY**
 
-PureDOTS core framework is **demo-ready** with all critical systems validated, Burst-compiled, and tested.
+PureDOTS core framework is **legacy-ready** with all critical systems validated, Burst-compiled, and tested.
 
-#### **Demo Scenes Status:**
+#### **legacy Scenes Status:**
 
 | Scene | Status | Burst | Determinism | Presentation | Notes |
 |-------|--------|-------|-------------|--------------|-------|
@@ -360,7 +360,7 @@ PureDOTS core framework is **demo-ready** with all critical systems validated, B
 
 #### **Burst Compliance:**
 
-- ✅ **100% hot-path coverage** - All demo-relevant hot-path systems are Burst-compiled
+- ✅ **100% hot-path coverage** - All legacy-relevant hot-path systems are Burst-compiled
 - ✅ **31/31 systems** - Time, resources, villagers, spatial, mining/hauling, spawners, presentation sync
 - ✅ **No blockers** - Non-Burst systems are in cold paths or have valid exclusions
 
@@ -371,7 +371,7 @@ PureDOTS core framework is **demo-ready** with all critical systems validated, B
 - ✅ **FixedStep gating** - Identical results at 30/60/120fps
 - ✅ **Rewind determinism** - Bytewise match after rewind/resimulation
 - ✅ **Spawner determinism** - Identical spawn counts across frame rates
-- ✅ **Demo-specific tests** - PureDotsTemplate, MiningDemo, VillagerGatherDepositLoop
+- ✅ **legacy-specific tests** - PureDotsTemplate, MiningDemo, VillagerGatherDepositLoop
 
 **Reference:** `Assets/Tests/Integration/PureDots_Integration_Tests.cs`
 
@@ -404,7 +404,7 @@ PureDOTS core framework is **demo-ready** with all critical systems validated, B
 #### **Known Limitations:**
 
 1. **Space4X/Godgame Scenes:** Require game project dependencies; not standalone PureDOTS demos
-2. **Advanced Features:** Registry spatial sync, advanced spatial queries, climate enhancements deferred to post-demo
+2. **Advanced Features:** Registry spatial sync, advanced spatial queries, climate enhancements deferred to post-legacy
 3. **SoA Optimizations:** Current layout functional; optimizations planned for scale (>10k entities)
 
 **Reference:** `Docs/QA/Demo_TODO_Triage.md`
@@ -412,9 +412,9 @@ PureDOTS core framework is **demo-ready** with all critical systems validated, B
 ### **Recommendation:**
 
 - ✅ **Demos are ready** - Core PureDOTS systems are stable and tested
-- ✅ **Proceed with demo showcases** - All critical paths validated
-- ⚠️ **Monitor performance** - Validate budgets in actual demo runs
-- 📋 **Defer advanced features** - Focus on demo stability, add enhancements incrementally
+- ✅ **Proceed with legacy showcases** - All critical paths validated
+- ⚠️ **Monitor performance** - Validate budgets in actual legacy runs
+- 📋 **Defer advanced features** - Focus on legacy stability, add enhancements incrementally
 
 ---
 

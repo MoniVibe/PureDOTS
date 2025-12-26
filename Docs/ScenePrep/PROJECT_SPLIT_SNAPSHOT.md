@@ -47,7 +47,7 @@ Hybrid-related documentation to archive:
 - **Hybrid Assets**: None found
 
 #### Space4x
-- **Scenes Folder**: Exists with Demo and Hybrid subfolders
+- **Scenes Folder**: Exists with legacy and Hybrid subfolders
 - **Package Reference**: Already configured correctly
 - **Hybrid Assets**: Present in `Assets/Scenes/Hybrid/`
 

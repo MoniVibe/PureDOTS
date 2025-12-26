@@ -1,11 +1,11 @@
-# PureDOTS Demo Scenes Index
+# PureDOTS legacy Scenes Index
 
 **Last Updated:** 2025-01-27  
-**Purpose:** Catalog of all demo scenes in PureDOTS, their expected behaviors, and demo readiness status.
+**Purpose:** Catalog of all legacy scenes in PureDOTS, their expected behaviors, and legacy readiness status.
 
 ---
 
-## Core Demo Scenes
+## Core legacy Scenes
 
 ### 1. PureDotsTemplate.unity
 **Location:** `Assets/Scenes/PureDotsTemplate.unity`  
@@ -25,7 +25,7 @@
 - Time control authoring objects
 - Optional presentation bridge GameObject
 
-**Demo Readiness:** ✅ Ready (baseline template)
+**legacy Readiness:** ✅ Ready (baseline template)
 
 ---
 
@@ -44,13 +44,13 @@
 - `SceneSpawnRequest` buffers
 - Spawner prefabs and placement modes
 
-**Demo Readiness:** ✅ Ready (determinism validated)
+**legacy Readiness:** ✅ Ready (determinism validated)
 
 ---
 
 ### 3. Space4XMineLoop.unity
 **Location:** `Assets/Scenes/Space4XMineLoop.unity`  
-**Status:** ⚠️ Space4X-specific demo (may require game project dependencies)  
+**Status:** ⚠️ Space4X-specific legacy (may require game project dependencies)  
 **Expected Behaviors:**
 - Mining loop system executes (vessels → asteroids → carriers)
 - Resource drops spawn and move correctly
@@ -64,33 +64,33 @@
 - Carrier entities with storage
 - Hauling job system
 
-**Demo Readiness:** ⚠️ Conditional (requires Space4X authoring components)
+**legacy Readiness:** ⚠️ Conditional (requires Space4X authoring components)
 
 ---
 
 ### 4. MiningDemo_Dual_Authoring.unity
 **Location:** `Assets/MiningDemo_Dual_Authoring.unity`  
-**Status:** ⚠️ Dual-authoring demo  
+**Status:** ⚠️ Dual-authoring legacy  
 **Expected Behaviors:**
 - Both authoring paths (MonoBehaviour + ECS) work
 - Entities spawn correctly from both sources
 - No conflicts or duplicate entities
 - Presentation bridge handles both authoring types
 
-**Demo Readiness:** ⚠️ Needs validation
+**legacy Readiness:** ⚠️ Needs validation
 
 ---
 
 ### 5. Space4XRegistryDemo.unity
-**Location:** `Assets/Projects/Space4X/Scenes/Demo/Space4XRegistryDemo.unity`  
-**Status:** ⚠️ Space4X-specific registry demo  
+**Location:** `Assets/Projects/Space4X/Scenes/legacy/Space4XRegistryDemo.unity`  
+**Status:** ⚠️ Space4X-specific registry legacy  
 **Expected Behaviors:**
 - Registry bakes correctly from authoring
 - Runtime registry buffers mirror baked data
 - Registry continuity maintained across frames
 - Stable ordering and meta parity
 
-**Demo Readiness:** ⚠️ Conditional (Space4X project)
+**legacy Readiness:** ⚠️ Conditional (Space4X project)
 
 ---
 
@@ -105,7 +105,7 @@
 - Resimulation after rewind produces identical results
 - No state corruption during rewind operations
 
-**Demo Readiness:** ✅ Ready (validation scene)
+**legacy Readiness:** ✅ Ready (validation scene)
 
 ---
 
@@ -118,7 +118,7 @@
 - Memory usage stays within limits
 - No GC spikes or allocations in hot paths
 
-**Demo Readiness:** ✅ Ready (performance validation)
+**legacy Readiness:** ✅ Ready (performance validation)
 
 ---
 
@@ -133,7 +133,7 @@
 - Village workforce systems
 - Job assignment and execution
 
-**Demo Readiness:** ⚠️ Conditional (Godgame project)
+**legacy Readiness:** ⚠️ Conditional (Godgame project)
 
 ---
 
@@ -146,11 +146,11 @@
 - Mining and hauling loops
 - Trade and economy systems
 
-**Demo Readiness:** ⚠️ Conditional (Space4X project)
+**legacy Readiness:** ⚠️ Conditional (Space4X project)
 
 ---
 
-## Demo Readiness Summary
+## legacy Readiness Summary
 
 | Scene | Status | Burst Compliance | Determinism | Presentation | Notes |
 |-------|--------|------------------|-------------|--------------|-------|
@@ -164,7 +164,7 @@
 
 ---
 
-## Demo Entry Points for Game Teams
+## legacy Entry Points for Game Teams
 
 **For PureDOTS Core Validation:**
 1. Start with `PureDotsTemplate.unity` - baseline functionality
@@ -187,9 +187,9 @@
 
 ## Next Steps
 
-1. ✅ Document all demo scenes (this document)
-2. ⏳ Validate Burst compliance for all demo-relevant systems
-3. ⏳ Add determinism tests for key demo flows
+1. ✅ Document all legacy scenes (this document)
+2. ⏳ Validate Burst compliance for all legacy-relevant systems
+3. ⏳ Add determinism tests for key legacy flows
 4. ⏳ Create operator checklist for running demos
-5. ⏳ Update game team guides with demo usage instructions
+5. ⏳ Update game team guides with legacy usage instructions
 

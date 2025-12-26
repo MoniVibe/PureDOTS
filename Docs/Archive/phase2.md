@@ -64,8 +64,8 @@ Legacy shims: optional HybridPrefabGuid field used only by the PresentationBridg
 
 Definition of Done (spine C): both games can register “units/effects/resources” using the same schema; continuity tests pass; presentation works with or without actual meshes.
 
-2) Vertical demo slices (per game) built only on the spines
-Godgame demo (single scene)
+2) Vertical legacy slices (per game) built only on the spines
+Godgame legacy (single scene)
 
 Goal: prove input→gameplay→presentation→rewind loop with zero asset debt.
 
@@ -73,11 +73,11 @@ Slice 1 – Move & Act: WASD pans camera; click spawns a “Band” entity from 
 
 Slice 2 – Construction stub: hotkey places a “Jobsite” ghost (pure ECS primitive); finishing triggers another effect request + a HUD metric bump (telemetry counter).
 
-Slice 3 – Time demo: hold R to rewind 3 seconds; verify entities and effects resimulated deterministically (tests assert snapshot bytewise equality for a tiny world).
+Slice 3 – Time legacy: hold R to rewind 3 seconds; verify entities and effects resimulated deterministically (tests assert snapshot bytewise equality for a tiny world).
 
 Acceptance: no GameObject references in gameplay; removing the PresentationBridge still yields a running headless sim; all three slices covered by PlayMode tests.
 
-Space4x demo (single scene)
+Space4x legacy (single scene)
 
 Goal: minimal mine→haul loop using the same spines.
 
@@ -85,7 +85,7 @@ Slice 1 – Mining: a Miner ship reads input (or scripted order), ticks a “Min
 
 Slice 2 – Carrier: on threshold, emit SpawnResource entities; Carrier auto-picks via FindNearest system; HUD increments “ore in hold”.
 
-Slice 3 – Time demo: rewind during transfer; the same count/state replays.
+Slice 3 – Time legacy: rewind during transfer; the same count/state replays.
 
 Acceptance: all visuals are placeholders driven by PresentationBinding; removing bindings leaves the sim intact.
 
@@ -120,7 +120,7 @@ Telemetry/metrics: minimal HUD/debug buffers fed by systems (no UI dependency). 
 
 Tests/docs gaps → fixes
 
-Add a single TestAssembly per project with categories: Spine.Time, Spine.Presentation, Registry.*, Demo.*.
+Add a single TestAssembly per project with categories: Spine.Time, Spine.Presentation, Registry.*, legacy.*.
 
 Update TruthSources + TODO cross-links to point at the new documents and fixtures; block PRs on those tests.
 
@@ -154,7 +154,7 @@ Hybrid safety: an editor-only PresentationStructuralChangeGuardSystem that throw
 
 Feature flags: EnableRewind, EnableTelemetry, EnableHybridFallback—configurable per-scene Scriptable.
 
-6) What each demo proves (and why you won’t regret it)
+6) What each legacy proves (and why you won’t regret it)
 
 You validate input→sim→present with deterministic time.
 

@@ -106,8 +106,8 @@ Same as Agent 1 - extract string literals to `static readonly` constants at clas
    - Line 170: `FindObjectsOfType<T>()` → `FindObjectsByType<T>(FindObjectsSortMode.None)`
    - Line 230: `FindObjectOfType<DevTools>()` → Check if DevTools exists, use modern API
    - Line 251: `DevTools` type not found
-   - Line 258: `FindObjectOfType<Demo>()` → Check if Demo exists
-   - Line 266: `Demo` type not found
+   - Line 258: `FindObjectOfType<legacy>()` → Check if legacy exists
+   - Line 266: `legacy` type not found
 
 2. `Assets/Editor/Tools/GodgameDemoSceneWizard.cs`
    - Line 284: `FindObjectsOfType<T>(bool)` → `FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None)`
@@ -115,7 +115,7 @@ Same as Agent 1 - extract string literals to `static readonly` constants at clas
 ### Investigation for Missing Types
 ```bash
 grep -r "class DevTools" --include="*.cs"
-grep -r "class Demo" --include="*.cs"
+grep -r "class legacy" --include="*.cs"
 ```
 
 ### Fix Pattern

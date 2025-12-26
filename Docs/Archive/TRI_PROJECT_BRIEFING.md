@@ -71,7 +71,7 @@ This workspace contains three interconnected Unity DOTS projects:
 4. **Burst/IL2CPP Safe** - All hot paths Burst-compiled
 5. **Scalable** - Target 50k-100k complex entities
 
-**Patterns (group/individual):** Pattern evaluation lives in `Packages/com.moni.puredots/Runtime/Systems/Patterns/PatternSystem.cs`, writing `GroupPatternModifiers` + `ActivePatternTag`. Pattern IDs are enums (`Runtime/Patterns/PatternComponents.cs`) to keep Burst happy—avoid FixedString construction in static contexts. Demo patterns: HardworkingVillage, ChaoticBand, OverstressedGroup.
+**Patterns (group/individual):** Pattern evaluation lives in `Packages/com.moni.puredots/Runtime/Systems/Patterns/PatternSystem.cs`, writing `GroupPatternModifiers` + `ActivePatternTag`. Pattern IDs are enums (`Runtime/Patterns/PatternComponents.cs`) to keep Burst happy—avoid FixedString construction in static contexts. legacy patterns: HardworkingVillage, ChaoticBand, OverstressedGroup.
 
 ### Key Documentation
 
@@ -117,7 +117,7 @@ Carrier-first 4X strategy where players command carrier task forces across a liv
 
 - `Docs/ORIENTATION.md` - Project orientation
 - `Docs/Progress.md` - Current status
-- `space.plan.md` - Demo readiness plan
+- `space.plan.md` - legacy readiness plan
 
 ---
 

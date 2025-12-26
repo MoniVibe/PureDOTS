@@ -60,7 +60,7 @@ This file tracks progress against the roadmap in `Docs/ROADMAP.md`. Update it at
 | Task | Status | Notes |
 | --- | --- | --- |
 | Automated playmode/editor suites | ⏳ Pending | Relying on external game scenes for validation |
-| Reference scenes (theme agnostic) | ⏳ Pending | Needs template demo scenes |
+| Reference scenes (theme agnostic) | ⏳ Pending | Needs template legacy scenes |
 | Template usage guide | 🔄 In Progress | Draft consumer workflow doc underway |
 | Package distribution (UPM/git) | 🔄 In Progress | package.json present; publication flow still manual |
 | High-scale soak & threshold tuning harness | ⏳ Pending | No perf harness yet |

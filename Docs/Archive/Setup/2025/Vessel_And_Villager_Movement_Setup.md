@@ -1,7 +1,7 @@
 # Vessel and Villager Movement Setup
 
 ## Overview
-This document describes the movement systems for villagers and vessels (mining vessels) that were added to enable the mining loop demo.
+This document describes the movement systems for villagers and vessels (mining vessels) that were added to enable the mining loop legacy.
 
 ## Systems Created
 

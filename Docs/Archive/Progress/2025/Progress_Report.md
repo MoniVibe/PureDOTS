@@ -1,4 +1,4 @@
-# Godgame Demo Systems Implementation - Progress Report
+# Godgame legacy Systems Implementation - Progress Report
 
 **Date:** Current Session  
 **Project:** Godgame DOTS Integration  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Successfully implemented comprehensive demo systems for the Godgame project, including villages, villagers, bands, combat, vegetation, climate systems, and the Divine Hand interaction system. All systems are designed to be Burst-compatible and integrate with PureDOTS registries.
+Successfully implemented comprehensive legacy systems for the Godgame project, including villages, villagers, bands, combat, vegetation, climate systems, and the Divine Hand interaction system. All systems are designed to be Burst-compatible and integrate with PureDOTS registries.
 
 ## Completed Systems
 
@@ -248,7 +248,7 @@ Successfully implemented comprehensive demo systems for the Godgame project, inc
 
 ## Summary
 
-Successfully implemented a comprehensive demo system foundation covering all requested features:
+Successfully implemented a comprehensive legacy system foundation covering all requested features:
 - ✅ Villages with villagers
 - ✅ Villager jobs and behavior loops (gather, socialize, rest, breed)
 - ✅ Bands/armies roaming with faction relations

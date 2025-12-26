@@ -93,7 +93,7 @@ are the ONLY approved sensory inputs for AI systems.
   - `SensorState` (legacy state: last update tick, detection count, highest threat)
   - `Detectable` (marker: visibility, audibility, threat level, category)
 > **Deprecated:** `SensorUpdateSystem` + `DetectedEntity` performed O(N²) scans and are now disabled by default via
-> `SimulationFeatureFlags.LegacySensorSystemEnabled`. Enable only for small demo scenes (< 1k entities) and migrate
+> `SimulationFeatureFlags.LegacySensorSystemEnabled`. Enable only for small legacy scenes (< 1k entities) and migrate
 > gameplay code to the canonical pipeline above.
 
 ### Action/Utility Components

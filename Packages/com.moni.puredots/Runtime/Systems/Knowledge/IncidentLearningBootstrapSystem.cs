@@ -9,13 +9,11 @@ namespace PureDOTS.Systems.Knowledge
     /// <summary>
     /// Ensures incident learning buffers and default config exist.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(GameplaySystemGroup), OrderFirst = true)]
     public partial struct IncidentLearningBootstrapSystem : ISystem
     {
         private EntityQuery _missingMemory;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _missingMemory = SystemAPI.QueryBuilder()
@@ -24,7 +22,6 @@ namespace PureDOTS.Systems.Knowledge
                 .Build();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             EnsureSingletons(ref state);
@@ -50,17 +47,22 @@ namespace PureDOTS.Systems.Knowledge
         {
             var em = state.EntityManager;
             Entity entity;
-            if (SystemAPI.TryGetSingletonEntity<IncidentLearningConfig>(out var configEntity))
+            using var configQuery = em.CreateEntityQuery(ComponentType.ReadOnly<IncidentLearningConfig>());
+            if (configQuery.TryGetSingletonEntity<IncidentLearningConfig>(out var configEntity))
             {
                 entity = configEntity;
             }
-            else if (SystemAPI.TryGetSingletonEntity<IncidentLearningEventBuffer>(out var bufferEntity))
-            {
-                entity = bufferEntity;
-            }
             else
             {
-                entity = em.CreateEntity();
+                using var bufferQuery = em.CreateEntityQuery(ComponentType.ReadOnly<IncidentLearningEventBuffer>());
+                if (bufferQuery.TryGetSingletonEntity<IncidentLearningEventBuffer>(out var bufferEntity))
+                {
+                    entity = bufferEntity;
+                }
+                else
+                {
+                    entity = em.CreateEntity();
+                }
             }
 
             if (!em.HasComponent<IncidentLearningConfig>(entity))

@@ -1,4 +1,4 @@
-# Configure Godgame Prefabs for Demo Scene
+# Configure Godgame Prefabs for legacy Scene
 
 ## Objective
 Create reusable prefabs for villagers and storehouses that can be placed in scenes and instantiated at runtime. These prefabs should integrate with the Godgame registry bridge system and support incremental feature development.
@@ -24,8 +24,8 @@ Create reusable prefabs for villagers and storehouses that can be placed in scen
   - Transform positioned at origin
   - Should bake into entity with `GodgameStorehouse`, `LocalTransform`, and `SpatialIndexedTag` components
 
-### 3. Demo Scene Setup
-- Create or update a demo scene (`Assets/Scenes/GodgameDemoScene.unity`) that:
+### 3. legacy Scene Setup
+- Create or update a legacy scene (`Assets/Scenes/GodgameDemoScene.unity`) that:
   - Contains a SubScene with some prefab instances placed for visual verification
   - Can serve as a foundation for incremental feature additions
   - Includes clear visual separation between villagers and storehouses
@@ -50,7 +50,7 @@ Create reusable prefabs for villagers and storehouses that can be placed in scen
 - [ ] `StorehouseAuthoring` component exists and bakes correctly
 - [ ] Villager prefab exists in `Assets/Prefabs/Villager.prefab`
 - [ ] Storehouse prefab exists in `Assets/Prefabs/Storehouse.prefab`
-- [ ] Demo scene exists with prefab instances visible
+- [ ] legacy scene exists with prefab instances visible
 - [ ] Prefabs can be instantiated at runtime and appear in registry bridge
 - [ ] Scene can be played in editor and entities appear in DOTS Hierarchy
 

@@ -76,7 +76,7 @@ Should NOT find warnings in:
 
 **Check for Missing Type Errors (Agent 4):**
 ```
-Search Console for: DevTools, Demo
+Search Console for: DevTools, legacy
 Should NOT find CS0246 errors for these types
 ```
 
@@ -118,7 +118,7 @@ Use this checklist to track verification:
 - [ ] No CS0618 for GodgameDevSceneSetup
 - [ ] No CS0618 for GodgameDemoSceneWizard
 - [ ] No CS0246 for DevTools
-- [ ] No CS0246 for Demo
+- [ ] No CS0246 for legacy
 - [ ] SampleScene loads without errors
 
 ---
@@ -137,7 +137,7 @@ If any check fails:
 | BC1016 Timeline/Lesson | Agent 2 |
 | CS0234/CS0246 Presentation | Agent 3 |
 | CS0618 FindObject* | Agent 4 |
-| CS0246 DevTools/Demo | Agent 4 |
+| CS0246 DevTools/legacy | Agent 4 |
 | CreateAssetMenu (Culture,Lesson,Spell,Item,Enlightenment) | Agent 5 |
 | CreateAssetMenu (Buff,School,Quality,Signature,Curve) | Agent 6 |
 
@@ -185,7 +185,7 @@ Build Status: [SUCCESS / FAILED]
 
 ### Missing Types
 - DevTools references: [✅ RESOLVED / ❌ STILL BROKEN]
-- Demo references: [✅ RESOLVED / ❌ STILL BROKEN]
+- legacy references: [✅ RESOLVED / ❌ STILL BROKEN]
 
 ## New Errors Introduced
 [List any NEW errors that appeared after fixes, or "None"]

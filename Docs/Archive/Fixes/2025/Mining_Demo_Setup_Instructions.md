@@ -1,4 +1,4 @@
-# Mining Demo Setup - Automated Fix
+# Mining legacy Setup - Automated Fix
 
 ## Editor Script Created
 
@@ -9,7 +9,7 @@ I've created an automated setup script at:
 
 ### Option 1: Use Menu Item (Recommended)
 1. Wait for Unity to finish compiling (watch bottom-right corner)
-2. Go to menu: **Space4X > Setup Mining Demo Scene**
+2. Go to menu: **Space4X > Setup Mining legacy Scene**
 3. Click the menu item
 4. A dialog will appear confirming setup completion
 

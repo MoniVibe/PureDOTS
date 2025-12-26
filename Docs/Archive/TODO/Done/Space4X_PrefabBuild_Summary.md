@@ -64,7 +64,7 @@ All prefab directories have been created:
 **Note:** Asteroids are typically created via `Space4XMiningDemoAuthoring` bulk authoring.
 
 ### Phase 5: Create Bulk Setup Prefabs
-1. **MiningDemoSetup.prefab** - Bulk authoring for mining demo
+1. **MiningDemoSetup.prefab** - Bulk authoring for mining legacy
    - `PureDotsConfigAuthoring`
    - `SpatialPartitionAuthoring`
    - `Space4XMiningDemoAuthoring` with carriers, vessels, asteroids arrays
@@ -102,7 +102,7 @@ All prefabs use authoring components from these namespaces:
   - `Space4XMiningDemoAuthoring` - Bulk mining setup
   - `Space4XSampleRegistryAuthoring` - Bulk registry setup
 
-- `Space4X.Registry.*` - Registry and demo components
+- `Space4X.Registry.*` - Registry and legacy components
   - `Carrier`, `MiningVessel`, `Asteroid` - Runtime components
   - `Space4XColony`, `Space4XFleet`, `Space4XLogisticsRoute`, `Space4XAnomaly` - Registry components
 
@@ -115,7 +115,7 @@ All prefabs use authoring components from these namespaces:
 | Aspect | Godgame | Space4X |
 |--------|---------|---------|
 | **Visual Representation** | Uses `PlaceholderVisualAuthoring` | Carriers, vessels, asteroids use `PlaceholderVisualAuthoring`; registry entities are data-only |
-| **Prefab Creation** | Individual prefabs for each entity | Bulk authoring for many entities (mining demo, registry) |
+| **Prefab Creation** | Individual prefabs for each entity | Bulk authoring for many entities (mining legacy, registry) |
 | **Presentation** | Direct visual representation | `PlaceholderVisualAuthoring` for gameplay entities; request system for registry |
 | **Entity Types** | Villagers, Buildings, Resources, Vegetation | Vessels, Carriers, Asteroids, Colonies, Fleets |
 | **Resource Types** | Wood, Stone, Food, Tools, Mana | Minerals, RareMetals, EnergyCrystals, OrganicMatter |

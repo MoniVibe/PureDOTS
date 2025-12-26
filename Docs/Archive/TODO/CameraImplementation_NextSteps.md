@@ -33,8 +33,8 @@
      - Pitch Max: 85
      - Smoothing: 0.1
 
-2. **Set Up Demo Scene Cameras**
-   - Scenes: `Space4XMineLoop.unity` (and any Space4X demo scenes)
+2. **Set Up legacy Scene Cameras**
+   - Scenes: `Space4XMineLoop.unity` (and any Space4X legacy scenes)
    - For each scene's "Main Camera":
      - Add Component: `Space4XCameraController`
      - Assign Input Actions: `Assets/InputSystem_Actions.inputactions`
@@ -145,7 +145,7 @@ If implementing shared base components per `CameraIntegrationArchitecture.md`:
 ## Next Immediate Steps
 
 1. **Create Space4X Profile Asset** (using Unity Editor or MCP tools)
-2. **Set Up Space4X Demo Scene** (configure Main Camera)
+2. **Set Up Space4X legacy Scene** (configure Main Camera)
 3. **Test Space4X Camera** (verify controls work)
 4. **Complete Godgame Terrain Raycast System** (for full orbital mode)
 5. **Test Godgame Camera** (verify both modes work)
@@ -157,7 +157,7 @@ If implementing shared base components per `CameraIntegrationArchitecture.md`:
 - Space4X rotation bounds may need testing/adjustment
 - Both systems should integrate with hand cursor position (Godgame priority)
 - Profile assets need to be created and configured
-- Scene setup needs to be done for each demo scene
+- Scene setup needs to be done for each legacy scene
 
 ## Documentation Updates Needed
 

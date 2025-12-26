@@ -6,11 +6,9 @@ using Unity.Entities;
 
 namespace PureDOTS.Runtime.WorldGen.Systems
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     public partial struct SurfaceFieldsChunkRefCacheBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<SurfaceFieldsChunkRefCache>());

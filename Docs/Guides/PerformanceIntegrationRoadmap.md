@@ -24,14 +24,14 @@ Prove that the new LOD / aggregate / density systems work end-to-end in small, c
 #### Via CLI (Batch Mode)
 
 ```bash
-# Mini LOD Demo (2k test entities with LOD components)
+# Mini LOD legacy (2k test entities with LOD components)
 Unity -batchmode -projectPath . \
   -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \
   --scenario scale_mini_lod_demo \
   --metrics CI/Reports/lod_demo.json \
   --enable-lod-debug
 
-# Mini Aggregate Demo (5 aggregates with 200 members)
+# Mini Aggregate legacy (5 aggregates with 200 members)
 Unity -batchmode -projectPath . \
   -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \
   --scenario scale_mini_aggregate_demo \
@@ -47,7 +47,7 @@ Unity -batchmode -projectPath . \
    // List available scenarios
    PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.ListScaleScenarios();
    
-   // Run LOD demo (will use default args)
+   // Run LOD legacy (will use default args)
    // Or use ScenarioRunnerExecutor.RunFromFile("path/to/scale_mini_lod_demo.json")
    ```
 

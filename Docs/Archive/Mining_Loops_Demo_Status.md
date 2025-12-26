@@ -1,4 +1,4 @@
-# Mining Loops Demo - Implementation Status
+# Mining Loops legacy - Implementation Status
 
 ## Summary
 
@@ -58,7 +58,7 @@ Prepared the PureDOTS foundation to showcase both mining loops:
    - [ ] Verify subscene structure is correct
 
 2. **Add Missing Authoring Components**
-   - [ ] Run `Space4X > Setup Mining Demo Scene` helper or manually add:
+   - [ ] Run `Space4X > Setup Mining legacy Scene` helper or manually add:
      - VillagerAuthoring to Villager1, Villager2
      - MiningVesselAuthoring to MiningVessel1, MiningVessel2
      - ResourceSourceAuthoring to all resource nodes and asteroids
@@ -110,8 +110,8 @@ Prepared the PureDOTS foundation to showcase both mining loops:
 
 ## Next Steps for User
 
-1. **Open Space4XMineLoop scene** (or create new demo scene)
-2. **Run setup helper**: `Space4X > Setup Mining Demo Scene`
+1. **Open Space4XMineLoop scene** (or create new legacy scene)
+2. **Run setup helper**: `Space4X > Setup Mining legacy Scene`
 3. **Verify scene structure**: Main scene has PureDotsConfig, subscene has GameObjects
 4. **Enter Play mode** and observe both mining loops
 5. **Check console** for any errors or warnings

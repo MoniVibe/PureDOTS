@@ -88,7 +88,7 @@ public partial struct SomeTimeAwareSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         var time = SystemAPI.GetSingleton<TimeState>();
-        // var demo = SystemAPI.GetSingleton<ScenarioState>();
+        // var legacy = SystemAPI.GetSingleton<ScenarioState>();
 
         // Optional: if you want to skip in certain modes
         // if (time.Mode == TimeMode.Playback) return;
@@ -119,7 +119,7 @@ public partial class SomeTimeAwareSystem : SystemBase
     protected override void OnUpdate()
     {
         var time = GetSingleton<TimeState>();
-        // var demo = GetSingleton<ScenarioState>();
+        // var legacy = GetSingleton<ScenarioState>();
         // ... logic ...
     }
 }

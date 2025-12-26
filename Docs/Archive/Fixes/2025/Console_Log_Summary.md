@@ -1,4 +1,4 @@
-# Console Log Summary - Mining Loops Demo
+# Console Log Summary - Mining Loops legacy
 
 **Date:** Session analysis  
 **Scene:** GameEntities.unity  

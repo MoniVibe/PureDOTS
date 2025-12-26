@@ -418,7 +418,7 @@ Move to `Docs/Archive/CompletedWork/{Year}/`
 - Console error dumps
 
 **Completed Setup Guides** → `Docs/Archive/Setup/{Year}/`
-- One-off demo setups
+- One-off legacy setups
 - Migration guides (after migration complete)
 - Critical setup docs (after resolved)
 

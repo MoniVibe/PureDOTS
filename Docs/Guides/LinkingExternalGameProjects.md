@@ -206,7 +206,7 @@ When external projects are linked:
 
 3. **Build Process:**
    - External projects should build independently
-   - PureDOTS can reference them for demo scenes
+   - PureDOTS can reference them for legacy scenes
    - Production builds may need different setup
 
 4. **Separation:**

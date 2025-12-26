@@ -28,9 +28,9 @@ Line 230: CS0246 (error): The type or namespace name 'DevTools' could not be fou
 Line 251: CS0246 (error): The type or namespace name 'DevTools' could not be found
 
 Line 258: CS0618 (warning): 'Object.FindObjectOfType<T>()' is obsolete
-Line 258: CS0246 (error): The type or namespace name 'Demo' could not be found
+Line 258: CS0246 (error): The type or namespace name 'legacy' could not be found
 
-Line 266: CS0246 (error): The type or namespace name 'Demo' could not be found
+Line 266: CS0246 (error): The type or namespace name 'legacy' could not be found
 ```
 
 ---
@@ -84,9 +84,9 @@ var objs = FindObjectsByType<MyComponent>(FindObjectsInactive.Include, FindObjec
 grep -r "class DevTools" --include="*.cs"
 grep -r "DevTools" --include="*.cs" | head -20
 
-# Check if Demo exists
-grep -r "class Demo" --include="*.cs"
-grep -r "Demo" --include="*.cs" | head -20
+# Check if legacy exists
+grep -r "class legacy" --include="*.cs"
+grep -r "legacy" --include="*.cs" | head -20
 ```
 
 ### Decision Tree for Missing Types
@@ -115,7 +115,7 @@ grep -r "Demo" --include="*.cs" | head -20
    - If not, comment out or remove the code block that uses it
    - Replace `FindObjectOfType` with `FindFirstObjectByType` if keeping
 3. **Lines 258, 266**:
-   - First check if `Demo` exists anywhere
+   - First check if `legacy` exists anywhere
    - If not, comment out or remove the code block that uses it
    - Replace `FindObjectOfType` with `FindFirstObjectByType` if keeping
 
@@ -135,7 +135,7 @@ After fixing, verify by:
 2. Triggering domain reload
 3. Check Console - should have:
    - NO CS0618 warnings for these files
-   - NO CS0246 errors for `DevTools` or `Demo`
+   - NO CS0246 errors for `DevTools` or `legacy`
 
 ---
 
@@ -153,12 +153,12 @@ After fixing, verify by:
 ```
 Investigation Results:
 - DevTools type: [EXISTS at X / DOES NOT EXIST]
-- Demo type: [EXISTS at X / DOES NOT EXIST]
+- legacy type: [EXISTS at X / DOES NOT EXIST]
 
 GodgameDevSceneSetup.cs:
 - Line 170: FindObjectsOfType → [REPLACEMENT]
 - Lines 230, 251: DevTools → [UPDATED USING / REMOVED CODE]
-- Lines 258, 266: Demo → [UPDATED USING / REMOVED CODE]
+- Lines 258, 266: legacy → [UPDATED USING / REMOVED CODE]
 
 GodgameDemoSceneWizard.cs:
 - Line 284: FindObjectsOfType(bool) → FindObjectsByType with [PARAMS]

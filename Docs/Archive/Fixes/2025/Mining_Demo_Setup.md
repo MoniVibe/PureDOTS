@@ -1,6 +1,6 @@
-# Mining Demo Setup Guide
+# Mining legacy Setup Guide
 
-This document describes the mining loop demo setup in SpawnerDemoScene.
+This document describes the mining loop legacy setup in SpawnerDemoScene.
 
 ## Overview
 

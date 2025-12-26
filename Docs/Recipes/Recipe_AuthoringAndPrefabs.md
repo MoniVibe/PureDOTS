@@ -232,7 +232,7 @@ Main Scene (Unity Scene)
 
 **Example SubScenes:**
 - `Godgame/Assets/Scenes/GodgameBootstrapSubScene.unity`
-- `Space4x/Assets/Scenes/Demo/Space4XRegistryDemo_SubScene.unity`
+- `Space4x/Assets/Scenes/legacy/Space4XRegistryDemo_SubScene.unity`
 
 ---
 

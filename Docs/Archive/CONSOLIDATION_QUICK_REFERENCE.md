@@ -217,7 +217,7 @@ mv Docs/Readiness_Assessment.md Docs/Archive/Progress/2025/
 mv Docs/Camera_*_Fix.md Docs/Archive/Fixes/2025/
 mv Docs/Camera_Debugging_Guide.md Docs/Archive/Fixes/2025/
 
-# 6. Archive mining demo docs (5 min)
+# 6. Archive mining legacy docs (5 min)
 mv Docs/Mining_Demo_*.md Docs/Archive/Fixes/2025/
 mv Docs/Mining_Loops_Demo_Status.md Docs/Archive/Fixes/2025/
 

@@ -2,7 +2,9 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Contracts;
 using PureDOTS.Runtime.Logistics.Contracts;
 using PureDOTS.Runtime.Production.Contracts;
+using PureDOTS.Systems.Logistics.Contracts;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Systems.Production.Contracts
@@ -105,7 +107,7 @@ namespace PureDOTS.Systems.Production.Contracts
                     {
                         LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = tick,
                             Subject = owner,
                             ReservationId = entry.ReservationId,
@@ -122,7 +124,7 @@ namespace PureDOTS.Systems.Production.Contracts
                     {
                         LogViolation(ref ringBuffer, ref ringState, new ContractViolationEvent
                         {
-                            ContractId = new FixedString64Bytes("CONTRACT:RESOURCE.LEDGER.V1"),
+                            ContractId = ContractLedgerConstants.ResourceLedgerContractId,
                             Tick = tick,
                             Subject = owner,
                             ReservationId = entry.ReservationId,

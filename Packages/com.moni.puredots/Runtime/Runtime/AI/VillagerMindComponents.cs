@@ -56,6 +56,20 @@ namespace PureDOTS.Runtime.AI
     }
 
     /// <summary>
+    /// Optional per-need bias applied during goal selection.
+    /// Values are multipliers (1 = neutral) and are clamped to a minimum.
+    /// </summary>
+    public struct VillagerNeedBias : IComponentData
+    {
+        public float HungerWeight;
+        public float RestWeight;
+        public float FaithWeight;
+        public float SafetyWeight;
+        public float SocialWeight;
+        public float WorkWeight;
+    }
+
+    /// <summary>
     /// Need pressure tuning applied by the mind loop.
     /// </summary>
     public struct VillagerNeedTuning : IComponentData

@@ -43,8 +43,9 @@ namespace PureDOTS.Systems.Agency
 
             foreach (var (claims, entity) in SystemAPI.Query<DynamicBuffer<ControlClaim>>().WithEntityAccess())
             {
-                PruneClaims(ref claims, em, tick);
-                bool hasClaims = claims.Length > 0;
+                var claimBuffer = claims;
+                PruneClaims(ref claimBuffer, em, tick);
+                bool hasClaims = claimBuffer.Length > 0;
 
                 if (hasClaims)
                 {
@@ -57,9 +58,9 @@ namespace PureDOTS.Systems.Agency
                     if (hasClaims)
                     {
                         ecb.AddBuffer<ControlLink>(entity);
-                        for (int i = 0; i < claims.Length; i++)
+                        for (int i = 0; i < claimBuffer.Length; i++)
                         {
-                            var claim = claims[i];
+                            var claim = claimBuffer[i];
                             if (claim.Domains == AgencyDomain.None)
                             {
                                 continue;
@@ -80,9 +81,9 @@ namespace PureDOTS.Systems.Agency
                     continue;
                 }
 
-                for (int i = 0; i < claims.Length; i++)
+                for (int i = 0; i < claimBuffer.Length; i++)
                 {
-                    var claim = claims[i];
+                    var claim = claimBuffer[i];
                     if (claim.Domains == AgencyDomain.None)
                     {
                         continue;

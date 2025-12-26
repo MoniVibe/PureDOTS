@@ -63,7 +63,7 @@ Assets/Space4X/Config/
    - Enable Zoom: ✓
    - Enable Rotation: ✗ (optional)
 
-### 3. Set Up Demo Scene
+### 3. Set Up legacy Scene
 1. Open `Assets/Scenes/Space4XMineLoop.unity`
 2. Select "Main Camera" GameObject
 3. Add Component → `Space4X Camera Controller`
