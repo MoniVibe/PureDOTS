@@ -31,6 +31,23 @@ Converts a “verb” into:
 3) **Drone local control (micro)**  
 Computes local steering from controller fields + local neighbors + local avoidance. No global pathing, no slot assignment.
 
+## Layered Representation (Near-field vs Far-field)
+Swarm behavior must scale without per-drone simulation at all distances.
+
+### Near-field: Real Drones
+- Hundreds–thousands of drone entities with simple steering.
+- Drones obey a `SwarmOrder` (screen, escort, intercept, tug, blast-shield).
+- Cohesion/discipline degrades gracefully under comms loss (looser cloud, more noise).
+
+### Far-field: Swarm Field Proxy
+- One/few entities represent the swarm as a **field**:
+  - screen density shell,
+  - traction budget (tug),
+  - absorption budget (blast shield).
+- No per-drone physics at this tier; effects are applied deterministically and rendered as glyphs/particles.
+
+This preserves “they are real machines” up close while keeping system-scale costs bounded.
+
 ## Tactic Verbs (Controller-Level Goals)
 Verbs are the only global “intent” API. They are data-driven (BlobAsset/IDs), not hardcoded game enums.
 
@@ -41,6 +58,8 @@ Suggested initial verb set:
 - `SwarmAttack(target, cohesion, aggression, riskBudget)`
 - `Intercept(inbound, standoff, lateralSpread)`
 - `SacrificeBlock(threatRay, untilImpactOrTick, riskBudget)`
+- `Tow(target, anchor, netForceBudget)`
+- `AbsorbBlast(anchor, radius, absorbBudget)`
 
 Each verb publishes:
 - **Surface** `S(x)` (plane/sphere/torus/ring/etc.)
@@ -66,6 +85,16 @@ The drone samples these each tick:
 
 Important: fields can be evaluated analytically (cheap) without storing per-cell arrays.
 When we *do* need cached grids (influence/threat), they live in environment caches (see `Simulation_LOD_And_Environment_Fields.md`) and are sampled like any other field.
+
+## Execution Primitives (Method Variants)
+Swarm behaviors map to a small set of execution primitives:
+1. **Shield screen** — density shell with threat-biased coverage.
+2. **Cohesive escort** — anchor-following flow + noise controlled by cohesion.
+3. **Tug/rescue** — `TowLink` attachments that sum into a net force budget.
+4. **Push/deflect** — controlled radial impulse to repel hazards.
+5. **Absorb blast** — reduce incoming damage using an absorption budget.
+
+These primitives can be executed in near-field (per drone) or far-field (proxy field), and should share the same order inputs.
 
 ## Drone Local Control (Steering Composition)
 Each drone computes a desired velocity/acceleration as a weighted blend of behaviors.
@@ -149,6 +178,12 @@ AI-controlled `Bubble(anchor)` that proves:
 2) maintains density while drones die,  
 3) biases toward an incoming threat direction (via an influence/threat field),  
 4) stays stable under dense motion (ORCA/RVO on tangent planes).
+
+## Smoke Scene Showcase (Space4X)
+- Carrier with drone bay.
+- Incoming missiles (screen reorients).
+- Disabled escort (tug rescue).
+- Explosion event (absorb shell attenuation).
 
 ## Recurring Errors (stop these early)
 - Slot-based formations for swarms (thrashes when drones die).

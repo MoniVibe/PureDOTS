@@ -9,6 +9,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using HandStateData = PureDOTS.Runtime.Hand.HandState;
+using Unity.Transforms;
 
 namespace PureDOTS.Systems.Hand
 {
@@ -25,6 +26,8 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<PhysicsGravityFactor> _gravityLookup;
         private ComponentLookup<HandHeldTag> _heldLookup;
         private ComponentLookup<MovementSuppressed> _movementLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<BeingThrown> _beingThrownLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -34,6 +37,8 @@ namespace PureDOTS.Systems.Hand
             _gravityLookup = state.GetComponentLookup<PhysicsGravityFactor>(false);
             _heldLookup = state.GetComponentLookup<HandHeldTag>(false);
             _movementLookup = state.GetComponentLookup<MovementSuppressed>(false);
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _beingThrownLookup = state.GetComponentLookup<BeingThrown>(false);
         }
 
         [BurstCompile]
@@ -47,6 +52,8 @@ namespace PureDOTS.Systems.Hand
             _gravityLookup.Update(ref state);
             _heldLookup.Update(ref state);
             _movementLookup.Update(ref state);
+            _transformLookup.Update(ref state);
+            _beingThrownLookup.Update(ref state);
 
             foreach (var (handStateRef, commandBuffer) in SystemAPI.Query<RefRW<HandStateData>, DynamicBuffer<HandCommand>>())
             {
@@ -94,6 +101,27 @@ namespace PureDOTS.Systems.Hand
                 _gravityLookup[target] = gravity;
             }
 
+            if (_transformLookup.HasComponent(target))
+            {
+                var transform = _transformLookup[target];
+                var thrown = new BeingThrown
+                {
+                    InitialVelocity = velocity.Linear,
+                    TimeSinceThrow = 0f,
+                    PrevPosition = transform.Position,
+                    PrevRotation = transform.Rotation
+                };
+
+                if (_beingThrownLookup.HasComponent(target))
+                {
+                    ecb.SetComponent(target, thrown);
+                }
+                else
+                {
+                    ecb.AddComponent(target, thrown);
+                }
+            }
+
             if (_heldLookup.HasComponent(target))
             {
                 ecb.RemoveComponent<HandHeldTag>(target);
@@ -115,4 +143,3 @@ namespace PureDOTS.Systems.Hand
         }
     }
 }
-

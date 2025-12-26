@@ -100,6 +100,10 @@ namespace PureDOTS.Runtime.Profile
         public float3 AlignmentDelta;
         /// <summary>Outlook delta ordered as Loyalist, Opportunist, Fanatic, Mutinous.</summary>
         public float4 OutlookDelta;
+        /// <summary>Disposition delta ordered as Compliance, Caution, FormationAdherence.</summary>
+        public float3 DispositionDeltaA;
+        /// <summary>Disposition delta ordered as RiskTolerance, Aggression, Patience.</summary>
+        public float3 DispositionDeltaB;
         public ProfileActionToken Token;
         public float Weight;
     }
@@ -113,8 +117,10 @@ namespace PureDOTS.Runtime.Profile
     {
         public float AlignmentScale;
         public float OutlookScale;
+        public float DispositionScale;
         public float AlignmentMaxDelta;
         public float OutlookMaxDelta;
+        public float DispositionMaxDelta;
         public float AccumulatorDecay;
         public uint ApplyIntervalTicks;
         public float CoercedMultiplier;
@@ -128,8 +134,10 @@ namespace PureDOTS.Runtime.Profile
             {
                 AlignmentScale = 0.08f,
                 OutlookScale = 0.1f,
+                DispositionScale = 0.07f,
                 AlignmentMaxDelta = 0.12f,
                 OutlookMaxDelta = 0.15f,
+                DispositionMaxDelta = 0.1f,
                 AccumulatorDecay = 0.85f,
                 ApplyIntervalTicks = 30u,
                 CoercedMultiplier = 0.35f,
@@ -144,6 +152,8 @@ namespace PureDOTS.Runtime.Profile
     {
         public float3 Alignment;
         public float4 Outlook;
+        public float3 DispositionA;
+        public float3 DispositionB;
         public float PendingMagnitude;
         public uint LastAppliedTick;
     }

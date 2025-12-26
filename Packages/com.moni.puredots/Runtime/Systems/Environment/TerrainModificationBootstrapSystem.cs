@@ -24,6 +24,7 @@ namespace PureDOTS.Systems.Environment
             var entity = state.EntityManager.CreateEntity(typeof(TerrainModificationQueue), typeof(TerrainModificationBudget));
             state.EntityManager.AddBuffer<TerrainModificationRequest>(entity);
             state.EntityManager.AddBuffer<TerrainDirtyRegion>(entity);
+            state.EntityManager.AddBuffer<TerrainModificationEvent>(entity);
             state.EntityManager.AddBuffer<TerrainSurfaceTileVersion>(entity);
             state.EntityManager.AddBuffer<TerrainUndergroundChunkVersion>(entity);
             state.EntityManager.SetComponentData(entity, TerrainModificationBudget.Default);

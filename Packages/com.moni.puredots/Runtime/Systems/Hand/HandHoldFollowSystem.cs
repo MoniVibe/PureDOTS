@@ -105,7 +105,7 @@ namespace PureDOTS.Systems.Hand
             float stiffness = baseStiffness * followFactor;
             float damping = 2f * math.sqrt(math.max(stiffness * mass, 0.0001f));
 
-            float3 targetPosition = command.TargetPosition + new float3(0f, handState.HoldDistance, 0f);
+            float3 targetPosition = command.TargetPosition;
             float3 displacement = targetPosition - transform.Position;
             float3 springForce = displacement * stiffness;
             float3 dampingForce = velocity.Linear * damping;
@@ -118,4 +118,3 @@ namespace PureDOTS.Systems.Hand
         }
     }
 }
-

@@ -321,7 +321,7 @@ namespace Godgame.Systems
 
                     if (hasHeldEntity && stateData.HeldEntity != Entity.Null)
                     {
-                        EmitHoldCommand(ref commands, currentTick, stateData.HeldEntity, aim.TargetPosition, stateData.AimDirection, normalizedChargeLevel, stateData.HeldResourceTypeIndex);
+                        EmitHoldCommand(ref commands, currentTick, in config, stateData.HeldEntity, aim.TargetPosition, stateData.AimDirection, normalizedChargeLevel, stateData.HeldResourceTypeIndex);
                     }
                 }
 
@@ -1125,6 +1125,7 @@ namespace Godgame.Systems
 
         private static void EmitHoldCommand(ref DynamicBuffer<HandCommandElement> commands,
             uint currentTick,
+            in DivineHandConfig config,
             Entity heldEntity,
             float3 cursorPosition,
             float3 aimDirection,
@@ -1136,7 +1137,10 @@ namespace Godgame.Systems
                 return;
             }
 
-            EmitSimpleCommand(ref commands, currentTick, HandCommandKind.Hold, heldEntity, cursorPosition, aimDirection, 0f, normalizedChargeLevel, resourceTypeIndex, 0f);
+            float targetHeight = math.max(config.HoldHeightOffset, cursorPosition.y);
+            var targetPosition = cursorPosition;
+            targetPosition.y = targetHeight;
+            EmitSimpleCommand(ref commands, currentTick, HandCommandKind.Hold, heldEntity, targetPosition, aimDirection, 0f, normalizedChargeLevel, resourceTypeIndex, 0f);
         }
 
         private static void EmitContinuousCommands(ref DynamicBuffer<HandCommandElement> commands,

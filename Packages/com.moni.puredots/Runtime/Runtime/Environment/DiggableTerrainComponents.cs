@@ -37,6 +37,7 @@ namespace PureDOTS.Environment
         public byte MaterialId;
         public byte DepositId;
         public byte OreGrade;
+        public byte Damage;
     }
 
     public struct TerrainChunkDirty : IComponentData
@@ -69,6 +70,13 @@ namespace PureDOTS.Environment
         Ramp = 2
     }
 
+    public enum TerrainModificationToolKind : byte
+    {
+        Drill = 0,
+        Laser = 1,
+        Microwave = 2
+    }
+
     public enum TerrainModificationSpace : byte
     {
         World = 0,
@@ -80,11 +88,17 @@ namespace PureDOTS.Environment
     {
         public TerrainModificationKind Kind;
         public TerrainModificationShape Shape;
+        public TerrainModificationToolKind ToolKind;
         public float3 Start;
         public float3 End;
         public float Radius;
         public float Depth;
         public byte MaterialId;
+        public byte DamageDelta;
+        public byte DamageThreshold;
+        public float YieldMultiplier;
+        public float HeatDelta;
+        public float InstabilityDelta;
         public TerrainModificationFlags Flags;
         public uint RequestedTick;
         public Entity Actor;
@@ -113,6 +127,19 @@ namespace PureDOTS.Environment
         public float3 WorldMax;
         public uint Version;
         public byte Flags;
+    }
+
+    [InternalBufferCapacity(16)]
+    public struct TerrainModificationEvent : IBufferElementData
+    {
+        public float3 WorldPosition;
+        public float3 WorldDirection;
+        public float Radius;
+        public int ClearedVoxels;
+        public TerrainModificationToolKind ToolKind;
+        public TerrainModificationShape Shape;
+        public Entity VolumeEntity;
+        public uint Tick;
     }
 
     [InternalBufferCapacity(0)]

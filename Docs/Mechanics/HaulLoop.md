@@ -12,13 +12,45 @@
 
 The haul loop is the fourth foundational priority, binding mining output to construction and trade demands. Carriers act as configurable logistics platforms, executing serialized routing plans that players can mod pre-launch. Efficient hauling maintains station build queues, feeds colonization efforts, and underwrites combat readiness through steady supply.
 
+## Shared Transport Contract (PureDOTS-Owned)
+
+All hauling methods share one deterministic loop:
+1. **Claim** payload (reservation/ownership).
+2. **Acquire** (attach, scoop, beam, load).
+3. **Transit** to destination.
+4. **Deliver** into intake/storage.
+5. **Release** claims + emit accounting events.
+
+Minimal shared data contracts:
+- `HaulTicket`: Payload, PickupPose, DropPose, Mass, Volume, RequiredCapabilityFlags, State, Issuer, IssuedTick.
+- `PayloadTag` types: ResourceChunk, CargoCrate, AsteroidFragment, LooseOrePile.
+- `CarrierCapability` flags: CanTow, CanTractor, CanDock, MaxTowMass, MaxCargoMass, MaxCargoVolume, ClearanceBand.
+- `DepositReceiver`: AcceptsPayloadKindMask, IntakeRadius, Throughput, Queue.
+
 ## How It Works
 
 ### Basic Rules
 
 1. Define haul routes linking origin points (mines, trade hubs) to destinations (stations, shipyards, colonies).
-2. Assign carriers with appropriate cargo modules and schedule cadence (continuous shuttle, convoy, on-demand).
-3. Execute routes, transferring cargo according to priority tiers and clearing holds so mining and trade loops remain unblocked.
+2. Assign carriers with appropriate capabilities and schedule cadence (continuous shuttle, convoy, on-demand).
+3. Execute HaulTickets, transferring cargo according to priority tiers and clearing holds so mining and trade loops remain unblocked.
+
+### Execution Primitives (Shared Across Games)
+
+1. **Direct hauling mining vessel** — payload becomes “in hold” until delivered.
+2. **Drone haulers (swarm)** — many small craft repeatedly claim, load, deliver (LOD to glyphs at scale).
+3. **Bulk freighter** — batch pickups, single delivery run.
+4. **Tractor beam** — `TractorLink` pulls/aligns payload to intake; power/LOS-gated.
+5. **Tug + physical intake** — tow large fragments into refinery bay; consumed over time.
+
+### Physical Refinery Intake (Smoke Scene Centerpiece)
+
+Refinery entity:
+- `IntakeSlots` (buffer)
+- `ProcessingQueue` (payload refs + timers)
+- `OutputEmitter` (spawns crates or increments ledger/store)
+
+Simulation: deterministic timers + accounting events, no “smart AI” required.
 
 ### Parameters and Variables
 
@@ -90,6 +122,7 @@ Veteran players dynamically rebalance routes, anticipate combat threats, and lev
 
 - Represent routes as serialized graphs so modders can predefine or alter initial logistics networks.
 - Use DOTS command buffers to queue load/unload operations, ensuring deterministic sequencing under heavy entity counts.
+- Spawn HaulTickets directly in smoke scenes (no AI required) to keep the contract executable.
 - Integrate with registry telemetry to track supply metrics outlined in `Docs/TODO/Space4x_PureDOTS_Integration_TODO.md`.
 
 ### Performance Considerations
@@ -127,6 +160,7 @@ Veteran players dynamically rebalance routes, anticipate combat threats, and lev
 | Date | Change | Reason |
 |------|--------|--------|
 | 2025-10-31 | Initial draft | Defined foundational haul loop |
+| 2026-01-17 | Added shared transport contract + primitives | Cross-game hauling spine |
 
 ---
 

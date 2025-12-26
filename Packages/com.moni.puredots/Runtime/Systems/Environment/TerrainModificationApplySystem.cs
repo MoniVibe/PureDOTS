@@ -50,6 +50,8 @@ namespace PureDOTS.Systems.Environment
             var budget = SystemAPI.GetComponent<TerrainModificationBudget>(queueEntity);
             var dirtyRegions = SystemAPI.GetBuffer<TerrainDirtyRegion>(queueEntity);
             dirtyRegions.Clear();
+            var modificationEvents = SystemAPI.GetBuffer<TerrainModificationEvent>(queueEntity);
+            modificationEvents.Clear();
             var surfaceTileVersions = SystemAPI.GetBuffer<TerrainSurfaceTileVersion>(queueEntity);
             var undergroundChunkVersions = SystemAPI.GetBuffer<TerrainUndergroundChunkVersion>(queueEntity);
 
@@ -142,8 +144,30 @@ namespace PureDOTS.Systems.Environment
                         localBounds.Min, localBounds.Max, nextVersion);
                 }
 
-                ApplyModificationToChunks(ref state, chunkMap, terrainConfig, volumeOrigin, volumeEntity, localRequest,
+                var clearedVoxels = ApplyModificationToChunks(ref state, chunkMap, terrainConfig, volumeOrigin, volumeEntity, localRequest,
                     localBounds.Min, localBounds.Max, nextVersion, timeState.Tick);
+
+                if (clearedVoxels > 0)
+                {
+                    var worldStart = request.Space == TerrainModificationSpace.VolumeLocal
+                        ? (hasVolumeTransform ? TransformPoint(volumeLocalToWorld, localStart) : localStart)
+                        : request.Start;
+                    var worldEnd = request.Space == TerrainModificationSpace.VolumeLocal
+                        ? (hasVolumeTransform ? TransformPoint(volumeLocalToWorld, localEnd) : localEnd)
+                        : request.End;
+
+                    modificationEvents.Add(new TerrainModificationEvent
+                    {
+                        WorldPosition = (worldStart + worldEnd) * 0.5f,
+                        WorldDirection = math.normalizesafe(worldEnd - worldStart, new float3(0f, 1f, 0f)),
+                        Radius = math.max(0f, request.Radius),
+                        ClearedVoxels = clearedVoxels,
+                        ToolKind = request.ToolKind,
+                        Shape = request.Shape,
+                        VolumeEntity = request.VolumeEntity,
+                        Tick = timeState.Tick
+                    });
+                }
             }
         }
 
@@ -279,7 +303,7 @@ namespace PureDOTS.Systems.Environment
             return map;
         }
 
-        private static void ApplyModificationToChunks(
+        private static int ApplyModificationToChunks(
             ref SystemState state,
             in NativeParallelHashMap<TerrainChunkKey, Entity> chunkMap,
             in TerrainWorldConfig config,
@@ -293,12 +317,13 @@ namespace PureDOTS.Systems.Environment
         {
             if (chunkMap.IsEmpty)
             {
-                return;
+                return 0;
             }
 
             var chunkSize = new float3(config.VoxelsPerChunk.x, config.VoxelsPerChunk.y, config.VoxelsPerChunk.z) * config.VoxelSize;
             var minChunk = (int3)math.floor((localMin - volumeOrigin) / chunkSize);
             var maxChunk = (int3)math.floor((localMax - volumeOrigin) / chunkSize);
+            var clearedVoxels = 0;
 
             for (int z = minChunk.z; z <= maxChunk.z; z++)
             {
@@ -338,11 +363,13 @@ namespace PureDOTS.Systems.Environment
                             }
                         }
 
-                        ApplyModificationToChunkBuffer(config, volumeOrigin, coord, voxelsPerChunk, request, localMin, localMax, runtime);
+                        clearedVoxels += ApplyModificationToChunkBuffer(config, volumeOrigin, coord, voxelsPerChunk, request, localMin, localMax, runtime);
                         MarkChunkDirty(ref state, chunkEntity, version, currentTick);
                     }
                 }
             }
+
+            return clearedVoxels;
         }
 
         private static void InitializeRuntimeBuffer(in TerrainChunk chunk, DynamicBuffer<TerrainVoxelRuntime> runtime, int voxelCount)
@@ -357,7 +384,8 @@ namespace PureDOTS.Systems.Environment
                         SolidMask = baseBlob.SolidMask[i],
                         MaterialId = baseBlob.MaterialId.Length > i ? baseBlob.MaterialId[i] : (byte)0,
                         DepositId = baseBlob.DepositId.Length > i ? baseBlob.DepositId[i] : (byte)0,
-                        OreGrade = baseBlob.OreGrade.Length > i ? baseBlob.OreGrade[i] : (byte)0
+                        OreGrade = baseBlob.OreGrade.Length > i ? baseBlob.OreGrade[i] : (byte)0,
+                        Damage = 0
                     };
                 }
             }
@@ -370,7 +398,7 @@ namespace PureDOTS.Systems.Environment
             }
         }
 
-        private static void ApplyModificationToChunkBuffer(
+        private static int ApplyModificationToChunkBuffer(
             in TerrainWorldConfig config,
             float3 volumeOrigin,
             int3 chunkCoord,
@@ -398,6 +426,7 @@ namespace PureDOTS.Systems.Environment
             var radiusSq = request.Radius * request.Radius;
             var minDepthY = math.min(request.Start.y, request.End.y) - math.max(0f, request.Depth);
             var maxDepthY = math.max(request.Start.y, request.End.y);
+            var clearedCount = 0;
 
             for (int z = minVoxel.z; z <= maxVoxel.z; z++)
             {
@@ -418,11 +447,16 @@ namespace PureDOTS.Systems.Environment
 
                         var index = x + (y * voxelsPerChunk.x) + (z * voxelsPerChunk.x * voxelsPerChunk.y);
                         var voxel = runtime[index];
-                        ApplyVoxelModification(request, ref voxel);
+                        if (ApplyVoxelModification(request, ref voxel))
+                        {
+                            clearedCount++;
+                        }
                         runtime[index] = voxel;
                     }
                 }
             }
+
+            return clearedCount;
         }
 
         private static bool IsInsideShape(in TerrainModificationRequest request, float3 worldPos, float radiusSq)
@@ -451,7 +485,7 @@ namespace PureDOTS.Systems.Environment
             return math.lengthsq(point - closest);
         }
 
-        private static void ApplyVoxelModification(in TerrainModificationRequest request, ref TerrainVoxelRuntime voxel)
+        private static bool ApplyVoxelModification(in TerrainModificationRequest request, ref TerrainVoxelRuntime voxel)
         {
             switch (request.Kind)
             {
@@ -461,17 +495,47 @@ namespace PureDOTS.Systems.Environment
                     {
                         voxel.MaterialId = request.MaterialId;
                     }
-                    break;
+                    voxel.Damage = 0;
+                    return false;
                 case TerrainModificationKind.PaintMaterial:
                     if (request.MaterialId != 0)
                     {
                         voxel.MaterialId = request.MaterialId;
                     }
-                    break;
+                    return false;
                 default:
-                    voxel.SolidMask = 0;
+                    if (request.ToolKind == TerrainModificationToolKind.Microwave)
+                    {
+                        if (voxel.SolidMask != 0)
+                        {
+                            var delta = request.DamageDelta == 0 ? (byte)8 : request.DamageDelta;
+                            var threshold = request.DamageThreshold == 0 ? (byte)255 : request.DamageThreshold;
+                            var damage = math.min(255, voxel.Damage + delta);
+                            if (damage >= threshold)
+                            {
+                                voxel.SolidMask = 0;
+                                voxel.Damage = 0;
+                                return true;
+                            }
+                            else
+                            {
+                                voxel.Damage = (byte)damage;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (voxel.SolidMask != 0)
+                        {
+                            voxel.SolidMask = 0;
+                            voxel.Damage = 0;
+                            return true;
+                        }
+                    }
                     break;
             }
+
+            return false;
         }
 
         private static void MarkChunkDirty(ref SystemState state, Entity chunkEntity, uint version, uint tick)

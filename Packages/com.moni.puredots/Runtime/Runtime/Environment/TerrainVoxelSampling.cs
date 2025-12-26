@@ -10,6 +10,7 @@ namespace PureDOTS.Environment
         public byte MaterialId;
         public byte DepositId;
         public byte OreGrade;
+        public byte Damage;
     }
 
     public enum TerrainVoxelFaceDirection : byte
@@ -93,7 +94,8 @@ namespace PureDOTS.Environment
                         SolidMask = voxel.SolidMask,
                         MaterialId = voxel.MaterialId,
                         DepositId = voxel.DepositId,
-                        OreGrade = voxel.OreGrade
+                        OreGrade = voxel.OreGrade,
+                        Damage = voxel.Damage
                     };
                     return true;
                 }
@@ -115,7 +117,8 @@ namespace PureDOTS.Environment
                 SolidMask = blob.SolidMask[index],
                 MaterialId = blob.MaterialId.Length > index ? blob.MaterialId[index] : (byte)0,
                 DepositId = blob.DepositId.Length > index ? blob.DepositId[index] : (byte)0,
-                OreGrade = blob.OreGrade.Length > index ? blob.OreGrade[index] : (byte)0
+                OreGrade = blob.OreGrade.Length > index ? blob.OreGrade[index] : (byte)0,
+                Damage = 0
             };
 
             return true;
