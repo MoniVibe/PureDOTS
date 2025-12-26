@@ -6,7 +6,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Mathematics.Geometry;
 
 namespace PureDOTS.Runtime.Spatial
 {
@@ -877,7 +876,7 @@ namespace PureDOTS.Runtime.Spatial
                             for (var i = 0; i < range.Count; i++)
                             {
                                 var entry = entryArray[range.StartIndex + i];
-                                if (!query.Contains(entry.Position))
+                                if (!math.all(entry.Position >= query.Min & entry.Position <= query.Max))
                                 {
                                     continue;
                                 }

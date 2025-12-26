@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Time;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 

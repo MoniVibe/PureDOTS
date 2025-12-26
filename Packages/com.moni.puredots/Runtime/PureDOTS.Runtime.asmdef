@@ -4,6 +4,7 @@
     "references": [
         "Unity.Entities",
         "Unity.Mathematics",
+        "Unity.Mathematics.Extensions",
         "Unity.Collections",
         "Unity.Transforms",
         "Unity.Burst",
@@ -25,4 +26,3 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
-

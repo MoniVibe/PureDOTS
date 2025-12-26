@@ -13,7 +13,7 @@ namespace PureDOTS.Systems.Knowledge
     /// Emits incident learning events when agents collide with tree entities.
     /// </summary>
     [BurstCompile]
-    [UpdateInGroup(typeof(PhysicsPostEventSystemGroup))]
+    [UpdateInGroup(typeof(AfterPhysicsSystemGroup))]
     [UpdateAfter(typeof(PureDOTS.Systems.Physics.PhysicsEventSystem))]
     public partial struct IncidentLearningTreeFallBridgeSystem : ISystem
     {

@@ -159,33 +159,45 @@ namespace PureDOTS.Systems.Environment
         private static TerrainQueryContext BuildTerrainContext(ref SystemState state, out NativeParallelHashMap<TerrainChunkKey, Entity> chunkLookup)
         {
             var moistureGrid = default(MoistureGrid);
-            SystemAPI.TryGetSingleton(out moistureGrid);
+            state.GetEntityQuery(ComponentType.ReadOnly<MoistureGrid>())
+                .TryGetSingleton(out moistureGrid);
 
             var terrainPlane = default(TerrainHeightPlane);
-            SystemAPI.TryGetSingleton(out terrainPlane);
+            state.GetEntityQuery(ComponentType.ReadOnly<TerrainHeightPlane>())
+                .TryGetSingleton(out terrainPlane);
 
             var flatSurface = default(TerrainFlatSurface);
-            SystemAPI.TryGetSingleton(out flatSurface);
+            state.GetEntityQuery(ComponentType.ReadOnly<TerrainFlatSurface>())
+                .TryGetSingleton(out flatSurface);
 
             var solidSphere = default(TerrainSolidSphere);
-            SystemAPI.TryGetSingleton(out solidSphere);
+            state.GetEntityQuery(ComponentType.ReadOnly<TerrainSolidSphere>())
+                .TryGetSingleton(out solidSphere);
 
             var terrainConfig = TerrainWorldConfig.Default;
-            SystemAPI.TryGetSingleton(out terrainConfig);
+            state.GetEntityQuery(ComponentType.ReadOnly<TerrainWorldConfig>())
+                .TryGetSingleton(out terrainConfig);
 
             var surfaceDomain = default(SurfaceFieldsDomainConfig);
-            SystemAPI.TryGetSingleton(out surfaceDomain);
+            state.GetEntityQuery(ComponentType.ReadOnly<SurfaceFieldsDomainConfig>())
+                .TryGetSingleton(out surfaceDomain);
 
             var globalTerrainVersion = 0u;
-            if (SystemAPI.TryGetSingleton<TerrainVersion>(out var terrainVersion))
+            if (state.GetEntityQuery(ComponentType.ReadOnly<TerrainVersion>())
+                .TryGetSingleton(out TerrainVersion terrainVersion))
             {
                 globalTerrainVersion = terrainVersion.Value;
             }
 
             var surfaceChunks = default(NativeArray<SurfaceFieldsChunkRef>);
-            if (SystemAPI.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var surfaceCacheEntity))
+            var surfaceCacheQuery = state.GetEntityQuery(
+                ComponentType.ReadOnly<SurfaceFieldsChunkRefCache>(),
+                ComponentType.ReadOnly<SurfaceFieldsChunkRef>());
+            if (surfaceCacheQuery.TryGetSingletonEntity<SurfaceFieldsChunkRefCache>(out var surfaceCacheEntity))
             {
-                surfaceChunks = SystemAPI.GetBuffer<SurfaceFieldsChunkRef>(surfaceCacheEntity).AsNativeArray();
+                surfaceChunks = state.EntityManager
+                    .GetBuffer<SurfaceFieldsChunkRef>(surfaceCacheEntity)
+                    .AsNativeArray();
             }
 
             var volumeEntity = Entity.Null;
@@ -193,17 +205,22 @@ namespace PureDOTS.Systems.Environment
             var volumeWorldToLocal = float4x4.identity;
             byte volumeEnabled = 0;
 
-            foreach (var (volume, entity) in SystemAPI.Query<RefRO<TerrainVolume>>().WithEntityAccess())
+            var volumeQuery = state.GetEntityQuery(ComponentType.ReadOnly<TerrainVolume>());
+            if (!volumeQuery.IsEmptyIgnoreFilter)
             {
-                volumeEntity = entity;
-                volumeOrigin = volume.ValueRO.LocalOrigin;
-                volumeEnabled = 1;
-                break;
+                using var volumeEntities = volumeQuery.ToEntityArray(Allocator.Temp);
+                if (volumeEntities.Length > 0)
+                {
+                    volumeEntity = volumeEntities[0];
+                    var volume = state.EntityManager.GetComponentData<TerrainVolume>(volumeEntity);
+                    volumeOrigin = volume.LocalOrigin;
+                    volumeEnabled = 1;
+                }
             }
 
-            if (volumeEnabled != 0 && SystemAPI.HasComponent<LocalToWorld>(volumeEntity))
+            if (volumeEnabled != 0 && state.EntityManager.HasComponent<LocalToWorld>(volumeEntity))
             {
-                var localToWorld = SystemAPI.GetComponent<LocalToWorld>(volumeEntity);
+                var localToWorld = state.EntityManager.GetComponentData<LocalToWorld>(volumeEntity);
                 volumeWorldToLocal = math.inverse(localToWorld.Value);
             }
 

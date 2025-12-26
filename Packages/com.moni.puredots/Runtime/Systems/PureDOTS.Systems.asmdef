@@ -10,6 +10,7 @@
         "Unity.Burst",
         "Unity.Entities",
         "Unity.Mathematics",
+        "Unity.Mathematics.Extensions",
         "Unity.Transforms",
         "Unity.Collections",
         "Unity.Physics",
