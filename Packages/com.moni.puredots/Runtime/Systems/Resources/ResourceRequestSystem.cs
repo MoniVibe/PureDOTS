@@ -21,7 +21,9 @@ namespace PureDOTS.Systems.Resources
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
-            _requestIdGeneratorQuery = state.GetEntityQuery(ComponentType.ReadOnly<ResourceRequestIdGenerator>());
+            _requestIdGeneratorQuery = SystemAPI.QueryBuilder()
+                .WithAll<ResourceRequestIdGenerator>()
+                .Build();
             EnsureRequestIdGeneratorExists(ref state);
         }
 

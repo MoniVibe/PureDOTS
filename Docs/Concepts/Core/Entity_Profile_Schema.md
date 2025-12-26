@@ -64,7 +64,8 @@ Recommended representation:
 - sparse `IBufferElementData` of `(AxisId, Value)` where `Value ∈ [-1..+1]`
 - omit near-zero axes to keep buffers small
 
-Existing close match:
+Existing close matches:
+- `PureDOTS.Runtime.Alignment.EthicAxisValue` with `EthicAxis { Authority, Military, Economic, Tolerance, Expansion }`.
 - `Space4X.Registry.EthicAxisValue` with `EthicAxisId { War, Materialist, Authoritarian, Xenophobia, Expansionist }`.
 
 ### 3) Temperament / Personality / Behavior (how, not what)
@@ -99,6 +100,14 @@ These move frequently and should not be confused with “profile”:
 Existing in Space4X:
 - `AffiliationTag` (membership + loyalty)
 - `OutlookEntry` / `TopOutlook` (currently used like “stance tags”)
+
+### Profile action accounting (mutation inputs)
+Profile mutation is event-driven and uses bounded buffers (no per-tick scans).
+- Systems emit `ProfileActionEvent` into a `ProfileActionEventStream`.
+- Orders are tracked separately from execution: `OrderIssued` vs `ObeyOrder`/`DisobeyOrder`.
+- Events carry intent/justification/outcome flags, magnitude, and authority-seat context.
+- `ProfileMutationSystem` accumulates deltas in `ProfileActionAccumulator` and applies them on a cadence with decay.
+- Games supply the action catalog (token → alignment/outlook deltas); PureDOTS owns the mutation logic.
 
 ---
 
@@ -138,6 +147,12 @@ Policy should be:
 - derived deterministically from profile + dynamic state
 - cheap to compute / cache
 - valid for both individuals and aggregates
+
+### Presentation-facing signal (theme agnostic)
+PureDOTS also derives a lightweight, continuous "flavor" vector for presentation mapping:
+- `ArchetypeFlavor` (runtime) summarizes alignment/outlook/personality/power axes in normalized [-1..1].
+- It carries no theme or visual data; games map it to their own palettes, materials, and naming.
+- Combinations are organic; no explicit archetype enums are required.
 
 ### Minimal policy fields (suggested)
 These are the “shared knobs” that both games can consume:

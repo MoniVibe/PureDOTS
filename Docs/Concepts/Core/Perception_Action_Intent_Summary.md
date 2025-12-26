@@ -44,16 +44,27 @@ are the ONLY approved sensory inputs for AI systems.
 ## File Mapping
 
 ### Core Perception Components
-- `Packages/com.moni.puredots/Runtime/Runtime/Perception/PerceptionComponents.cs`
+- `Packages/com.moni.puredots/Runtime/Stubs/SignalFieldStubComponents.cs`
   - `PerceptionChannel` (enum with flags: Vision, Hearing, Smell, EM, Gravitic, Exotic, Paranormal, Proximity)
+  - `SensorySignalEmitter` (emission config: channels, smell/sound/EM strength)
+  - `SignalFieldCell` (buffer: smell/sound/EM levels per spatial cell)
+  - `SignalFieldConfig` (decay rates, emission scale, max strength, sampling falloff)
+  - `SignalFieldState` (last update tick, version)
+  - `SignalPerceptionState` (signal field sampling results: smell/sound/EM levels and confidence)
+  - `SignalPerceptionThresholds` (interrupt thresholds + cooldown)
+- `Packages/com.moni.puredots/Runtime/Stubs/PerceptionChannelStubComponents.cs`
   - `SenseCapability` (sensor config: enabled channels, range, FOV, acuity, update interval)
   - `SensorSignature` (per-channel detectability: visual, auditory, olfactory, EM, gravitic, exotic, paranormal signatures)
   - `PerceivedEntity` (buffer: target entity, detected channels, confidence, distance, direction, threat level, relationship)
-  - `PerceptionState` (tracking: last update tick, perceived count, highest threat, nearest entity)
+- `Packages/com.moni.puredots/Runtime/Stubs/SenseOrganStubComponents.cs`
   - `SenseOrganState` (buffer: organ type, channels, gain, condition, noise floor, range multiplier)
-  - `SensorySignalEmitter` (emission config: channels, smell/sound/EM strength)
-  - `SignalFieldCell` (buffer: smell/sound/EM levels per spatial cell)
-  - `SignalPerceptionState` (signal field sampling results: smell/sound/EM levels and confidence)
+  - `SenseOrganType` (Eye, Ear, Nose, EMSuite, GraviticArray, ExoticSensor, ParanormalOrgan)
+- `Packages/com.moni.puredots/Runtime/Runtime/Perception/PerceptionComponents.cs`
+  - `PerceptionState` (tracking: last update tick, perceived count, highest threat, nearest entity)
+  - `PerceivedRelationKind` / `PerceivedRelationFlags` (relation classification helpers)
+  - `ObstacleGridConfig` / `ObstacleGridCell` / `ObstacleTag` / `ObstacleHeight` / `ObstacleGridRebuildRequest`
+- `Packages/com.moni.puredots/Runtime/Runtime/Perception/SensorSignatureModifierComponents.cs`
+  - `SensorSignatureModifier` (cloaks, camo, emission dampening)
 
 ### Legacy Sensor Components (Deprecated – guarded by `LegacySensorSystemEnabled`)
 - `Packages/com.moni.puredots/Runtime/Runtime/AI/SensorComponents.cs`
@@ -168,6 +179,13 @@ public struct SensorSignature : IComponentData
     public float ParanormalSignature;    // 0 = mundane, 1 = normal, >1 = magical
 }
 ```
+
+#### Sensor Signature Modifiers (Cloaks / Emissions)
+
+`SensorSignatureModifier` applies per-channel multipliers to `SensorSignature` for
+cloaks, camo, emission dampening, decoys, or environmental masking. It is applied
+by `PerceptionUpdateSystem` before detection tests, keeping the core detection math
+intact and data-driven.
 
 #### PerceivedEntity Buffer
 
@@ -676,4 +694,3 @@ public enum IntentMode : byte
 **For Implementers:** Focus on completing virtual sensors, implementing intent validation, and ensuring miracles are detectable  
 **For Architects:** Review interrupt-driven architecture, consider commitment/anti-thrashing for action stability  
 **For Designers:** Use utility curves for tuning behavior, design interrupt types for reactive behaviors
-

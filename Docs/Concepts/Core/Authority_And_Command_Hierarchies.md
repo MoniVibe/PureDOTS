@@ -65,6 +65,12 @@ Use ideology/ethics **Authority axis** (Authoritarian ↔ Egalitarian) and polic
 
 This keeps “one authority vs multiple authorities” *data-driven*, not hardcoded per entity type.
 
+### LOD & Governance Consistency
+
+- LOD changes **cadence and fidelity**, not the governance rules or legitimacy checks.
+- Offscreen/aggregate governance can collapse deliberation, but must still honor refusal/escalation/veto paths.
+- Use `Docs/Concepts/Core/Simulation_LOD_And_Environment_Fields.md` for tiering guidance.
+
 ---
 
 ## Village Authority (Godgame-scale aggregates)
@@ -93,14 +99,23 @@ Command:
 - **Shipmaster (Chief Mate / First Officer)**: runs day-to-day routines of command when captain is away; keeps schedules, drills, routine operations moving.
 - Optional (faction/culture dependent):
   - **Commissar / Overseer / Political Officer**: ideological enforcement, loyalty audits, discipline escalation; can constrain or override command depending on doctrine.
+  - **Fleet Admiral / Task Force Commander**: fleet-level posture, interdiction policy, coalition doctrine when the ship is the flagship.
 
 Combat and awareness:
 - **Tactical / Weapons Officer**: targeting doctrine, weapons employment, rules of engagement.
 - **Sensors / Intel Officer**: detection posture, threat evaluation, contact classification, EW posture.
 
+Navigation & communications:
+- **Navigation / Helm Officer**: course plotting, maneuver doctrine, formation spacing.
+- **Communications Officer**: comms discipline, broadcast posture, IFF policy, escalation channels.
+
 Operations and sustainment:
 - **Chief Engineer**: propulsion/power priorities, repair triage, damage control posture.
 - **Logistics Officer / Quartermaster**: supplies, munitions, cargo priorities, resupply decisions.
+
+Security & boarding:
+- **Security Officer**: internal security, custody posture, boarding defense.
+- **Marine Commander / Sergeant**: boarding readiness, assault doctrine, squad-level execution.
 
 Flight operations (carriers):
 - **Air Wing Commander (“CAG”) / Flight Operations Officer**: overall flight plan, sortie priorities.
@@ -108,6 +123,7 @@ Flight operations (carriers):
   - **Combat Flight Ops**: strike/cap/intercept.
   - **Non-combat Flight Ops**: mining, courier, rescue, logistics sorties.
 - **Hangar/Deck Officer (“Air Boss” / “Hangar Master”)**: deck cycle, launch/recovery throughput, hangar safety posture.
+- **Flight Director**: air-traffic control, comms cadence, deck timing (may be merged with hangar/deck officer on smaller carriers).
 
 ### “Pilot master” naming
 If you want one role that owns pilot standards and assignments:
@@ -116,6 +132,7 @@ If you want one role that owns pilot standards and assignments:
 - **Flight Commander** if neutral sci-fi tone.
 
 Recommendation: use **Flight Commander** as the generic name, and allow “CAG/Air Boss” as flavor titles per culture/faction.
+If you want separate seats for command vs deck control, pair **Flight Commander** (strategy/sorties) with **Flight Director** (deck/traffic).
 
 ### Micro/macro handoff (ship → craft)
 - Captain/authority chooses intents (attack, escort, mine, retreat).

@@ -401,6 +401,7 @@ namespace PureDOTS.Authoring
             AddBuffer<ConstructionDeliveredElement>(entity);
             AddBuffer<ConstructionDepositCommand>(entity);
             AddBuffer<ConstructionProgressCommand>(entity);
+            AddBuffer<ConstructionIncidentCommand>(entity);
 
             Entity prefabEntity = authoring.completionPrefab != null
                 ? GetEntity(authoring.completionPrefab, TransformUsageFlags.Dynamic)

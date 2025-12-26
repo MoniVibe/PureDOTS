@@ -1,5 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Construction;
+using PureDOTS.Runtime.Knowledge;
+using PureDOTS.Runtime.Villager;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -48,6 +50,13 @@ namespace PureDOTS.Systems
                 || rewindState.Mode != RewindMode.Record)
             {
                 return;
+            }
+
+            var canEmitIncidents = SystemAPI.TryGetSingletonEntity<IncidentLearningEventBuffer>(out var incidentEntity);
+            DynamicBuffer<IncidentLearningEvent> incidentEvents = default;
+            if (canEmitIncidents)
+            {
+                incidentEvents = state.EntityManager.GetBuffer<IncidentLearningEvent>(incidentEntity);
             }
 
             _resourceCatalogLookup.Update(ref state);
@@ -179,6 +188,45 @@ namespace PureDOTS.Systems
                 for (int i = progressCommands.Length - 1; i >= 0; i--)
                 {
                     var cmd = progressCommands[i];
+                    if (cmd.Delta < 0f && canEmitIncidents)
+                    {
+                        var builder = Entity.Null;
+                        foreach (var (job, ticket, candidate) in SystemAPI
+                                     .Query<RefRO<VillagerJob>, RefRO<VillagerJobTicket>>()
+                                     .WithAll<IncidentLearningAgent>()
+                                     .WithEntityAccess())
+                        {
+                            if (job.ValueRO.Type == VillagerJob.JobType.Builder &&
+                                ticket.ValueRO.ResourceEntity == siteEntity)
+                            {
+                                builder = candidate;
+                                break;
+                            }
+                        }
+
+                        if (builder != Entity.Null)
+                        {
+                            var severity = ResolveIncidentSeverity(cmd.Delta, progress.RequiredProgress);
+                            var category = severity >= 0.5f
+                                ? IncidentLearningCategories.ConstructionCollapse
+                                : IncidentLearningCategories.ConstructionIncident;
+                            var position = _transformLookup.HasComponent(siteEntity)
+                                ? _transformLookup[siteEntity].Position
+                                : float3.zero;
+
+                            incidentEvents.Add(new IncidentLearningEvent
+                            {
+                                Target = builder,
+                                Source = siteEntity,
+                                Position = position,
+                                CategoryId = category,
+                                Severity = severity,
+                                Kind = IncidentLearningKind.Failure,
+                                Tick = timeState.Tick
+                            });
+                        }
+                    }
+
                     progress.CurrentProgress = math.min(
                         progress.CurrentProgress + cmd.Delta,
                         progress.RequiredProgress);
@@ -246,7 +294,60 @@ namespace PureDOTS.Systems
                     }
                 }
             }
+
+            // Process incident commands (construction mishaps, collapses, tool failures)
+            foreach (var (incidentCommands, siteEntity) in SystemAPI.Query<DynamicBuffer<ConstructionIncidentCommand>>().WithEntityAccess())
+            {
+                if (incidentCommands.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!canEmitIncidents)
+                {
+                    incidentCommands.Clear();
+                    continue;
+                }
+
+                for (int i = incidentCommands.Length - 1; i >= 0; i--)
+                {
+                    var cmd = incidentCommands[i];
+                    if (cmd.Target == Entity.Null || cmd.CategoryId.IsEmpty)
+                    {
+                        incidentCommands.RemoveAt(i);
+                        continue;
+                    }
+
+                    var source = cmd.Source != Entity.Null ? cmd.Source : siteEntity;
+                    var position = _transformLookup.HasComponent(source)
+                        ? _transformLookup[source].Position
+                        : (_transformLookup.HasComponent(siteEntity) ? _transformLookup[siteEntity].Position : float3.zero);
+
+                    incidentEvents.Add(new IncidentLearningEvent
+                    {
+                        Target = cmd.Target,
+                        Source = source,
+                        Position = position,
+                        CategoryId = cmd.CategoryId,
+                        Severity = math.saturate(cmd.Severity),
+                        Kind = cmd.Kind,
+                        Tick = timeState.Tick
+                    });
+
+                    incidentCommands.RemoveAt(i);
+                }
+            }
+        }
+
+        private static float ResolveIncidentSeverity(float delta, float requiredProgress)
+        {
+            if (delta >= 0f)
+            {
+                return 0f;
+            }
+
+            var scale = math.max(requiredProgress, 1e-2f);
+            return math.saturate(math.abs(delta) / scale);
         }
     }
 }
-

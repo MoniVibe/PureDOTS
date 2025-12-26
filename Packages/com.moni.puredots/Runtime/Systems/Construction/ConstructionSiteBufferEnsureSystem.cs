@@ -34,6 +34,11 @@ namespace PureDOTS.Systems.Construction
                 {
                     ecb.AddBuffer<ConstructionProgressCommand>(entity);
                 }
+
+                if (!state.EntityManager.HasBuffer<ConstructionIncidentCommand>(entity))
+                {
+                    ecb.AddBuffer<ConstructionIncidentCommand>(entity);
+                }
             }
 
             ecb.Playback(state.EntityManager);

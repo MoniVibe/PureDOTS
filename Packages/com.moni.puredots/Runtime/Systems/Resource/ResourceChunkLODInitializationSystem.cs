@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Systems;
@@ -78,6 +79,11 @@ namespace PureDOTS.Runtime.Systems.Resource
             var timeState = SystemAPI.GetSingleton<TimeState>();
             float deltaTime = timeState.DeltaTime;
 
+            var moistureGrid = default(MoistureGrid);
+            SystemAPI.TryGetSingleton(out moistureGrid);
+            var terrainPlane = default(TerrainHeightPlane);
+            SystemAPI.TryGetSingleton(out terrainPlane);
+
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (motion, collision, chunkState, transform, entity) in
@@ -111,7 +117,7 @@ namespace PureDOTS.Runtime.Systems.Resource
                 chunkState.ValueRW.Velocity = velocity;
 
                 // Check for ground collision (simple height check)
-                float groundHeight = 0f; // TODO: Get from terrain system
+                float groundHeight = TerrainHeightSampler.SampleHeight(moistureGrid, terrainPlane, position);
                 if (position.y <= groundHeight + collision.ValueRO.HeightOffset)
                 {
                     // Landed
@@ -152,4 +158,3 @@ namespace PureDOTS.Runtime.Systems.Resource
         }
     }
 }
-

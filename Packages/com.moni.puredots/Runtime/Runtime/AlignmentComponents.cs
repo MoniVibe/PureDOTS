@@ -1,6 +1,7 @@
 using System;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Alignment
 {
@@ -15,9 +16,21 @@ namespace PureDOTS.Runtime.Alignment
 
     public enum EthicAxis : byte
     {
-        OrderVsChaos = 0,
-        CompassionVsPragmatism = 1,
-        TraditionVsInnovation = 2
+        Authority = 0,
+        Military = 1,
+        Economic = 2,
+        Tolerance = 3,
+        Expansion = 4
+    }
+
+    /// <summary>
+    /// Sparse ideology axis values in [-1..+1], omitted when near zero.
+    /// </summary>
+    [InternalBufferCapacity(5)]
+    public struct EthicAxisValue : IBufferElementData
+    {
+        public EthicAxis Axis;
+        public half Value;
     }
 
     public enum Outlook : byte
@@ -27,6 +40,26 @@ namespace PureDOTS.Runtime.Alignment
         Opportunist = 2,
         Fanatic = 3,
         Mutinous = 4
+    }
+
+    /// <summary>
+    /// Individual outlook weight entries. Multiple may exist per entity.
+    /// </summary>
+    [InternalBufferCapacity(3)]
+    public struct OutlookEntry : IBufferElementData
+    {
+        public Outlook OutlookId;
+        public half Weight;
+    }
+
+    /// <summary>
+    /// Aggregated outlook values (typically the top three).
+    /// </summary>
+    [InternalBufferCapacity(3)]
+    public struct TopOutlook : IBufferElementData
+    {
+        public Outlook OutlookId;
+        public half Weight;
     }
 
     public struct AffiliationId : IEquatable<AffiliationId>
@@ -59,9 +92,11 @@ namespace PureDOTS.Runtime.Alignment
     {
         public DoctrineId Id;
         public AffiliationKind Kind;
-        public float OrderAffinity;
-        public float CompassionAffinity;
-        public float InnovationAffinity;
+        public float AuthorityAffinity;
+        public float MilitaryAffinity;
+        public float EconomicAffinity;
+        public float ToleranceAffinity;
+        public float ExpansionAffinity;
         public float FanaticismCap;
     }
 

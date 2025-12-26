@@ -17,6 +17,8 @@ Documentation is organized by responsibility:
 
 ## Entity Stats & Archetypes ⭐ NEW
 - [Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md](Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md) – **canonical** stat layers (core vs domain) + archetype schema (tags/weights/policies)
+- [Concepts/Core/Archetypical_Theme_Mapping.md](Concepts/Core/Archetypical_Theme_Mapping.md) – **archetypical theme mapping** for alignment/outlook/behavior combinations (visual aesthetics, cultural expressions, presentation theming)
+- [Concepts/Core/Entity_Traversal_System.md](Concepts/Core/Entity_Traversal_System.md) – **traversal graph system** for jump/climb/crawl/squeeze/drop (size-gated connectivity, deterministic execution)
 
 ## UI / Presentation
 - [Presentation/TRI_UI_Launch_MainMenu.md](Presentation/TRI_UI_Launch_MainMenu.md) – shared launch/main menu + worldgen + time-controls contract

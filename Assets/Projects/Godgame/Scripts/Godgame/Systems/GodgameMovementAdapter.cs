@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Systems;
@@ -41,17 +42,30 @@ namespace Godgame.Systems
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var deltaTime = timeState.DeltaTime;
 
+            var moistureGrid = default(MoistureGrid);
+            SystemAPI.TryGetSingleton(out moistureGrid);
+            var terrainPlane = default(TerrainHeightPlane);
+            SystemAPI.TryGetSingleton(out terrainPlane);
+
+            var groundConfigs = SystemAPI.GetComponentLookup<GroundMovementConfig>(true);
+            groundConfigs.Update(ref state);
+
             // Process ground units (default behavior for Godgame)
             var groundJob = new GodgameGroundMovementJob
             {
-                DeltaTime = deltaTime
+                DeltaTime = deltaTime,
+                MoistureGrid = moistureGrid,
+                TerrainPlane = terrainPlane,
+                GroundConfigs = groundConfigs
             };
             state.Dependency = groundJob.ScheduleParallel(state.Dependency);
 
             // Process flying units (with FlyingMovementTag)
             var flyingJob = new GodgameFlyingMovementJob
             {
-                DeltaTime = deltaTime
+                DeltaTime = deltaTime,
+                MoistureGrid = moistureGrid,
+                TerrainPlane = terrainPlane
             };
             state.Dependency = flyingJob.ScheduleParallel(state.Dependency);
         }
@@ -65,6 +79,9 @@ namespace Godgame.Systems
         public partial struct GodgameGroundMovementJob : IJobEntity
         {
             public float DeltaTime;
+            public MoistureGrid MoistureGrid;
+            public TerrainHeightPlane TerrainPlane;
+            [ReadOnly] public ComponentLookup<GroundMovementConfig> GroundConfigs;
 
             void Execute(
                 Entity entity,
@@ -93,8 +110,18 @@ namespace Godgame.Systems
                     movementState.Vel = vel;
                 }
 
-                // TODO: Sample terrain height at current XZ position
-                // transform.Position.y = TerrainHeight(transform.Position.x, transform.Position.z);
+                float heightOffset = 0f;
+                if (GroundConfigs.HasComponent(entity))
+                {
+                    heightOffset = GroundConfigs[entity].HeightOffset;
+                }
+
+                var position = transform.Position;
+                if (TerrainHeightSampler.TrySampleHeight(MoistureGrid, TerrainPlane, position, out var groundHeight))
+                {
+                    position.y = groundHeight + heightOffset;
+                    transform.Position = position;
+                }
 
                 // Update rotation to face velocity direction (yaw-only for ground units)
                 float velLength = math.length(vel);
@@ -125,6 +152,8 @@ namespace Godgame.Systems
         public partial struct GodgameFlyingMovementJob : IJobEntity
         {
             public float DeltaTime;
+            public MoistureGrid MoistureGrid;
+            public TerrainHeightPlane TerrainPlane;
 
             void Execute(
                 Entity entity,
@@ -143,9 +172,7 @@ namespace Godgame.Systems
                 // Flying movement: allow vertical velocity but constrain altitude
                 float3 vel = movementState.Vel;
                 
-                // TODO: Sample terrain height at current XZ position
-                // float terrainHeight = TerrainHeight(transform.Position.x, transform.Position.z);
-                float terrainHeight = 0f; // Placeholder until terrain system is integrated
+                float terrainHeight = TerrainHeightSampler.SampleHeight(MoistureGrid, TerrainPlane, transform.Position);
                 
                 float currentAltitude = transform.Position.y - terrainHeight;
                 
@@ -186,4 +213,3 @@ namespace Godgame.Systems
         }
     }
 }
-

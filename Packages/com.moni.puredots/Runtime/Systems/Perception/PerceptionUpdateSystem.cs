@@ -34,6 +34,7 @@ namespace PureDOTS.Systems.Perception
     {
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<SensorSignature> _signatureLookup;
+        private ComponentLookup<SensorSignatureModifier> _signatureModifierLookup;
         private ComponentLookup<Detectable> _detectableLookup; // Fallback for entities without SensorSignature
         private ComponentLookup<MediumContext> _mediumLookup;
         private BufferLookup<SenseOrganState> _organLookup;
@@ -62,6 +63,7 @@ namespace PureDOTS.Systems.Perception
 
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _signatureLookup = state.GetComponentLookup<SensorSignature>(true);
+            _signatureModifierLookup = state.GetComponentLookup<SensorSignatureModifier>(true);
             _detectableLookup = state.GetComponentLookup<Detectable>(true);
             _mediumLookup = state.GetComponentLookup<MediumContext>(true);
             _organLookup = state.GetBufferLookup<SenseOrganState>(true);
@@ -110,6 +112,7 @@ namespace PureDOTS.Systems.Perception
 
             _transformLookup.Update(ref state);
             _signatureLookup.Update(ref state);
+            _signatureModifierLookup.Update(ref state);
             _detectableLookup.Update(ref state);
             _mediumLookup.Update(ref state);
             _organLookup.Update(ref state);
@@ -353,6 +356,12 @@ namespace PureDOTS.Systems.Perception
                     var targetSignature = _signatureLookup.HasComponent(targetEntity)
                         ? _signatureLookup[targetEntity]
                         : SensorSignature.Default;
+                    if (_signatureModifierLookup.HasComponent(targetEntity))
+                    {
+                        targetSignature = SensorSignatureModifierUtilities.Apply(
+                            targetSignature,
+                            _signatureModifierLookup[targetEntity]);
+                    }
 
                     var targetThreatLevel = (byte)0;
                     var targetCategory = DetectableCategory.Neutral;
@@ -659,6 +668,120 @@ namespace PureDOTS.Systems.Perception
                         if (confidence > 0f)
                         {
                             detectedChannels |= PerceptionChannel.EM;
+                            bestConfidence = math.max(bestConfidence, confidence);
+                        }
+                    }
+
+                    if ((enabledChannels & PerceptionChannel.Gravitic) != 0)
+                    {
+                        float channelRange = baseRange;
+                        float channelAcuity = capability.ValueRO.Acuity;
+                        float channelNoiseFloor = 0f;
+                        if (hasOrgans)
+                        {
+                            PerceptionOrganUtilities.GetChannelModifiers(
+                                PerceptionChannel.Gravitic,
+                                organBuffer,
+                                out var rangeMult,
+                                out var acuityMult,
+                                out var noiseFloor);
+                            channelRange *= rangeMult;
+                            channelAcuity *= acuityMult;
+                            channelNoiseFloor = noiseFloor;
+                        }
+
+                        var confidence = EvaluateChannelDetection(
+                            PerceptionChannel.Gravitic,
+                            target,
+                            sensorForward,
+                            direction,
+                            distance,
+                            channelRange,
+                            fovCos,
+                            channelAcuity,
+                            channelNoiseFloor,
+                            sensorMedium,
+                            target.Medium);
+
+                        if (confidence > 0f)
+                        {
+                            detectedChannels |= PerceptionChannel.Gravitic;
+                            bestConfidence = math.max(bestConfidence, confidence);
+                        }
+                    }
+
+                    if ((enabledChannels & PerceptionChannel.Exotic) != 0)
+                    {
+                        float channelRange = baseRange;
+                        float channelAcuity = capability.ValueRO.Acuity;
+                        float channelNoiseFloor = 0f;
+                        if (hasOrgans)
+                        {
+                            PerceptionOrganUtilities.GetChannelModifiers(
+                                PerceptionChannel.Exotic,
+                                organBuffer,
+                                out var rangeMult,
+                                out var acuityMult,
+                                out var noiseFloor);
+                            channelRange *= rangeMult;
+                            channelAcuity *= acuityMult;
+                            channelNoiseFloor = noiseFloor;
+                        }
+
+                        var confidence = EvaluateChannelDetection(
+                            PerceptionChannel.Exotic,
+                            target,
+                            sensorForward,
+                            direction,
+                            distance,
+                            channelRange,
+                            fovCos,
+                            channelAcuity,
+                            channelNoiseFloor,
+                            sensorMedium,
+                            target.Medium);
+
+                        if (confidence > 0f)
+                        {
+                            detectedChannels |= PerceptionChannel.Exotic;
+                            bestConfidence = math.max(bestConfidence, confidence);
+                        }
+                    }
+
+                    if ((enabledChannels & PerceptionChannel.Paranormal) != 0)
+                    {
+                        float channelRange = baseRange;
+                        float channelAcuity = capability.ValueRO.Acuity;
+                        float channelNoiseFloor = 0f;
+                        if (hasOrgans)
+                        {
+                            PerceptionOrganUtilities.GetChannelModifiers(
+                                PerceptionChannel.Paranormal,
+                                organBuffer,
+                                out var rangeMult,
+                                out var acuityMult,
+                                out var noiseFloor);
+                            channelRange *= rangeMult;
+                            channelAcuity *= acuityMult;
+                            channelNoiseFloor = noiseFloor;
+                        }
+
+                        var confidence = EvaluateChannelDetection(
+                            PerceptionChannel.Paranormal,
+                            target,
+                            sensorForward,
+                            direction,
+                            distance,
+                            channelRange,
+                            fovCos,
+                            channelAcuity,
+                            channelNoiseFloor,
+                            sensorMedium,
+                            target.Medium);
+
+                        if (confidence > 0f)
+                        {
+                            detectedChannels |= PerceptionChannel.Paranormal;
                             bestConfidence = math.max(bestConfidence, confidence);
                         }
                     }

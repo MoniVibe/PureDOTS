@@ -16,9 +16,11 @@ namespace PureDOTS.Authoring
         {
             public string doctrineId;
             public AffiliationKind kind = AffiliationKind.Faction;
-            [Range(-1f, 1f)] public float orderAffinity;
-            [Range(-1f, 1f)] public float compassionAffinity;
-            [Range(-1f, 1f)] public float innovationAffinity;
+            [Range(-1f, 1f)] public float authorityAffinity;
+            [Range(-1f, 1f)] public float militaryAffinity;
+            [Range(-1f, 1f)] public float economicAffinity;
+            [Range(-1f, 1f)] public float toleranceAffinity;
+            [Range(-1f, 1f)] public float expansionAffinity;
             [Range(0f, 2f)] public float fanaticismCap = 1f;
         }
 
@@ -37,9 +39,11 @@ namespace PureDOTS.Authoring
 
                 entry.doctrineId = SanitizeId(entry.doctrineId);
                 entry.fanaticismCap = Mathf.Clamp(entry.fanaticismCap, 0f, 2f);
-                entry.orderAffinity = Mathf.Clamp(entry.orderAffinity, -1f, 1f);
-                entry.compassionAffinity = Mathf.Clamp(entry.compassionAffinity, -1f, 1f);
-                entry.innovationAffinity = Mathf.Clamp(entry.innovationAffinity, -1f, 1f);
+                entry.authorityAffinity = Mathf.Clamp(entry.authorityAffinity, -1f, 1f);
+                entry.militaryAffinity = Mathf.Clamp(entry.militaryAffinity, -1f, 1f);
+                entry.economicAffinity = Mathf.Clamp(entry.economicAffinity, -1f, 1f);
+                entry.toleranceAffinity = Mathf.Clamp(entry.toleranceAffinity, -1f, 1f);
+                entry.expansionAffinity = Mathf.Clamp(entry.expansionAffinity, -1f, 1f);
 
                 if (string.IsNullOrEmpty(entry.doctrineId))
                 {
@@ -110,9 +114,11 @@ namespace PureDOTS.Authoring
                 {
                     Id = doctrineId,
                     Kind = definition.kind,
-                    OrderAffinity = definition.orderAffinity,
-                    CompassionAffinity = definition.compassionAffinity,
-                    InnovationAffinity = definition.innovationAffinity,
+                    AuthorityAffinity = definition.authorityAffinity,
+                    MilitaryAffinity = definition.militaryAffinity,
+                    EconomicAffinity = definition.economicAffinity,
+                    ToleranceAffinity = definition.toleranceAffinity,
+                    ExpansionAffinity = definition.expansionAffinity,
                     FanaticismCap = definition.fanaticismCap
                 });
             }

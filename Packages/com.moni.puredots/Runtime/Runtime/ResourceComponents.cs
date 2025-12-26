@@ -1,4 +1,5 @@
 using System;
+using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Runtime.Resource;
 using Unity.Collections;
@@ -44,6 +45,16 @@ namespace PureDOTS.Runtime.Components
         public ResourceQualityTier QualityTier;
         public ushort BaseQuality;
         public ushort QualityVariance;
+    }
+
+    /// <summary>
+    /// Lightweight summary for resource nodes used by perception/awareness systems.
+    /// </summary>
+    public struct ResourceNodeSummary : IComponentData
+    {
+        public ushort ResourceTypeIndex;
+        public float UnitsRemaining;
+        public byte IsDepleted;
     }
 
     public struct StorehouseConfig : IComponentData
@@ -179,6 +190,15 @@ namespace PureDOTS.Runtime.Components
     {
         public int SiteId;
         public float Delta;
+    }
+
+    public struct ConstructionIncidentCommand : IBufferElementData
+    {
+        public Entity Target;
+        public Entity Source;
+        public FixedString64Bytes CategoryId;
+        public float Severity;
+        public IncidentLearningKind Kind;
     }
 
     // Resource Registry Components

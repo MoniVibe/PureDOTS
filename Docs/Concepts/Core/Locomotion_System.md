@@ -13,6 +13,11 @@ The Locomotion System provides a flexible, entity-agnostic framework for definin
 - **Deterministic**: Same inputs → same movement (rewind-compatible)
 - **Animation-Friendly**: Locomotion state drives animation selection
 
+**LOD & Reachability**:
+- LOD changes **fidelity and cadence**, not what locomotion or traversal is allowed.
+- Low-LOD movement may simplify motion, but must keep the same reachability rules (see `Docs/Concepts/Core/Entity_Traversal_System.md`).
+- Use the tiering framework in `Docs/Concepts/Core/Simulation_LOD_And_Environment_Fields.md`.
+
 ---
 
 ## Core Concepts
