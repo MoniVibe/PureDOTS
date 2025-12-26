@@ -64,6 +64,7 @@ This yields a per-domain winner: self-control or a controlling entity.
 Components/buffers:
 - `PureDOTS.Runtime.Agency.AgencySelf` (baseline autonomy)
 - `PureDOTS.Runtime.Agency.ControlLink` (controller edges + parameters)
+- `PureDOTS.Runtime.Agency.ControlClaim` (external control assertions on the controlled entity)
 - `PureDOTS.Runtime.Agency.ResolvedControl` (derived winner per domain; `Entity.Null` = self)
 
 Opt-in module tag:
@@ -74,6 +75,9 @@ Bootstrap system (adds required components/buffers):
 
 Resolver system (derives per-domain winners):
 - `puredots/Packages/com.moni.puredots/Runtime/Systems/Agency/AgencyControlResolutionSystem.cs`
+
+Claim bridge system (converts `ControlClaim` → `ControlLink` and tags origin):
+- `puredots/Packages/com.moni.puredots/Runtime/Systems/Agency/AgencyControlClaimBridgeSystem.cs`
 
 ---
 
@@ -103,4 +107,3 @@ Governance systems (ships/villages) should:
   - mutiny/coup/defection branching.
 
 This keeps “who controls what” generic, while allowing rich faction/culture-specific outcomes.
-

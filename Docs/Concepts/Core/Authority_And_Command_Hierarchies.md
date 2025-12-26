@@ -34,6 +34,7 @@ Authority is represented as **stable seat entities** owned by an aggregate **aut
 - `PureDOTS.Runtime.Authority.AuthoritySeatOccupant` on seat entities (current occupant entity; may change).
 - `PureDOTS.Runtime.Authority.AuthorityDelegation` buffer on principal seat entities (principal → delegate edges).
 - `PureDOTS.Runtime.Authority.AuthoritySeatRef` buffer on the body entity (seat roster).
+- `PureDOTS.Systems.Agency.AuthoritySeatControlClaimBridgeSystem` converts occupied seats into `ControlClaim` entries on the body (feeds the agency kernel).
 
 Orders/actions should be attributable to a **seat**, not just a person:
 - Prefer fields like `IssuingAuthority` to reference the **seat entity** (stable identity).

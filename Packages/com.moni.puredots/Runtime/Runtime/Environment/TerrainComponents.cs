@@ -25,5 +25,6 @@ namespace PureDOTS.Environment
         public const byte FlagHeightChanged = 1 << 0;
         public const byte FlagSurfaceMaterialChanged = 1 << 1;
         public const byte FlagBiomeChanged = 1 << 2;
+        public const byte FlagVolumeChanged = 1 << 3;
     }
 }

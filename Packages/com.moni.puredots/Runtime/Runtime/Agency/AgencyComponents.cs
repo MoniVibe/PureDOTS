@@ -33,6 +33,16 @@ namespace PureDOTS.Runtime.Agency
     }
 
     /// <summary>
+    /// Origin tag for control links so bridge systems can manage their own links safely.
+    /// </summary>
+    public enum ControlLinkSourceKind : byte
+    {
+        None = 0,
+        Claim = 1,
+        Custody = 2
+    }
+
+    /// <summary>
     /// Controlled entity's baseline autonomy state used in control contests.
     /// Values are normalized (typically 0..1) and are intended to be driven by other modules (needs, morale, ideology).
     /// </summary>
@@ -74,6 +84,10 @@ namespace PureDOTS.Runtime.Agency
         public float Consent;
 
         public uint EstablishedTick;
+
+        public ControlLinkSourceKind SourceKind;
+        public byte Reserved0;
+        public ushort Reserved1;
     }
 
     /// <summary>
@@ -99,4 +113,3 @@ namespace PureDOTS.Runtime.Agency
             };
     }
 }
-

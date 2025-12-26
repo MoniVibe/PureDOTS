@@ -126,7 +126,8 @@ namespace PureDOTS.Runtime.Systems.Social
                 Legitimacy = legitimacy,
                 Hostility = hostility,
                 Consent = math.saturate((custody.Flags & CustodyFlags.HumaneTreatment) != 0 ? 0.1f : 0f),
-                EstablishedTick = custody.CapturedTick != 0u ? custody.CapturedTick : tick
+                EstablishedTick = custody.CapturedTick != 0u ? custody.CapturedTick : tick,
+                SourceKind = ControlLinkSourceKind.Custody
             };
         }
 

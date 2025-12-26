@@ -83,6 +83,27 @@ namespace PureDOTS.Runtime.Systems.Resource
             SystemAPI.TryGetSingleton(out moistureGrid);
             var terrainPlane = default(TerrainHeightPlane);
             SystemAPI.TryGetSingleton(out terrainPlane);
+            var flatSurface = default(TerrainFlatSurface);
+            SystemAPI.TryGetSingleton(out flatSurface);
+            var solidSphere = default(TerrainSolidSphere);
+            SystemAPI.TryGetSingleton(out solidSphere);
+            var terrainConfig = TerrainWorldConfig.Default;
+            SystemAPI.TryGetSingleton(out terrainConfig);
+            var globalTerrainVersion = 0u;
+            if (SystemAPI.TryGetSingleton<TerrainVersion>(out var terrainVersion))
+            {
+                globalTerrainVersion = terrainVersion.Value;
+            }
+
+            var terrainContext = new TerrainQueryContext
+            {
+                MoistureGrid = moistureGrid,
+                HeightPlane = terrainPlane,
+                FlatSurface = flatSurface,
+                SolidSphere = solidSphere,
+                WorldConfig = terrainConfig,
+                GlobalTerrainVersion = globalTerrainVersion
+            };
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
@@ -117,7 +138,7 @@ namespace PureDOTS.Runtime.Systems.Resource
                 chunkState.ValueRW.Velocity = velocity;
 
                 // Check for ground collision (simple height check)
-                float groundHeight = TerrainHeightSampler.SampleHeight(moistureGrid, terrainPlane, position);
+                float groundHeight = TerrainQueryFacade.SampleHeight(terrainContext, position);
                 if (position.y <= groundHeight + collision.ValueRO.HeightOffset)
                 {
                     // Landed
