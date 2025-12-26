@@ -23,6 +23,25 @@
 - **Interrupt-Driven:** Agents react to perception deltas, comm receipts, threats via interrupts (reduces polling)
 - **Modular:** Entities opt into AI pipeline via components; bridge systems translate generic commands to game-specific goals
 
+## Contract Tightening (Read First)
+
+**Ownership rules:**
+- **Perception systems** are the only writers of `PerceivedEntity` / `SignalPerceptionState`.
+- **Targeting system** is the only writer of `CurrentTarget` / `TargetPosition`.
+- **Intent system** is the only writer of `EntityIntent` / `UtilityDecisionState`.
+
+**Commitment rules:**
+- Intent switches only when `(newScore >= oldScore * SwitchThreshold)` **and** `MinCommitTicks` elapsed.
+- Interrupts can pre-empt only if `InterruptPriority >= CurrentIntentPriority`.
+
+**Cadence rules:**
+- Perception updates are **budgeted**; no world scans in hot path.
+- Utility scoring is throttled via `UtilityConfig.ReconsiderInterval`.
+
+**Fallback rules:**
+- If no viable action meets `MinViableScore`, keep `EntityIntent.Mode = Idle`.
+- On invalid targets, emit `LostTarget` interrupt and clear the target in the same tick.
+
 ---
 
 ## Canonical Perception Pipeline (Entities 1.4+)

@@ -8,9 +8,80 @@
 
 **One-line description**: Processed resources flow from carrier-supported facilities into construction sites, advancing projects as carriers and veteran crews apply their throughput.
 
+CONTRACT:CONSTRUCTION.LOOP.V1
+
+## Depends on
+- CONTRACT:RESOURCE.LOGISTICS.V1
+- CONTRACT:PRODUCTION.ACCOUNTING.V1
+
+## Provides
+- Deterministic construction state transitions and resource reservation flow.
+
+## Consumes
+- Build recipes, cargo inventories, crew/workforce inputs.
+
+## Invariants
+1. State transitions are monotonic (Planned → Reserved → Active → Complete/Failed).
+2. Progress never advances without reserved inputs.
+3. Reserved resources are released on cancel/fail.
+
+## Allowed staleness
+- Construction progress can tick at a reduced cadence; reservations are immediate.
+
+## Failure handling
+- Missing inputs or carriers stalls progress and emits a reason code.
+
+## Telemetry/Test hooks
+- Active build count, stall reasons, average completion time.
+
+## Contract test
+- Reservation exclusivity: a resource unit is reserved for at most one active build.
+
 ## Core Concept
 
 Construction sits directly atop the mining and hauling loops. Raw ore enters processing facilities located on carriers, stations, or colonies, converting into refined materials that feed construction sites over time. Every build queue consumes stored resources gradually, with progress gated by the carriers executing the task and the experience level of their crews. Stations excel at zero-G assembly but struggle to source materials; colonies enjoy abundant local resources yet pay steep costs to export; fleets or single carriers can operate as mobile colonies, balancing freedom with crew morale. Because the initial game snapshot is serialized for player modification, construction recipes, facility capabilities, and cargo capacities must be data-driven and extensible.
+
+## Construction Contract (Tightening)
+
+- **State machine**: `Planned → Reserved → Active → Complete/Failed`, with explicit cancel reasons.
+- **Reservation first**: materials and workforce are reserved before progress advances.
+- **Deterministic progress**: progress advances only when required inputs are present and assigned carriers are active.
+- **No partial completion exploits**: if any required input is missing, progress stalls without consuming.
+
+## Appendix: Construction Checklist (CONTRACT:CONSTRUCTION.LOOP.V1)
+
+### Component checklist
+**Required components:**
+- `ConstructionSite`
+- `BuildQueue` or `BuildTask` buffer
+- `ConstructionProgress`
+
+**Optional components (facet/module style):**
+- `AssignedCarrier` buffer
+- `ConstructionReservation`
+- `ConstructionStatus`
+
+**Ownership rules:**
+- Scheduler assigns carriers and reserves inputs.
+- Construction executor writes `ConstructionProgress`.
+
+**Versioning fields:**
+- `BuildStateTick`, `ReservationExpiryTick`.
+
+### System checklist
+**System order:**
+- Reservation → assignment → progress update → completion/cancel.
+
+**Input reads / output writes:**
+- Progress system reads reserved inputs, writes progress and completion events.
+
+**Determinism rules:**
+- Fixed-step delta only.
+- No partial output on stalled progress.
+
+**Recovery paths:**
+- Missing input stalls and emits reason code.
+- Cancel releases all reservations.
 
 ## How It Works
 

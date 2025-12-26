@@ -8,6 +8,34 @@
 
 **One-line description**: *A shared motivation & legacy spine that provides dreams, aspirations, desires, ambitions, and wishes for both individual entities (villagers, crew) and aggregates (villages, fleets, empires), tracking initiative, loyalty, and legacy points.*
 
+CONTRACT:AI.INTENT.V1
+
+## Depends on
+- CONTRACT:NEEDS.CORE.V1
+
+## Provides
+- Stable intent selection rules and commitment behavior.
+
+## Consumes
+- Motivation slots, drive values, virtual sensor inputs.
+
+## Invariants
+1. Intent changes respect commit windows and swap thresholds.
+2. Interrupts do not pre-empt unless priority-gated.
+3. No valid intent results in `ActiveSlotIndex = 255`.
+
+## Allowed staleness
+- Intent selection may run at a reduced cadence; action execution is immediate.
+
+## Failure handling
+- If scoring is invalid or empty, fall back to idle intent.
+
+## Telemetry/Test hooks
+- Intent switch count, idle intent count, average score delta on swap.
+
+## Contract test
+- Intent selection never swaps within `MinCommitTicks` and respects `SwapThreshold`.
+
 ## Core Concept
 
 The Motivation & Legacy system provides a game-agnostic framework for entities to have goals, aspirations, and ambitions. It supports five layers of motivation (Dreams, Aspirations, Desires, Ambitions, Wishes), tracks initiative and loyalty, and awards legacy points for completing locked goals. The system integrates with alignment systems (pure/corrupt, lawful/chaotic, good/evil) and supports modding through data-driven catalogs.
@@ -44,6 +72,14 @@ The Motivation & Legacy system provides a game-agnostic framework for entities t
    - Might/Magic (-100..100)
    - Vengeful/Forgiving (-100..100)
    - Craven/Bold (-100..100)
+
+### Intent Arbitration Contract (Tightening)
+
+- **Commit window**: once an intent is chosen, it stays until `CommitUntilTick` is reached.
+- **Swap threshold**: a new intent must beat the current score by `SwapThreshold` to replace it.
+- **Min commit**: after a switch, lock intent for `MinCommitTicks` to avoid flip-flop.
+- **Interrupt gate**: only `Critical` or higher-priority interrupts can pre-empt before commit.
+- **No intent fallback**: if nothing clears thresholds, set `ActiveSlotIndex = 255` and keep idle.
 
 ### Parameters and Variables
 
@@ -237,8 +273,6 @@ public partial struct MyCompletionSystem : ISystem
 
 *Last Updated: [Current Date]*  
 *Document Owner: [AI Assistant]*
-
-
 
 
 

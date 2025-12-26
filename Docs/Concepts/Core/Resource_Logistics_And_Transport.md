@@ -6,6 +6,35 @@
 
 ---
 
+CONTRACT:RESOURCE.LOGISTICS.V1
+
+## Depends on
+- CONTRACT:PRODUCTION.ACCOUNTING.V1
+- CONTRACT:QUALITY.ITEM.V1
+
+## Provides
+- Deterministic logistics execution with reservations and shipment states.
+
+## Consumes
+- Resource catalogs, container capacities, route graphs, behavior profiles.
+
+## Invariants
+1. Reservations prevent double-spend.
+2. Shipments advance through explicit state transitions only.
+3. Batch attributes are immutable per BatchId.
+
+## Allowed staleness
+- Routing cache can be stale for up to one planning cadence window.
+
+## Failure handling
+- Orders/shipments record failure reason codes and release reservations.
+
+## Telemetry/Test hooks
+- Reservation counts, failed shipment reasons, delivery latency.
+
+## Contract test
+- Conservation: allocated + delivered + reserved never exceeds available inventory.
+
 ## 1. Purpose
 
 Provide a **game-agnostic logistics kernel** that supports:
@@ -27,7 +56,52 @@ The kernel defines **data + execution contracts**; gameplay meaning is injected 
 4. **Physical by default**: transports exist as entities and can be interacted with; abstraction is supported as an optional representation layer.
 5. **Knowledge-driven decisions**: "cut supply line" and risk is mediated by comms/intel; ignorance is allowed and meaningful.
 
+### 2.5 Execution Contract (Tightening)
+
+- **Conservation**: every resource delta is accounted for via reservation → transfer → release; no silent creation/destruction outside production/consumption systems.
+- **Reservation TTL**: reservations must have expiry and explicit cancellation paths to avoid deadlock.
+- **Single authority**: stores are authoritative; ECS buffers are mirrors for presentation only.
+- **No teleporting**: abstract shipments still advance through explicit state transitions (Planned → Dispatched → InTransit → Delivered).
+- **Reason codes**: failed orders/shipments record a failure reason (blocked, no capacity, route invalid, interdicted).
+
 ---
+
+## Appendix: Resource Logistics Checklist (CONTRACT:RESOURCE.LOGISTICS.V1)
+
+### Component checklist
+**Required components:**
+- `TransportRef` (ShipmentId/NodeId/BehaviorProfileId)
+- `InventoryHandle` or store-backed container link
+
+**Optional components (facet/module style):**
+- `RouteRef`
+- `ReservationHandle`
+- `ServiceReservation`
+- `KnowledgeVersion`
+
+**Ownership rules:**
+- Logistics planner writes Orders/Shipments (store-backed).
+- Transport executor mutates shipment state and reservations.
+- Inventory systems are sole writers of container contents.
+
+**Versioning fields:**
+- `RouteVersion`, `KnowledgeVersion`, `ShipmentStateTick`, `ReservationExpiryTick`.
+
+### System checklist
+**System order:**
+- Order planning → reservation → dispatch → transport execution → delivery → release.
+
+**Input reads / output writes:**
+- Planner reads inventory and routes, writes Orders/Shipments.
+- Executor reads Shipment state, writes transit progress and delivery events.
+
+**Determinism rules:**
+- Stable ID assignment only.
+- No random routing without seed and profile.
+
+**Recovery paths:**
+- On interdiction or capacity failure, cancel shipment and release reservations.
+- On route invalidation, replan or fail with reason code.
 
 ## 3. Core Primitives (First-Class Concepts)
 

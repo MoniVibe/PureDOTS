@@ -949,6 +949,202 @@ These are **universal modifications** that can apply across multiple tech famili
 - **Ambient + Explosion:** Explosion creates ambient effect, persistent damage
 - **Ambient + Flamethrower:** Persistent fire field, extreme area denial
 
+### Piercing / Penetration
+
+**Applies To:** Weapons (projectiles, beams, spells), Damage types, Critical strikes
+
+**Mechanical Expression:**
+- **Piercing:** Projectiles travel with sufficient mass and velocity to completely pierce through lower-tech shields and armor
+- **Penetration:** Projectiles pass completely through vessel/structure, causing critical damage
+- **Critical Strike:** Piercing projectiles almost always cause critical strikes, deadly to any vessel
+- **Tech Tier Mitigation:** Higher tech tier armor and shields (specifically hardiness stat) can mitigate piercing
+
+**Outlook Influence:**
+- **Warlike:** Prefers piercing (maximum damage, critical strikes)
+- **Authoritarian:** Prefers piercing (surgical, precise elimination)
+- **Competitive:** Prefers piercing (tactical advantage, critical damage)
+- **Materialist:** Prefers piercing (efficient, high damage per shot)
+- **Peaceful:** May avoid piercing (too deadly, non-lethal preferred)
+
+**Mechanical Details:**
+- **Mass + Velocity:** Requires sufficient projectile mass and velocity to pierce
+- **Tech Tier Check:** Piercing effectiveness vs target's tech tier
+- **Hardiness Mitigation:** Higher hardiness stat reduces piercing chance/damage
+- **Critical Strike:** Piercing projectiles have high critical strike chance
+- **Through-and-Through:** Projectiles pass completely through target, can hit multiple targets in line
+
+**Examples:**
+- **Piercing Railgun:** High-mass, high-velocity projectile, pierces through lower-tech vessels
+- **Piercing Projectiles:** Heavy projectiles that penetrate shields and armor
+- **Piercing Beams:** Focused beams that pierce through defenses
+- **Piercing Spells:** Magic that pierces through magical defenses (Godgame)
+
+**Tech Tier Interaction:**
+- **Lower Tech Target:** Piercing projectiles completely penetrate, almost always critical strike
+- **Equal Tech Target:** Piercing effectiveness reduced, hardiness stat mitigates
+- **Higher Tech Target:** Hardiness stat significantly reduces piercing chance, may not pierce at all
+- **Hardiness Scaling:** Higher hardiness = lower piercing chance, lower critical strike damage
+
+**Combination Potential:**
+- **Piercing + Armor Piercing:** Extreme penetration, ignores armor completely
+- **Piercing + Focused:** Concentrated piercing, maximum penetration
+- **Piercing + Multishot:** Multiple piercing projectiles, can pierce through multiple targets
+- **Piercing + Delayed Explosion:** Pierce through, then explode inside target
+- **Piercing + Phasing:** Phase through defenses, then pierce through target
+- **Piercing + Sniper:** Long-range piercing, critical strikes at distance
+- **Piercing + Rapid Fire:** Rapid piercing barrage, sustained critical damage
+
+**Strategic Considerations:**
+- **Tech Advantage:** Piercing weapons are devastating vs lower-tech enemies
+- **Tech Parity:** Less effective vs equal-tech enemies with high hardiness
+- **Tech Disadvantage:** May be ineffective vs higher-tech enemies
+- **Critical Strike Focus:** Best used for eliminating high-value targets
+- **Through-and-Through:** Can hit multiple targets in line, tactical positioning
+
+**Space4X Applications:**
+- **Capital Ship Killers:** Piercing weapons effective vs large, lower-tech vessels
+- **Fleet Composition:** Mix of piercing and non-piercing weapons for versatility
+- **Tech Progression:** Piercing becomes less effective as enemies advance tech tiers
+- **Hardiness Investment:** Defensive strategy focuses on hardiness to counter piercing
+
+**Godgame Applications:**
+- **Siege Weapons:** Piercing siege weapons effective vs lower-tech fortifications
+- **Armor Penetration:** Piercing weapons bypass lower-tier armor completely
+- **Critical Strikes:** Almost always critical, deadly to any target
+- **Magical Piercing:** Spells that pierce through magical defenses
+
+### Impulse / Force Application
+
+**Applies To:** Weapons (all types), Damage mitigation, Structural damage
+
+**Mechanical Expression:**
+- **Impulse:** Only armor-mitigated damage applies impulse/force to vessels (shields do NOT apply impulse)
+- **Force Application:** Kinetic energy transfers as impulse when armor mitigates damage
+- **Vessel Movement:** Small or large impulse can move/push vessels
+- **Structural Failure:** Excessive impulse can cause structural failure at weak points
+- **Irreparable Damage:** Vessels destroyed by structural failure can only be salvaged, not repaired (depending on severity)
+
+**Shield Mitigation Mechanics:**
+- **Shield Interaction:** Shields mitigate damage and deplete, but allow some mass/velocity through
+- **Projectile Slowing:** Projectile slows down as it impacts shield (visual: projectile deceleration)
+- **Collision Damage:** Slowed projectile then deals collision damage to vessel itself
+- **No Impulse from Shields:** Shields do NOT apply impulse to vessels (shields only slow projectiles)
+- **Shield Depletion:** Shield absorbs energy, depletes, but projectile continues through
+- **Collision Impulse:** Collision damage (direct hits to vessel) DOES apply impulse (logically, physical impact applies force)
+
+**Armor Mitigation Mechanics:**
+- **Armor Interaction:** Armor mitigates damage and applies impulse to vessel
+- **Impulse Application:** Armor transfers kinetic energy as impulse when blocking damage
+- **Force Transfer:** Armor absorbs impact, transfers force to vessel structure
+- **Impulse Calculation:** Based on projectile mass, velocity, and armor-mitigated damage amount
+
+**Collision Damage Mechanics:**
+- **Direct Hits:** Projectiles that hit vessel directly (after passing through shields or bypassing defenses) apply collision damage
+- **Collision Impulse:** Collision damage logically applies impulse (physical impact transfers force)
+- **Force Application:** Direct hits to vessel structure transfer kinetic energy as impulse
+- **Impulse Calculation:** Based on projectile mass, velocity, and collision damage amount
+
+**Weapon Type Impulse Hierarchy:**
+- **Gravitic:** Highest impulse (gravitational forces, maximum force application)
+- **Collision:** Very high impulse (direct physical impact, high force transfer)
+- **Kinetic:** High impulse (kinetic energy, significant force application)
+- **Explosive:** Moderate impulse (explosive force, area effect impulse)
+- **Energy/Beam:** Low impulse (energy transfer, minimal force)
+- **Other Types:** Minimal impulse (various damage types, low force application)
+
+**Outlook Influence:**
+- **Warlike:** Prefers high-impulse weapons (knockback, structural damage)
+- **Materialist:** Prefers efficient impulse (cost-effective force application)
+- **Competitive:** Prefers high-impulse (tactical advantage, positioning)
+- **Peaceful:** May prefer low-impulse (non-destructive, controlled)
+
+**Mechanical Details:**
+- **Shield Mitigation:** Shields absorb damage, slow projectiles, but do NOT apply impulse (shields only slow)
+- **Armor Mitigation:** Armor blocks damage AND applies impulse to vessel
+- **Collision Damage:** Direct hits to vessel (collision damage) DO apply impulse (logically, physical impact applies force)
+- **Impulse Sources:** Armor-mitigated damage AND collision damage both apply impulse
+- **Impulse Calculation:** Based on weapon type (gravitic >> collision > kinetic > explosive > others), projectile mass, velocity, and damage amount (armor-mitigated or collision)
+- **Small Impulse:** Minor vessel movement, no structural damage
+- **Large Impulse:** Significant vessel movement, potential structural stress
+- **Excessive Impulse:** Can cause structural failure at weak points
+- **Structural Weaknesses:** Vessels have weak points that fail under excessive force
+- **Salvage Only:** Vessels destroyed by structural failure cannot be repaired, only salvaged
+
+**Impulse Effects:**
+- **Vessel Movement:** Impulse pushes vessels, affects positioning
+- **Structural Stress:** Accumulated impulse causes structural stress
+- **Weak Point Failure:** Excessive impulse causes failure at structural weaknesses
+- **Catastrophic Failure:** Extreme impulse can rip vessels apart
+- **Severity Levels:** Light (movement only), Moderate (structural stress), Severe (partial failure), Catastrophic (complete destruction)
+
+**Structural Failure Mechanics:**
+- **Weak Points:** Vessels have structural weak points (joints, connections, stress points)
+- **Force Accumulation:** Impulse accumulates at weak points over time
+- **Failure Threshold:** Each weak point has a failure threshold
+- **Progressive Failure:** Weak points fail progressively as impulse exceeds thresholds
+- **Catastrophic Cascade:** Multiple weak point failures can cause complete structural collapse
+
+**Salvage vs Repair:**
+- **Repairable Damage:** Normal combat damage can be repaired
+- **Structural Failure:** Damage from structural failure cannot be repaired
+- **Salvage Only:** Structurally destroyed vessels can only be salvaged for materials
+- **Severity Dependent:** Light structural damage may be repairable, severe damage is salvage-only
+- **Irreversible:** Once structural integrity is lost, vessel cannot be restored
+
+**Examples:**
+- **High-Impulse Railgun (Kinetic):** Massive projectile applies huge impulse when armor mitigates
+- **Gravitic Weapon:** Highest impulse, gravitational forces apply maximum force
+- **Collision Weapon:** Very high impulse, direct physical impact
+- **Explosive Missiles:** Moderate impulse from explosive force (when armor mitigates)
+- **Force Beams (Energy):** Low impulse, minimal force application
+- **Impulse Spells:** Magic that applies force/knockback (Godgame)
+
+**Shield vs Armor vs Collision Examples:**
+- **Shield Only:** Projectile hits shield → slows down → continues through → deals collision damage to vessel → collision damage applies impulse (shield does not apply impulse, but collision does)
+- **Armor Mitigation:** Projectile hits armor → armor blocks damage → applies impulse to vessel → may cause structural stress
+- **Collision Direct Hit:** Projectile bypasses defenses → hits vessel directly → deals collision damage → collision damage applies impulse
+- **Combined (Shield + Armor):** Projectile hits shield → slows → hits armor → armor applies impulse (shield does not, but if projectile penetrates armor, collision damage also applies impulse)
+- **Combined (Shield + Collision):** Projectile hits shield → slows → passes through → hits vessel → collision damage applies impulse (shield slowed it but did not apply impulse)
+
+**Combination Potential:**
+- **Impulse + Explosion:** Explosive impulse (moderate), massive force application
+- **Impulse + Gravitic:** Maximum impulse, gravitational force application
+- **Impulse + Collision:** Very high impulse, direct physical impact
+- **Impulse + Kinetic:** High impulse, kinetic energy transfer
+- **Impulse + Rapid Fire:** Sustained impulse, continuous force application
+- **Impulse + Multishot:** Multiple impulse applications, cumulative force
+- **Impulse + Piercing:** Piercing applies impulse when armor mitigates (after penetration)
+- **Impulse + Delayed Explosion:** Impulse then explosion, structural stress then failure
+- **Impulse + Focused:** Concentrated impulse, maximum force at single point
+
+**Strategic Considerations:**
+- **Positioning Control:** High-impulse weapons can control enemy positioning
+- **Structural Warfare:** Focus on structural weaknesses for catastrophic failure
+- **Defensive Strategy:** Reinforce structural weak points to resist impulse
+- **Salvage Operations:** Destroyed vessels provide salvage materials
+- **Force Accumulation:** Sustained impulse can cause progressive structural failure
+
+**Space4X Applications:**
+- **Ship Movement:** Impulse can push ships out of position
+- **Structural Engineering:** Ship design affects structural integrity
+- **Combat Tactics:** Use impulse to control enemy ship positioning
+- **Salvage Economy:** Destroyed ships provide salvage materials
+- **Fleet Composition:** Mix of high/low-impulse weapons for different roles
+
+**Godgame Applications:**
+- **Siege Warfare:** High-impulse siege weapons can destroy fortifications
+- **Structural Damage:** Buildings/structures can be destroyed by excessive force
+- **Knockback Effects:** Impulse can push entities/structures
+- **Salvage Operations:** Destroyed structures provide materials
+- **Force Magic:** Spells that apply force/knockback effects
+
+**Structural Weakness System:**
+- **Weak Point Identification:** Vessels have identifiable structural weak points
+- **Stress Accumulation:** Impulse accumulates stress at weak points
+- **Failure Progression:** Weak points fail progressively as stress increases
+- **Design Impact:** Vessel design determines weak point locations
+- **Reinforcement:** Can reinforce weak points to increase failure threshold
+
 ---
 
 ## Divergent Tech Flavors

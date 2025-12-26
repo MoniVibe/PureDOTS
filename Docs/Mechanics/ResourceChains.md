@@ -8,6 +8,36 @@
 
 **One-line description**: A concise set of resource transformations keeps production interesting without overloading players with materials.
 
+CONTRACT:RESOURCE.CHAINS.V1
+
+## Depends on
+- CONTRACT:RESOURCE.LOGISTICS.V1
+- CONTRACT:PRODUCTION.ACCOUNTING.V1
+- CONTRACT:QUALITY.ITEM.V1
+
+## Provides
+- Deterministic resource family taxonomy and recipe boundaries.
+
+## Consumes
+- Resource catalogs, recipe catalogs, facility throughput.
+
+## Invariants
+1. Resource types are stable IDs across save/load.
+2. Quality/rarity/decay are quantized.
+3. Recipes use fixed inputs/outputs per version.
+
+## Allowed staleness
+- Catalog updates apply on load or explicit hot-reload only.
+
+## Failure handling
+- Invalid recipes fail closed and emit catalog errors; no partial outputs.
+
+## Telemetry/Test hooks
+- Recipe execution counts, invalid recipe count, batch split count.
+
+## Contract test
+- Recipe execution never produces negative inventory or mismatched outputs.
+
 ## Core Concept
 
 The economy relies on a handful of intuitive resource families that flow from mining to processing to construction. We emphasise depth through combinations rather than volume of unique items, enabling players to understand supply lines quickly while still making meaningful tradeoffs.
@@ -37,6 +67,13 @@ These placeholders set expectations for future expansion without committing to e
 - Facilities may specialise (e.g., refinery vs fab) or operate as hybrids on mobile carriers.
 - Recipes remain data-driven so modders can define alternate inputs if they alter starting conditions.
 - Conversion ratios stay simple (e.g., 2:1 raw to refined) unless a tech upgrade deliberately breaks the rule.
+
+## Resource Logic Contract (Tightening)
+
+- **Stable IDs**: `ResourceTypeId` values are stable across save/load and catalog merges.
+- **Quantized grades**: quality/rarity/decay are quantized to prevent infinite lot fragmentation.
+- **Recipe determinism**: inputs and outputs are fixed per recipe version; upgrades swap the recipe, not its math.
+- **Yield gates**: higher-tier facilities can improve yield, never silently change inputs.
 
 ## Integration Touchpoints
 

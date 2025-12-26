@@ -8,9 +8,78 @@
 
 **One-line description**: Represent crafted items (wagons, weapons, ships) as compositions of DOTS-friendly parts whose quality, rarity, and durability aggregate into the final product’s performance.
 
+CONTRACT:QUALITY.ITEM.V1
+
+## Depends on
+- CONTRACT:RESOURCE.CHAINS.V1
+
+## Provides
+- Deterministic quality/rarity aggregation rules for composite items.
+
+## Consumes
+- Part buffers, material tags, recipe constraints.
+
+## Invariants
+1. Quality/rarity are quantized tiers.
+2. Aggregation is deterministic and weighted by part roles.
+3. Durability caps effective quality when parts are broken.
+
+## Allowed staleness
+- Part quality changes apply on repair/craft ticks only.
+
+## Failure handling
+- Invalid part buffers or missing parts cause craft failure (no output).
+
+## Telemetry/Test hooks
+- Quality tier distribution, durability cap hits, failed craft reasons.
+
+## Contract test
+- Aggregated quality stays within min/max tier bounds for any part set.
+
 ## Core Concept
 
 Every manufactured product is an entity with a `CompositeItem` component referencing its part buffers. Parts (wheels, axles, bolts, chassis plates, etc.) carry lightweight data—quality, rarity, durability, material tags—that the simulation uses to compute wear, efficiency, and resale value. This keeps the system deterministic and Burst-friendly while still expressing high-level concepts like “legendary mithril axles” or “cheap iron bolts”.
+
+## Quality Contract (Tightening)
+
+- **Quantized tiers**: quality/rarity are discrete grades (no floating drift).
+- **Weighted aggregation**: final quality is a deterministic weighted sum of part grades.
+- **Durability gating**: a part at 0 durability can cap the final effective quality.
+- **Recipe compatibility**: crafting only consumes inputs that meet minimum quality requirements.
+
+## Appendix: Item Quality Checklist (CONTRACT:QUALITY.ITEM.V1)
+
+### Component checklist
+**Required components:**
+- `CompositeItem`
+- `ItemPart` buffer
+
+**Optional components (facet/module style):**
+- `ItemQualitySummary`
+- `RepairHistory`
+- `MaterialTagMask`
+
+**Ownership rules:**
+- Craft/repair systems are sole writers of part durability and quality tiers.
+- Aggregation system writes `CompositeItem` summary fields only.
+
+**Versioning fields:**
+- `QualityVersion`, `LastRepairTick`.
+
+### System checklist
+**System order:**
+- Craft/repair → aggregation → presentation/inspection.
+
+**Input reads / output writes:**
+- Aggregator reads `ItemPart` buffer, writes `CompositeItem` summary.
+
+**Determinism rules:**
+- Quantized tiers only; no random quality without seed.
+- Weighted sums must be stable ordering.
+
+**Recovery paths:**
+- Missing required parts fails craft and emits a reason code.
+- Broken parts cap effective quality.
 
 ## Data Representation
 

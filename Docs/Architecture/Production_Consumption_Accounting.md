@@ -21,6 +21,79 @@ Related:
 
 ---
 
+CONTRACT:PRODUCTION.ACCOUNTING.V1
+
+## Depends on
+- CONTRACT:RESOURCE.LOGISTICS.V1
+- CONTRACT:QUALITY.ITEM.V1
+
+## Provides
+- Event-driven accounting for actual vs reference flows.
+
+## Consumes
+- Production/consumption events, facility capacity, resource catalogs.
+
+## Invariants
+1. Actual and Reference are never merged into one value.
+2. Produced/Consumed events are integer units.
+3. Overflow never disappears without a loss event.
+
+## Allowed staleness
+- History windows can be coarse-grained by tiered bins.
+
+## Failure handling
+- Emit `ProductionStatus` reason codes and block progress when inputs or storage fail.
+
+## Telemetry/Test hooks
+- Working ratio per resource, blocked/starved counters.
+
+## Contract test
+- Accounting identity holds: inputs + work → outputs + byproducts within bounds.
+
+## 0.5 Production/Consumption Contract (Tightening)
+
+- **Order of operations**: consume inputs → reserve output capacity → emit `Produced` only when storage accepts it.
+- **Reason codes**: when output or input is blocked, emit a `ProductionStatus` reason (NoInput, NoPower, NoWorkforce, NoStorage).
+- **Partial ticks**: partial progress emits partial consumption; only completed craft emits production.
+- **No silent drops**: overflow must be routed to a loss sink event or blocked; never disappear.
+
+---
+
+## Appendix: Production/Accounting Checklist (CONTRACT:PRODUCTION.ACCOUNTING.V1)
+
+### Component checklist
+**Required components:**
+- `ProductionEvent` / `ConsumptionEvent` buffers (or store-backed equivalents)
+- `AccountingScopeRef`
+
+**Optional components (facet/module style):**
+- `ProductionStatus`
+- `ReferenceRate`
+- `HistoryWindow`
+
+**Ownership rules:**
+- Producers emit events only; accounting reducer owns totals.
+- Reference capacity is computed from installed recipes, not runtime events.
+
+**Versioning fields:**
+- `AccountingTick`, `HistoryWindowIndex`, `ReferenceVersion`.
+
+### System checklist
+**System order:**
+- Production execution → event emission → accounting reduce → history window update.
+
+**Input reads / output writes:**
+- Execution systems read inventory and emit Produced/Consumed events.
+- Reducer reads events, writes scope counters and history bins.
+
+**Determinism rules:**
+- Integer units only; no float accumulation.
+- Single reducer per scope.
+
+**Recovery paths:**
+- On missing inputs, emit `ProductionStatus` and skip emission.
+- On overflow, emit loss event or block production with reason code.
+
 ## 1) Two views everywhere (the key UX lens)
 
 Every scope exposes **two parallel lenses**:
@@ -234,4 +307,3 @@ Use the existing compressed sim hooks to keep accounting meaningful under virtua
 ### Space4X
 - Scopes: module/facility → ship/station/colony → planet → faction/empire.
 - Outside-space logistics: import/export events are first-class (trade lanes, convoys, docking).
-

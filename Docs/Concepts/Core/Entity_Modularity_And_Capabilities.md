@@ -6,6 +6,34 @@
 
 ---
 
+CONTRACT:NEEDS.CORE.V1
+
+## Depends on
+- CONTRACT:AI.INTENT.V1
+
+## Provides
+- Deterministic needs decay and critical event emission.
+
+## Consumes
+- Fixed-step time, entity profiles, optional modifiers.
+
+## Invariants
+1. Needs decay uses fixed-step delta, not frame time.
+2. Critical events emit once per cooldown per threshold crossing.
+3. Only needs systems write `EntityNeeds`.
+
+## Allowed staleness
+- Needs evaluation can be throttled by fidelity tier; critical events remain immediate.
+
+## Failure handling
+- If thresholds are invalid, clamp needs and emit a validation warning.
+
+## Telemetry/Test hooks
+- Needs decay rate, critical event count, clamped value count.
+
+## Contract test
+- Priority-gated schedule overrides do not deadlock actions.
+
 ## Thesis
 
 Entities are **blank by default**: they have no behaviors and no presentation unless modules are explicitly attached.
@@ -129,6 +157,38 @@ PureDOTS includes opt-in “single tag” modules that bootstrap required compon
 - `PureDOTS.Runtime.Modularity.RelationsModuleTag` → adds relationship scaffolding (`PersonalRelation` buffer)
 - `PureDOTS.Runtime.Modularity.ProfileModuleTag` → adds profile scaffolding (`AlignmentTriplet`, `PersonalityAxes`, `MoraleState`, `BehaviorTuning`)
 - `PureDOTS.Runtime.Modularity.AgencyModuleTag` → adds agency scaffolding (`AgencySelf`, `ControlLink` buffer, `ResolvedControl` buffer)
+
+### Needs module contract (tightening)
+- **Deterministic decay**: needs tick by fixed-step delta, not frame time.
+- **Threshold events**: crossing critical thresholds emits `NeedCriticalEvent` once per cooldown.
+- **No hidden writers**: only the needs system mutates `EntityNeeds`; other systems use modifiers/events.
+- **AI binding**: needs feed `AIVirtualSensorSystem` via explicit sensor indices.
+
+### Needs module checklist (CONTRACT:NEEDS.CORE.V1)
+**Required components:**
+- `EntityNeeds` or `NeedEntry` buffer
+- `NeedsActivityState`
+
+**Optional components (facet/module style):**
+- `NeedCriticalEvent`
+- `NeedsModifier`
+- `NeedsSchedule`
+
+**Ownership rules:**
+- Needs decay system is sole writer of `EntityNeeds`.
+- Schedule system writes `NeedsSchedule` only.
+
+**Versioning fields:**
+- `NeedsTick`, `LastCriticalEventTick`.
+
+**System order:**
+- Needs update → critical events → AI virtual sensors.
+
+**Determinism rules:**
+- Fixed-step delta only; no frame-time drift.
+
+**Recovery paths:**
+- On invalid values, clamp and emit a validation warning.
 
 These are intended as the baseline pattern for future modules: **blank entity + one opt-in tag + bootstrap system**.
 

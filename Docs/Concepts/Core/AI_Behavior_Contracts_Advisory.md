@@ -8,9 +8,170 @@
 
 ---
 
+CONTRACT:AI.CORE.V1
+
+## Depends on
+- CONTRACT:AI.INTENT.V1
+- CONTRACT:NEEDS.CORE.V1
+- CONTRACT:RESOURCE.LOGISTICS.V1
+
+## Provides
+- Deterministic AI intent → task → action pipeline with interrupt recovery.
+
+## Consumes
+- Motivation intents, perception interrupts, needs events, resource reservations.
+
+## Invariants
+1. Intent selection obeys commit windows and swap thresholds.
+2. Action execution is single-writer and phase-driven.
+3. Interrupts are priority-gated and debounced.
+
+## Allowed staleness
+- Intent selection can lag by up to 10 ticks (cadence-controlled); action execution runs every tick.
+
+## Failure handling
+- On invariant breach, emit a failure interrupt and enter idle/fallback until revalidated.
+
+## Telemetry/Test hooks
+- Intent switch count, interrupt count, action failure reason codes.
+
+## Contract test
+- Interrupt recovery yields a valid next action within N ticks or enters idle/fallback.
+
 ## Purpose
 
 **Primary Goal:** Tighten foundational contracts so every new AI behavior is "just add an intent + a component" (not a rewrite). Before stacking more AI behaviors on top, ensure the foundation is solid, predictable, and performant.
+
+## 0. Behavior Loop Contracts (Tightened)
+
+This is the minimum contract for consistent AI behavior across entities and aggregates.
+
+### 0.1 Intent Selection Contract (Motivation/Utility)
+**Inputs (read-only):**
+- `MindInput` buffer (perception + needs + comms + environment)
+- `MotivationDrive` / `MotivationSlot` (goals/importance/locks)
+- `AIFidelityTier` + cadence controls (budgeted evaluation)
+
+**Outputs (single-writer):**
+- `MotivationIntent` (active intent id + score + commit-until tick)
+- Optional: `AICommand` (action index + target hints)
+
+**Rules:**
+- **Commitment window**: intent changes only when a better score exceeds `SwapThreshold` *and* `CommitUntilTick` has passed.
+- **Cooldown**: after an intent switch, lock for `MinCommitTicks` to prevent flip-flop.
+- **Interrupt priority**: interrupts can pre-empt intent only if `InterruptPriority >= CurrentIntentPriority`.
+- **Fallback**: if no intent exceeds threshold, set `ActiveSlotIndex = 255` and keep movement idle (do not thrash).
+
+### 0.2 Perception → Target → Action Contract
+**Inputs:**
+- `AISensorReading` + `PerceptionState` (budgeted, change-driven)
+- `TargetingPreferences` (range, filters, hostility, role constraints)
+
+**Outputs:**
+- `CurrentTarget` + `TargetPosition` on the agent
+- `PerceptionInterrupt` buffer entries on significant changes
+
+**Rules:**
+- **No world scans** in hot path. Perception uses spatial queries + change filtering.
+- **Target ownership**: only the targeting system writes `CurrentTarget` (single-writer).
+- **Target validity**: always validate entity existence and range each tick; on invalid, emit `LostTarget` interrupt and clear.
+
+### 0.3 Job/Role Execution Contract (Needs → Job → Task)
+**Inputs:**
+- `NeedsState` / `WorkRole` / `JobQueue` / `TaskTicket`
+- `MotivationIntent` (when behavior is goal-driven)
+
+**Outputs:**
+- `VillagerAIState` or domain-specific state machines
+- `TaskProgress` / `TaskResult` buffers
+
+**Rules:**
+- **Single job owner**: job selection writes a `CurrentJobId`; only the job execution system mutates task progress.
+- **Task lifecycle**: `Queued → Claimed → Active → Completed/Failed` with a hard timeout per task.
+- **Needs override**: critical needs can pre-empt jobs via interrupt with a cooldown to avoid ping-pong.
+
+### 0.4 Aggregate AI Contract (Bands/Fleets/Villages)
+**Inputs:**
+- Aggregate sensors + needs + resource telemetry
+- `AggregateIntent` / `AggregateGoal` buffers
+
+**Outputs:**
+- `AggregateDirective` (orders to sub-entities)
+- `AggregateStatus` (progress, blockers, cooldown)
+
+**Rules:**
+- **Aggregation first**: aggregate AI writes a small set of directives; individuals do not bypass them unless `AutonomyFlag` is set.
+- **Directive expiry**: directives must include TTL; stale directives are cleared automatically.
+- **Resource throttling**: aggregate actions that consume resources must check `ResourceBudget` to avoid spam.
+
+### 0.5 Action Execution Contract (Intent → Task → Action)
+**Inputs:**
+- `MotivationIntent` / `AICommand` / `CurrentTarget`
+- `TaskTicket` / `ActionRequest`
+- Optional: `ResourceReservation` / `AccessPermit`
+
+**Outputs:**
+- `AIActionState` (action id + phase + start tick)
+- `ActionProgress` / `ActionResult` buffers
+
+**Rules:**
+- **Single writer**: only the action executor writes `AIActionState` and `ActionProgress`.
+- **Preconditions first**: if an action needs resources or access, it must claim them before `Active`.
+- **No silent teleport**: movement or interaction must emit `ActionProgress` (even if abstracted).
+- **Failure channel**: on failure, emit `ActionFailed` interrupt with a reason code and apply a short cooldown.
+
+### 0.6 Interrupts & Recovery Contract
+**Inputs:**
+- `PerceptionInterrupt` / `TaskInterrupt` / `NeedCriticalEvent`
+
+**Outputs:**
+- `MotivationIntent` (replan or hold)
+- `AIActionState` reset (when required)
+
+**Rules:**
+- **Debounce**: interrupts are ignored until `MinInterruptTicks` since the last interrupt.
+- **Priority gate**: interrupts must exceed `CurrentIntentPriority` unless tagged `Critical`.
+- **Recovery path**: failed pathing or missing resources should pick a fallback intent (idle/seek) rather than thrash.
+
+---
+
+## Appendix: AI Execution/Interrupt Checklist (CONTRACT:AI.EXECUTION.V1)
+
+### Component checklist
+**Required components:**
+- `MotivationIntent`
+- `AIActionState`
+- `TaskTicket` or `ActionRequest`
+
+**Optional components (facet/module style):**
+- `AICommand`
+- `CurrentTarget` / `TargetPosition`
+- `PerceptionInterrupt` / `NeedCriticalEvent`
+- `ResourceReservation` / `AccessPermit`
+
+**Ownership rules:**
+- Intent selection writes `MotivationIntent` in Simulation.
+- Action executor is the sole writer of `AIActionState` and `ActionProgress`.
+- Perception systems are sole writers of `CurrentTarget`.
+
+**Versioning fields:**
+- `LastIntentTick`, `CommitUntilTick`, `ActionStartTick`, `InterruptSequence`.
+
+### System checklist
+**System order:**
+- `AIVirtualSensorSystem` → intent selection → target selection → action execution → result/interrupt publish.
+
+**Input reads / output writes:**
+- Intent selection reads `MindInput`, writes `MotivationIntent`.
+- Action execution reads `MotivationIntent`, `TaskTicket`, writes `AIActionState`, `ActionProgress`.
+
+**Determinism rules:**
+- No random without a stable seed.
+- No allocations in hot loops.
+
+**Recovery paths:**
+- Missing target or resources triggers `ActionFailed` interrupt and cooldown.
+- If no viable intent, set idle and re-evaluate on next cadence.
 
 **Focus Areas:**
 1. **Entity lifecycle** — Structural changes vs state toggles
@@ -1183,4 +1344,3 @@ public partial struct DebugBudgetSystem : ISystem
 **For Implementers:** Focus on Phase 1 (entity lifecycle, transform, physics) for immediate correctness  
 **For Architects:** Review Phase 2/3 (performance, coordination) for scalability roadmap  
 **For Designers:** Consider debug overlays and test contracts when designing new behaviors
-
