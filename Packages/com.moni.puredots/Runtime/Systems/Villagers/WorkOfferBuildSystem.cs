@@ -77,6 +77,7 @@ namespace PureDOTS.Systems.Villagers
             var removeExpiredJob = new RemoveExpiredOffersJob
             {
                 CurrentTick = currentTick,
+                SourceCapLookup = _sourceCapLookup,
                 Ecb = ecb.AsParallelWriter()
             };
             state.Dependency = removeExpiredJob.ScheduleParallel(state.Dependency);
@@ -127,6 +128,7 @@ namespace PureDOTS.Systems.Villagers
         public partial struct RemoveExpiredOffersJob : IJobEntity
         {
             public uint CurrentTick;
+            [NativeDisableParallelForRestriction] public ComponentLookup<OfferSourceCap> SourceCapLookup;
             public EntityCommandBuffer.ParallelWriter Ecb;
             
             public void Execute([ChunkIndexInQuery] int chunkIndex, Entity entity, in WorkOffer offer)
@@ -134,6 +136,15 @@ namespace PureDOTS.Systems.Villagers
                 // Remove offers that have expired (ExpiresAtTick > 0 and CurrentTick >= ExpiresAtTick)
                 if (offer.ExpiresAtTick > 0 && CurrentTick >= offer.ExpiresAtTick)
                 {
+                    if (offer.Target != Entity.Null && SourceCapLookup.HasComponent(offer.Target))
+                    {
+                        var cap = SourceCapLookup[offer.Target];
+                        if (cap.CurrentOpenOffers > 0)
+                        {
+                            cap.CurrentOpenOffers--;
+                        }
+                        SourceCapLookup[offer.Target] = cap;
+                    }
                     Ecb.DestroyEntity(chunkIndex, entity);
                 }
             }
@@ -305,4 +316,3 @@ namespace PureDOTS.Systems.Villagers
         }
     }
 }
-

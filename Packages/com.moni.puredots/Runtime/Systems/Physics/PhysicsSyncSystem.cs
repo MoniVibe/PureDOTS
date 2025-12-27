@@ -82,8 +82,7 @@ namespace PureDOTS.Systems.Physics
             public void Execute(
                 in LocalTransform transform,
                 in RequiresPhysics requiresPhysics,
-                ref PhysicsVelocity physicsVelocity,
-                in LocalToWorld localToWorld)
+                ref PhysicsVelocity physicsVelocity)
             {
                 // For kinematic bodies, we don't need to set velocity
                 // The physics system will use LocalTransform directly
@@ -185,4 +184,3 @@ namespace PureDOTS.Systems.Physics
         }
     }
 }
-

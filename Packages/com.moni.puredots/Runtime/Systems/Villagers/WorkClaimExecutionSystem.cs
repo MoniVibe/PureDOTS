@@ -28,7 +28,7 @@ namespace PureDOTS.Systems.Villagers
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _offerLookup = state.GetComponentLookup<WorkOffer>(true);
+            _offerLookup = state.GetComponentLookup<WorkOffer>(false);
             _claimLookup = state.GetComponentLookup<WorkClaim>(true);
             _resourceStateLookup = state.GetComponentLookup<ResourceSourceState>(true);
             _storehouseLookup = state.GetComponentLookup<StorehouseInventory>(true);
@@ -82,7 +82,7 @@ namespace PureDOTS.Systems.Villagers
         [BurstCompile]
         public partial struct ExecuteClaimsJob : IJobEntity
         {
-            [ReadOnly] public ComponentLookup<WorkOffer> OfferLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<WorkOffer> OfferLookup;
             [ReadOnly] public ComponentLookup<ResourceSourceState> ResourceStateLookup;
             [ReadOnly] public ComponentLookup<StorehouseInventory> StorehouseLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
@@ -115,8 +115,7 @@ namespace PureDOTS.Systems.Villagers
                 // Check if target still exists
                 if (offer.Target == Entity.Null || !TransformLookup.HasComponent(offer.Target))
                 {
-                    claim = default;
-                    job.Phase = VillagerJob.JobPhase.Idle;
+                    ReleaseOffer(ref claim, ref job, ref aiState);
                     return;
                 }
                 
@@ -189,8 +188,8 @@ namespace PureDOTS.Systems.Villagers
                         aiState.CurrentState = VillagerAIState.State.Idle;
                         aiState.CurrentGoal = VillagerAIState.Goal.None;
                         
-                        // Release claim
-                        claim = default;
+                        // Release claim + expire offer so we don't loop the same task
+                        CompleteOffer(ref claim);
                         break;
                         
                     case VillagerJob.JobPhase.Completed:
@@ -198,11 +197,45 @@ namespace PureDOTS.Systems.Villagers
                         // Reset for next job
                         job.Phase = VillagerJob.JobPhase.Idle;
                         job.Type = VillagerJob.JobType.None;
-                        claim = default;
+                        CompleteOffer(ref claim);
                         break;
                 }
+            }
+
+            private void ReleaseOffer(ref WorkClaim claim, ref VillagerJob job, ref VillagerAIState aiState)
+            {
+                if (claim.Offer != Entity.Null && OfferLookup.HasComponent(claim.Offer))
+                {
+                    var offer = OfferLookup[claim.Offer];
+                    if (offer.Taken > 0)
+                    {
+                        offer.Taken--;
+                    }
+                    OfferLookup[claim.Offer] = offer;
+                }
+
+                claim = default;
+                job.Phase = VillagerJob.JobPhase.Idle;
+                job.Type = VillagerJob.JobType.None;
+                aiState.CurrentState = VillagerAIState.State.Idle;
+                aiState.CurrentGoal = VillagerAIState.Goal.None;
+            }
+
+            private void CompleteOffer(ref WorkClaim claim)
+            {
+                if (claim.Offer != Entity.Null && OfferLookup.HasComponent(claim.Offer))
+                {
+                    var offer = OfferLookup[claim.Offer];
+                    if (offer.Taken > 0)
+                    {
+                        offer.Taken--;
+                    }
+                    offer.ExpiresAtTick = math.max(offer.ExpiresAtTick, CurrentTick + 30u);
+                    OfferLookup[claim.Offer] = offer;
+                }
+
+                claim = default;
             }
         }
     }
 }
-

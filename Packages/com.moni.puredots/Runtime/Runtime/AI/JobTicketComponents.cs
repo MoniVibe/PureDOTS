@@ -30,11 +30,19 @@ namespace PureDOTS.Runtime.AI
     {
         public JobTicketType Type;
         public JobTicketState State;
+        public Entity SourceEntity;
         public Entity TargetEntity;
+        public Entity DestinationEntity;
         public Entity Assignee;
         public ushort ResourceTypeIndex;
+        public float WorkAmount;
+        public byte RequiredWorkers;
+        public byte MinWorkers;
+        public byte IsSingleItem;
+        public float ItemMass;
         public uint ClaimExpiresTick;
         public uint LastStateTick;
+        public uint BatchKey;
         public ulong JobKey;
     }
 
@@ -45,5 +53,21 @@ namespace PureDOTS.Runtime.AI
     {
         public Entity Ticket;
         public uint CommitTick;
+    }
+
+    /// <summary>
+    /// Ordered batch of job tickets to execute in sequence.
+    /// </summary>
+    public struct JobBatchEntry : IBufferElementData
+    {
+        public Entity Ticket;
+    }
+
+    /// <summary>
+    /// Group membership for cooperative job tickets.
+    /// </summary>
+    public struct JobTicketGroupMember : IBufferElementData
+    {
+        public Entity Villager;
     }
 }

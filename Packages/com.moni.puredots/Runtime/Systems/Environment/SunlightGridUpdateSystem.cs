@@ -216,10 +216,11 @@ namespace PureDOTS.Systems.Environment
                 }
             }
 
-            if (volumeEnabled != 0 && state.EntityManager.HasComponent<LocalToWorld>(volumeEntity))
+            if (volumeEnabled != 0 && state.EntityManager.HasComponent<LocalTransform>(volumeEntity))
             {
-                var localToWorld = state.EntityManager.GetComponentData<LocalToWorld>(volumeEntity);
-                volumeWorldToLocal = math.inverse(localToWorld.Value);
+                var localTransform = state.EntityManager.GetComponentData<LocalTransform>(volumeEntity);
+                var volumeLocalToWorld = float4x4.TRS(localTransform.Position, localTransform.Rotation, new float3(localTransform.Scale));
+                volumeWorldToLocal = math.inverse(volumeLocalToWorld);
             }
 
             chunkLookup = BuildChunkLookup(ref state);

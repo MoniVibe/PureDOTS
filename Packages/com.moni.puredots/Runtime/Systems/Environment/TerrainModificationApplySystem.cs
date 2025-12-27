@@ -73,8 +73,6 @@ namespace PureDOTS.Systems.Environment
             var terrainConfig = SystemAPI.GetSingleton<TerrainWorldConfig>();
             var volumeLookup = SystemAPI.GetComponentLookup<TerrainVolume>(true);
             volumeLookup.Update(ref state);
-            var localToWorldLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true);
-            localToWorldLookup.Update(ref state);
             var localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             localTransformLookup.Update(ref state);
 
@@ -96,12 +94,7 @@ namespace PureDOTS.Systems.Environment
                 var volumeLocalToWorld = float4x4.identity;
                 if (volumeEntity != Entity.Null)
                 {
-                    if (localToWorldLookup.HasComponent(volumeEntity))
-                    {
-                        volumeLocalToWorld = localToWorldLookup[volumeEntity].Value;
-                        hasVolumeTransform = true;
-                    }
-                    else if (localTransformLookup.HasComponent(volumeEntity))
+                    if (localTransformLookup.HasComponent(volumeEntity))
                     {
                         var localTransform = localTransformLookup[volumeEntity];
                         volumeLocalToWorld = float4x4.TRS(localTransform.Position, localTransform.Rotation, new float3(localTransform.Scale));
