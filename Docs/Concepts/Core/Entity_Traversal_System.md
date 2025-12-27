@@ -602,3 +602,4 @@ Otherwise, mark it as "requires Jump traversal" and let pathfinding return unrea
 **Status:** Draft - Ready for implementation planning and Phase 1 rollout
 
 
+
