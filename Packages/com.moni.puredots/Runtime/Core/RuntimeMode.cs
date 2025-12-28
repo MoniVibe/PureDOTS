@@ -77,9 +77,9 @@ namespace PureDOTS.Runtime.Core
             }
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         public static void ForceRenderingEnabled(bool enabled, string reason = null)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (IsBatchMode)
             {
                 LogState("EditorSmokeOverrideIgnored");
@@ -88,8 +88,11 @@ namespace PureDOTS.Runtime.Core
 
             s_editorOverrideEnabled.Data = (byte)(enabled ? 1 : 0);
             LogState(string.IsNullOrWhiteSpace(reason) ? "EditorSmokeOverride" : reason);
-        }
+#else
+            _ = enabled;
+            _ = reason;
 #endif
+        }
 
         // Managed-only initializer (call from a NON-burst system)
         public static void RefreshFromEnvironment()

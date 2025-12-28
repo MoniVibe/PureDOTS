@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
@@ -551,13 +552,17 @@ namespace PureDOTS.Systems.Telemetry
             var completed = true;
             for (int i = 0; i < buffer.Length; i++)
             {
-                ref var record = ref buffer.ElementAt(i);
-                var loopLabel = GetLoopLabel(record.EventType.ToString(), record.Payload.ToString());
+                var record = buffer[i];
+                var eventType = record.EventType.ToString();
+                var source = record.Source.ToString();
+                var payload = record.Payload.ToString();
+                var loopLabel = GetLoopLabel(eventType, payload);
                 if (!ShouldWriteLoop(loopLabel))
                 {
                     continue;
                 }
 
+                var recordTick = record.Tick;
                 if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
                     {
                         recordWriter.Write("{\"type\":\"event\",\"runId\":\"");
@@ -567,15 +572,14 @@ namespace PureDOTS.Systems.Telemetry
                         recordWriter.Write("\",\"seed\":");
                         recordWriter.Write(_scenarioSeed);
                         recordWriter.Write(",\"tick\":");
-                        recordWriter.Write(record.Tick);
+                        recordWriter.Write(recordTick);
                         recordWriter.Write(",\"loop\":\"");
                         WriteEscapedString(recordWriter, loopLabel);
                         recordWriter.Write("\",\"event\":\"");
-                        WriteEscapedString(recordWriter, record.EventType.ToString());
+                        WriteEscapedString(recordWriter, eventType);
                         recordWriter.Write("\",\"source\":\"");
-                        WriteEscapedString(recordWriter, record.Source.ToString());
+                        WriteEscapedString(recordWriter, source);
                         recordWriter.Write("\",\"payload\":");
-                        var payload = record.Payload.ToString();
                         if (string.IsNullOrEmpty(payload))
                         {
                             recordWriter.Write("null");

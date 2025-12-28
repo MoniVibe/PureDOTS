@@ -50,7 +50,7 @@ namespace PureDOTS.Systems.Debug
                     continue;
                 }
 
-                var capacity = _entityInfo[entity].Chunk.Capacity;
+                var capacity = GetChunkCapacity(_entityInfo[entity]);
                 if (capacity > 1)
                 {
                     continue;
@@ -89,6 +89,11 @@ namespace PureDOTS.Systems.Debug
 
             var value = System.Environment.GetEnvironmentVariable(EnableEnvVar);
             return IsTruthy(value);
+        }
+
+        private static int GetChunkCapacity(EntityStorageInfo storageInfo)
+        {
+            return storageInfo.Chunk.Capacity;
         }
 
         private static bool IsTruthy(string value)
