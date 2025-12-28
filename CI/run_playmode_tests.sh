@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-UNITY_PATH="${UNITY_PATH:-/Applications/Unity/Hub/Editor/2022.3.14f1/Unity.app/Contents/MacOS/Unity}"
+UNITY_PATH="${UNITY_EDITOR_PATH:-${UNITY_PATH:-${UNITY:-}}}"
+if [ -z "$UNITY_PATH" ]; then
+  echo "UNITY_EDITOR_PATH (or UNITY_PATH/UNITY) must point to the Unity editor binary."
+  exit 1
+fi
 PROJECT_PATH="${PROJECT_PATH:-$(pwd)}"
 RESULTS_DIR="${RESULTS_DIR:-$PROJECT_PATH/CI/TestResults}"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-$RESULTS_DIR/Artifacts}"
+TEST_FILTER="${TEST_FILTER:-}"
+TEST_NAMES="${TEST_NAMES:-}"
+
+EXTRA_ARGS=()
+if [ -n "$TEST_FILTER" ]; then
+  EXTRA_ARGS+=("-testFilter" "$TEST_FILTER")
+fi
+if [ -n "$TEST_NAMES" ]; then
+  EXTRA_ARGS+=("-testNames" "$TEST_NAMES")
+fi
 
 mkdir -p "$RESULTS_DIR"
 mkdir -p "$ARTIFACTS_DIR"
@@ -16,6 +30,7 @@ echo "Running EditMode tests..."
   -projectPath "$PROJECT_PATH" \
   -runTests \
   -testPlatform EditMode \
+  "${EXTRA_ARGS[@]}" \
   -testResults "$RESULTS_DIR/editmode-results.xml" \
   -logFile "$RESULTS_DIR/editmode.log" \
   -quit
@@ -29,6 +44,7 @@ echo "Running PlayMode tests..."
   -projectPath "$PROJECT_PATH" \
   -runTests \
   -testPlatform PlayMode \
+  "${EXTRA_ARGS[@]}" \
   -testResults "$RESULTS_DIR/playmode-results.xml" \
   -logFile "$RESULTS_DIR/playmode.log" \
   -quit

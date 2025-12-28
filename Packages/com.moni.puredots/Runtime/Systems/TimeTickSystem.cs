@@ -32,6 +32,7 @@ namespace PureDOTS.Systems
         {
             var tickStateHandle = SystemAPI.GetSingletonRW<TickTimeState>();
             var timeStateHandle = SystemAPI.GetSingletonRW<TimeState>();
+            var hasInterpolation = SystemAPI.TryGetSingletonRW<FixedStepInterpolationState>(out var interpolationHandle);
             ref var tickState = ref tickStateHandle.ValueRW;
             ref var timeState = ref timeStateHandle.ValueRW;
             var rewind = SystemAPI.GetSingleton<RewindState>();
@@ -48,6 +49,10 @@ namespace PureDOTS.Systems
                 tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
                 _accumulator = 0d;
                 SyncLegacyTime(ref tickState, ref timeState);
+                if (hasInterpolation)
+                {
+                    interpolationHandle.ValueRW.Alpha = 0f;
+                }
                 return;
             }
 
@@ -63,6 +68,10 @@ namespace PureDOTS.Systems
 
                 tickState.TargetTick = Unity.Mathematics.math.max(tickState.TargetTick, tickState.Tick);
                 SyncLegacyTime(ref tickState, ref timeState);
+                if (hasInterpolation)
+                {
+                    interpolationHandle.ValueRW.Alpha = 0f;
+                }
                 return;
             }
 
@@ -114,6 +123,12 @@ namespace PureDOTS.Systems
             tickState.WorldSeconds = tickState.Tick * tickState.FixedDeltaTime;
 
             SyncLegacyTime(ref tickState, ref timeState);
+
+            if (hasInterpolation)
+            {
+                var alpha = (float)Unity.Mathematics.math.saturate(_accumulator / fixedDt);
+                interpolationHandle.ValueRW.Alpha = alpha;
+            }
         }
 
         private static void SyncLegacyTime(ref TickTimeState tickState, ref TimeState legacy)

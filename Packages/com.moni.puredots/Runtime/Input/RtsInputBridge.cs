@@ -266,6 +266,7 @@ namespace PureDOTS.Input
         private void HandleRmb(Vector2 mousePos)
         {
             bool shiftDown = (_shiftAction?.IsPressed() ?? false);
+            bool ctrlDown = (_ctrlAction?.IsPressed() ?? false);
             bool currentRightClick = _rightClickAction?.IsPressed() ?? false;
 
             if (!currentRightClick && _lastRightClickState)
@@ -286,7 +287,7 @@ namespace PureDOTS.Input
                 }
                 else
                 {
-                    EmitRightClick(mousePos, shiftDown);
+                    EmitRightClick(mousePos, shiftDown, ctrlDown);
                 }
 
                 _lastRmbUpTime = timeNow;
@@ -361,13 +362,14 @@ namespace PureDOTS.Input
             });
         }
 
-        private void EmitRightClick(Vector2 screenPos, bool shiftDown)
+        private void EmitRightClick(Vector2 screenPos, bool shiftDown, bool ctrlDown)
         {
             var buffer = _em.GetBuffer<RightClickEvent>(_rtsInputEntity);
             buffer.Add(new RightClickEvent
             {
                 ScreenPos = new float2(screenPos.x, screenPos.y),
                 Queue = (byte)(shiftDown ? 1 : 0),
+                Ctrl = (byte)(ctrlDown ? 1 : 0),
                 PlayerId = 0
             });
         }

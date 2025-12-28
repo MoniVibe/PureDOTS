@@ -8,7 +8,7 @@ namespace PureDOTS.Runtime.Construction
     /// Build-relevant signal emitted by individuals based on their needs.
     /// Buffered on group entities (village, guild, colony, etc.).
     /// </summary>
-    [InternalBufferCapacity(16)]
+    [InternalBufferCapacity(0)]
     public struct BuildNeedSignal : IBufferElementData
     {
         /// <summary>Category of building needed.</summary>
@@ -27,7 +27,6 @@ namespace PureDOTS.Runtime.Construction
         public uint EmittedTick;
     }
 }
-
 
 
 

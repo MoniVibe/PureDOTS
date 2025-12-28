@@ -9,6 +9,7 @@ namespace PureDOTS.Runtime.Logistics
     /// Static service class for resource reservation operations.
     /// Provides methods for reserving inventory, capacity, and services.
     /// </summary>
+    [BurstCompile]
     public static class ResourceReservationService
     {
         /// <summary>

@@ -41,27 +41,19 @@ namespace PureDOTS.Systems.Construction
             var currentTick = timeState.Tick;
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-            // Process individuals with GroupMembership
-            foreach (var (membership, entity) in SystemAPI.Query<RefRO<GroupMembership>>().WithEntityAccess())
+            foreach (var (_, groupEntity) in SystemAPI.Query<RefRO<BuildCoordinator>>()
+                         .WithNone<BuildNeedSignal>()
+                         .WithEntityAccess())
             {
-                var groupEntity = membership.ValueRO.Group;
-                if (groupEntity == Entity.Null || !SystemAPI.Exists(groupEntity))
-                    continue;
-
-                // Get or create BuildNeedSignal buffer on group entity
-                if (!SystemAPI.HasBuffer<BuildNeedSignal>(groupEntity))
-                {
-                    ecb.AddBuffer<BuildNeedSignal>(groupEntity);
-                }
-
-                // Note: Actual signal generation logic is game-specific
-                // This system provides the framework; game-specific systems extend it
-                // For now, this is a stub that can be extended by GodgameBuildNeedSignalSystem
+                ecb.AddBuffer<BuildNeedSignal>(groupEntity);
             }
+
+            // Note: Actual signal generation logic is game-specific
+            // This system provides the framework; game-specific systems extend it
+            // For now, this is a stub that can be extended by GodgameBuildNeedSignalSystem
         }
     }
 }
-
 
 
 

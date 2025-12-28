@@ -29,6 +29,7 @@ namespace PureDOTS.Systems.Combat
             state.RequireForUpdate<ProjectileEntity>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<ProjectileActive>();
             _impactFxBufferLookup = state.GetBufferLookup<PlayEffectRequest>();
             _aoeColliderCache = new NativeParallelHashMap<ulong, BlobAssetReference<Unity.Physics.Collider>>(8, Allocator.Persistent);
             _cachedCatalog = default;
@@ -171,8 +172,14 @@ namespace PureDOTS.Systems.Combat
                 Entity entity,
                 ref ProjectileEntity projectile,
                 ref LocalTransform transform,
-                DynamicBuffer<ProjectileHitResult> hitResults)
+                DynamicBuffer<ProjectileHitResult> hitResults,
+                EnabledRefRO<ProjectileActive> active)
             {
+                if (!active.ValueRO)
+                {
+                    return;
+                }
+
                 hitResults.Clear();
 
                 // Find projectile spec
@@ -316,4 +323,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

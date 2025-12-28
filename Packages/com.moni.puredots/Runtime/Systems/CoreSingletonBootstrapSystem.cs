@@ -173,6 +173,14 @@ namespace PureDOTS.Systems
                 }
             }
 
+            if (!entityManager.HasComponent<FixedStepInterpolationState>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, new FixedStepInterpolationState
+                {
+                    Alpha = 0f
+                });
+            }
+
             if (!entityManager.HasComponent<TimeContext>(timeEntity))
             {
                 var tickState = entityManager.GetComponentData<TickTimeState>(timeEntity);

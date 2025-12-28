@@ -158,9 +158,9 @@ namespace PureDOTS.Systems.Navigation
 
                 // Apply speed scalar
                 var speed = movement.BaseSpeed * flowState.SpeedScalar;
-                movement.Velocity = math.normalize(targetDir) * speed;
+                movement.DesiredVelocity = math.normalize(targetDir) * speed;
                 movement.CurrentSpeed = speed;
-                movement.IsMoving = math.lengthsq(movement.Velocity) > 0.01f ? (byte)1 : (byte)0;
+                movement.IsMoving = math.lengthsq(movement.DesiredVelocity) > 0.01f ? (byte)1 : (byte)0;
             }
 
             [BurstCompile]

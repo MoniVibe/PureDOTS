@@ -69,7 +69,7 @@ namespace PureDOTS.Runtime.Navigation
     /// <summary>
     /// Navigation graph node (position in graph).
     /// </summary>
-    [InternalBufferCapacity(256)]
+    [InternalBufferCapacity(8)]
     public struct NavNode : IBufferElementData
     {
         /// <summary>
@@ -111,7 +111,7 @@ namespace PureDOTS.Runtime.Navigation
     /// <summary>
     /// Navigation graph edge (connection between nodes).
     /// </summary>
-    [InternalBufferCapacity(512)]
+    [InternalBufferCapacity(8)]
     public struct NavEdge : IBufferElementData
     {
         /// <summary>
@@ -296,4 +296,3 @@ namespace PureDOTS.Runtime.Navigation
         public byte IsValid;
     }
 }
-

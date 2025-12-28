@@ -27,6 +27,7 @@ namespace PureDOTS.Systems.Combat
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<ProjectileActive>();
         }
 
         [BurstCompile]
@@ -79,8 +80,14 @@ namespace PureDOTS.Systems.Combat
                 Entity entity,
                 ref HazardAvoidanceState avoidanceState,
                 in ProjectileEntity projectile,
-                in LocalTransform transform)
+                in LocalTransform transform,
+                EnabledRefRO<ProjectileActive> active)
             {
+                if (!active.ValueRO)
+                {
+                    return;
+                }
+
                 // Verify projectile is homing type via catalog lookup (game-agnostic)
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
                 if (UnsafeRef.IsNull(ref spec))
@@ -160,4 +167,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

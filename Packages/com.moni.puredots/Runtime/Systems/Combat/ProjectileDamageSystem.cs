@@ -29,6 +29,7 @@ namespace PureDOTS.Systems.Combat
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<ProjectileActive>();
             _entityLookup = state.GetEntityStorageInfoLookup();
             _healthLookup = state.GetComponentLookup<Health>(true);
             _damageableLookup = state.GetComponentLookup<Damageable>(true);
@@ -52,6 +53,10 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            var poolingEnabled = SystemAPI.TryGetSingleton<ProjectilePoolConfig>(out var poolConfig) &&
+                                 poolConfig.Capacity > 0 &&
+                                 poolConfig.Prefab != Entity.Null;
+
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
@@ -64,6 +69,7 @@ namespace PureDOTS.Systems.Combat
             {
                 CurrentTick = currentTick,
                 Ecb = ecb,
+                PoolingEnabled = poolingEnabled,
                 EntityLookup = _entityLookup,
                 HealthLookup = _healthLookup,
                 DamageableLookup = _damageableLookup,
@@ -79,6 +85,7 @@ namespace PureDOTS.Systems.Combat
         {
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            public bool PoolingEnabled;
             [ReadOnly] public EntityStorageInfoLookup EntityLookup;
             [ReadOnly] public ComponentLookup<Health> HealthLookup;
             [ReadOnly] public ComponentLookup<Damageable> DamageableLookup;
@@ -89,13 +96,20 @@ namespace PureDOTS.Systems.Combat
                 Entity projectileEntity,
                 [EntityIndexInQuery] int entityInQueryIndex,
                 ref ProjectileEntity projectile,
-                ref DynamicBuffer<DamageEvent> damageEvents)
+                ref DynamicBuffer<DamageEvent> damageEvents,
+                EnabledRefRW<ProjectileActive> active,
+                EnabledRefRW<ProjectileRecycleTag> recycleTag)
             {
+                if (!active.ValueRO)
+                {
+                    return;
+                }
+
                 // Check if projectile has hit its target
                 if (projectile.TargetEntity == Entity.Null || !EntityLookup.Exists(projectile.TargetEntity))
                 {
-                    // No target or target destroyed - destroy projectile
-                    Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
+                    // No target or target destroyed - retire projectile
+                    RetireProjectile(entityInQueryIndex, projectileEntity, ref projectile, ref active, ref recycleTag);
                     return;
                 }
 
@@ -103,8 +117,8 @@ namespace PureDOTS.Systems.Combat
                 if (!HealthLookup.HasComponent(projectile.TargetEntity) &&
                     !DamageableLookup.HasComponent(projectile.TargetEntity))
                 {
-                    // Target not damageable - destroy projectile
-                    Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
+                    // Target not damageable - retire projectile
+                    RetireProjectile(entityInQueryIndex, projectileEntity, ref projectile, ref active, ref recycleTag);
                     return;
                 }
 
@@ -148,14 +162,34 @@ namespace PureDOTS.Systems.Combat
                 projectile.HitsLeft--;
                 if (projectile.HitsLeft <= 0)
                 {
-                    // Projectile exhausted - destroy it
-                    Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
+                    // Projectile exhausted - retire it
+                    RetireProjectile(entityInQueryIndex, projectileEntity, ref projectile, ref active, ref recycleTag);
                 }
                 else
                 {
                     // Projectile continues - clear target for next impact detection
                     projectile.TargetEntity = Entity.Null;
                 }
+            }
+
+            private void RetireProjectile(
+                int entityInQueryIndex,
+                Entity projectileEntity,
+                ref ProjectileEntity projectile,
+                ref EnabledRefRW<ProjectileActive> active,
+                ref EnabledRefRW<ProjectileRecycleTag> recycleTag)
+            {
+                if (PoolingEnabled)
+                {
+                    active.ValueRW = false;
+                    recycleTag.ValueRW = true;
+                    projectile.TargetEntity = Entity.Null;
+                    projectile.Velocity = float3.zero;
+                    projectile.HitsLeft = 0f;
+                    return;
+                }
+
+                Ecb.DestroyEntity(entityInQueryIndex, projectileEntity);
             }
 
             private static ref ProjectileSpec FindProjectileSpec(
@@ -229,4 +263,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

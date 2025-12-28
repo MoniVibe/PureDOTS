@@ -8,7 +8,7 @@ namespace PureDOTS.Rendering
     /// <summary>
     /// Dev-only guard that reports missing presentation components once per archetype.
     /// </summary>
-    [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true)]
+    [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
     public partial struct RenderPresentationValidationSystem : ISystem
     {
         private EntityQuery _missingSemanticQuery;

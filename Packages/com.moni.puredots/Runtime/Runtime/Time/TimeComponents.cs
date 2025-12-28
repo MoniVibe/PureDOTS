@@ -84,4 +84,13 @@ namespace PureDOTS.Runtime.Components
         /// <summary>Current rewind mode.</summary>
         public RewindMode Mode;
     }
+
+    /// <summary>
+    /// Fixed-step interpolation alpha for presentation (0..1 between previous/current tick).
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FixedStepInterpolationState : IComponentData
+    {
+        public float Alpha;
+    }
 }

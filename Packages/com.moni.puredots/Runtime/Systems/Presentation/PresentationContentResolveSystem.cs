@@ -2,7 +2,6 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Registry;
 using PureDOTS.Rendering;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -11,13 +10,11 @@ namespace PureDOTS.Systems
     /// <summary>
     /// Resolves RegistryIdentity to presentation bindings and ensures basic render components exist.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct PresentationContentResolveSystem : ISystem
     {
         private EntityQuery _resolveQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _resolveQuery = SystemAPI.QueryBuilder()
@@ -29,7 +26,6 @@ namespace PureDOTS.Systems
             state.RequireForUpdate<PresentationContentRegistryReference>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (_resolveQuery.IsEmptyIgnoreFilter)

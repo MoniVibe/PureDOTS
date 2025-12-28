@@ -42,6 +42,9 @@ namespace PureDOTS.Runtime.Villager
         public float LowEnergyThreshold;
         public float VelocityThreshold; // Minimum velocity to consider moving
         public float RotationSpeed; // Rotation interpolation speed
+        public float AccelerationMultiplier;
+        public float DecelerationMultiplier;
+        public float TurnBlendSpeed;
         
         // AI thresholds
         public float HungerThreshold;
@@ -99,6 +102,9 @@ namespace PureDOTS.Runtime.Villager
                 LowEnergyThreshold = 20f,
                 VelocityThreshold = 0.0001f,
                 RotationSpeed = 4f,
+                AccelerationMultiplier = 4f,
+                DecelerationMultiplier = 6f,
+                TurnBlendSpeed = 6f,
                 
                 // AI defaults
                 HungerThreshold = 70f,
@@ -122,4 +128,3 @@ namespace PureDOTS.Runtime.Villager
         }
     }
 }
-

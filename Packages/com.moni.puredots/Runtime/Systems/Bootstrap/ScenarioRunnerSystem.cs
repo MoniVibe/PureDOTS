@@ -674,6 +674,7 @@ namespace PureDOTS.Systems.Bootstrap
             em.AddComponentData(entity, new VillagerMovement
             {
                 Velocity = float3.zero,
+                DesiredVelocity = float3.zero,
                 BaseSpeed = 3f,
                 CurrentSpeed = 3f,
                 DesiredRotation = quaternion.identity,

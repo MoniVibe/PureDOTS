@@ -1,4 +1,5 @@
 using PureDOTS.Runtime;
+using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Knowledge;
 using PureDOTS.Runtime.Registry;
@@ -303,10 +304,13 @@ namespace PureDOTS.Systems
 
             // Parallelize request collection using NativeList
             var requestList = new NativeList<VillagerJobRequest>(Allocator.TempJob);
+            var cooldownLookup = SystemAPI.GetComponentLookup<VillagerWorkCooldown>(true);
+            cooldownLookup.Update(ref state);
             var collectRequestsJob = new CollectRequestsJob
             {
                 Requests = requestList.AsParallelWriter(),
-                CurrentTick = timeState.Tick
+                CurrentTick = timeState.Tick,
+                CooldownLookup = cooldownLookup
             };
             state.Dependency = collectRequestsJob.ScheduleParallel(state.Dependency);
             state.Dependency.Complete();
@@ -322,6 +326,7 @@ namespace PureDOTS.Systems
         {
             public NativeList<VillagerJobRequest>.ParallelWriter Requests;
             public uint CurrentTick;
+            [ReadOnly] public ComponentLookup<VillagerWorkCooldown> CooldownLookup;
 
             public void Execute(
                 Entity entity,
@@ -347,6 +352,15 @@ namespace PureDOTS.Systems
                 if (availability.IsAvailable == 0)
                 {
                     return;
+                }
+
+                if (CooldownLookup.HasComponent(entity))
+                {
+                    var cooldown = CooldownLookup[entity];
+                    if (cooldown.EndTick > CurrentTick)
+                    {
+                        return;
+                    }
                 }
 
                 ticket.JobType = job.Type;

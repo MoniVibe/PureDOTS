@@ -32,6 +32,7 @@ namespace PureDOTS.Systems.Combat
             state.RequireForUpdate<ProjectileEntity>();
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            state.RequireForUpdate<ProjectileActive>();
             _damageBufferLookup = state.GetBufferLookup<DamageEvent>();
             _buffRequestBufferLookup = state.GetBufferLookup<BuffApplicationRequest>();
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
@@ -67,11 +68,16 @@ namespace PureDOTS.Systems.Combat
             _buffRequestBufferLookup.Update(ref state);
             _transformLookup.Update(ref state);
 
+            var poolingEnabled = SystemAPI.TryGetSingleton<ProjectilePoolConfig>(out var poolConfig) &&
+                                 poolConfig.Capacity > 0 &&
+                                 poolConfig.Prefab != Entity.Null;
+
             var job = new ProjectileEffectExecutionJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
                 CurrentTick = currentTick,
                 Ecb = ecb,
+                PoolingEnabled = poolingEnabled,
                 HasSpatialGrid = hasSpatialGrid,
                 SpatialConfig = hasSpatialGrid ? spatialConfig : default,
                 HasPhysicsWorld = hasPhysicsWorld,
@@ -90,6 +96,7 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
+            public bool PoolingEnabled;
             public bool HasSpatialGrid;
             [ReadOnly] public SpatialGridConfig SpatialConfig;
             public bool HasPhysicsWorld;
@@ -102,8 +109,15 @@ namespace PureDOTS.Systems.Combat
                 [ChunkIndexInQuery] int chunkIndex,
                 Entity projectileEntity,
                 ref ProjectileEntity projectile,
-                DynamicBuffer<ProjectileHitResult> hitResults)
+                DynamicBuffer<ProjectileHitResult> hitResults,
+                EnabledRefRW<ProjectileActive> active,
+                EnabledRefRW<ProjectileRecycleTag> recycleTag)
             {
+                if (!active.ValueRO)
+                {
+                    return;
+                }
+
                 if (hitResults.Length == 0)
                 {
                     return;
@@ -145,14 +159,34 @@ namespace PureDOTS.Systems.Combat
                     projectile.HitsLeft -= 1f;
                     if (projectile.HitsLeft <= 0f)
                     {
-                        // Projectile exhausted - destroy it
-                        Ecb.DestroyEntity(chunkIndex, projectileEntity);
+                        // Projectile exhausted - retire it
+                        RetireProjectile(chunkIndex, projectileEntity, ref projectile, ref active, ref recycleTag);
                         return;
                     }
                 }
 
                 // Clear hit results after processing
                 hitResults.Clear();
+            }
+
+            private void RetireProjectile(
+                int chunkIndex,
+                Entity projectileEntity,
+                ref ProjectileEntity projectile,
+                ref EnabledRefRW<ProjectileActive> active,
+                ref EnabledRefRW<ProjectileRecycleTag> recycleTag)
+            {
+                if (PoolingEnabled)
+                {
+                    active.ValueRW = false;
+                    recycleTag.ValueRW = true;
+                    projectile.TargetEntity = Entity.Null;
+                    projectile.Velocity = float3.zero;
+                    projectile.HitsLeft = 0f;
+                    return;
+                }
+
+                Ecb.DestroyEntity(chunkIndex, projectileEntity);
             }
 
             private void ProcessEffectOp(

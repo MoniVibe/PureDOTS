@@ -113,4 +113,24 @@ namespace PureDOTS.Runtime.AI
         public int CadenceTicks;
         public uint LastRunTick;
     }
+
+    /// <summary>
+    /// Post-work cooldown used to delay job requests and steer brief downtime.
+    /// </summary>
+    public enum VillagerWorkCooldownMode : byte
+    {
+        None = 0,
+        Wander = 1,
+        Socialize = 2
+    }
+
+    /// <summary>
+    /// Short-lived cooldown window that can be interpreted by game-specific systems.
+    /// </summary>
+    public struct VillagerWorkCooldown : IComponentData
+    {
+        public uint StartTick;
+        public uint EndTick;
+        public VillagerWorkCooldownMode Mode;
+    }
 }

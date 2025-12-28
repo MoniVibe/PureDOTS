@@ -26,6 +26,7 @@ namespace PureDOTS.Rendering
         {
             state.RequireForUpdate<ProjectileTag>();
             state.RequireForUpdate<RenderPresentationCatalog>();
+            state.RequireForUpdate<ProjectileActive>();
             _resolvedLookup = state.GetComponentLookup<RenderVariantResolved>(true);
             _renderKeyLookup = state.GetComponentLookup<RenderKey>(true);
         }
@@ -36,11 +37,19 @@ namespace PureDOTS.Rendering
             _resolvedLookup.Update(ref state);
             _renderKeyLookup.Update(ref state);
 
-            foreach (var (projectile, tracerEnabled, meshEnabled, spriteEnabled, entity) in SystemAPI
-                         .Query<RefRO<ProjectileEntity>, EnabledRefRW<TracerPresenter>, EnabledRefRW<MeshPresenter>, EnabledRefRW<SpritePresenter>>()
+            foreach (var (projectile, active, tracerEnabled, meshEnabled, spriteEnabled, entity) in SystemAPI
+                         .Query<RefRO<ProjectileEntity>, EnabledRefRO<ProjectileActive>, EnabledRefRW<TracerPresenter>, EnabledRefRW<MeshPresenter>, EnabledRefRW<SpritePresenter>>()
                          .WithAll<ProjectileTag>()
                          .WithEntityAccess())
             {
+                if (!active.ValueRO)
+                {
+                    tracerEnabled.ValueRW = false;
+                    meshEnabled.ValueRW = false;
+                    spriteEnabled.ValueRW = false;
+                    continue;
+                }
+
                 var mask = _resolvedLookup.HasComponent(entity)
                     ? _resolvedLookup[entity].LastMask
                     : RenderPresenterMask.Mesh;

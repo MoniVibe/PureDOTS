@@ -1,5 +1,4 @@
 using PureDOTS.Runtime.Logistics.Components;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,7 +15,6 @@ namespace PureDOTS.Runtime.Logistics
         /// Calculates a route between source and destination nodes.
         /// Simplified implementation - full pathfinding would integrate with spatial grid.
         /// </summary>
-        [BurstCompile]
         public static Route CalculateRoute(
             float3 sourcePosition,
             float3 destinationPosition,

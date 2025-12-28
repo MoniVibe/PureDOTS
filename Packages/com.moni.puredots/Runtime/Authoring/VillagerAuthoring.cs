@@ -294,6 +294,7 @@ namespace PureDOTS.Authoring
             AddComponent(entity, new VillagerMovement
             {
                 Velocity = float3.zero,
+                DesiredVelocity = float3.zero,
                 BaseSpeed = authoring.baseSpeed,
                 CurrentSpeed = authoring.baseSpeed,
                 DesiredRotation = quaternion.identity,

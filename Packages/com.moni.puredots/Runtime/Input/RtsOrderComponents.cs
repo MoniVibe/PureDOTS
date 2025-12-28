@@ -18,6 +18,15 @@ namespace PureDOTS.Input
     }
 
     /// <summary>
+    /// Optional order flags for extended behavior.
+    /// </summary>
+    public enum OrderFlags : byte
+    {
+        None = 0,
+        AttackMove = 1 << 0
+    }
+
+    /// <summary>
     /// Abstract order structure.
     /// </summary>
     public struct Order
@@ -37,7 +46,6 @@ namespace PureDOTS.Input
         public Order Order;
     }
 }
-
 
 
 

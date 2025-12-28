@@ -39,6 +39,7 @@ namespace PureDOTS.Input
     {
         public float2 ScreenPos;
         public byte Queue;  // 1 if Shift-held (queue order), 0 if immediate
+        public byte Ctrl;   // 1 if Ctrl-held (attack-move modifier), 0 if none
         public byte PlayerId;
     }
 
@@ -130,7 +131,6 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 }
-
 
 
 

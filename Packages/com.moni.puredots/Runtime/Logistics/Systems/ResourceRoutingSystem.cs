@@ -11,7 +11,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
     /// <summary>
     /// Calculates routes for shipments and caches route data.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ResourceLogisticsDispatchSystem))]
     [UpdateBefore(typeof(ResourceRoutingRerouteSystem))]
@@ -26,7 +25,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private const float DefaultTransportSpeedMetersPerSecond = 10f;
         private const float DefaultBaseCostPerMeter = 0.1f;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -38,7 +36,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _nextRouteId = 1;
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) ||

@@ -10,7 +10,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
     /// <summary>
     /// Handles rerouting shipments when routes become invalid.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ResourceRoutingSystem))]
     [UpdateBefore(typeof(ServiceNodeSystem))]
@@ -20,7 +19,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private ComponentLookup<Route> _routeLookup;
         private ComponentLookup<LogisticsOrder> _orderLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
@@ -30,7 +28,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _orderLookup = state.GetComponentLookup<LogisticsOrder>(false);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) ||

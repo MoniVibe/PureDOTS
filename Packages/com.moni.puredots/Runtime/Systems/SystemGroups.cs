@@ -208,6 +208,22 @@ namespace PureDOTS.Systems
     public partial class PureDotsPresentationSystemGroup : InstrumentedComponentSystemGroup { }
 
     /// <summary>
+    /// Presentation group for structural changes that must precede presentation updates.
+    /// </summary>
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateAfter(typeof(PureDOTS.Systems.BeginPresentationECBSystem))]
+    [UpdateBefore(typeof(PureDOTS.Systems.EndPresentationECBSystem))]
+    public partial class StructuralChangePresentationSystemGroup : InstrumentedComponentSystemGroup { }
+
+    /// <summary>
+    /// Presentation group for component-data updates after structural changes.
+    /// </summary>
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
+    [UpdateAfter(typeof(StructuralChangePresentationSystemGroup))]
+    [UpdateBefore(typeof(PureDOTS.Systems.EndPresentationECBSystem))]
+    public partial class UpdatePresentationSystemGroup : InstrumentedComponentSystemGroup { }
+
+    /// <summary>
     /// [DEPRECATED] Old PresentationSystemGroup - use Unity.Entities.PresentationSystemGroup or PureDotsPresentationSystemGroup instead.
     /// This type is kept for compatibility but should not be used in new code.
     /// </summary>

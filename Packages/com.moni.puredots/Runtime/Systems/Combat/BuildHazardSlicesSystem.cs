@@ -33,6 +33,7 @@ namespace PureDOTS.Systems.Combat
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ProjectileEntity>();
+            state.RequireForUpdate<ProjectileActive>();
 
             _hazardSliceBufferQuery = SystemAPI.QueryBuilder()
                 .WithAll<HazardSlice>()
@@ -143,8 +144,14 @@ namespace PureDOTS.Systems.Combat
                 Entity entity,
                 in ProjectileEntity projectile,
                 in LocalTransform transform,
-                in VelocitySample velocity)
+                in VelocitySample velocity,
+                EnabledRefRO<ProjectileActive> active)
             {
+                if (!active.ValueRO)
+                {
+                    return;
+                }
+
                 // Find projectile spec
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
                 if (UnsafeRef.IsNull(ref spec))
@@ -368,4 +375,3 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     public struct HazardSliceBuffer : IComponentData { }
 }
-

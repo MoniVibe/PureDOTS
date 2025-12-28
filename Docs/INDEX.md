@@ -258,6 +258,7 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 
 **Garry's Mod-like creative freedom** - Everything is opt-in, moddable, and runtime-adjustable:
 - [Concepts/Core/Sandbox_Mode_And_Runtime_Modding.md](Concepts/Core/Sandbox_Mode_And_Runtime_Modding.md) - **Complete modding and sandbox system**
+- [Concepts/Core/Held_Entity_Modification.md](Concepts/Core/Held_Entity_Modification.md) - **Debug tool for modifying held entities** (alignments, outlooks, behaviors, archetypes)
 - Feature toggles: All gameplay systems opt-in (combat, social, economic, environmental, AI)
 - Runtime parameters: Every value exposed for live modification (damage multipliers, patience rates, production speeds)
 - Hot-reload: Apply changes without restart (parameter changes <0.1ms, feature toggles <10ms, full reload <200ms)
@@ -266,6 +267,7 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 - Console commands: Text-based power user interface (set/get/reset parameters, spawn entities, load profiles)
 - Modding API: C# hooks for external mods (parameter callbacks, event hooks, entity spawning)
 - Entity customization: Spawn entities with custom stats, modify existing entities in real-time
+- Held entity modification: Modify alignments, outlooks, behaviors, archetypes of entities while held (debug flag gated)
 - Persistent configs: Save/load/export/import configurations across sessions
 - Cross-game support: Same modding system for Godgame and Space4X with contextualized parameters
 - Performance: Optimized hot-reload, batch parameter changes, component enablement for toggles

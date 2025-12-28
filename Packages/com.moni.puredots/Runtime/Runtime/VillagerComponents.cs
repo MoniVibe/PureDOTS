@@ -340,6 +340,7 @@ namespace PureDOTS.Runtime.Components
     public struct VillagerMovement : IComponentData
     {
         public float3 Velocity;
+        public float3 DesiredVelocity;
         public float BaseSpeed;
         public float CurrentSpeed;
         public quaternion DesiredRotation;

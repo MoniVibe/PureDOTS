@@ -160,6 +160,7 @@ namespace PureDOTS.Systems.Profile
         private ComponentLookup<AlignmentTriplet> _alignmentLookup;
         private BufferLookup<OutlookEntry> _outlookLookup;
         private ComponentLookup<BehaviorDisposition> _behaviorDispositionLookup;
+        private EntityStorageInfoLookup _entityInfo;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -174,6 +175,7 @@ namespace PureDOTS.Systems.Profile
             _alignmentLookup = state.GetComponentLookup<AlignmentTriplet>(false);
             _outlookLookup = state.GetBufferLookup<OutlookEntry>(false);
             _behaviorDispositionLookup = state.GetComponentLookup<BehaviorDisposition>(false);
+            _entityInfo = state.GetEntityStorageInfoLookup();
         }
 
         [BurstCompile]
@@ -222,18 +224,36 @@ namespace PureDOTS.Systems.Profile
             {
                 var entityManager = state.EntityManager;
                 var ecb = new EntityCommandBuffer(Allocator.Temp);
+                _entityInfo.Update(ref state);
 
                 foreach (var pending in pendingAccumulatorAdds)
                 {
-                    if (!entityManager.HasComponent<ProfileActionAccumulator>(pending.Key))
+                    var entity = pending.Key;
+                    if (!_entityInfo.Exists(entity))
                     {
-                        ecb.AddComponent(pending.Key, pending.Value);
+                        continue;
+                    }
+                    if (_entityInfo[entity].Chunk.Capacity <= 1)
+                    {
+                        continue;
+                    }
+                    if (!entityManager.HasComponent<ProfileActionAccumulator>(entity))
+                    {
+                        ecb.AddComponent(entity, pending.Value);
                     }
                 }
 
                 for (int i = 0; i < pendingTagAdds.Length; i++)
                 {
                     var entity = pendingTagAdds[i];
+                    if (!_entityInfo.Exists(entity))
+                    {
+                        continue;
+                    }
+                    if (_entityInfo[entity].Chunk.Capacity <= 1)
+                    {
+                        continue;
+                    }
                     if (!entityManager.HasComponent<ProfileMutationPending>(entity))
                     {
                         ecb.AddComponent<ProfileMutationPending>(entity);

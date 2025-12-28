@@ -44,6 +44,13 @@ namespace Space4X.Systems
                 return;
             }
 
+            if (SystemAPI.TryGetSingleton<ProjectilePoolConfig>(out var poolConfig) &&
+                poolConfig.Capacity > 0 &&
+                poolConfig.Prefab != Entity.Null)
+            {
+                return;
+            }
+
             if (!SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog))
             {
                 return;

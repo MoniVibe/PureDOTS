@@ -72,6 +72,9 @@ namespace PureDOTS.Systems
                 LowEnergyThreshold = config.LowEnergyThreshold,
                 VelocityThreshold = config.VelocityThreshold,
                 RotationSpeed = config.RotationSpeed,
+                AccelerationMultiplier = config.AccelerationMultiplier,
+                DecelerationMultiplier = config.DecelerationMultiplier,
+                TurnBlendSpeed = config.TurnBlendSpeed,
                 TickTimeState = tickTimeState,
                 TimeState = timeState,
                 RewindState = rewindState,
@@ -98,6 +101,9 @@ namespace PureDOTS.Systems
             public float LowEnergyThreshold;
             public float VelocityThreshold;
             public float RotationSpeed;
+            public float AccelerationMultiplier;
+            public float DecelerationMultiplier;
+            public float TurnBlendSpeed;
             public TickTimeState TickTimeState;
             public TimeState TimeState;
             public RewindState RewindState;
@@ -117,6 +123,7 @@ namespace PureDOTS.Systems
                 if (MovementSuppressedLookup.HasComponent(entity))
                 {
                     movement.Velocity = float3.zero;
+                    movement.DesiredVelocity = float3.zero;
                     movement.IsMoving = 0;
                     return;
                 }
@@ -130,6 +137,7 @@ namespace PureDOTS.Systems
                 if (TimeHelpers.IsInStasis(membership))
                 {
                     movement.Velocity = float3.zero;
+                    movement.DesiredVelocity = float3.zero;
                     movement.IsMoving = 0;
                     return;
                 }
@@ -138,6 +146,7 @@ namespace PureDOTS.Systems
                 if (!TimeHelpers.ShouldUpdate(TimeState, RewindState, membership))
                 {
                     movement.Velocity = float3.zero;
+                    movement.DesiredVelocity = float3.zero;
                     movement.IsMoving = 0;
                     return;
                 }
@@ -147,13 +156,13 @@ namespace PureDOTS.Systems
                 if (effectiveDelta <= 0f)
                 {
                     movement.Velocity = float3.zero;
+                    movement.DesiredVelocity = float3.zero;
                     movement.IsMoving = 0;
                     return;
                 }
                 
                 // Check if flow field navigation is available
-                float3 direction = float3.zero;
-                bool useFlowField = false;
+                float3 desiredVelocity = float3.zero;
 
                 // Try to use flow field if available (checked via optional component)
                 // FlowFieldFollowSystem will have already set movement.Velocity if agent has FlowFieldAgentTag
@@ -161,15 +170,15 @@ namespace PureDOTS.Systems
 
                 if (aiState.TargetPosition.Equals(float3.zero) || aiState.TargetEntity == Entity.Null)
                 {
-                    // If flow field didn't set velocity, stop
-                    if (math.lengthsq(movement.Velocity) < 0.01f)
+                    desiredVelocity = movement.DesiredVelocity;
+                    if (math.lengthsq(desiredVelocity) < VelocityThreshold * VelocityThreshold)
                     {
                         movement.Velocity = float3.zero;
+                        movement.DesiredVelocity = float3.zero;
                         movement.IsMoving = 0;
                         return;
                     }
                     // Otherwise continue with flow field direction
-                    useFlowField = true;
                 }
                 else
                 {
@@ -179,11 +188,13 @@ namespace PureDOTS.Systems
                     if (distance <= ArrivalDistance)
                     {
                         movement.Velocity = float3.zero;
+                        movement.DesiredVelocity = float3.zero;
                         movement.IsMoving = 0;
                         return;
                     }
 
-                    direction = math.normalize(toTarget);
+                    var direction = math.normalize(toTarget);
+                    desiredVelocity = direction * movement.BaseSpeed;
                 }
 
                 // Apply speed multipliers
@@ -198,23 +209,44 @@ namespace PureDOTS.Systems
                 }
 
                 // If not using flow field, compute velocity from direction
-                if (!useFlowField && math.lengthsq(direction) > 0.01f)
+                if (math.lengthsq(desiredVelocity) > VelocityThreshold * VelocityThreshold)
                 {
-                    movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
-                    movement.Velocity = direction * movement.CurrentSpeed;
-                }
-                else if (useFlowField)
-                {
-                    // Flow field already set velocity, just apply speed multiplier
-                    if (math.lengthsq(movement.Velocity) > 0.01f)
-                    {
-                        movement.CurrentSpeed = movement.BaseSpeed * speedMultiplier;
-                        movement.Velocity = math.normalize(movement.Velocity) * movement.CurrentSpeed;
-                    }
+                    var desiredSpeed = math.length(desiredVelocity) * speedMultiplier;
+                    var desiredDir = math.normalizesafe(desiredVelocity);
+                    desiredVelocity = desiredDir * desiredSpeed;
                 }
 
+                var currentVelocity = movement.Velocity;
+                if (math.lengthsq(currentVelocity) > VelocityThreshold * VelocityThreshold &&
+                    math.lengthsq(desiredVelocity) > VelocityThreshold * VelocityThreshold)
+                {
+                    var currentDir = math.normalizesafe(currentVelocity);
+                    var desiredDir = math.normalizesafe(desiredVelocity);
+                    var turnLerp = math.saturate(effectiveDelta * math.max(0.1f, TurnBlendSpeed));
+                    var blendedDir = math.normalizesafe(math.lerp(currentDir, desiredDir, turnLerp), desiredDir);
+                    desiredVelocity = blendedDir * math.length(desiredVelocity);
+                }
+
+                var targetSpeed = math.length(desiredVelocity);
+                var currentSpeed = math.length(currentVelocity);
+                var acceleration = math.max(0.1f, movement.BaseSpeed * math.max(0.1f, AccelerationMultiplier));
+                var deceleration = math.max(0.1f, movement.BaseSpeed * math.max(0.1f, DecelerationMultiplier));
+                var accelLimit = targetSpeed > currentSpeed ? acceleration : deceleration;
+                var maxDelta = accelLimit * effectiveDelta;
+                var deltaV = desiredVelocity - currentVelocity;
+                var deltaSq = math.lengthsq(deltaV);
+                if (maxDelta > 0f && deltaSq > maxDelta * maxDelta)
+                {
+                    deltaV = math.normalizesafe(deltaV) * maxDelta;
+                }
+
+                currentVelocity += deltaV;
+                movement.Velocity = currentVelocity;
+                movement.DesiredVelocity = desiredVelocity;
+                movement.CurrentSpeed = math.length(currentVelocity);
+
                 // Apply movement using effective delta time
-                if (math.lengthsq(movement.Velocity) > 0.01f)
+                if (movement.CurrentSpeed > VelocityThreshold)
                 {
                     transform.Position += movement.Velocity * effectiveDelta;
 
@@ -229,6 +261,9 @@ namespace PureDOTS.Systems
                 }
                 else
                 {
+                    movement.Velocity = float3.zero;
+                    movement.DesiredVelocity = float3.zero;
+                    movement.CurrentSpeed = 0f;
                     movement.IsMoving = 0;
                 }
 

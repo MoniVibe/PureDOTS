@@ -84,12 +84,18 @@ namespace PureDOTS.Systems.Input
 
             // Determine order kind based on context
             OrderKind orderKind = DetermineOrderKind(ref state, hitEntity, hasHit);
+            bool attackMove = rightClickEvent.Ctrl != 0 && orderKind == OrderKind.Move;
+            if (attackMove)
+            {
+                orderKind = OrderKind.Attack;
+                hitEntity = Entity.Null;
+            }
             Order order = new Order
             {
                 Kind = orderKind,
                 TargetPosition = hitPosition,
                 TargetEntity = hitEntity,
-                Flags = 0
+                Flags = (byte)(attackMove ? OrderFlags.AttackMove : OrderFlags.None)
             };
 
             // Apply orders to selected entities
