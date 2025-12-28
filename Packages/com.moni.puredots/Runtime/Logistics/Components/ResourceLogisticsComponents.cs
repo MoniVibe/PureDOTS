@@ -18,6 +18,7 @@ namespace PureDOTS.Runtime.Logistics.Components
         public float RequestedAmount;
         public float ReservedAmount;  // Amount currently reserved
         public LogisticsOrderStatus Status;
+        public ShipmentFailureReason FailureReason;
         public Entity AssignedTransport;
         public Entity ShipmentEntity;
         public uint CreatedTick;
@@ -59,6 +60,7 @@ namespace PureDOTS.Runtime.Logistics.Components
         public Entity AssignedTransport;
         public Entity RouteEntity;
         public ShipmentStatus Status;
+        public ShipmentFailureReason FailureReason;
         public ShipmentRepresentationMode RepresentationMode;
         public float AllocatedMass;
         public float AllocatedVolume;
@@ -76,6 +78,19 @@ namespace PureDOTS.Runtime.Logistics.Components
         Delivered = 4,
         Failed = 5,
         Rerouting = 6
+    }
+
+    public enum ShipmentFailureReason : byte
+    {
+        None = 0,
+        InvalidSource = 1,
+        InvalidDestination = 2,
+        NoInventory = 3,
+        NoCapacity = 4,
+        StorageFull = 5,
+        ReservationExpired = 6,
+        TransportLost = 7,
+        Cancelled = 8
     }
 
     public enum ShipmentRepresentationMode : byte

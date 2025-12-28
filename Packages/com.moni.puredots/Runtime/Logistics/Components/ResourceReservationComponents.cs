@@ -16,6 +16,7 @@ namespace PureDOTS.Runtime.Logistics.Components
         public float ReservedAmount;
         public Entity OrderEntity;
         public ReservationStatus Status;
+        public ReservationCancelReason CancelReason;
         public uint CreatedTick;
         public uint ExpiryTick;
         public byte ReservationFlags;
@@ -36,6 +37,7 @@ namespace PureDOTS.Runtime.Logistics.Components
         public float ReservedVolume;
         public Entity OrderEntity;
         public ReservationStatus Status;
+        public ReservationCancelReason CancelReason;
         public uint CreatedTick;
         public uint ExpiryTick;
     }
@@ -51,6 +53,7 @@ namespace PureDOTS.Runtime.Logistics.Components
         public ServiceType ServiceType;
         public Entity OrderEntity;
         public ReservationStatus Status;
+        public ReservationCancelReason CancelReason;
         public uint ReservedSlotTime;
         public uint CreatedTick;
         public uint ExpiryTick;
@@ -63,6 +66,24 @@ namespace PureDOTS.Runtime.Logistics.Components
         Released = 2,
         Expired = 3,
         Cancelled = 4
+    }
+
+    public enum ReservationCancelReason : byte
+    {
+        None = 0,
+        Timeout = 1,
+        Cancelled = 2,
+        InvalidTarget = 3,
+        TransportLost = 4,
+        NoInventory = 5,
+        NoCapacity = 6,
+        Superseded = 7
+    }
+
+    public static class InventoryReservationFlags
+    {
+        public const byte ReservedApplied = 1 << 0;
+        public const byte Withdrawn = 1 << 1;
     }
 
     /// <summary>

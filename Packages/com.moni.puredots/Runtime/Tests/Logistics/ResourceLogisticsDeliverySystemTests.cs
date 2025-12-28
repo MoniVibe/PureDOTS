@@ -6,6 +6,7 @@ using PureDOTS.Runtime.Logistics.Components;
 using PureDOTS.Runtime.Logistics.Systems;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace PureDOTS.Tests.Logistics
 {
@@ -38,6 +39,7 @@ namespace PureDOTS.Tests.Logistics
         private World _world;
         private EntityManager _entityManager;
         private DeliveryWrapperSystem _system;
+        private BlobAssetReference<ResourceTypeIndexBlob> _resourceCatalog;
 
         [SetUp]
         public void SetUp()
@@ -55,6 +57,11 @@ namespace PureDOTS.Tests.Logistics
         {
             if (_world != null && _world.IsCreated)
             {
+                if (_resourceCatalog.IsCreated)
+                {
+                    _resourceCatalog.Dispose();
+                }
+
                 _world.Dispose();
                 if (World.DefaultGameObjectInjectionWorld == _world)
                 {
@@ -67,7 +74,7 @@ namespace PureDOTS.Tests.Logistics
         public void DeliverySystemDepositsIntoStorehouse()
         {
             var resourceId = new FixedString64Bytes("ore");
-            var destination = CreateStorehouse(totalCapacity: 100f);
+            var destination = CreateStorehouse(resourceId, perTypeCapacity: 100f);
             var shipmentEntity = CreateShipment(resourceId, allocatedAmount: 20f, arrivalTick: 100);
             var orderEntity = CreateOrder(destination, resourceId, requestedAmount: 20f, shipmentEntity);
             CreateInventoryReservation(orderEntity, resourceId, amount: 20f);
@@ -92,7 +99,7 @@ namespace PureDOTS.Tests.Logistics
         public void DeliverySystemFailsWhenStorehouseHasNoCapacity()
         {
             var resourceId = new FixedString64Bytes("ore");
-            var destination = CreateStorehouse(totalCapacity: 0f);
+            var destination = CreateStorehouse(resourceId, perTypeCapacity: 0f);
             var shipmentEntity = CreateShipment(resourceId, allocatedAmount: 10f, arrivalTick: 100);
             var orderEntity = CreateOrder(destination, resourceId, requestedAmount: 10f, shipmentEntity);
             CreateInventoryReservation(orderEntity, resourceId, amount: 10f);
@@ -133,18 +140,53 @@ namespace PureDOTS.Tests.Logistics
                 IsPaused = false,
                 IsPlaying = true
             });
+
+            CreateResourceTypeIndex("ore");
         }
 
-        private Entity CreateStorehouse(float totalCapacity)
+        private void CreateResourceTypeIndex(params string[] resourceIds)
         {
-            var entity = _entityManager.CreateEntity(typeof(StorehouseInventory));
+            using var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<ResourceTypeIndexBlob>();
+            var ids = builder.Allocate(ref root.Ids, resourceIds.Length);
+            var displayNames = builder.Allocate(ref root.DisplayNames, resourceIds.Length);
+            var colors = builder.Allocate(ref root.Colors, resourceIds.Length);
+
+            for (int i = 0; i < resourceIds.Length; i++)
+            {
+                var resourceId = new FixedString64Bytes(resourceIds[i]);
+                ids[i] = resourceId;
+                displayNames[i] = builder.AllocateString(resourceIds[i]);
+                colors[i] = new Color32(0, 0, 0, 0);
+            }
+
+            _resourceCatalog = builder.CreateBlobAssetReference<ResourceTypeIndexBlob>(Allocator.Persistent);
+            var entity = _entityManager.CreateEntity(typeof(ResourceTypeIndex));
+            _entityManager.SetComponentData(entity, new ResourceTypeIndex { Catalog = _resourceCatalog });
+        }
+
+        private Entity CreateStorehouse(FixedString64Bytes resourceId, float perTypeCapacity)
+        {
+            var entity = _entityManager.CreateEntity(typeof(StorehouseInventory), typeof(StorehouseJobReservation));
             _entityManager.SetComponentData(entity, new StorehouseInventory
             {
-                TotalCapacity = totalCapacity,
+                TotalCapacity = perTypeCapacity,
                 TotalStored = 0f,
                 ItemTypeCount = 0
             });
+            _entityManager.SetComponentData(entity, new StorehouseJobReservation
+            {
+                ReservedCapacity = 0f,
+                LastMutationTick = 0
+            });
             _entityManager.AddBuffer<StorehouseInventoryItem>(entity);
+            var capacities = _entityManager.AddBuffer<StorehouseCapacityElement>(entity);
+            capacities.Add(new StorehouseCapacityElement
+            {
+                ResourceTypeId = resourceId,
+                MaxCapacity = perTypeCapacity
+            });
+            _entityManager.AddBuffer<StorehouseReservationItem>(entity);
             return entity;
         }
 

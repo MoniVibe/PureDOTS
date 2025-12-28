@@ -26,13 +26,15 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private BufferLookup<StorehouseInventoryItem> _storehouseInventoryLookup;
         private ComponentLookup<StorehouseInventory> _storehouseInventoryComponentLookup;
         private BufferLookup<ShipmentCargoAllocation> _shipmentCargoAllocationLookup;
-        private BufferLookup<StorehouseInventoryItem> _sourceStorehouseInventoryLookup;
+        private BufferLookup<StorehouseCapacityElement> _storehouseCapacityLookup;
+        private BufferLookup<StorehouseReservationItem> _storehouseReservationLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<Shipment>();
+            state.RequireForUpdate<ResourceTypeIndex>();
             _shipmentLookup = state.GetComponentLookup<Shipment>(false);
             _orderLookup = state.GetComponentLookup<LogisticsOrder>(false);
             _capacityReservationLookup = state.GetComponentLookup<CapacityReservation>(false);
@@ -42,7 +44,8 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _storehouseInventoryLookup = state.GetBufferLookup<StorehouseInventoryItem>(false);
             _storehouseInventoryComponentLookup = state.GetComponentLookup<StorehouseInventory>(false);
             _shipmentCargoAllocationLookup = state.GetBufferLookup<ShipmentCargoAllocation>(true);
-            _sourceStorehouseInventoryLookup = state.GetBufferLookup<StorehouseInventoryItem>(true);
+            _storehouseCapacityLookup = state.GetBufferLookup<StorehouseCapacityElement>(true);
+            _storehouseReservationLookup = state.GetBufferLookup<StorehouseReservationItem>(true);
         }
 
         [BurstCompile]
@@ -71,6 +74,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 return;
             }
 
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex) ||
+                !resourceTypeIndex.Catalog.IsCreated)
+            {
+                return;
+            }
+
             _shipmentLookup.Update(ref state);
             _orderLookup.Update(ref state);
             _inventoryReservationLookup.Update(ref state);
@@ -80,7 +89,8 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _storehouseInventoryLookup.Update(ref state);
             _storehouseInventoryComponentLookup.Update(ref state);
             _shipmentCargoAllocationLookup.Update(ref state);
-            _sourceStorehouseInventoryLookup.Update(ref state);
+            _storehouseCapacityLookup.Update(ref state);
+            _storehouseReservationLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
@@ -139,7 +149,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
                     var order = _orderLookup[orderEntity];
                     Entity destination = order.DestinationNode;
-                    Entity source = order.SourceNode;
 
                     // Verify source was already withdrawn (safety check to prevent double-withdrawal)
                     bool sourceAlreadyWithdrawn = false;
@@ -171,8 +180,10 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     if (deliveredAmount <= 0f || !sourceAlreadyWithdrawn)
                     {
                         order.Status = LogisticsOrderStatus.Failed;
+                        order.FailureReason = ShipmentFailureReason.NoInventory;
                         _orderLookup[orderEntity] = order;
                         ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                        shipment.ValueRW.FailureReason = ShipmentFailureReason.NoInventory;
                         ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
                         ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
                         ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
@@ -187,21 +198,55 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
                     if (requiresStorehouseDeposit)
                     {
+                        if (!_storehouseCapacityLookup.HasBuffer(destination) ||
+                            !_storehouseReservationLookup.HasBuffer(destination))
+                        {
+                            order.Status = LogisticsOrderStatus.Failed;
+                            order.FailureReason = ShipmentFailureReason.InvalidDestination;
+                            _orderLookup[orderEntity] = order;
+                            ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                            shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidDestination;
+                            ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
+                            ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
+                            ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
+                            continue;
+                        }
+
                         var inventoryBuffer = _storehouseInventoryLookup[destination];
                         var inventoryComponent = _storehouseInventoryComponentLookup[destination];
+                        var capacityBuffer = _storehouseCapacityLookup[destination];
+                        var reservationBuffer = _storehouseReservationLookup[destination];
 
-                        if (!StorehouseApi.TryDeposit(
-                                destination,
-                                order.ResourceId,
+                        var resourceIndex = resourceTypeIndex.Catalog.Value.LookupIndex(order.ResourceId);
+                        if (resourceIndex < 0)
+                        {
+                            order.Status = LogisticsOrderStatus.Failed;
+                            order.FailureReason = ShipmentFailureReason.InvalidDestination;
+                            _orderLookup[orderEntity] = order;
+                            ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                            shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidDestination;
+                            ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
+                            ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
+                            ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
+                            continue;
+                        }
+
+                        if (!StorehouseMutationService.TryDepositWithPerTypeCapacity(
+                                (ushort)resourceIndex,
                                 creditedAmount,
+                                resourceTypeIndex.Catalog,
                                 ref inventoryComponent,
                                 inventoryBuffer,
+                                capacityBuffer,
+                                reservationBuffer,
                                 out float depositedAmount) ||
                             depositedAmount <= 0f)
                         {
                             order.Status = LogisticsOrderStatus.Failed;
+                            order.FailureReason = ShipmentFailureReason.StorageFull;
                             _orderLookup[orderEntity] = order;
                             ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                            shipment.ValueRW.FailureReason = ShipmentFailureReason.StorageFull;
                             ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
                             ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
                             ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
@@ -215,8 +260,10 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     {
                         // Storehouse buffer is present but inventory component missing – treat as failure
                         order.Status = LogisticsOrderStatus.Failed;
+                        order.FailureReason = ShipmentFailureReason.InvalidDestination;
                         _orderLookup[orderEntity] = order;
                         ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                        shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidDestination;
                         ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
                         ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
                         ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
@@ -253,9 +300,11 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
                     // Update order status
                     order.Status = LogisticsOrderStatus.Delivered;
+                    order.FailureReason = ShipmentFailureReason.None;
                     _orderLookup[orderEntity] = order;
 
                     ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Delivered);
+                    shipment.ValueRW.FailureReason = ShipmentFailureReason.None;
                     shipment.ValueRW.ActualArrivalTick = tickTime.Tick;
 
                     // Release reservations (mark as released, will be cleaned up later)

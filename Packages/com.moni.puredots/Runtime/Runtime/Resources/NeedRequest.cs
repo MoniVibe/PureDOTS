@@ -3,6 +3,17 @@ using Unity.Collections;
 
 namespace PureDOTS.Runtime.Resources
 {
+    public enum RequestFailureReason : byte
+    {
+        None = 0,
+        InvalidRequester = 1,
+        InvalidTarget = 2,
+        NoSupply = 3,
+        ReservationFailed = 4,
+        Expired = 5,
+        Cancelled = 6
+    }
+
     /// <summary>
     /// A request for resources by an agent or group.
     /// Describes what is needed, who needs it, and priority.
@@ -44,6 +55,11 @@ namespace PureDOTS.Runtime.Resources
         /// Request ID for tracking fulfillment.
         /// </summary>
         public uint RequestId;
+
+        /// <summary>
+        /// Failure reason for this request, if any.
+        /// </summary>
+        public RequestFailureReason FailureReason;
     }
 }
 

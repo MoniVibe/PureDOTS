@@ -34,6 +34,7 @@ namespace PureDOTS.Runtime.Logistics
                 ReservedAmount = amount,
                 OrderEntity = orderEntity,
                 Status = ReservationStatus.Active,
+                CancelReason = ReservationCancelReason.None,
                 CreatedTick = currentTick,
                 ExpiryTick = currentTick + ttlTicks,
                 ReservationFlags = 0
@@ -66,6 +67,7 @@ namespace PureDOTS.Runtime.Logistics
                 ReservedVolume = volume,
                 OrderEntity = orderEntity,
                 Status = ReservationStatus.Active,
+                CancelReason = ReservationCancelReason.None,
                 CreatedTick = currentTick,
                 ExpiryTick = currentTick + ttlTicks
             };
@@ -90,6 +92,7 @@ namespace PureDOTS.Runtime.Logistics
                 ServiceType = serviceType,
                 OrderEntity = orderEntity,
                 Status = ReservationStatus.Active,
+                CancelReason = ReservationCancelReason.None,
                 ReservedSlotTime = slotTime,
                 CreatedTick = currentTick,
                 ExpiryTick = currentTick + ttlTicks
@@ -121,6 +124,24 @@ namespace PureDOTS.Runtime.Logistics
         public static void ReleaseReservation(ref ServiceReservation reservation)
         {
             reservation.Status = ReservationStatus.Released;
+        }
+
+        public static void CancelReservation(ref InventoryReservation reservation, ReservationCancelReason reason)
+        {
+            reservation.Status = ReservationStatus.Cancelled;
+            reservation.CancelReason = reason;
+        }
+
+        public static void CancelReservation(ref CapacityReservation reservation, ReservationCancelReason reason)
+        {
+            reservation.Status = ReservationStatus.Cancelled;
+            reservation.CancelReason = reason;
+        }
+
+        public static void CancelReservation(ref ServiceReservation reservation, ReservationCancelReason reason)
+        {
+            reservation.Status = ReservationStatus.Cancelled;
+            reservation.CancelReason = reason;
         }
 
         /// <summary>
@@ -158,6 +179,7 @@ namespace PureDOTS.Runtime.Logistics
             if (reservation.Status == ReservationStatus.Active && currentTick >= reservation.ExpiryTick)
             {
                 reservation.Status = ReservationStatus.Expired;
+                reservation.CancelReason = ReservationCancelReason.Timeout;
             }
         }
 
@@ -169,6 +191,7 @@ namespace PureDOTS.Runtime.Logistics
             if (reservation.Status == ReservationStatus.Active && currentTick >= reservation.ExpiryTick)
             {
                 reservation.Status = ReservationStatus.Expired;
+                reservation.CancelReason = ReservationCancelReason.Timeout;
             }
         }
 
@@ -180,6 +203,7 @@ namespace PureDOTS.Runtime.Logistics
             if (reservation.Status == ReservationStatus.Active && currentTick >= reservation.ExpiryTick)
             {
                 reservation.Status = ReservationStatus.Expired;
+                reservation.CancelReason = ReservationCancelReason.Timeout;
             }
         }
     }

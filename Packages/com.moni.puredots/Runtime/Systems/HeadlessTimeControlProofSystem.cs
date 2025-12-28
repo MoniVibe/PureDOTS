@@ -608,6 +608,11 @@ namespace PureDOTS.Systems
 
         private bool EnsureBubbleCleared(ref SystemState state)
         {
+            if (_bubbleRequested != 0)
+            {
+                return true;
+            }
+
             if (_probeEntity == Entity.Null || !state.EntityManager.Exists(_probeEntity))
             {
                 return false;

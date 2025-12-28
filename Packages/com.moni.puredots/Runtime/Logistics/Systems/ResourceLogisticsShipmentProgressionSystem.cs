@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Logistics;
 using PureDOTS.Runtime.Logistics.Components;
+using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Collections;
@@ -61,17 +62,17 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private ComponentLookup<ServiceReservation> _serviceReservationLookup;
 
         private int _nextServiceReservationId;
-        private const uint LoadingTimeTicks = 10; // Simplified: 10 ticks loading time
-        private const uint ServiceReservationTTL = 1000; // Default TTL in ticks
+        private const float ServiceReservationTTLSeconds = 16.6667f;
         private const float ArrivalDistanceThreshold = 5f; // Meters - hauler considered arrived if within this distance
         private const byte DefaultServiceCapacity = 1; // Default service slot capacity if not specified
-        private const uint HaulerIntegrationWarningInterval = 300; // Warn every ~5s at 60hz when fallbacks are used
+        private const float HaulerIntegrationWarningIntervalSeconds = 5f;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<Shipment>();
+            state.RequireForUpdate<ResourceTypeIndex>();
             _shipmentLookup = state.GetComponentLookup<Shipment>(false);
             _routeLookup = state.GetComponentLookup<Route>(false);
             _orderLookup = state.GetComponentLookup<LogisticsOrder>(false);
@@ -107,6 +108,16 @@ namespace PureDOTS.Runtime.Logistics.Systems
             {
                 return;
             }
+
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex) ||
+                !resourceTypeIndex.Catalog.IsCreated)
+            {
+                return;
+            }
+
+            var fixedDeltaTime = math.max(1e-6f, tickTime.FixedDeltaTime);
+            var serviceReservationTtlTicks = (uint)math.max(1f, math.ceil(ServiceReservationTTLSeconds / fixedDeltaTime));
+            var warningIntervalTicks = (uint)math.max(1f, math.ceil(HaulerIntegrationWarningIntervalSeconds / fixedDeltaTime));
 
             _shipmentLookup.Update(ref state);
             _routeLookup.Update(ref state);
@@ -225,7 +236,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                         loadOrderEntity,
                                         tickTime.Tick,
                                         tickTime.Tick,
-                                        ServiceReservationTTL,
+                                        serviceReservationTtlTicks,
                                         _nextServiceReservationId++);
 
                                     var serviceResEntity = ecb.CreateEntity();
@@ -273,7 +284,24 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                 var sourceInventory = _storehouseInventoryLookup[sourceNode];
                                 var inventoryComponent = _storehouseInventoryComponentLookup[sourceNode];
 
-                                if (TryWithdrawFromStorehouse(ref inventoryComponent, ref sourceInventory, order.ResourceId, reservation.ReservedAmount, out float withdrawnAmount))
+                                var resourceIndex = resourceTypeIndex.Catalog.Value.LookupIndex(order.ResourceId);
+                                if (resourceIndex < 0)
+                                {
+                                    order.Status = LogisticsOrderStatus.Failed;
+                                    order.FailureReason = ShipmentFailureReason.InvalidSource;
+                                    _orderLookup[withdrawOrderEntity] = order;
+                                    shipment.ValueRW.Status = ShipmentStatus.Failed;
+                                    shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidSource;
+                                    continue;
+                                }
+
+                                if (StorehouseMutationService.CommitWithdrawReservedOut(
+                                        (ushort)resourceIndex,
+                                        reservation.ReservedAmount,
+                                        resourceTypeIndex.Catalog,
+                                        ref inventoryComponent,
+                                        sourceInventory,
+                                        out float withdrawnAmount))
                                 {
                                     hasCargo = withdrawnAmount > 0f;
 
@@ -299,6 +327,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                     // Release inventory reservation
                                     reservation.Status = ReservationStatus.Committed;
                                     reservation.ReservedAmount = withdrawnAmount;
+                                    reservation.ReservationFlags |= InventoryReservationFlags.Withdrawn;
                                     _inventoryReservationLookup[invResEntity] = reservation;
                                     orderToInventoryReservationMap.Remove(withdrawOrderEntity);
                                     orderToInventoryReservationMap.TryAdd(withdrawOrderEntity, invResEntity);
@@ -438,7 +467,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     }
 
                     if (missingHaulingLoopState &&
-                        tickTime.Tick % HaulerIntegrationWarningInterval == 0)
+                        tickTime.Tick % warningIntervalTicks == 0)
                     {
                         var hasTransform = _transformLookup.HasComponent(transportEntity);
                         var warningMessage = hasTransform
@@ -484,7 +513,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                         unloadOrderEntity,
                                         tickTime.Tick,
                                         tickTime.Tick,
-                                        ServiceReservationTTL,
+                                        serviceReservationTtlTicks,
                                         _nextServiceReservationId++);
 
                                     var serviceResEntity = ecb.CreateEntity();
@@ -546,59 +575,6 @@ namespace PureDOTS.Runtime.Logistics.Systems
             Entity node)
         {
             return counts.TryGetValue(node, out var count) ? count : 0;
-        }
-
-        private static bool TryWithdrawFromStorehouse(
-            ref StorehouseInventory inventory,
-            ref DynamicBuffer<StorehouseInventoryItem> items,
-            in FixedString64Bytes resourceId,
-            float amount,
-            out float withdrawnAmount)
-        {
-            withdrawnAmount = 0f;
-
-            if (amount <= 0f)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < items.Length; i++)
-            {
-                var item = items[i];
-                if (!item.ResourceTypeId.Equals(resourceId))
-                {
-                    continue;
-                }
-
-                var available = math.max(0f, item.Amount);
-                withdrawnAmount = math.min(amount, available);
-
-                if (withdrawnAmount <= 0f)
-                {
-                    return false;
-                }
-
-                item.Amount -= withdrawnAmount;
-                if (item.Reserved > 0f)
-                {
-                    item.Reserved = math.max(0f, item.Reserved - withdrawnAmount);
-                }
-
-                if (item.Amount <= 0f)
-                {
-                    items.RemoveAt(i);
-                }
-                else
-                {
-                    items[i] = item;
-                }
-
-                inventory.TotalStored = math.max(0f, inventory.TotalStored - withdrawnAmount);
-                inventory.ItemTypeCount = items.Length;
-                return true;
-            }
-
-            return false;
         }
 
         private static void ReleaseServiceReservationsForOrder(

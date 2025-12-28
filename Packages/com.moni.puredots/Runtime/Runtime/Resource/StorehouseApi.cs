@@ -72,22 +72,6 @@ namespace PureDOTS.Runtime.Resource
         }
 
         /// <summary>
-        /// Attempts to deposit resources into a storehouse using an index.
-        /// Prefer the overload that accepts a resource ID to avoid mismatches.
-        /// </summary>
-        public static bool TryDeposit(
-            Entity storehouseEntity,
-            ushort resourceTypeIndex,
-            float amount,
-            ref StorehouseInventory inventory,
-            DynamicBuffer<StorehouseInventoryItem> items,
-            out float depositedAmount)
-        {
-            var resourceTypeId = new FixedString64Bytes($"Resource_{resourceTypeIndex}");
-            return TryDeposit(storehouseEntity, resourceTypeId, amount, ref inventory, items, out depositedAmount);
-        }
-        
-        /// <summary>
         /// Attempts to withdraw resources from a storehouse.
         /// Returns true if withdrawal was successful.
         /// </summary>
@@ -130,4 +114,3 @@ namespace PureDOTS.Runtime.Resource
         }
     }
 }
-
