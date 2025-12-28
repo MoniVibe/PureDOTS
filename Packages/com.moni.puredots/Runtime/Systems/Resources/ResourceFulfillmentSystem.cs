@@ -1,6 +1,5 @@
+using ScenarioState = PureDOTS.Runtime.ScenarioState;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Interrupts;
-using PureDOTS.Runtime.Resources;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -18,43 +17,31 @@ namespace PureDOTS.Systems.Resources
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+            if (!SystemAPI.TryGetSingleton<ScenarioState>(out var scenario) ||
+                !scenario.IsInitialized ||
+                !scenario.EnableEconomy)
             {
                 return;
             }
 
-            var currentTick = timeState.Tick;
-
-            // Phase 2: Basic fulfillment logic
-            // Match agents with Deliver intent to pending requests
-            foreach (var (intent, entity) in SystemAPI.Query<RefRO<EntityIntent>>().WithEntityAccess())
+            if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) ||
+                rewindState.Mode != RewindMode.Record)
             {
-                if (intent.ValueRO.Mode != IntentMode.Deliver || intent.ValueRO.TargetEntity == Entity.Null)
-                {
-                    continue;
-                }
-
-                var targetEntity = intent.ValueRO.TargetEntity;
-
-                // Check if target has pending requests
-                if (SystemAPI.HasBuffer<NeedRequest>(targetEntity))
-                {
-                    var requests = SystemAPI.GetBuffer<NeedRequest>(targetEntity);
-                    
-                    // Phase 2: Will implement actual fulfillment logic
-                    // For now, this is a placeholder that identifies delivery opportunities
-                    // Actual fulfillment will happen in Phase 2.5 when action execution is complete
-                }
+                return;
             }
 
-            // Generate delivery receipts for completed deliveries
-            // Phase 2: Will track deliveries and create receipts
+            if (!SystemAPI.TryGetSingleton<TickTimeState>(out _))
+            {
+                return;
+            }
+
+            // Resource requests now drive fulfillment through the logistics pipeline.
         }
     }
 }

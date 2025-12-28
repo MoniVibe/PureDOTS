@@ -146,7 +146,7 @@ namespace PureDOTS.Tests.Logistics
 
         private void CreateResourceTypeIndex(params string[] resourceIds)
         {
-            using var builder = new BlobBuilder(Allocator.Temp);
+            var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<ResourceTypeIndexBlob>();
             var ids = builder.Allocate(ref root.Ids, resourceIds.Length);
             var displayNames = builder.Allocate(ref root.DisplayNames, resourceIds.Length);
@@ -156,13 +156,14 @@ namespace PureDOTS.Tests.Logistics
             {
                 var resourceId = new FixedString64Bytes(resourceIds[i]);
                 ids[i] = resourceId;
-                displayNames[i] = builder.AllocateString(resourceIds[i]);
+                builder.AllocateString(ref displayNames[i], resourceIds[i]);
                 colors[i] = new Color32(0, 0, 0, 0);
             }
 
             _resourceCatalog = builder.CreateBlobAssetReference<ResourceTypeIndexBlob>(Allocator.Persistent);
             var entity = _entityManager.CreateEntity(typeof(ResourceTypeIndex));
             _entityManager.SetComponentData(entity, new ResourceTypeIndex { Catalog = _resourceCatalog });
+            builder.Dispose();
         }
 
         private Entity CreateStorehouse(FixedString64Bytes resourceId, float perTypeCapacity)

@@ -57,6 +57,11 @@ namespace PureDOTS.Runtime.Resources
         public uint RequestId;
 
         /// <summary>
+        /// Linked logistics order entity for fulfillment.
+        /// </summary>
+        public Entity OrderEntity;
+
+        /// <summary>
         /// Failure reason for this request, if any.
         /// </summary>
         public RequestFailureReason FailureReason;
