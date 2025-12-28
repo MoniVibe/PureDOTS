@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using PureDOTS.Runtime.Components;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -61,6 +62,11 @@ namespace PureDOTS.Rendering
 
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.HasSingleton<PresentationReady>())
+            {
+                return;
+            }
+
             _entityTypeHandle.Update(ref state);
             ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
                 "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");

@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -334,6 +335,8 @@ namespace PureDOTS.Rendering
             {
                 _lastCatalogVersion = catalogVersion.Value;
             }
+
+            EnsurePresentationReady();
         }
 
         private void ResolveVariantForEntity(
@@ -476,6 +479,17 @@ namespace PureDOTS.Rendering
         {
             const int maxIndex = RenderPresentationConstants.UnassignedPresenterDefIndex - 1;
             return (ushort)math.clamp(defIndex, 0, maxIndex);
+        }
+
+        private void EnsurePresentationReady()
+        {
+            if (SystemAPI.HasSingleton<PresentationReady>())
+            {
+                return;
+            }
+
+            var entity = EntityManager.CreateEntity(typeof(PresentationReady));
+            EntityManager.SetName(entity, "PresentationReady");
         }
 
         private static bool TryResolve(BlobAssetReference<RenderPresentationCatalogBlob> catalogRef, RenderVariantKey key, out RenderResolveRecord record)

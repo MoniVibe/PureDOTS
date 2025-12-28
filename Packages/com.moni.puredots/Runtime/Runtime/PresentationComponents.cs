@@ -17,4 +17,11 @@ namespace PureDOTS.Runtime.Components
     {
         public int LastKnownOrderVersion;
     }
+
+    /// <summary>
+    /// Marks when presentation systems have completed their initial setup pass.
+    /// </summary>
+    public struct PresentationReady : IComponentData
+    {
+    }
 }

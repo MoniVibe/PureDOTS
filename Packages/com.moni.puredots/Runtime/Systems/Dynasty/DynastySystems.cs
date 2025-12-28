@@ -18,12 +18,14 @@ namespace PureDOTS.Systems.Dynasty
     public partial struct DynastySuccessionSystem : ISystem
     {
         private ComponentLookup<DynastyMember> _dynastyMemberLookup;
+        private ComponentLookup<SuccessionEvent> _successionEventLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             _dynastyMemberLookup = state.GetComponentLookup<DynastyMember>(true);
+            _successionEventLookup = state.GetComponentLookup<SuccessionEvent>(true);
         }
 
         [BurstCompile]
@@ -33,8 +35,7 @@ namespace PureDOTS.Systems.Dynasty
                 return;
 
             _dynastyMemberLookup.Update(ref state);
-            var successionEventLookup = state.GetComponentLookup<SuccessionEvent>(true);
-            successionEventLookup.Update(ref state);
+            _successionEventLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
@@ -45,7 +46,7 @@ namespace PureDOTS.Systems.Dynasty
                 Ecb = ecb,
                 CurrentTick = timeState.Tick,
                 DynastyMemberLookup = _dynastyMemberLookup,
-                SuccessionEventLookup = successionEventLookup
+                SuccessionEventLookup = _successionEventLookup
             };
             deathJob.Run();
 
@@ -784,4 +785,3 @@ namespace PureDOTS.Systems.Dynasty
         }
     }
 }
-
