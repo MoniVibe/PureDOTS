@@ -13,6 +13,7 @@ namespace PureDOTS.Runtime.Core
         private const string NoGraphicsEnvVar = "PUREDOTS_NOGRAPHICS";
         private const string ForceRenderEnvVar = "PUREDOTS_FORCE_RENDER";
         private const string LegacyRenderingEnvVar = "PUREDOTS_RENDERING";
+        private const string HeadlessPresentationEnvVar = "PUREDOTS_HEADLESS_PRESENTATION";
 
         public struct Flags
         {
@@ -120,8 +121,11 @@ namespace PureDOTS.Runtime.Core
             int isBatchMode = IsBatchMode ? 1 : 0;
             int headlessRequested = HeadlessRequested ? 1 : 0;
             int renderingEnabled = IsRenderingEnabled ? 1 : 0;
+            int forceRender = s_flags.Data.ForceRender != 0 ? 1 : 0;
+            int editorOverride = s_editorOverrideEnabled.Data != 0 ? 1 : 0;
+            int headlessPresentation = EnvIsSet(HeadlessPresentationEnvVar) ? 1 : 0;
             string suffix = string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason})";
-            Debug.Log($"[RuntimeMode] IsBatchMode={isBatchMode} HeadlessRequested={headlessRequested} RenderingEnabled={renderingEnabled}{suffix}");
+            Debug.Log($"[RuntimeMode] IsBatchMode={isBatchMode} HeadlessRequested={headlessRequested} RenderingEnabled={renderingEnabled} ForceRender={forceRender} EditorOverride={editorOverride} HeadlessPresentation={headlessPresentation}{suffix}");
         }
 
         private struct EditorOverrideKey
