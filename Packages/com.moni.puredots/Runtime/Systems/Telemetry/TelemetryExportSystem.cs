@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
@@ -30,27 +29,40 @@ namespace PureDOTS.Systems.Telemetry
         private string _scenarioIdString;
         private uint _scenarioSeed;
         private bool _outputCapReached;
+        private bool _truncateOutput;
+        private bool _capRecordWritten;
+        private StringBuilder _lineBuilder;
+        private StringWriter _lineWriter;
 
         protected override void OnCreate()
         {
             RequireForUpdate<TelemetryExportConfig>();
             _activePath = string.Empty;
             _scenarioIdString = string.Empty;
+            _lineBuilder = new StringBuilder(512);
+            _lineWriter = new StringWriter(_lineBuilder, CultureInfo.InvariantCulture) { NewLine = "\n" };
+            EnsureExportStateExists();
         }
 
         protected override void OnDestroy()
         {
+            _lineWriter?.Dispose();
+            _lineWriter = null;
         }
 
         protected override void OnUpdate()
         {
             var configEntity = SystemAPI.GetSingletonEntity<TelemetryExportConfig>();
             var config = SystemAPI.GetComponent<TelemetryExportConfig>(configEntity);
+            var exportState = SystemAPI.GetSingletonRW<TelemetryExportState>();
 
             if (config.Enabled == 0 || config.OutputPath.Length == 0)
             {
                 _headerWritten = false;
                 _outputCapReached = false;
+                _truncateOutput = true;
+                _capRecordWritten = false;
+                ClearExportState(ref exportState.ValueRW);
                 return;
             }
 
@@ -69,10 +81,23 @@ namespace PureDOTS.Systems.Telemetry
                 _runIdString = _runIdCache.ToString();
                 _activePath = config.OutputPath.ToString();
                 _outputCapReached = false;
+                _truncateOutput = true;
+                _capRecordWritten = false;
+                ResetExportState(ref exportState.ValueRW, config);
+            }
+            else if (!exportState.ValueRO.RunId.Equals(config.RunId) || exportState.ValueRO.MaxOutputBytes != config.MaxOutputBytes)
+            {
+                ResetExportState(ref exportState.ValueRW, config);
             }
 
             if (string.IsNullOrEmpty(_activePath))
             {
+                return;
+            }
+
+            if (exportState.ValueRO.CapReached != 0)
+            {
+                _outputCapReached = true;
                 return;
             }
 
@@ -82,53 +107,203 @@ namespace PureDOTS.Systems.Telemetry
             {
                 EnsureDirectory(_activePath);
 
-                if (config.MaxOutputBytes > 0 && IsOutputCapped(_activePath, config.MaxOutputBytes))
+                bool truncate = _truncateOutput || !_headerWritten;
+                using var writer = OpenWriter(_activePath, truncate, out var bytesWritten);
+
+                if (truncate)
                 {
-                    return;
+                    _truncateOutput = false;
                 }
 
-                using var fileStream = new FileStream(_activePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-                using var writer = new StreamWriter(fileStream, Encoding.UTF8);
-
-                if (!_headerWritten)
+                if (bytesWritten < exportState.ValueRO.BytesWritten)
                 {
-                    WriteRunHeader(writer, config);
-                    _headerWritten = true;
+                    bytesWritten = exportState.ValueRO.BytesWritten;
+                    writer.BaseStream.Position = (long)bytesWritten;
                 }
 
                 var tick = GetCurrentTick();
+                ulong maxBytes = config.MaxOutputBytes;
+                string truncatedRecord = null;
+                ulong reserveBytes = 0;
+
+                if (maxBytes > 0)
+                {
+                    truncatedRecord = BuildTruncatedRecord(tick, maxBytes);
+                    reserveBytes = (ulong)Encoding.UTF8.GetByteCount(truncatedRecord);
+                    if (reserveBytes >= maxBytes || bytesWritten >= maxBytes)
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
+                }
+
+                if (!_headerWritten)
+                {
+                    if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter => WriteRunHeader(recordWriter, config)))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
+
+                    _headerWritten = true;
+                }
 
                 if ((config.Flags & TelemetryExportFlags.IncludeTelemetryMetrics) != 0)
                 {
-                    ExportTelemetryMetrics(writer, tick);
+                    if (!ExportTelemetryMetrics(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
                 }
 
                 if ((config.Flags & TelemetryExportFlags.IncludeFrameTiming) != 0)
                 {
-                    ExportFrameTiming(writer, tick);
+                    if (!ExportFrameTiming(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
                 }
 
                 if ((config.Flags & TelemetryExportFlags.IncludeBehaviorTelemetry) != 0)
                 {
-                    ExportBehaviorTelemetry(writer);
+                    if (!ExportBehaviorTelemetry(writer, ref bytesWritten, maxBytes, reserveBytes))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
                 }
 
                 if ((config.Flags & TelemetryExportFlags.IncludeReplayEvents) != 0)
                 {
-                    ExportReplayTelemetry(writer, tick);
+                    if (!ExportReplayTelemetry(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
                 }
 
                 if ((config.Flags & TelemetryExportFlags.IncludeTelemetryEvents) != 0)
                 {
-                    ExportTelemetryEvents(writer);
+                    if (!ExportTelemetryEvents(writer, ref bytesWritten, maxBytes, reserveBytes))
+                    {
+                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                        return;
+                    }
                 }
 
                 writer.Flush();
+                exportState.ValueRW.BytesWritten = bytesWritten;
+                exportState.ValueRW.MaxOutputBytes = maxBytes;
+                exportState.ValueRW.RunId = config.RunId;
+                exportState.ValueRW.CapReached = _outputCapReached ? (byte)1 : (byte)0;
             }
             catch (Exception ex)
             {
                 UnityDebug.LogError($"[TelemetryExportSystem] Failed to export telemetry to '{_activePath}': {ex}");
             }
+        }
+
+        private void EnsureExportStateExists()
+        {
+            using var query = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportState>());
+            if (query.IsEmpty)
+            {
+                EntityManager.CreateEntity(typeof(TelemetryExportState));
+            }
+        }
+
+        private static void ClearExportState(ref TelemetryExportState state)
+        {
+            state.RunId = default;
+            state.BytesWritten = 0;
+            state.MaxOutputBytes = 0;
+            state.CapReached = 0;
+        }
+
+        private static void ResetExportState(ref TelemetryExportState state, in TelemetryExportConfig config)
+        {
+            state.RunId = config.RunId;
+            state.BytesWritten = 0;
+            state.MaxOutputBytes = config.MaxOutputBytes;
+            state.CapReached = 0;
+        }
+
+        private StreamWriter OpenWriter(string path, bool truncate, out ulong bytesWritten)
+        {
+            FileStream fileStream;
+            if (truncate)
+            {
+                fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+                bytesWritten = 0;
+            }
+            else
+            {
+                fileStream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+                fileStream.Position = fileStream.Length;
+                bytesWritten = (ulong)fileStream.Position;
+            }
+
+            return new StreamWriter(fileStream, Encoding.UTF8) { NewLine = "\n" };
+        }
+
+        private bool TryWriteRecord(StreamWriter writer, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes, Action<TextWriter> writeRecord)
+        {
+            _lineBuilder.Clear();
+            writeRecord(_lineWriter);
+            var line = _lineBuilder.ToString();
+            var recordBytes = (ulong)Encoding.UTF8.GetByteCount(line);
+            if (maxBytes > 0 && bytesWritten + recordBytes + reserveBytes > maxBytes)
+            {
+                return false;
+            }
+
+            writer.Write(line);
+            bytesWritten += recordBytes;
+            return true;
+        }
+
+        private string BuildTruncatedRecord(uint tick, ulong maxBytes)
+        {
+            _lineBuilder.Clear();
+            _lineWriter.Write("{\"type\":\"telemetryTruncated\",\"runId\":\"");
+            WriteEscapedString(_lineWriter, _runIdString);
+            _lineWriter.Write("\",\"scenario\":\"");
+            WriteEscapedString(_lineWriter, _scenarioIdString);
+            _lineWriter.Write("\",\"seed\":");
+            _lineWriter.Write(_scenarioSeed);
+            _lineWriter.Write(",\"tick\":");
+            _lineWriter.Write(tick);
+            _lineWriter.Write(",\"maxBytes\":");
+            _lineWriter.Write(maxBytes);
+            _lineWriter.WriteLine("}");
+            return _lineBuilder.ToString();
+        }
+
+        private void HandleCapReached(StreamWriter writer, ref ulong bytesWritten, ulong maxBytes, string truncatedRecord, ulong truncatedBytes, ref TelemetryExportState exportState)
+        {
+            if (!_outputCapReached)
+            {
+                if (!_capRecordWritten && !string.IsNullOrEmpty(truncatedRecord))
+                {
+                    var recordBytes = truncatedBytes > 0 ? truncatedBytes : (ulong)Encoding.UTF8.GetByteCount(truncatedRecord);
+                    if (maxBytes == 0 || bytesWritten + recordBytes <= maxBytes)
+                    {
+                        writer.Write(truncatedRecord);
+                        bytesWritten += recordBytes;
+                        _capRecordWritten = true;
+                    }
+                }
+
+                writer.Flush();
+                _outputCapReached = true;
+                UnityDebug.LogWarning($"[TelemetryExportSystem] Output cap reached ({bytesWritten} of {maxBytes} bytes). Telemetry export paused.");
+            }
+
+            exportState.BytesWritten = bytesWritten;
+            exportState.MaxOutputBytes = maxBytes;
+            exportState.CapReached = 1;
         }
 
         private static FixedString128Bytes GenerateRunId()
@@ -149,35 +324,6 @@ namespace PureDOTS.Systems.Telemetry
             {
                 Directory.CreateDirectory(directory);
             }
-        }
-
-        private bool IsOutputCapped(string path, ulong maxBytes)
-        {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    var length = (ulong)new FileInfo(path).Length;
-                    if (length >= maxBytes)
-                    {
-                        if (!_outputCapReached)
-                        {
-                            _outputCapReached = true;
-                            UnityDebug.LogWarning($"[TelemetryExportSystem] Output cap reached ({length} bytes >= {maxBytes}). Telemetry export paused.");
-                        }
-
-                        return true;
-                    }
-                }
-
-                _outputCapReached = false;
-            }
-            catch (Exception ex)
-            {
-                UnityDebug.LogWarning($"[TelemetryExportSystem] Failed to read output size for '{path}': {ex.Message}");
-            }
-
-            return false;
         }
 
         private uint GetCurrentTick()
@@ -235,25 +381,26 @@ namespace PureDOTS.Systems.Telemetry
             return 0;
         }
 
-        private void ExportTelemetryMetrics(StreamWriter writer, uint tick)
+        private bool ExportTelemetryMetrics(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
         {
             if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
             {
-                return;
+                return true;
             }
 
             if (!EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
             {
-                return;
+                return true;
             }
 
             var buffer = EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
             if (buffer.Length == 0)
             {
-                return;
+                return true;
             }
 
             var culture = CultureInfo.InvariantCulture;
+            var completed = true;
             for (int i = 0; i < buffer.Length; i++)
             {
                 var metric = buffer[i];
@@ -263,111 +410,145 @@ namespace PureDOTS.Systems.Telemetry
                     continue;
                 }
 
-                writer.Write("{\"type\":\"metric\",\"runId\":\"");
-                WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"scenario\":\"");
-                WriteEscapedString(writer, _scenarioIdString);
-                writer.Write("\",\"seed\":");
-                writer.Write(_scenarioSeed);
-                writer.Write(",\"tick\":");
-                writer.Write(tick);
-                writer.Write(",\"loop\":\"");
-                WriteEscapedString(writer, loopLabel);
-                writer.Write("\",\"key\":\"");
-                WriteEscapedString(writer, metric.Key.ToString());
-                writer.Write("\",\"value\":");
-                writer.Write(metric.Value.ToString("R", culture));
-                writer.Write(",\"unit\":\"");
-                writer.Write(GetUnitLabel(metric.Unit));
-                writer.WriteLine("\"}");
+                if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                    {
+                        recordWriter.Write("{\"type\":\"metric\",\"runId\":\"");
+                        WriteEscapedString(recordWriter, _runIdString);
+                        recordWriter.Write("\",\"scenario\":\"");
+                        WriteEscapedString(recordWriter, _scenarioIdString);
+                        recordWriter.Write("\",\"seed\":");
+                        recordWriter.Write(_scenarioSeed);
+                        recordWriter.Write(",\"tick\":");
+                        recordWriter.Write(tick);
+                        recordWriter.Write(",\"loop\":\"");
+                        WriteEscapedString(recordWriter, loopLabel);
+                        recordWriter.Write("\",\"key\":\"");
+                        WriteEscapedString(recordWriter, metric.Key.ToString());
+                        recordWriter.Write("\",\"value\":");
+                        recordWriter.Write(metric.Value.ToString("R", culture));
+                        recordWriter.Write(",\"unit\":\"");
+                        recordWriter.Write(GetUnitLabel(metric.Unit));
+                        recordWriter.WriteLine("\"}");
+                    }))
+                {
+                    completed = false;
+                    break;
+                }
             }
 
-            buffer.Clear();
+            if (completed)
+            {
+                buffer.Clear();
+            }
+
+            return completed;
         }
 
-        private void ExportFrameTiming(StreamWriter writer, uint tick)
+        private bool ExportFrameTiming(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
         {
             if (!SystemAPI.TryGetSingletonEntity<FrameTimingStream>(out var frameEntity))
             {
-                return;
+                return true;
             }
 
             if (!EntityManager.HasBuffer<FrameTimingSample>(frameEntity))
             {
-                return;
+                return true;
             }
 
             var samples = EntityManager.GetBuffer<FrameTimingSample>(frameEntity);
             if (samples.Length > 0)
             {
                 var culture = CultureInfo.InvariantCulture;
+                var completed = true;
                 for (int i = 0; i < samples.Length; i++)
                 {
                     var sample = samples[i];
                     var label = FrameTimingRecorderSystem.GetGroupLabel(sample.Group).ToString();
-                    writer.Write("{\"type\":\"frameTiming\",\"runId\":\"");
-                    WriteEscapedString(writer, _runIdString);
-                    writer.Write("\",\"scenario\":\"");
-                    WriteEscapedString(writer, _scenarioIdString);
-                    writer.Write("\",\"seed\":");
-                    writer.Write(_scenarioSeed);
-                    writer.Write(",\"tick\":");
-                    writer.Write(tick);
-                    writer.Write(",\"loop\":\"\"");
-                    writer.Write(",\"group\":\"");
-                    WriteEscapedString(writer, label);
-                    writer.Write("\",\"durationMs\":");
-                    writer.Write(sample.DurationMs.ToString("R", culture));
-                    writer.Write(",\"budgetMs\":");
-                    writer.Write(sample.BudgetMs.ToString("R", culture));
-                    writer.Write(",\"systemCount\":");
-                    writer.Write(sample.SystemCount);
-                    writer.Write(",\"budgetExceeded\":");
-                    writer.Write((sample.Flags & FrameTimingFlags.BudgetExceeded) != 0 ? "true" : "false");
-                    writer.Write(",\"catchUp\":");
-                    writer.Write((sample.Flags & FrameTimingFlags.CatchUp) != 0 ? "true" : "false");
-                    writer.WriteLine("}");
+                    if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                        {
+                            recordWriter.Write("{\"type\":\"frameTiming\",\"runId\":\"");
+                            WriteEscapedString(recordWriter, _runIdString);
+                            recordWriter.Write("\",\"scenario\":\"");
+                            WriteEscapedString(recordWriter, _scenarioIdString);
+                            recordWriter.Write("\",\"seed\":");
+                            recordWriter.Write(_scenarioSeed);
+                            recordWriter.Write(",\"tick\":");
+                            recordWriter.Write(tick);
+                            recordWriter.Write(",\"loop\":\"\"");
+                            recordWriter.Write(",\"group\":\"");
+                            WriteEscapedString(recordWriter, label);
+                            recordWriter.Write("\",\"durationMs\":");
+                            recordWriter.Write(sample.DurationMs.ToString("R", culture));
+                            recordWriter.Write(",\"budgetMs\":");
+                            recordWriter.Write(sample.BudgetMs.ToString("R", culture));
+                            recordWriter.Write(",\"systemCount\":");
+                            recordWriter.Write(sample.SystemCount);
+                            recordWriter.Write(",\"budgetExceeded\":");
+                            recordWriter.Write((sample.Flags & FrameTimingFlags.BudgetExceeded) != 0 ? "true" : "false");
+                            recordWriter.Write(",\"catchUp\":");
+                            recordWriter.Write((sample.Flags & FrameTimingFlags.CatchUp) != 0 ? "true" : "false");
+                            recordWriter.WriteLine("}");
+                        }))
+                    {
+                        completed = false;
+                        break;
+                    }
+                }
+
+                if (!completed)
+                {
+                    return false;
                 }
             }
 
             if (EntityManager.HasComponent<AllocationDiagnostics>(frameEntity))
             {
                 var allocations = EntityManager.GetComponentData<AllocationDiagnostics>(frameEntity);
-                writer.Write("{\"type\":\"allocation\",\"runId\":\"");
-                WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"scenario\":\"");
-                WriteEscapedString(writer, _scenarioIdString);
-                writer.Write("\",\"seed\":");
-                writer.Write(_scenarioSeed);
-                writer.Write(",\"tick\":");
-                writer.Write(tick);
-                writer.Write(",\"loop\":\"\"");
-                writer.Write(",\"totalAllocated\":");
-                writer.Write(allocations.TotalAllocatedBytes);
-                writer.Write(",\"totalReserved\":");
-                writer.Write(allocations.TotalReservedBytes);
-                writer.Write(",\"unusedReserved\":");
-                writer.Write(allocations.TotalUnusedReservedBytes);
-                writer.Write(",\"gc0\":");
-                writer.Write(allocations.GcCollectionsGeneration0);
-                writer.Write(",\"gc1\":");
-                writer.Write(allocations.GcCollectionsGeneration1);
-                writer.Write(",\"gc2\":");
-                writer.Write(allocations.GcCollectionsGeneration2);
-                writer.WriteLine("}");
+                if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                    {
+                        recordWriter.Write("{\"type\":\"allocation\",\"runId\":\"");
+                        WriteEscapedString(recordWriter, _runIdString);
+                        recordWriter.Write("\",\"scenario\":\"");
+                        WriteEscapedString(recordWriter, _scenarioIdString);
+                        recordWriter.Write("\",\"seed\":");
+                        recordWriter.Write(_scenarioSeed);
+                        recordWriter.Write(",\"tick\":");
+                        recordWriter.Write(tick);
+                        recordWriter.Write(",\"loop\":\"\"");
+                        recordWriter.Write(",\"totalAllocated\":");
+                        recordWriter.Write(allocations.TotalAllocatedBytes);
+                        recordWriter.Write(",\"totalReserved\":");
+                        recordWriter.Write(allocations.TotalReservedBytes);
+                        recordWriter.Write(",\"unusedReserved\":");
+                        recordWriter.Write(allocations.TotalUnusedReservedBytes);
+                        recordWriter.Write(",\"gc0\":");
+                        recordWriter.Write(allocations.GcCollectionsGeneration0);
+                        recordWriter.Write(",\"gc1\":");
+                        recordWriter.Write(allocations.GcCollectionsGeneration1);
+                        recordWriter.Write(",\"gc2\":");
+                        recordWriter.Write(allocations.GcCollectionsGeneration2);
+                        recordWriter.WriteLine("}");
+                    }))
+                {
+                    return false;
+                }
             }
 
             samples.Clear();
+
+            return true;
         }
 
-        private void ExportTelemetryEvents(StreamWriter writer)
+        private bool ExportTelemetryEvents(StreamWriter writer, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
         {
             var buffer = GetTelemetryEventBuffer();
             if (!buffer.IsCreated || buffer.Length == 0)
             {
-                return;
+                return true;
             }
 
+            var completed = true;
             for (int i = 0; i < buffer.Length; i++)
             {
                 ref var record = ref buffer.ElementAt(i);
@@ -377,34 +558,46 @@ namespace PureDOTS.Systems.Telemetry
                     continue;
                 }
 
-                writer.Write("{\"type\":\"event\",\"runId\":\"");
-                WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"scenario\":\"");
-                WriteEscapedString(writer, _scenarioIdString);
-                writer.Write("\",\"seed\":");
-                writer.Write(_scenarioSeed);
-                writer.Write(",\"tick\":");
-                writer.Write(record.Tick);
-                writer.Write(",\"loop\":\"");
-                WriteEscapedString(writer, loopLabel);
-                writer.Write("\",\"event\":\"");
-                WriteEscapedString(writer, record.EventType.ToString());
-                writer.Write("\",\"source\":\"");
-                WriteEscapedString(writer, record.Source.ToString());
-                writer.Write("\",\"payload\":");
-                var payload = record.Payload.ToString();
-                if (string.IsNullOrEmpty(payload))
+                if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                    {
+                        recordWriter.Write("{\"type\":\"event\",\"runId\":\"");
+                        WriteEscapedString(recordWriter, _runIdString);
+                        recordWriter.Write("\",\"scenario\":\"");
+                        WriteEscapedString(recordWriter, _scenarioIdString);
+                        recordWriter.Write("\",\"seed\":");
+                        recordWriter.Write(_scenarioSeed);
+                        recordWriter.Write(",\"tick\":");
+                        recordWriter.Write(record.Tick);
+                        recordWriter.Write(",\"loop\":\"");
+                        WriteEscapedString(recordWriter, loopLabel);
+                        recordWriter.Write("\",\"event\":\"");
+                        WriteEscapedString(recordWriter, record.EventType.ToString());
+                        recordWriter.Write("\",\"source\":\"");
+                        WriteEscapedString(recordWriter, record.Source.ToString());
+                        recordWriter.Write("\",\"payload\":");
+                        var payload = record.Payload.ToString();
+                        if (string.IsNullOrEmpty(payload))
+                        {
+                            recordWriter.Write("null");
+                        }
+                        else
+                        {
+                            recordWriter.Write(payload);
+                        }
+                        recordWriter.WriteLine("}");
+                    }))
                 {
-                    writer.Write("null");
+                    completed = false;
+                    break;
                 }
-                else
-                {
-                    writer.Write(payload);
-                }
-                writer.WriteLine("}");
             }
 
-            buffer.Clear();
+            if (completed)
+            {
+                buffer.Clear();
+            }
+
+            return completed;
         }
 
         private Entity GetTelemetryEventStreamEntity()
@@ -428,104 +621,140 @@ namespace PureDOTS.Systems.Telemetry
             return EntityManager.GetBuffer<TelemetryEvent>(entity);
         }
 
-        private void ExportBehaviorTelemetry(StreamWriter writer)
+        private bool ExportBehaviorTelemetry(StreamWriter writer, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
         {
             if (!SystemAPI.HasSingleton<BehaviorTelemetryState>())
             {
-                return;
+                return true;
             }
 
             var buffer = SystemAPI.GetSingletonBuffer<BehaviorTelemetryRecord>();
 
             if (buffer.Length == 0)
             {
-                return;
+                return true;
             }
 
+            var completed = true;
             for (int i = 0; i < buffer.Length; i++)
             {
                 var record = buffer[i];
-                writer.Write("{\"type\":\"behavior\",\"runId\":\"");
-                WriteEscapedString(writer, _runIdString);
-                writer.Write("\",\"scenario\":\"");
-                WriteEscapedString(writer, _scenarioIdString);
-                writer.Write("\",\"seed\":");
-                writer.Write(_scenarioSeed);
-                writer.Write(",\"tick\":");
-                writer.Write(record.Tick);
-                writer.Write(",\"loop\":\"\"");
-                writer.Write(",\"behaviorId\":");
-                writer.Write((ushort)record.Behavior);
-                writer.Write(",\"behaviorKind\":");
-                writer.Write((byte)record.Kind);
-                writer.Write(",\"metricId\":");
-                writer.Write(record.MetricOrInvariantId);
-                writer.Write(",\"valueA\":");
-                writer.Write(record.ValueA);
-                writer.Write(",\"valueB\":");
-                writer.Write(record.ValueB);
-                writer.Write(",\"passed\":");
-                writer.Write(record.Passed != 0 ? "true" : "false");
-                writer.WriteLine("}");
+                if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                    {
+                        recordWriter.Write("{\"type\":\"behavior\",\"runId\":\"");
+                        WriteEscapedString(recordWriter, _runIdString);
+                        recordWriter.Write("\",\"scenario\":\"");
+                        WriteEscapedString(recordWriter, _scenarioIdString);
+                        recordWriter.Write("\",\"seed\":");
+                        recordWriter.Write(_scenarioSeed);
+                        recordWriter.Write(",\"tick\":");
+                        recordWriter.Write(record.Tick);
+                        recordWriter.Write(",\"loop\":\"\"");
+                        recordWriter.Write(",\"behaviorId\":");
+                        recordWriter.Write((ushort)record.Behavior);
+                        recordWriter.Write(",\"behaviorKind\":");
+                        recordWriter.Write((byte)record.Kind);
+                        recordWriter.Write(",\"metricId\":");
+                        recordWriter.Write(record.MetricOrInvariantId);
+                        recordWriter.Write(",\"valueA\":");
+                        recordWriter.Write(record.ValueA);
+                        recordWriter.Write(",\"valueB\":");
+                        recordWriter.Write(record.ValueB);
+                        recordWriter.Write(",\"passed\":");
+                        recordWriter.Write(record.Passed != 0 ? "true" : "false");
+                        recordWriter.WriteLine("}");
+                    }))
+                {
+                    completed = false;
+                    break;
+                }
             }
 
-            buffer.Clear();
+            if (completed)
+            {
+                buffer.Clear();
+            }
+
+            return completed;
         }
 
-        private void ExportReplayTelemetry(StreamWriter writer, uint tick)
+        private bool ExportReplayTelemetry(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
         {
             if (!SystemAPI.TryGetSingletonEntity<ReplayCaptureStream>(out var replayEntity))
             {
-                return;
+                return true;
             }
 
             var stream = SystemAPI.GetComponent<ReplayCaptureStream>(replayEntity);
-            writer.Write("{\"type\":\"replay\",\"runId\":\"");
-            WriteEscapedString(writer, _runIdString);
-            writer.Write("\",\"scenario\":\"");
-            WriteEscapedString(writer, _scenarioIdString);
-            writer.Write("\",\"seed\":");
-            writer.Write(_scenarioSeed);
-            writer.Write(",\"tick\":");
-            writer.Write(tick);
-            writer.Write(",\"loop\":\"\"");
-            writer.Write(",\"eventCount\":");
-            writer.Write(stream.EventCount);
-            writer.Write(",\"lastEventType\":\"");
-            WriteEscapedString(writer, ReplayCaptureSystem.GetEventTypeLabel(stream.LastEventType).ToString());
-            writer.Write("\",\"lastEventLabel\":\"");
-            WriteEscapedString(writer, stream.LastEventLabel.ToString());
-            writer.WriteLine("\"}");
+            if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                {
+                    recordWriter.Write("{\"type\":\"replay\",\"runId\":\"");
+                    WriteEscapedString(recordWriter, _runIdString);
+                    recordWriter.Write("\",\"scenario\":\"");
+                    WriteEscapedString(recordWriter, _scenarioIdString);
+                    recordWriter.Write("\",\"seed\":");
+                    recordWriter.Write(_scenarioSeed);
+                    recordWriter.Write(",\"tick\":");
+                    recordWriter.Write(tick);
+                    recordWriter.Write(",\"loop\":\"\"");
+                    recordWriter.Write(",\"eventCount\":");
+                    recordWriter.Write(stream.EventCount);
+                    recordWriter.Write(",\"lastEventType\":\"");
+                    WriteEscapedString(recordWriter, ReplayCaptureSystem.GetEventTypeLabel(stream.LastEventType).ToString());
+                    recordWriter.Write("\",\"lastEventLabel\":\"");
+                    WriteEscapedString(recordWriter, stream.LastEventLabel.ToString());
+                    recordWriter.WriteLine("\"}");
+                }))
+            {
+                return false;
+            }
 
             if (EntityManager.HasBuffer<ReplayCaptureEvent>(replayEntity))
             {
                 var events = EntityManager.GetBuffer<ReplayCaptureEvent>(replayEntity);
+                var completed = true;
                 for (int i = 0; i < events.Length; i++)
                 {
                     var evt = events[i];
-                    writer.Write("{\"type\":\"replayEvent\",\"runId\":\"");
-                    WriteEscapedString(writer, _runIdString);
-                    writer.Write("\",\"scenario\":\"");
-                    WriteEscapedString(writer, _scenarioIdString);
-                    writer.Write("\",\"seed\":");
-                    writer.Write(_scenarioSeed);
-                    writer.Write(",\"tick\":");
-                    writer.Write(evt.Tick);
-                    writer.Write(",\"loop\":\"\"");
-                    writer.Write(",\"eventType\":\"");
-                    WriteEscapedString(writer, ReplayCaptureSystem.GetEventTypeLabel(evt.Type).ToString());
-                    writer.Write("\",\"label\":\"");
-                    WriteEscapedString(writer, evt.Label.ToString());
-                    writer.Write("\",\"value\":");
-                    writer.Write(evt.Value.ToString("R", CultureInfo.InvariantCulture));
-                    writer.WriteLine("}");
+                    if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                        {
+                            recordWriter.Write("{\"type\":\"replayEvent\",\"runId\":\"");
+                            WriteEscapedString(recordWriter, _runIdString);
+                            recordWriter.Write("\",\"scenario\":\"");
+                            WriteEscapedString(recordWriter, _scenarioIdString);
+                            recordWriter.Write("\",\"seed\":");
+                            recordWriter.Write(_scenarioSeed);
+                            recordWriter.Write(",\"tick\":");
+                            recordWriter.Write(evt.Tick);
+                            recordWriter.Write(",\"loop\":\"\"");
+                            recordWriter.Write(",\"eventType\":\"");
+                            WriteEscapedString(recordWriter, ReplayCaptureSystem.GetEventTypeLabel(evt.Type).ToString());
+                            recordWriter.Write("\",\"label\":\"");
+                            WriteEscapedString(recordWriter, evt.Label.ToString());
+                            recordWriter.Write("\",\"value\":");
+                            recordWriter.Write(evt.Value.ToString("R", CultureInfo.InvariantCulture));
+                            recordWriter.WriteLine("}");
+                        }))
+                    {
+                        completed = false;
+                        break;
+                    }
                 }
 
-                events.Clear();
+                if (completed)
+                {
+                    events.Clear();
+                }
+                else
+                {
+                    return false;
+                }
             }
+
+            return true;
         }
 
-        private void WriteRunHeader(StreamWriter writer, in TelemetryExportConfig config)
+        private void WriteRunHeader(TextWriter writer, in TelemetryExportConfig config)
         {
             writer.Write("{\"type\":\"run\",\"runId\":\"");
             WriteEscapedString(writer, _runIdString);
@@ -678,7 +907,7 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
-        private static void WriteEscapedString(StreamWriter writer, string value)
+        private static void WriteEscapedString(TextWriter writer, string value)
         {
             if (string.IsNullOrEmpty(value))
             {
