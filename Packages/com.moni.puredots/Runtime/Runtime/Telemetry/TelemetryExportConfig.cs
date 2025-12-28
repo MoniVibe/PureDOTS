@@ -65,6 +65,8 @@ namespace PureDOTS.Runtime.Telemetry
         public TelemetryLoopFlags Loops;
         /// <summary>Maximum telemetry events to emit per tick.</summary>
         public ushort MaxEventsPerTick;
+        /// <summary>Maximum bytes to write to the telemetry output file (0 = unlimited).</summary>
+        public ulong MaxOutputBytes;
         /// <summary>Version counter so systems can detect config changes.</summary>
         public uint Version;
 
@@ -84,6 +86,7 @@ namespace PureDOTS.Runtime.Telemetry
                 Lod = TelemetryExportLod.Minimal,
                 Loops = TelemetryLoopFlags.All,
                 MaxEventsPerTick = 64,
+                MaxOutputBytes = 0,
                 Version = 1
             };
         }
@@ -102,6 +105,7 @@ namespace PureDOTS.Runtime.Telemetry
         public sbyte LodOverride;
         public TelemetryLoopFlags Loops;
         public ushort MaxEventsPerTick;
+        public ulong MaxOutputBytes;
 
         public static TelemetryScenarioOverride CreateSentinel()
         {
@@ -114,7 +118,8 @@ namespace PureDOTS.Runtime.Telemetry
                 CadenceTicks = 0,
                 LodOverride = -1,
                 Loops = TelemetryLoopFlags.None,
-                MaxEventsPerTick = 0
+                MaxEventsPerTick = 0,
+                MaxOutputBytes = 0
             };
         }
     }

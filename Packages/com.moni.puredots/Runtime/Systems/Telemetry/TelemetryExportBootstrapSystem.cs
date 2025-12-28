@@ -51,8 +51,24 @@ namespace PureDOTS.Systems.Telemetry
             var lodValue = GetEnv("PUREDOTS_TELEMETRY_LOD");
             var loopsValue = GetEnv("PUREDOTS_TELEMETRY_LOOPS");
             var maxEventsValue = GetEnv("PUREDOTS_TELEMETRY_MAX_EVENTS_PER_TICK");
+            var levelValue = GetEnv("PUREDOTS_TELEMETRY_LEVEL");
+            var maxBytesValue = GetEnv("PUREDOTS_TELEMETRY_MAX_BYTES");
 
             var flags = configRW.ValueRO.Flags;
+            var level = ResolveLevel(levelValue);
+            if (level == TelemetryExportLevel.Summary && string.IsNullOrEmpty(flagsValue))
+            {
+                flags = TelemetryExportFlags.IncludeTelemetryMetrics | TelemetryExportFlags.IncludeFrameTiming;
+            }
+            else if (level == TelemetryExportLevel.Full && string.IsNullOrEmpty(flagsValue))
+            {
+                flags = TelemetryExportFlags.IncludeTelemetryMetrics |
+                        TelemetryExportFlags.IncludeFrameTiming |
+                        TelemetryExportFlags.IncludeBehaviorTelemetry |
+                        TelemetryExportFlags.IncludeReplayEvents |
+                        TelemetryExportFlags.IncludeTelemetryEvents;
+            }
+
             if (!string.IsNullOrEmpty(flagsValue) && TryParseFlags(flagsValue, out var parsedFlags))
             {
                 flags = parsedFlags;
@@ -77,9 +93,10 @@ namespace PureDOTS.Systems.Telemetry
             configRW.ValueRW.RunId = runId;
             configRW.ValueRW.Flags = flags;
             configRW.ValueRW.CadenceTicks = ResolveCadence(configRW.ValueRO.CadenceTicks, cadenceValue);
-            configRW.ValueRW.Lod = ResolveLod(configRW.ValueRO.Lod, lodValue);
+            configRW.ValueRW.Lod = ResolveLod(ResolveLodFromLevel(configRW.ValueRO.Lod, level), lodValue);
             configRW.ValueRW.Loops = ResolveLoops(configRW.ValueRO.Loops, loopsValue);
             configRW.ValueRW.MaxEventsPerTick = ResolveMaxEvents(configRW.ValueRO.MaxEventsPerTick, maxEventsValue);
+            configRW.ValueRW.MaxOutputBytes = ResolveMaxOutputBytes(configRW.ValueRO.MaxOutputBytes, maxBytesValue);
             configRW.ValueRW.Enabled = 1;
             configRW.ValueRW.Version++;
             _initialized = true;
@@ -239,6 +256,38 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
+        private static TelemetryExportLevel ResolveLevel(string levelValue)
+        {
+            if (string.IsNullOrEmpty(levelValue))
+            {
+                return TelemetryExportLevel.Unspecified;
+            }
+
+            var token = levelValue.Trim().ToLowerInvariant();
+            switch (token)
+            {
+                case "summary":
+                case "thin":
+                case "minimal":
+                    return TelemetryExportLevel.Summary;
+                case "full":
+                case "verbose":
+                    return TelemetryExportLevel.Full;
+                default:
+                    return TelemetryExportLevel.Unspecified;
+            }
+        }
+
+        private static TelemetryExportLod ResolveLodFromLevel(TelemetryExportLod currentLod, TelemetryExportLevel level)
+        {
+            return level switch
+            {
+                TelemetryExportLevel.Summary => TelemetryExportLod.Minimal,
+                TelemetryExportLevel.Full => TelemetryExportLod.Full,
+                _ => currentLod
+            };
+        }
+
         private static TelemetryLoopFlags ResolveLoops(TelemetryLoopFlags currentLoops, string loopsValue)
         {
             var loops = currentLoops == TelemetryLoopFlags.None ? TelemetryLoopFlags.All : currentLoops;
@@ -296,6 +345,28 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return loops;
+        }
+
+        private static ulong ResolveMaxOutputBytes(ulong currentMaxBytes, string maxBytesValue)
+        {
+            if (string.IsNullOrEmpty(maxBytesValue))
+            {
+                return currentMaxBytes;
+            }
+
+            if (ulong.TryParse(maxBytesValue, out var parsed))
+            {
+                return parsed;
+            }
+
+            return currentMaxBytes;
+        }
+
+        private enum TelemetryExportLevel : byte
+        {
+            Unspecified = 0,
+            Summary = 1,
+            Full = 2
         }
 
         private static ushort ResolveMaxEvents(ushort currentMax, string maxEventsValue)

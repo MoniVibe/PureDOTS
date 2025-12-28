@@ -3,6 +3,12 @@
 **Scope**: Shared headless validation for PureDOTS, Godgame, and Space4X.
 **Goal**: Define the canonical loop proofs, required subjects, and expected telemetry/log outputs.
 
+## Telemetry defaults (headless)
+- Use thin telemetry by default to avoid massive NDJSON outputs:
+  - `PUREDOTS_TELEMETRY_LEVEL=summary`
+  - `PUREDOTS_TELEMETRY_MAX_BYTES=52428800` (50 MB cap)
+- For deep dives, set `PUREDOTS_TELEMETRY_LEVEL=full` or raise the byte cap.
+
 ## Shared proofs (PureDOTS)
 
 ### Time control proof (global + local)

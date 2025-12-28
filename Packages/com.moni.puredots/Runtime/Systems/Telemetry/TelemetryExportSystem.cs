@@ -29,6 +29,7 @@ namespace PureDOTS.Systems.Telemetry
         private string _activePath;
         private string _scenarioIdString;
         private uint _scenarioSeed;
+        private bool _outputCapReached;
 
         protected override void OnCreate()
         {
@@ -49,6 +50,7 @@ namespace PureDOTS.Systems.Telemetry
             if (config.Enabled == 0 || config.OutputPath.Length == 0)
             {
                 _headerWritten = false;
+                _outputCapReached = false;
                 return;
             }
 
@@ -66,6 +68,7 @@ namespace PureDOTS.Systems.Telemetry
                 _runIdCache = config.RunId;
                 _runIdString = _runIdCache.ToString();
                 _activePath = config.OutputPath.ToString();
+                _outputCapReached = false;
             }
 
             if (string.IsNullOrEmpty(_activePath))
@@ -78,6 +81,12 @@ namespace PureDOTS.Systems.Telemetry
             try
             {
                 EnsureDirectory(_activePath);
+
+                if (config.MaxOutputBytes > 0 && IsOutputCapped(_activePath, config.MaxOutputBytes))
+                {
+                    return;
+                }
+
                 using var fileStream = new FileStream(_activePath, FileMode.Append, FileAccess.Write, FileShare.Read);
                 using var writer = new StreamWriter(fileStream, Encoding.UTF8);
 
@@ -140,6 +149,35 @@ namespace PureDOTS.Systems.Telemetry
             {
                 Directory.CreateDirectory(directory);
             }
+        }
+
+        private bool IsOutputCapped(string path, ulong maxBytes)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    var length = (ulong)new FileInfo(path).Length;
+                    if (length >= maxBytes)
+                    {
+                        if (!_outputCapReached)
+                        {
+                            _outputCapReached = true;
+                            UnityDebug.LogWarning($"[TelemetryExportSystem] Output cap reached ({length} bytes >= {maxBytes}). Telemetry export paused.");
+                        }
+
+                        return true;
+                    }
+                }
+
+                _outputCapReached = false;
+            }
+            catch (Exception ex)
+            {
+                UnityDebug.LogWarning($"[TelemetryExportSystem] Failed to read output size for '{path}': {ex.Message}");
+            }
+
+            return false;
         }
 
         private uint GetCurrentTick()

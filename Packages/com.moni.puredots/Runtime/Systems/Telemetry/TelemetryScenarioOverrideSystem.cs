@@ -100,6 +100,12 @@ namespace PureDOTS.Systems.Telemetry
                 changed = true;
             }
 
+            if (overrides.MaxOutputBytes > 0)
+            {
+                config.MaxOutputBytes = overrides.MaxOutputBytes;
+                changed = true;
+            }
+
             return changed;
         }
     }
