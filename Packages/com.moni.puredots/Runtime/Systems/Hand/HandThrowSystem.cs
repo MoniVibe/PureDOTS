@@ -84,9 +84,14 @@ namespace PureDOTS.Systems.Hand
         private bool ApplyThrow(ref SystemState state, ref HandStateData handState, HandCommand command, ref EntityCommandBuffer ecb)
         {
             var target = command.TargetEntity;
-            if (target == Entity.Null || !_velocityLookup.HasComponent(target))
+            if (target == Entity.Null)
             {
                 return false;
+            }
+
+            if (!_velocityLookup.HasComponent(target))
+            {
+                return ReleaseWithoutThrow(ref handState, target, ref ecb);
             }
 
             var velocity = _velocityLookup[target];
@@ -122,6 +127,28 @@ namespace PureDOTS.Systems.Hand
                 }
             }
 
+            if (_heldLookup.HasComponent(target))
+            {
+                ecb.RemoveComponent<HandHeldTag>(target);
+            }
+
+            if (_movementLookup.HasComponent(target))
+            {
+                ecb.RemoveComponent<MovementSuppressed>(target);
+            }
+
+            if (handState.HeldEntity == target)
+            {
+                handState.HeldEntity = Entity.Null;
+                handState.CurrentState = HandStateType.Cooldown;
+                handState.StateTimer = 0;
+            }
+
+            return true;
+        }
+
+        private bool ReleaseWithoutThrow(ref HandStateData handState, Entity target, ref EntityCommandBuffer ecb)
+        {
             if (_heldLookup.HasComponent(target))
             {
                 ecb.RemoveComponent<HandHeldTag>(target);

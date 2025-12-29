@@ -25,15 +25,20 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<InteractionPickable> _pickableLookup;
         private ComponentLookup<HandHeldTag> _heldLookup;
         private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private ComponentLookup<WorldManipulableTag> _worldManipulableLookup;
+        private ComponentLookup<NeverPickableTag> _neverPickableLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<HandInputFrame>();
             _pickableTagLookup = state.GetComponentLookup<PickableTag>(true);
             _pickableLookup = state.GetComponentLookup<InteractionPickable>(true);
             _heldLookup = state.GetComponentLookup<HandHeldTag>(false);
             _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
+            _worldManipulableLookup = state.GetComponentLookup<WorldManipulableTag>(true);
+            _neverPickableLookup = state.GetComponentLookup<NeverPickableTag>(true);
         }
 
         [BurstCompile]
@@ -41,12 +46,26 @@ namespace PureDOTS.Systems.Hand
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
+            var input = SystemAPI.GetSingleton<HandInputFrame>();
+            var policy = new HandPickupPolicy
+            {
+                AutoPickDynamicPhysics = 0,
+                EnableWorldGrab = 0,
+                DebugWorldGrabAny = 0,
+                WorldGrabRequiresTag = 1
+            };
+            if (SystemAPI.TryGetSingleton(out HandPickupPolicy policyValue))
+            {
+                policy = policyValue;
+            }
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             _pickableTagLookup.Update(ref state);
             _pickableLookup.Update(ref state);
             _heldLookup.Update(ref state);
             _velocityLookup.Update(ref state);
+            _worldManipulableLookup.Update(ref state);
+            _neverPickableLookup.Update(ref state);
 
             foreach (var (handStateRef, commandBuffer, handEntity) in SystemAPI.Query<RefRW<HandStateData>, DynamicBuffer<HandCommand>>().WithEntityAccess())
             {
@@ -61,7 +80,7 @@ namespace PureDOTS.Systems.Hand
                         continue;
                     }
 
-                    if (ProcessPickCommand(ref state, handEntity, ref handState, cmd, ref ecb))
+                    if (ProcessPickCommand(ref state, handEntity, ref handState, cmd, input, policy, ref ecb))
                     {
                         buffer.RemoveAt(i);
                     }
@@ -74,7 +93,7 @@ namespace PureDOTS.Systems.Hand
             ecb.Dispose();
         }
 
-        private bool ProcessPickCommand(ref SystemState state, Entity handEntity, ref HandStateData handState, HandCommand cmd, ref EntityCommandBuffer ecb)
+        private bool ProcessPickCommand(ref SystemState state, Entity handEntity, ref HandStateData handState, HandCommand cmd, in HandInputFrame input, HandPickupPolicy policy, ref EntityCommandBuffer ecb)
         {
             var target = cmd.TargetEntity;
             if (target == Entity.Null || !state.EntityManager.Exists(target))
@@ -88,9 +107,22 @@ namespace PureDOTS.Systems.Hand
                 return false;
             }
 
+            bool neverPickable = _neverPickableLookup.HasComponent(target);
+            if (neverPickable)
+            {
+                return false;
+            }
+
             // Require pickable tag/component if present
             bool hasPickable = _pickableTagLookup.HasComponent(target) || _pickableLookup.HasComponent(target);
-            if (!hasPickable)
+            bool hasPhysicsVelocity = _velocityLookup.HasComponent(target);
+            bool autoPickDynamic = policy.AutoPickDynamicPhysics != 0 && hasPhysicsVelocity;
+            bool hasWorldTag = _worldManipulableLookup.HasComponent(target);
+            bool worldGrabActive = policy.EnableWorldGrab != 0 && input.CtrlHeld && input.ShiftHeld;
+            bool worldGrabAllowed = worldGrabActive &&
+                (policy.DebugWorldGrabAny != 0 || policy.WorldGrabRequiresTag == 0 || hasWorldTag);
+
+            if (!hasPickable && !autoPickDynamic && !worldGrabAllowed)
             {
                 return false;
             }
@@ -98,7 +130,7 @@ namespace PureDOTS.Systems.Hand
             ecb.AddComponent(target, new HandHeldTag { Holder = handEntity });
             ecb.AddComponent<MovementSuppressed>(target);
 
-            if (_velocityLookup.HasComponent(target))
+            if (hasPhysicsVelocity)
             {
                 var velocity = _velocityLookup[target];
                 velocity.Linear = float3.zero;
@@ -116,4 +148,3 @@ namespace PureDOTS.Systems.Hand
         }
     }
 }
-

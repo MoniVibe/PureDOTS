@@ -26,15 +26,18 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<PhysicsMass> _massLookup;
         private ComponentLookup<HandPickable> _pickableLookup;
+        private ComponentLookup<WorldManipulableTag> _worldManipulableLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
-            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            state.RequireForUpdate<HandInputFrame>();
+            _transformLookup = state.GetComponentLookup<LocalTransform>(false);
             _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
             _massLookup = state.GetComponentLookup<PhysicsMass>(true);
             _pickableLookup = state.GetComponentLookup<HandPickable>(true);
+            _worldManipulableLookup = state.GetComponentLookup<WorldManipulableTag>(true);
         }
 
         [BurstCompile]
@@ -43,11 +46,24 @@ namespace PureDOTS.Systems.Hand
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
             float deltaTime = SystemAPI.Time.DeltaTime;
+            var input = SystemAPI.GetSingleton<HandInputFrame>();
+            var policy = new HandPickupPolicy
+            {
+                AutoPickDynamicPhysics = 0,
+                EnableWorldGrab = 0,
+                DebugWorldGrabAny = 0,
+                WorldGrabRequiresTag = 1
+            };
+            if (SystemAPI.TryGetSingleton(out HandPickupPolicy policyValue))
+            {
+                policy = policyValue;
+            }
 
             _transformLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _massLookup.Update(ref state);
             _pickableLookup.Update(ref state);
+            _worldManipulableLookup.Update(ref state);
 
             foreach (var (handStateRef, commandBuffer) in SystemAPI.Query<RefRO<HandStateData>, DynamicBuffer<HandCommand>>())
             {
@@ -62,7 +78,7 @@ namespace PureDOTS.Systems.Hand
                         continue;
                     }
 
-                    if (ApplySpring(ref state, ref handState, cmd, deltaTime))
+                    if (ApplySpring(ref state, ref handState, cmd, deltaTime, input, policy))
                     {
                         buffer.RemoveAt(i);
                     }
@@ -70,12 +86,35 @@ namespace PureDOTS.Systems.Hand
             }
         }
 
-        private bool ApplySpring(ref SystemState state, ref HandStateData handState, HandCommand command, float deltaTime)
+        private bool ApplySpring(ref SystemState state, ref HandStateData handState, HandCommand command, float deltaTime, in HandInputFrame input, HandPickupPolicy policy)
         {
             var target = command.TargetEntity;
             if (target == Entity.Null || !_transformLookup.HasComponent(target) || !_velocityLookup.HasComponent(target))
             {
-                return false;
+                if (target == Entity.Null || !_transformLookup.HasComponent(target))
+                {
+                    return false;
+                }
+
+                bool worldGrabActive = policy.EnableWorldGrab != 0 && input.CtrlHeld && input.ShiftHeld;
+                bool allowWorldDrag = policy.EnableWorldGrab != 0 &&
+                    (worldGrabActive || policy.DebugWorldGrabAny != 0 || _worldManipulableLookup.HasComponent(target));
+                if (!allowWorldDrag)
+                {
+                    return false;
+                }
+
+                var transform = _transformLookup[target];
+                float followFactor = 1f;
+                if (_pickableLookup.HasComponent(target))
+                {
+                    followFactor = math.clamp(_pickableLookup[target].FollowLerp, 0.05f, 1f);
+                }
+
+                float3 targetPosition = command.TargetPosition;
+                transform.Position = math.lerp(transform.Position, targetPosition, followFactor);
+                _transformLookup[target] = transform;
+                return true;
             }
 
             var transform = _transformLookup[target];

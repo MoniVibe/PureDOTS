@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Hand;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Physics;
 
 namespace PureDOTS.Systems.Hand
 {
@@ -18,6 +19,7 @@ namespace PureDOTS.Systems.Hand
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<HandHover>();
+            state.RequireForUpdate<HandInputFrame>();
             
             // Ensure HandAffordances singleton exists
             if (!SystemAPI.TryGetSingletonEntity<HandAffordances>(out _))
@@ -31,6 +33,18 @@ namespace PureDOTS.Systems.Hand
         public void OnUpdate(ref SystemState state)
         {
             var hover = SystemAPI.GetSingleton<HandHover>();
+            var input = SystemAPI.GetSingleton<HandInputFrame>();
+            var policy = new HandPickupPolicy
+            {
+                AutoPickDynamicPhysics = 0,
+                EnableWorldGrab = 0,
+                DebugWorldGrabAny = 0,
+                WorldGrabRequiresTag = 1
+            };
+            if (SystemAPI.TryGetSingleton(out HandPickupPolicy policyValue))
+            {
+                policy = policyValue;
+            }
             var affordances = new HandAffordances
             {
                 Flags = HandAffordanceFlags.None,
@@ -47,9 +61,18 @@ namespace PureDOTS.Systems.Hand
             var entityManager = state.EntityManager;
             var targetEntity = hover.TargetEntity;
 
+            bool neverPickable = entityManager.HasComponent<NeverPickableTag>(targetEntity);
             // Check for Pickable
-            if (entityManager.HasComponent<PickableTag>(targetEntity) || 
-                entityManager.HasComponent<Pickable>(targetEntity))
+            bool hasPickable = entityManager.HasComponent<PickableTag>(targetEntity) ||
+                entityManager.HasComponent<Pickable>(targetEntity);
+            bool hasPhysicsVelocity = entityManager.HasComponent<PhysicsVelocity>(targetEntity);
+            bool hasWorldTag = entityManager.HasComponent<WorldManipulableTag>(targetEntity);
+            bool worldGrabActive = policy.EnableWorldGrab != 0 && input.CtrlHeld && input.ShiftHeld;
+            bool autoPickDynamic = policy.AutoPickDynamicPhysics != 0 && hasPhysicsVelocity;
+            bool worldGrabAllowed = worldGrabActive && !neverPickable &&
+                (policy.DebugWorldGrabAny != 0 || policy.WorldGrabRequiresTag == 0 || hasWorldTag);
+
+            if (!neverPickable && (hasPickable || autoPickDynamic || worldGrabAllowed))
             {
                 affordances.Flags |= HandAffordanceFlags.CanPickUp;
             }
