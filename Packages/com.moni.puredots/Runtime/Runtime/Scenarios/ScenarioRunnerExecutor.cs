@@ -147,6 +147,7 @@ namespace PureDOTS.Runtime.Scenarios
                         }
 
                         FlushCommandsForTick(world.EntityManager, rewindEntity, commandQueue, i);
+                        EnsureScenarioRewindMode(world.EntityManager, rewindEntity);
 
                         initGroup.Update();
                         fixedStepGroup?.Update();
@@ -161,6 +162,7 @@ namespace PureDOTS.Runtime.Scenarios
                 ApplyScenarioMetricsAndAssertionsInternal(world.EntityManager, in scenario, ref result);
             }
 
+            TryEmitBankResult(world.EntityManager, in scenario);
             ScenarioRunIssueReporter.FlushToResult(ref result);
             return result;
         }
@@ -231,6 +233,111 @@ namespace PureDOTS.Runtime.Scenarios
             return entity;
         }
 
+        private static void TryEmitBankResult(EntityManager entityManager, in ResolvedScenario scenario)
+        {
+            const string scenarioId = "scenario.time.rewind_short";
+            const string bankId = "P0.TIME_REWIND_MICRO";
+
+            if (!string.Equals(scenario.ScenarioId.ToString(), scenarioId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var timeResult = ResolveTimeControlResult(entityManager, out var timeTick);
+            var rewindResult = ResolveRewindResult(entityManager);
+            var scenarioTick = ResolveScenarioTick(entityManager);
+            if (timeTick == 0)
+            {
+                timeTick = ResolveTimeTick(entityManager);
+            }
+
+            var delta = (int)timeTick - (int)scenarioTick;
+            if (timeResult == 1 && rewindResult == 1)
+            {
+                Debug.Log($"BANK:{bankId}:PASS tickTime={timeTick} scenarioTick={scenarioTick} delta={delta}");
+                return;
+            }
+
+            var reason = ResolveBankFailureReason(timeResult, rewindResult);
+            Debug.Log($"BANK:{bankId}:FAIL reason={reason} tickTime={timeTick} scenarioTick={scenarioTick} delta={delta}");
+        }
+
+        private static byte ResolveTimeControlResult(EntityManager entityManager, out uint tick)
+        {
+            tick = 0;
+            if (!TryGetSingleton(entityManager, out HeadlessTimeControlProofState proof))
+            {
+                return 0;
+            }
+
+            tick = proof.Tick;
+            return proof.Result;
+        }
+
+        private static byte ResolveRewindResult(EntityManager entityManager)
+        {
+            if (!TryGetSingleton(entityManager, out HeadlessRewindProofState proof))
+            {
+                return 0;
+            }
+
+            return proof.Result;
+        }
+
+        private static uint ResolveScenarioTick(EntityManager entityManager)
+        {
+            return TryGetSingleton(entityManager, out ScenarioRunnerTick tick) ? tick.Tick : 0u;
+        }
+
+        private static uint ResolveTimeTick(EntityManager entityManager)
+        {
+            if (TryGetSingleton(entityManager, out TickTimeState tickTime))
+            {
+                return tickTime.Tick;
+            }
+
+            return TryGetSingleton(entityManager, out TimeState timeState) ? timeState.Tick : 0u;
+        }
+
+        private static string ResolveBankFailureReason(byte timeResult, byte rewindResult)
+        {
+            if (timeResult == 2)
+            {
+                return "time_fail";
+            }
+
+            if (rewindResult == 2)
+            {
+                return "rewind_fail";
+            }
+
+            if (timeResult == 0)
+            {
+                return "time_missing";
+            }
+
+            if (rewindResult == 0)
+            {
+                return "rewind_missing";
+            }
+
+            return "unknown";
+        }
+
+        private static bool TryGetSingleton<T>(EntityManager entityManager, out T component)
+            where T : unmanaged, IComponentData
+        {
+            using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<T>());
+            if (query.IsEmptyIgnoreFilter)
+            {
+                component = default;
+                return false;
+            }
+
+            component = query.GetSingleton<T>();
+            return true;
+        }
+
         private static void UpdateScenarioTick(EntityManager entityManager, Entity tickEntity, uint tick, float worldSeconds)
         {
             if (tickEntity == Entity.Null || !entityManager.Exists(tickEntity))
@@ -275,6 +382,22 @@ namespace PureDOTS.Runtime.Scenarios
                     buffer.Add(translated);
                 }
             } while (commands.TryGetNextValue(out command, ref iterator));
+        }
+
+        private static void EnsureScenarioRewindMode(EntityManager entityManager, Entity rewindEntity)
+        {
+            if (rewindEntity == Entity.Null || !entityManager.Exists(rewindEntity) || !entityManager.HasComponent<RewindState>(rewindEntity))
+            {
+                return;
+            }
+
+            var rewindState = entityManager.GetComponentData<RewindState>(rewindEntity);
+            if (rewindState.Mode == RewindMode.Paused)
+            {
+                // ScenarioRunner relies on TickTimeState for pause control; RewindState should stay in Record unless rewinding.
+                rewindState.Mode = RewindMode.Record;
+                entityManager.SetComponentData(rewindEntity, rewindState);
+            }
         }
 
         private static bool TryTranslateCommand(in ScenarioInputCommand command, out TimeControlCommand timeCommand)

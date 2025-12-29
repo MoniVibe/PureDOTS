@@ -96,6 +96,7 @@ namespace PureDOTS.Systems
         private Phase _lastPhase;
         private byte _loggedGlobalPauseEnter;
         private int _updateCounter;
+        private Entity _proofEntity;
 
         public void OnCreate(ref SystemState state)
         {
@@ -134,6 +135,7 @@ namespace PureDOTS.Systems
             _lastPhase = _phase;
             _loggedGlobalPauseEnter = 0;
             _updateCounter = 0;
+            EnsureProofState(ref state);
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<TickTimeState>();
@@ -704,6 +706,7 @@ namespace PureDOTS.Systems
             _rewindObserved = 1f;
             TryFlushRewindProof(ref state);
             UnityDebug.Log($"[HeadlessTimeControlProof] PASS tick={tick}");
+            SetProofResult(ref state, tick, 1);
             ExitIfRequested(ref state, tick, 0);
         }
 
@@ -715,6 +718,7 @@ namespace PureDOTS.Systems
             _rewindObserved = 0f;
             TryFlushRewindProof(ref state);
             UnityDebug.LogError($"[HeadlessTimeControlProof] FAIL tick={tick} step={step}");
+            SetProofResult(ref state, tick, 2);
             EmitStep(ref state, tick, step, false, 0f, default);
             ExitIfRequested(ref state, tick, 2);
         }
@@ -796,6 +800,39 @@ namespace PureDOTS.Systems
 
             HeadlessRewindProofUtility.TryMarkResult(state.EntityManager, RewindProofId, _rewindPass != 0, _rewindObserved, ExpectedRewindSubject, RewindRequiredMask);
             _rewindPending = 0;
+        }
+
+        private void EnsureProofState(ref SystemState state)
+        {
+            if (_proofEntity != Entity.Null && state.EntityManager.Exists(_proofEntity))
+            {
+                return;
+            }
+
+            using var query = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<HeadlessTimeControlProofState>());
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                _proofEntity = query.GetSingletonEntity();
+                return;
+            }
+
+            _proofEntity = state.EntityManager.CreateEntity(typeof(HeadlessTimeControlProofState));
+            state.EntityManager.SetComponentData(_proofEntity, new HeadlessTimeControlProofState());
+        }
+
+        private void SetProofResult(ref SystemState state, uint tick, byte result)
+        {
+            EnsureProofState(ref state);
+            if (_proofEntity == Entity.Null || !state.EntityManager.Exists(_proofEntity))
+            {
+                return;
+            }
+
+            state.EntityManager.SetComponentData(_proofEntity, new HeadlessTimeControlProofState
+            {
+                Result = result,
+                Tick = tick
+            });
         }
 
         private static bool ResolveEnabled()

@@ -76,6 +76,7 @@ namespace PureDOTS.Systems.Hand
             // Read modifiers
             bool shiftHeld = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
             bool ctrlHeld = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+            bool altHeld = keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed;
 
             // Read hotkeys (Q for release one, E for release all, T for toggle throw mode)
             bool releaseOnePressed = keyboard.qKey.wasPressedThisFrame;
@@ -103,6 +104,7 @@ namespace PureDOTS.Systems.Hand
                 LmbReleased = lmbReleased,
                 ShiftHeld = shiftHeld,
                 CtrlHeld = ctrlHeld,
+                AltHeld = altHeld,
                 ReleaseOnePressed = releaseOnePressed,
                 ReleaseAllPressed = releaseAllPressed,
                 ScrollDelta = scrollDelta,

@@ -21,6 +21,7 @@ namespace PureDOTS.Runtime.Hand
         public bool LmbReleased;
         public bool ShiftHeld;
         public bool CtrlHeld;
+        public bool AltHeld;
         public bool ReleaseOnePressed;  // Hotkey edge for queue release one (mapped from Key in input collector)
         public bool ReleaseAllPressed;  // Hotkey edge for queue release all (mapped from Key in input collector)
         public float ScrollDelta;  // Mouse wheel for hold distance

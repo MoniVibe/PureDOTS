@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Logistics;
 using PureDOTS.Runtime.Logistics.Components;
 using PureDOTS.Runtime.Resource;
+using PureDOTS.Runtime.Resources;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -28,6 +29,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private BufferLookup<ShipmentCargoAllocation> _shipmentCargoAllocationLookup;
         private BufferLookup<StorehouseCapacityElement> _storehouseCapacityLookup;
         private BufferLookup<StorehouseReservationItem> _storehouseReservationLookup;
+        private BufferLookup<DeliveryReceipt> _deliveryReceiptLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -46,6 +48,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _shipmentCargoAllocationLookup = state.GetBufferLookup<ShipmentCargoAllocation>(true);
             _storehouseCapacityLookup = state.GetBufferLookup<StorehouseCapacityElement>(true);
             _storehouseReservationLookup = state.GetBufferLookup<StorehouseReservationItem>(true);
+            _deliveryReceiptLookup = state.GetBufferLookup<DeliveryReceipt>(false);
         }
 
         [BurstCompile]
@@ -91,6 +94,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
             _shipmentCargoAllocationLookup.Update(ref state);
             _storehouseCapacityLookup.Update(ref state);
             _storehouseReservationLookup.Update(ref state);
+            _deliveryReceiptLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
@@ -297,6 +301,14 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         }
                     }
 
+                    AppendDeliveryReceipt(
+                        destination,
+                        order,
+                        creditedAmount,
+                        tickTime.Tick,
+                        ref _deliveryReceiptLookup,
+                        ref ecb);
+
                     // Update order status
                     order.Status = LogisticsOrderStatus.Delivered;
                     order.FailureReason = ShipmentFailureReason.None;
@@ -394,6 +406,50 @@ namespace PureDOTS.Runtime.Logistics.Systems
             serviceReservationLookup[reservationEntity] = reservation;
         }
         while (orderToServiceReservationMap.TryGetNextValue(out reservationEntity, ref iterator));
+    }
+
+    private static void AppendDeliveryReceipt(
+        Entity destination,
+        in LogisticsOrder order,
+        float deliveredAmount,
+        uint deliveryTick,
+        ref BufferLookup<DeliveryReceipt> receiptLookup,
+        ref EntityCommandBuffer ecb)
+    {
+        if (destination == Entity.Null || deliveredAmount <= 0f)
+        {
+            return;
+        }
+
+        DynamicBuffer<DeliveryReceipt> receipts;
+        if (receiptLookup.HasBuffer(destination))
+        {
+            receipts = receiptLookup[destination];
+        }
+        else
+        {
+            receipts = ecb.AddBuffer<DeliveryReceipt>(destination);
+        }
+
+        receipts.Add(new DeliveryReceipt
+        {
+            RequestId = order.OrderId < 0 ? 0u : (uint)order.OrderId,
+            DeliveredAmount = deliveredAmount,
+            DelivererEntity = order.AssignedTransport,
+            RecipientEntity = destination,
+            DeliveryTick = deliveryTick,
+            ResourceTypeId = ToFixed32(order.ResourceId)
+        });
+    }
+
+    private static FixedString32Bytes ToFixed32(FixedString64Bytes value)
+    {
+        FixedString32Bytes result = default;
+        for (int i = 0; i < value.Length && result.Length < result.Capacity; i++)
+        {
+            result.Append((char)value[i]);
+        }
+        return result;
     }
 
     private static ushort ResolveResourceTypeIndex(
