@@ -127,6 +127,14 @@ P0.TIME_REWIND_MICRO (PureDOTS / ScenarioRunner)
   - [HeadlessTimeControlProof] PASS ...
   - [HeadlessRewindProof] PASS ...
 
+G0.GODGAME_COLLISION_MICRO
+- Scenario: Assets/Scenarios/Godgame/godgame_collision_micro.json
+- Seed: 12345 (GodgameScenarioLoaderSystem default)
+- Minimum simSeconds: 10
+- PASS signals:
+  - BANK:G0.GODGAME_COLLISION_MICRO:PASS
+  - [GodgameCollisionProof] PASS ...
+
 G0.GODGAME_SMOKE
 - Scenario: Assets/Scenarios/Godgame/godgame_smoke.json
 - Seed: 12345 (GodgameScenarioLoaderSystem default)
@@ -134,6 +142,14 @@ G0.GODGAME_SMOKE
 - PASS signals:
   - BANK:G0.GODGAME_SMOKE:PASS
   - smoke diagnostics report TimeState/RewindState healthy
+
+S0.SPACE4X_COLLISION_MICRO
+- Scenario: Assets/Scenarios/space4x_collision_micro.json
+- Seed: 77
+- Minimum simSeconds: 20 (duration_s)
+- PASS signals:
+  - BANK:S0.SPACE4X_COLLISION_MICRO:PASS
+  - [Space4XCollisionProof] PASS ...
 
 S0.SPACE4X_SMOKE
 - Scenario: Assets/Scenarios/space4x_smoke.json
