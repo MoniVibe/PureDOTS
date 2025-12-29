@@ -14,6 +14,7 @@ namespace PureDOTS.Systems.Hand
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandHoldFollowSystem))]
+    [UpdateBefore(typeof(Unity.Physics.Systems.PhysicsSimulationGroup))]
     public partial struct WorldGrabProxySyncSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;

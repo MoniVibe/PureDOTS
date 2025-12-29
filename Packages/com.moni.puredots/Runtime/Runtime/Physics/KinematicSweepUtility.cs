@@ -19,6 +19,57 @@ namespace PureDOTS.Runtime.Physics
     [BurstCompile]
     public static class KinematicSweepUtility
     {
+        private struct ClosestBlockingHitCollector : ICollector<ColliderCastHit>
+        {
+            public bool EarlyOutOnFirstHit => false;
+            public float MaxFraction { get; set; }
+            public int NumHits { get; private set; }
+
+            public ColliderCastHit ClosestHit;
+            public Entity Self;
+            public bool IgnoreTriggerHits;
+
+            public static ClosestBlockingHitCollector Create(Entity self, bool ignoreTriggerHits)
+            {
+                return new ClosestBlockingHitCollector
+                {
+                    MaxFraction = 1f,
+                    NumHits = 0,
+                    ClosestHit = default,
+                    Self = self,
+                    IgnoreTriggerHits = ignoreTriggerHits
+                };
+            }
+
+            public bool AddHit(ColliderCastHit hit)
+            {
+                if (hit.Entity == Self)
+                {
+                    return false;
+                }
+
+                if (IgnoreTriggerHits)
+                {
+                    var response = hit.Material.CollisionResponse;
+                    if (response == CollisionResponsePolicy.RaiseTriggerEvents ||
+                        response == CollisionResponsePolicy.None)
+                    {
+                        return false;
+                    }
+                }
+
+                if (hit.Fraction < MaxFraction)
+                {
+                    MaxFraction = hit.Fraction;
+                    ClosestHit = hit;
+                    NumHits = 1;
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
         [BurstCompile]
         public static unsafe bool TryResolveSweep(
             in PhysicsWorldSingleton physicsWorld,
@@ -49,25 +100,13 @@ namespace PureDOTS.Runtime.Physics
                 Orientation = rotation
             };
 
-            if (!physicsWorld.CastCollider(input, out var hit))
+            var collector = ClosestBlockingHitCollector.Create(self, ignoreTriggerHits);
+            if (!physicsWorld.CastCollider(input, ref collector) || collector.NumHits == 0)
             {
                 return false;
             }
 
-            if (hit.Entity == self)
-            {
-                return false;
-            }
-
-            if (ignoreTriggerHits)
-            {
-                var response = hit.Material.CollisionResponse;
-                if (response == CollisionResponsePolicy.RaiseTriggerEvents ||
-                    response == CollisionResponsePolicy.None)
-                {
-                    return false;
-                }
-            }
+            var hit = collector.ClosestHit;
 
             var travelDistance = math.sqrt(deltaSq);
             var travelDir = math.normalizesafe(desiredDelta);
