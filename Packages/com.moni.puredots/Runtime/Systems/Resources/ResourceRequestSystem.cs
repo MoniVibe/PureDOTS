@@ -1,8 +1,8 @@
+using ScenarioState = PureDOTS.Runtime.ScenarioState;
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Logistics;
 using PureDOTS.Runtime.Logistics.Components;
-using PureDOTS.Runtime;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Resources;
 using Unity.Burst;
@@ -204,13 +204,13 @@ namespace PureDOTS.Systems.Resources
                         LogisticsJobKind.Delivery,
                         tickTime.Tick,
                         priority,
-                        out var order);
+                        out var logisticsOrder);
 
-                    order.OrderId = ToOrderId(request.RequestId);
-                    order.Status = LogisticsOrderStatus.Planning;
+                    logisticsOrder.OrderId = ToOrderId(request.RequestId);
+                    logisticsOrder.Status = LogisticsOrderStatus.Planning;
 
                     var orderEntity = ecb.CreateEntity();
-                    ecb.AddComponent(orderEntity, order);
+                    ecb.AddComponent(orderEntity, logisticsOrder);
 
                     request.OrderEntity = orderEntity;
                     requestsBuffer[i] = request;

@@ -1,4 +1,5 @@
 using System;
+using ScenarioState = PureDOTS.Runtime.ScenarioState;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Logistics;
 using PureDOTS.Runtime.Logistics.Components;
@@ -177,12 +178,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
                             LogisticsJobKind.Supply,
                             tickTime.Tick,
                             128,
-                            out var order); // Normal priority
+                            out var logisticsOrder); // Normal priority
 
-                        order.OrderId = _nextOrderId++;
+                        logisticsOrder.OrderId = _nextOrderId++;
 
                         var orderEntity = ecb.CreateEntity();
-                        ecb.AddComponent(orderEntity, order);
+                        ecb.AddComponent(orderEntity, logisticsOrder);
 
                         // Update active orders map
                         activeOrdersByDestinationAndResource.TryAdd(orderKey, true);
@@ -271,12 +272,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                 LogisticsJobKind.RedeployStock,
                                 tickTime.Tick,
                                 64,
-                                out var order); // Lower priority than construction
+                                out var logisticsOrder); // Lower priority than construction
 
-                            order.OrderId = _nextOrderId++;
+                            logisticsOrder.OrderId = _nextOrderId++;
 
                             var orderEntity = ecb.CreateEntity();
-                            ecb.AddComponent(orderEntity, order);
+                            ecb.AddComponent(orderEntity, logisticsOrder);
 
                             // Update active orders map
                             activeOrdersByDestinationAndResource.TryAdd(orderKey, true);

@@ -6,7 +6,7 @@
 ## Telemetry defaults (headless)
 - Use thin telemetry by default to avoid massive NDJSON outputs:
   - `PUREDOTS_TELEMETRY_LEVEL=summary`
-  - `PUREDOTS_TELEMETRY_MAX_BYTES=52428800` (50 MB cap)
+  - `PUREDOTS_TELEMETRY_MAX_BYTES=524288000` (500 MB cap)
 - For deep dives, set `PUREDOTS_TELEMETRY_LEVEL=full` or raise the byte cap.
 
 ## Shared proofs (PureDOTS)

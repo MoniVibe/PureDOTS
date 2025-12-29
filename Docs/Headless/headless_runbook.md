@@ -40,7 +40,7 @@ Rules:
 
 Telemetry defaults (use unless debugging):
 - PUREDOTS_TELEMETRY_LEVEL=summary
-- PUREDOTS_TELEMETRY_MAX_BYTES=52428800
+- PUREDOTS_TELEMETRY_MAX_BYTES=524288000
 
 ---
 
