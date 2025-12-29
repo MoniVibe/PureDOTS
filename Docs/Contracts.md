@@ -17,6 +17,21 @@ Simple breadcrumbs for shared systems. When you add or change a contract, update
   - Priority (byte, conflict resolution)
 - Notes: Must be rewind-safe, Burst-safe. No strings. Processed by RewindCoordinatorSystem and TimeScaleCommandSystem.
 
+## WorldGen Contracts v1
+
+- Producer: PureDOTS worldgen pipeline (deterministic, Burst-safe)
+- Consumer: Godgame/Space4x worldgen loaders + presentation glue
+- Schema:
+  - ClimateMapBlob: SizeCells (int2), CellSizeCm (ushort), TemperatureQ (ushort[]), HumidityQ (ushort[]), optional WaterMask (byte[]), optional WaterDistanceQ (ushort[])
+  - BiomeTableBlob: TempBins (byte), HumidBins (byte), TempMaxQ (ushort), HumidMaxQ (ushort), BiomeIdLUT (byte[]), Biomes (BiomeDef[])
+  - WorldGenInput: WorldSeed (uint), Climate (blob), Biomes (blob), WorldGenOptions flags
+  - Outputs: ResourceNodeSpawn (quantized cell + offsets), VillageSpawn, StarterCacheSpawn
+  - Metrics: WorldGenMetrics (InputHash32, OutputHash64Lo/Hi, counts, NN spacing cm, bootstrap coverage)
+- Notes:
+  - Positions are quantized (cell + ushort offsets). Distances stored in centimeters (ushort).
+  - Biome LUT is 16x16 with stable binning (Temp/Humid in 0..MaxQ).
+  - Output hashing sorts lists by stable key and hashes field-by-field (no raw struct bytes).
+
 ## PhysicsCollisionEvent v1
 
 - Producer: Physics/Collision systems (PureDOTS)
@@ -261,4 +276,3 @@ Systems that already check `RewindState.Mode`:
 - Pure VFX, particles
 - UI-only stuff
 - Sample rate: N/A
-
