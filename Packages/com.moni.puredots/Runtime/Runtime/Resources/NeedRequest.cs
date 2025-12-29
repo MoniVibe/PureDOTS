@@ -11,7 +11,11 @@ namespace PureDOTS.Runtime.Resources
         NoSupply = 3,
         ReservationFailed = 4,
         Expired = 5,
-        Cancelled = 6
+        Cancelled = 6,
+        RouteUnavailable = 7,
+        NoCarrier = 8,
+        InvalidContainer = 9,
+        CapacityFull = 10
     }
 
     /// <summary>

@@ -149,6 +149,19 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
                     var order = _orderLookup[orderEntity];
                     Entity destination = order.DestinationNode;
+                    var resolvedResourceIndex = ResolveResourceTypeIndex(order, resourceTypeIndex.Catalog);
+                    if (resolvedResourceIndex == ushort.MaxValue)
+                    {
+                        order.Status = LogisticsOrderStatus.Failed;
+                        order.FailureReason = ShipmentFailureReason.InvalidDestination;
+                        _orderLookup[orderEntity] = order;
+                        ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
+                        shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidDestination;
+                        ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
+                        ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
+                        ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
+                        continue;
+                    }
 
                     // Verify source was already withdrawn (safety check to prevent double-withdrawal)
                     bool sourceAlreadyWithdrawn = false;
@@ -167,7 +180,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         var cargoAllocations = _shipmentCargoAllocationLookup[shipmentEntity];
                         for (int i = 0; i < cargoAllocations.Length; i++)
                         {
-                            if (cargoAllocations[i].ResourceId.Equals(order.ResourceId))
+                            if (cargoAllocations[i].ResourceTypeIndex == resolvedResourceIndex)
                             {
                                 deliveredAmount += cargoAllocations[i].AllocatedAmount;
                             }
@@ -217,22 +230,8 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         var capacityBuffer = _storehouseCapacityLookup[destination];
                         var reservationBuffer = _storehouseReservationLookup[destination];
 
-                        var resourceIndex = resourceTypeIndex.Catalog.Value.LookupIndex(order.ResourceId);
-                        if (resourceIndex < 0)
-                        {
-                            order.Status = LogisticsOrderStatus.Failed;
-                            order.FailureReason = ShipmentFailureReason.InvalidDestination;
-                            _orderLookup[orderEntity] = order;
-                            ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
-                            shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidDestination;
-                            ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
-                            ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
-                            ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
-                            continue;
-                        }
-
                         if (!StorehouseMutationService.TryDepositWithPerTypeCapacity(
-                                (ushort)resourceIndex,
+                                resolvedResourceIndex,
                                 creditedAmount,
                                 resourceTypeIndex.Catalog,
                                 ref inventoryComponent,
@@ -243,10 +242,10 @@ namespace PureDOTS.Runtime.Logistics.Systems
                             depositedAmount <= 0f)
                         {
                             order.Status = LogisticsOrderStatus.Failed;
-                            order.FailureReason = ShipmentFailureReason.StorageFull;
+                            order.FailureReason = ShipmentFailureReason.CapacityFull;
                             _orderLookup[orderEntity] = order;
                             ResourceLogisticsService.UpdateShipmentState(ref shipment.ValueRW, ShipmentStatus.Failed);
-                            shipment.ValueRW.FailureReason = ShipmentFailureReason.StorageFull;
+                            shipment.ValueRW.FailureReason = ShipmentFailureReason.CapacityFull;
                             ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref _inventoryReservationLookup);
                             ReleaseCapacityReservationForOrder(orderEntity, orderToCapacityReservationMap, ref _capacityReservationLookup);
                             ReleaseServiceReservationsForOrder(orderEntity, ref orderToServiceReservationMap, ref _serviceReservationLookup);
@@ -395,6 +394,22 @@ namespace PureDOTS.Runtime.Logistics.Systems
             serviceReservationLookup[reservationEntity] = reservation;
         }
         while (orderToServiceReservationMap.TryGetNextValue(out reservationEntity, ref iterator));
+    }
+
+    private static ushort ResolveResourceTypeIndex(
+        in LogisticsOrder order,
+        BlobAssetReference<ResourceTypeIndexBlob> catalog)
+    {
+        ref var ids = ref catalog.Value.Ids;
+        var existingIndex = (int)order.ResourceTypeIndex;
+        if (existingIndex >= 0 && existingIndex < ids.Length &&
+            ids[existingIndex].Equals(order.ResourceId))
+        {
+            return order.ResourceTypeIndex;
+        }
+
+        var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+        return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
     }
 }
 }

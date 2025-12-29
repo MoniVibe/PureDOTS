@@ -284,19 +284,29 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                 var sourceInventory = _storehouseInventoryLookup[sourceNode];
                                 var inventoryComponent = _storehouseInventoryComponentLookup[sourceNode];
 
-                                var resourceIndex = resourceTypeIndex.Catalog.Value.LookupIndex(order.ResourceId);
-                                if (resourceIndex < 0)
+                                var resolvedResourceIndex = ResolveResourceTypeIndex(order, resourceTypeIndex.Catalog);
+                                if (resolvedResourceIndex == ushort.MaxValue)
                                 {
-                                    order.Status = LogisticsOrderStatus.Failed;
-                                    order.FailureReason = ShipmentFailureReason.InvalidSource;
-                                    _orderLookup[withdrawOrderEntity] = order;
-                                    shipment.ValueRW.Status = ShipmentStatus.Failed;
-                                    shipment.ValueRW.FailureReason = ShipmentFailureReason.InvalidSource;
+                                    FailOrderAndShipment(
+                                        withdrawOrderEntity,
+                                        order.SourceNode,
+                                        order.DestinationNode,
+                                        ShipmentFailureReason.InvalidSource,
+                                        ref _orderLookup,
+                                        shipment,
+                                        orderToInventoryReservationMap,
+                                        orderToCapacityReservationMap,
+                                        ref _inventoryReservationLookup,
+                                        ref _capacityReservationLookup,
+                                        ref orderToServiceReservationMap,
+                                        ref _serviceReservationLookup,
+                                        ref loadServiceCounts,
+                                        ref unloadServiceCounts);
                                     continue;
                                 }
 
                                 if (StorehouseMutationService.CommitWithdrawReservedOut(
-                                        (ushort)resourceIndex,
+                                        resolvedResourceIndex,
                                         reservation.ReservedAmount,
                                         resourceTypeIndex.Catalog,
                                         ref inventoryComponent,
@@ -314,10 +324,11 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                         var cargoAllocations = _shipmentCargoAllocationLookup[shipmentEntity];
                                         for (int i = 0; i < cargoAllocations.Length; i++)
                                         {
-                                            if (cargoAllocations[i].ResourceId.Equals(order.ResourceId))
+                                            if (cargoAllocations[i].ResourceTypeIndex == resolvedResourceIndex)
                                             {
                                                 var allocation = cargoAllocations[i];
                                                 allocation.AllocatedAmount = withdrawnAmount; // Update with actual withdrawn
+                                                allocation.ResourceTypeIndex = resolvedResourceIndex;
                                                 cargoAllocations[i] = allocation;
                                                 break;
                                             }
@@ -406,6 +417,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                 transitOrderEntity,
                                 order.SourceNode,
                                 order.DestinationNode,
+                                ShipmentFailureReason.TransportLost,
                                 ref _orderLookup,
                                 shipment,
                                 orderToInventoryReservationMap,
@@ -643,6 +655,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
             Entity orderEntity,
             Entity sourceNode,
             Entity destinationNode,
+            ShipmentFailureReason failureReason,
             ref ComponentLookup<LogisticsOrder> orderLookup,
             RefRW<Shipment> shipment,
             NativeHashMap<Entity, Entity> orderToInventoryReservationMap,
@@ -658,10 +671,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
             {
                 var order = orderLookup[orderEntity];
                 order.Status = LogisticsOrderStatus.Failed;
+                order.FailureReason = failureReason;
                 orderLookup[orderEntity] = order;
             }
 
             shipment.ValueRW.Status = ShipmentStatus.Failed;
+            shipment.ValueRW.FailureReason = failureReason;
             shipment.ValueRW.ActualArrivalTick = 0;
 
             ReleaseInventoryReservationForOrder(orderEntity, orderToInventoryReservationMap, ref inventoryReservationLookup);
@@ -696,6 +711,22 @@ namespace PureDOTS.Runtime.Logistics.Systems
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogWarning(message);
 #endif
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in LogisticsOrder order,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            ref var ids = ref catalog.Value.Ids;
+            var existingIndex = (int)order.ResourceTypeIndex;
+            if (existingIndex >= 0 && existingIndex < ids.Length &&
+                ids[existingIndex].Equals(order.ResourceId))
+            {
+                return order.ResourceTypeIndex;
+            }
+
+            var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
         }
 
     }

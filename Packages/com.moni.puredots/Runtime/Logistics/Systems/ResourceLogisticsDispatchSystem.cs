@@ -31,6 +31,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<LogisticsOrder>();
+            state.RequireForUpdate<ResourceTypeIndex>();
             _orderLookup = state.GetComponentLookup<LogisticsOrder>(false);
             _shipmentLookup = state.GetComponentLookup<Shipment>(false);
             _nodeLookup = state.GetComponentLookup<LogisticsNode>(false);
@@ -57,6 +58,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
             }
 
             if (!SystemAPI.TryGetSingleton<TickTimeState>(out var tickTime))
+            {
+                return;
+            }
+
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex) ||
+                !resourceTypeIndex.Catalog.IsCreated)
             {
                 return;
             }
@@ -101,12 +108,45 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     continue; // Already assigned
                 }
 
+                var resourceTypeIndexResolved = ResolveResourceTypeIndex(order.ValueRO, resourceTypeIndex.Catalog);
+                if (resourceTypeIndexResolved == ushort.MaxValue)
+                {
+                    order.ValueRW.Status = LogisticsOrderStatus.Failed;
+                    order.ValueRW.FailureReason = ShipmentFailureReason.InvalidSource;
+                    continue;
+                }
+
+                if (order.ValueRO.ResourceTypeIndex != resourceTypeIndexResolved)
+                {
+                    order.ValueRW.ResourceTypeIndex = resourceTypeIndexResolved;
+                }
+
+                order.ValueRW.SourceInventory = new InventoryHandle
+                {
+                    StorehouseEntity = order.ValueRO.SourceNode,
+                    ResourceTypeIndex = resourceTypeIndexResolved
+                };
+                order.ValueRW.DestinationInventory = new InventoryHandle
+                {
+                    StorehouseEntity = order.ValueRO.DestinationNode,
+                    ResourceTypeIndex = resourceTypeIndexResolved
+                };
+
+                if (order.ValueRO.ContainerHandle.ContainerEntity != Entity.Null &&
+                    !state.EntityManager.Exists(order.ValueRO.ContainerHandle.ContainerEntity))
+                {
+                    order.ValueRW.Status = LogisticsOrderStatus.Failed;
+                    order.ValueRW.FailureReason = ShipmentFailureReason.InvalidContainer;
+                    continue;
+                }
+
                 float requiredMass = order.ValueRO.RequestedAmount * massPerUnit;
                 float requiredVolume = order.ValueRO.RequestedAmount * volumePerUnit;
 
                 // Find suitable transport with sufficient capacity
                 Entity bestTransport = Entity.Null;
                 float bestCapacityUtilization = float.MaxValue;
+                int availableHaulers = 0;
 
                 foreach (var (haulerTag, transportEntity) in SystemAPI.Query<RefRO<HaulerTag>>()
                     .WithEntityAccess())
@@ -123,6 +163,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         continue;
                     }
 
+                    availableHaulers++;
                     var capacity = _haulerCapacityLookup[transportEntity];
 
                     // Calculate already reserved capacity
@@ -211,17 +252,42 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     cargoAllocationBuffer.Add(new ShipmentCargoAllocation
                     {
                         ResourceId = order.ValueRO.ResourceId,
+                        ResourceTypeIndex = resourceTypeIndexResolved,
                         AllocatedAmount = order.ValueRO.RequestedAmount, // Actual allocated = requested for now
-                        ContainerEntity = Entity.Null, // Could be determined from transport later
+                        ContainerEntity = order.ValueRO.ContainerHandle.ContainerEntity,
+                        ContainerHandle = order.ValueRO.ContainerHandle,
                         BatchEntity = Entity.Null
                     });
 
                     order.ValueRW.ShipmentEntity = shipmentEntity;
                 }
+                else
+                {
+                    order.ValueRW.Status = LogisticsOrderStatus.Failed;
+                    order.ValueRW.FailureReason = availableHaulers == 0
+                        ? ShipmentFailureReason.NoCarrier
+                        : ShipmentFailureReason.NoCapacity;
+                }
             }
 
             assignedTransports.Dispose();
             ecb.Playback(state.EntityManager);
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in LogisticsOrder order,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            ref var ids = ref catalog.Value.Ids;
+            var existingIndex = (int)order.ResourceTypeIndex;
+            if (existingIndex >= 0 && existingIndex < ids.Length &&
+                ids[existingIndex].Equals(order.ResourceId))
+            {
+                return order.ResourceTypeIndex;
+            }
+
+            var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
         }
     }
 }

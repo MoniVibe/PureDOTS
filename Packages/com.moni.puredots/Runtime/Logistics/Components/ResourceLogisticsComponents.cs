@@ -4,6 +4,18 @@ using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Logistics.Components
 {
+    public struct InventoryHandle
+    {
+        public Entity StorehouseEntity;
+        public ushort ResourceTypeIndex;
+    }
+
+    public struct ContainerHandle
+    {
+        public Entity ContainerEntity;
+        public int BufferIndex;
+    }
+
     /// <summary>
     /// Extended logistics order with routing and reservation support.
     /// Extends basic LogisticsJob with additional fields.
@@ -15,6 +27,10 @@ namespace PureDOTS.Runtime.Logistics.Components
         public Entity SourceNode;
         public Entity DestinationNode;
         public FixedString64Bytes ResourceId;
+        public ushort ResourceTypeIndex;
+        public InventoryHandle SourceInventory;
+        public InventoryHandle DestinationInventory;
+        public ContainerHandle ContainerHandle;
         public float RequestedAmount;
         public float ReservedAmount;  // Amount currently reserved
         public LogisticsOrderStatus Status;
@@ -62,6 +78,8 @@ namespace PureDOTS.Runtime.Logistics.Components
         public ShipmentStatus Status;
         public ShipmentFailureReason FailureReason;
         public ShipmentRepresentationMode RepresentationMode;
+        public ushort ResourceTypeIndex;
+        public ContainerHandle ContainerHandle;
         public float AllocatedMass;
         public float AllocatedVolume;
         public uint DepartureTick;
@@ -90,7 +108,11 @@ namespace PureDOTS.Runtime.Logistics.Components
         StorageFull = 5,
         ReservationExpired = 6,
         TransportLost = 7,
-        Cancelled = 8
+        Cancelled = 8,
+        RouteUnavailable = 9,
+        NoCarrier = 10,
+        InvalidContainer = 11,
+        CapacityFull = 12
     }
 
     public enum ShipmentRepresentationMode : byte
@@ -110,7 +132,9 @@ namespace PureDOTS.Runtime.Logistics.Components
     public struct ShipmentCargoAllocation : IBufferElementData
     {
         public FixedString64Bytes ResourceId;
+        public ushort ResourceTypeIndex;
         public Entity ContainerEntity;
+        public ContainerHandle ContainerHandle;
         public float AllocatedAmount;
         public Entity BatchEntity;  // BatchId reference
     }

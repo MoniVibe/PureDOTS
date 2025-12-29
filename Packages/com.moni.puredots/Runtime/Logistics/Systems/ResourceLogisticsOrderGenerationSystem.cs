@@ -29,6 +29,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<ConstructionSiteProgress>();
+            state.RequireForUpdate<ResourceTypeIndex>();
             _costBufferLookup = state.GetBufferLookup<ConstructionCostElement>(true);
             _deliveredBufferLookup = state.GetBufferLookup<ConstructionDeliveredElement>(true);
             _inventoryItemLookup = state.GetBufferLookup<StorehouseInventoryItem>(true);
@@ -59,6 +60,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 return;
             }
 
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex) ||
+                !resourceTypeIndex.Catalog.IsCreated)
+            {
+                return;
+            }
+
             _costBufferLookup.Update(ref state);
             _deliveredBufferLookup.Update(ref state);
             _inventoryItemLookup.Update(ref state);
@@ -79,10 +86,16 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     order.ValueRO.Status != LogisticsOrderStatus.Cancelled &&
                     order.ValueRO.Status != LogisticsOrderStatus.Failed)
                 {
+                    var resourceIndex = ResolveResourceTypeIndex(order.ValueRO, resourceTypeIndex.Catalog);
+                    if (resourceIndex == ushort.MaxValue)
+                    {
+                        continue;
+                    }
+
                     var key = new OrderKey
                     {
                         Destination = order.ValueRO.DestinationNode,
-                        ResourceId = order.ValueRO.ResourceId
+                        ResourceTypeIndex = resourceIndex
                     };
                     activeOrdersByDestinationAndResource.TryAdd(key, true);
                 }
@@ -141,7 +154,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         var orderKey = new OrderKey
                         {
                             Destination = siteEntity,
-                            ResourceId = cost.ResourceTypeId
+                            ResourceTypeIndex = ResolveResourceTypeIndex(cost.ResourceTypeId, resourceTypeIndex.Catalog)
                         };
 
                         if (activeOrdersByDestinationAndResource.TryGetValue(orderKey, out bool hasOrder) && hasOrder)
@@ -150,10 +163,16 @@ namespace PureDOTS.Runtime.Logistics.Systems
                         }
 
                         // Create logistics order
+                        if (orderKey.ResourceTypeIndex == ushort.MaxValue)
+                        {
+                            continue;
+                        }
+
                         ResourceLogisticsService.CreateOrder(
                             sourceNode,
                             siteEntity,
                             cost.ResourceTypeId,
+                            orderKey.ResourceTypeIndex,
                             shortage,
                             LogisticsJobKind.Supply,
                             tickTime.Tick,
@@ -207,10 +226,16 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     if (currentAmount < threshold)
                     {
                         // Check if already has active order for this resource using map
+                        var resourceIndex = ResolveResourceTypeIndex(capacity.ResourceTypeId, resourceTypeIndex.Catalog);
+                        if (resourceIndex == ushort.MaxValue)
+                        {
+                            continue;
+                        }
+
                         var orderKey = new OrderKey
                         {
                             Destination = storehouseEntity,
-                            ResourceId = capacity.ResourceTypeId
+                            ResourceTypeIndex = resourceIndex
                         };
 
                         if (activeOrdersByDestinationAndResource.TryGetValue(orderKey, out bool hasOrder) && hasOrder)
@@ -241,6 +266,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                                 sourceNode,
                                 storehouseEntity,
                                 capacity.ResourceTypeId,
+                                resourceIndex,
                                 restockAmount,
                                 LogisticsJobKind.RedeployStock,
                                 tickTime.Tick,
@@ -252,8 +278,8 @@ namespace PureDOTS.Runtime.Logistics.Systems
                             var orderEntity = ecb.CreateEntity();
                             ecb.AddComponent(orderEntity, order);
 
-                        // Update active orders map
-                        activeOrdersByDestinationAndResource.TryAdd(orderKey, true);
+                            // Update active orders map
+                            activeOrdersByDestinationAndResource.TryAdd(orderKey, true);
                         }
                     }
                 }
@@ -267,17 +293,41 @@ namespace PureDOTS.Runtime.Logistics.Systems
         private struct OrderKey : IEquatable<OrderKey>
         {
             public Entity Destination;
-            public FixedString64Bytes ResourceId;
+            public ushort ResourceTypeIndex;
 
             public bool Equals(OrderKey other)
             {
-                return Destination.Equals(other.Destination) && ResourceId.Equals(other.ResourceId);
+                return Destination.Equals(other.Destination) && ResourceTypeIndex == other.ResourceTypeIndex;
             }
 
             public override int GetHashCode()
             {
-                return HashCode.Combine(Destination, ResourceId);
+                return HashCode.Combine(Destination, ResourceTypeIndex);
             }
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in LogisticsOrder order,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            ref var ids = ref catalog.Value.Ids;
+            var existingIndex = (int)order.ResourceTypeIndex;
+            if (existingIndex >= 0 && existingIndex < ids.Length &&
+                ids[existingIndex].Equals(order.ResourceId))
+            {
+                return order.ResourceTypeIndex;
+            }
+
+            var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in FixedString64Bytes resourceId,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            var resolvedIndex = catalog.Value.LookupIndex(resourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
         }
     }
 }

@@ -136,6 +136,51 @@ namespace PureDOTS.Runtime.Resource
             return false;
         }
 
+        public static bool TryConsumeUnreserved(
+            ushort resourceTypeIndex,
+            float amount,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog,
+            ref StorehouseInventory inventory,
+            DynamicBuffer<StorehouseInventoryItem> items)
+        {
+            if (!TryResolveResourceId(resourceTypeIndex, catalog, out var resourceId) ||
+                amount <= 0f)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                var item = items[i];
+                if (!item.ResourceTypeId.Equals(resourceId))
+                {
+                    continue;
+                }
+
+                var available = math.max(0f, item.Amount - item.Reserved);
+                if (available + 1e-3f < amount)
+                {
+                    return false;
+                }
+
+                item.Amount = math.max(0f, item.Amount - amount);
+                if (item.Amount <= 1e-3f && item.Reserved <= 1e-3f)
+                {
+                    items.RemoveAt(i);
+                }
+                else
+                {
+                    items[i] = item;
+                }
+
+                inventory.TotalStored = math.max(0f, inventory.TotalStored - amount);
+                inventory.ItemTypeCount = items.Length;
+                return true;
+            }
+
+            return false;
+        }
+
         public static bool TryReserveIn(
             ushort resourceTypeIndex,
             float requestedAmount,
@@ -215,6 +260,31 @@ namespace PureDOTS.Runtime.Resource
             }
 
             return false;
+        }
+
+        public static bool HasCapacityForDeposit(
+            ushort resourceTypeIndex,
+            float amount,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog,
+            DynamicBuffer<StorehouseInventoryItem> items,
+            DynamicBuffer<StorehouseCapacityElement> capacities,
+            DynamicBuffer<StorehouseReservationItem> reservations)
+        {
+            if (!TryResolveResourceId(resourceTypeIndex, catalog, out var resourceId) ||
+                amount <= 0f)
+            {
+                return false;
+            }
+
+            if (!TryGetCapacity(capacities, resourceId, out var capacity))
+            {
+                return false;
+            }
+
+            var stored = GetStoredAmount(items, resourceId);
+            var reservedIn = GetReservedIn(reservations, resourceTypeIndex);
+            var available = math.max(0f, capacity - stored - reservedIn);
+            return available + 1e-3f >= amount;
         }
 
         public static bool TryDepositWithPerTypeCapacity(

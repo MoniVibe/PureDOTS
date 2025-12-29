@@ -19,7 +19,7 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ResourceRecipeSet>();
             state.RequireForUpdate<ResourceTypeIndex>();
@@ -29,8 +29,9 @@ namespace PureDOTS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused
+            if (!SystemAPI.TryGetSingleton<TickTimeState>(out var tickTime)
+                || tickTime.IsPaused
+                || !tickTime.IsPlaying
                 || !SystemAPI.TryGetSingleton<RewindState>(out var rewindState)
                 || rewindState.Mode != RewindMode.Record)
             {
@@ -43,33 +44,44 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            ref var recipeSet = ref recipeSetComponent.Value.Value;
-            var deltaTime = SystemAPI.Time.DeltaTime;
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex)
+                || !resourceTypeIndex.Catalog.IsCreated)
+            {
+                return;
+            }
 
-            foreach (var (configRO, processorStateRW, inventoryRW, inventoryItems, queue) in SystemAPI.Query<RefRO<ResourceProcessorConfig>, RefRW<ResourceProcessorState>, RefRW<StorehouseInventory>, DynamicBuffer<StorehouseInventoryItem>, DynamicBuffer<ResourceProcessorQueue>>())
+            ref var recipeSet = ref recipeSetComponent.Value.Value;
+            var deltaTime = math.max(0f, tickTime.FixedDeltaTime);
+
+            foreach (var (configRO, processorStateRW, inventoryRW, inventoryItems, capacities, reservations, queue)
+                     in SystemAPI.Query<RefRO<ResourceProcessorConfig>, RefRW<ResourceProcessorState>, RefRW<StorehouseInventory>,
+                         DynamicBuffer<StorehouseInventoryItem>, DynamicBuffer<StorehouseCapacityElement>,
+                         DynamicBuffer<StorehouseReservationItem>, DynamicBuffer<ResourceProcessorQueue>>())
             {
                 ref var processorState = ref processorStateRW.ValueRW;
                 ref var inventory = ref inventoryRW.ValueRW;
 
-                UpdateInProgressRecipe(ref processorState, ref inventory, inventoryItems, deltaTime);
+                UpdateInProgressRecipe(ref processorState, ref inventory, inventoryItems, capacities, reservations, resourceTypeIndex.Catalog, deltaTime);
 
                 if (processorState.RecipeId.Length != 0)
                 {
                     continue;
                 }
 
-                if (TryStartQueuedRecipe(configRO.ValueRO.FacilityTag, ref processorState, ref inventory, inventoryItems, queue, ref recipeSet))
+                if (TryStartQueuedRecipe(configRO.ValueRO.FacilityTag, ref processorState, ref inventory, inventoryItems, capacities, reservations, queue, resourceTypeIndex.Catalog, ref recipeSet))
                 {
                     continue;
                 }
 
                 if (configRO.ValueRO.AutoRun != 0)
                 {
-                    TryStartAutoRecipe(configRO.ValueRO.FacilityTag, ref processorState, ref inventory, inventoryItems, ref recipeSet);
+                    TryStartAutoRecipe(configRO.ValueRO.FacilityTag, ref processorState, ref inventory, inventoryItems, capacities, reservations, resourceTypeIndex.Catalog, ref recipeSet);
                 }
             }
 
-            static void UpdateInProgressRecipe(ref ResourceProcessorState processorState, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items, float deltaTime)
+            static void UpdateInProgressRecipe(ref ResourceProcessorState processorState, ref StorehouseInventory inventory,
+                DynamicBuffer<StorehouseInventoryItem> items, DynamicBuffer<StorehouseCapacityElement> capacities,
+                DynamicBuffer<StorehouseReservationItem> reservations, BlobAssetReference<ResourceTypeIndexBlob> catalog, float deltaTime)
             {
                 if (processorState.RecipeId.Length == 0)
                 {
@@ -83,12 +95,18 @@ namespace PureDOTS.Systems
 
                 if (processorState.RemainingSeconds <= 0f)
                 {
-                    ProduceOutput(ref processorState, ref inventory, items);
-                    processorState = default;
+                    if (TryProduceOutput(ref processorState, ref inventory, items, capacities, reservations, catalog))
+                    {
+                        processorState = default;
+                    }
                 }
             }
 
-            static bool TryStartQueuedRecipe(FixedString32Bytes facilityTag, ref ResourceProcessorState processorState, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items, DynamicBuffer<ResourceProcessorQueue> queue, ref ResourceRecipeSetBlob recipeSet)
+            static bool TryStartQueuedRecipe(FixedString32Bytes facilityTag, ref ResourceProcessorState processorState,
+                ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items,
+                DynamicBuffer<StorehouseCapacityElement> capacities, DynamicBuffer<StorehouseReservationItem> reservations,
+                DynamicBuffer<ResourceProcessorQueue> queue, BlobAssetReference<ResourceTypeIndexBlob> catalog,
+                ref ResourceRecipeSetBlob recipeSet)
             {
                 for (int i = 0; i < queue.Length; i++)
                 {
@@ -105,7 +123,7 @@ namespace PureDOTS.Systems
                         continue;
                     }
 
-                    if (TryStartRecipe(in recipe, ref processorState, ref inventory, items))
+                    if (TryStartRecipe(in recipe, ref processorState, ref inventory, items, capacities, reservations, catalog))
                     {
                         if (entry.Repeat > 1)
                         {
@@ -124,7 +142,10 @@ namespace PureDOTS.Systems
                 return false;
             }
 
-            static void TryStartAutoRecipe(FixedString32Bytes facilityTag, ref ResourceProcessorState processorState, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items, ref ResourceRecipeSetBlob recipeSet)
+            static void TryStartAutoRecipe(FixedString32Bytes facilityTag, ref ResourceProcessorState processorState,
+                ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items,
+                DynamicBuffer<StorehouseCapacityElement> capacities, DynamicBuffer<StorehouseReservationItem> reservations,
+                BlobAssetReference<ResourceTypeIndexBlob> catalog, ref ResourceRecipeSetBlob recipeSet)
             {
                 for (int i = 0; i < recipeSet.Recipes.Length; i++)
                 {
@@ -134,7 +155,7 @@ namespace PureDOTS.Systems
                         continue;
                     }
 
-                    if (TryStartRecipe(in recipe, ref processorState, ref inventory, items))
+                    if (TryStartRecipe(in recipe, ref processorState, ref inventory, items, capacities, reservations, catalog))
                     {
                         break;
                     }
@@ -172,14 +193,38 @@ namespace PureDOTS.Systems
                 return processorTag.Equals(recipeTag);
             }
 
-            static bool TryStartRecipe(in ResourceRecipeBlob recipe, ref ResourceProcessorState processorState, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items)
+            static bool TryStartRecipe(in ResourceRecipeBlob recipe, ref ResourceProcessorState processorState,
+                ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items,
+                DynamicBuffer<StorehouseCapacityElement> capacities, DynamicBuffer<StorehouseReservationItem> reservations,
+                BlobAssetReference<ResourceTypeIndexBlob> catalog)
             {
+                var outputIndex = ResolveResourceTypeIndex(recipe.OutputResourceId, catalog);
+                if (outputIndex == ushort.MaxValue)
+                {
+                    return false;
+                }
+
+                var outputAmount = math.max(1f, recipe.OutputAmount);
+                if (!StorehouseMutationService.HasCapacityForDeposit(
+                        outputIndex,
+                        outputAmount,
+                        catalog,
+                        items,
+                        capacities,
+                        reservations))
+                {
+                    return false;
+                }
+
                 if (!CanFulfill(recipe, items))
                 {
                     return false;
                 }
 
-                ConsumeIngredients(in recipe, ref inventory, items);
+                if (!ConsumeIngredients(in recipe, ref inventory, items, catalog))
+                {
+                    return false;
+                }
 
                 processorState.RecipeId = recipe.Id;
                 processorState.OutputResourceId = recipe.OutputResourceId;
@@ -189,8 +234,10 @@ namespace PureDOTS.Systems
 
                 if (processorState.RemainingSeconds <= 0f)
                 {
-                    ProduceOutput(ref processorState, ref inventory, items);
-                    processorState = default;
+                    if (TryProduceOutput(ref processorState, ref inventory, items, capacities, reservations, catalog))
+                    {
+                        processorState = default;
+                    }
                 }
 
                 return true;
@@ -207,7 +254,7 @@ namespace PureDOTS.Systems
                     {
                         if (items[itemIndex].ResourceTypeId.Equals(ingredient.ResourceId))
                         {
-                            available = items[itemIndex].Amount;
+                            available = math.max(0f, items[itemIndex].Amount - items[itemIndex].Reserved);
                             break;
                         }
                     }
@@ -221,90 +268,85 @@ namespace PureDOTS.Systems
                 return true;
             }
 
-            static void ConsumeIngredients(in ResourceRecipeBlob recipe, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items)
+            static bool ConsumeIngredients(in ResourceRecipeBlob recipe, ref StorehouseInventory inventory,
+                DynamicBuffer<StorehouseInventoryItem> items, BlobAssetReference<ResourceTypeIndexBlob> catalog)
             {
-                float consumedTotal = 0f;
-
                 for (int ingredientIndex = 0; ingredientIndex < recipe.Ingredients.Length; ingredientIndex++)
                 {
                     var ingredient = recipe.Ingredients[ingredientIndex];
-
-                    for (int itemIndex = 0; itemIndex < items.Length; itemIndex++)
+                    var resourceIndex = ResolveResourceTypeIndex(ingredient.ResourceId, catalog);
+                    if (resourceIndex == ushort.MaxValue)
                     {
-                        var item = items[itemIndex];
-                        if (!item.ResourceTypeId.Equals(ingredient.ResourceId))
-                        {
-                            continue;
-                        }
+                        return false;
+                    }
 
-                        item.Amount -= ingredient.Amount;
-                        consumedTotal += ingredient.Amount;
-
-                        if (item.Amount <= 1e-3f)
-                        {
-                            items.RemoveAt(itemIndex);
-                        }
-                        else
-                        {
-                            items[itemIndex] = item;
-                        }
-
-                        break;
+                    if (!StorehouseMutationService.TryConsumeUnreserved(
+                            resourceIndex,
+                            ingredient.Amount,
+                            catalog,
+                            ref inventory,
+                            items))
+                    {
+                        return false;
                     }
                 }
-
-                inventory.TotalStored = math.max(0f, inventory.TotalStored - consumedTotal);
-                inventory.ItemTypeCount = items.Length;
+                return true;
             }
 
-            static void ProduceOutput(ref ResourceProcessorState processorState, ref StorehouseInventory inventory, DynamicBuffer<StorehouseInventoryItem> items)
+            static bool TryProduceOutput(ref ResourceProcessorState processorState, ref StorehouseInventory inventory,
+                DynamicBuffer<StorehouseInventoryItem> items, DynamicBuffer<StorehouseCapacityElement> capacities,
+                DynamicBuffer<StorehouseReservationItem> reservations, BlobAssetReference<ResourceTypeIndexBlob> catalog)
             {
                 if (processorState.OutputResourceId.Length == 0 || processorState.OutputAmount <= 0)
                 {
-                    return;
+                    return true;
+                }
+
+                var outputIndex = ResolveResourceTypeIndex(processorState.OutputResourceId, catalog);
+                if (outputIndex == ushort.MaxValue)
+                {
+                    return true;
                 }
 
                 var amount = (float)processorState.OutputAmount;
-                var matched = false;
-
-                for (int itemIndex = 0; itemIndex < items.Length; itemIndex++)
+                if (!StorehouseMutationService.HasCapacityForDeposit(
+                        outputIndex,
+                        amount,
+                        catalog,
+                        items,
+                        capacities,
+                        reservations))
                 {
-                    var item = items[itemIndex];
-                    if (!item.ResourceTypeId.Equals(processorState.OutputResourceId))
-                    {
-                        continue;
-                    }
-
-                    item.Amount += amount;
-                    if (item.TierId == 0)
-                    {
-                        item.TierId = (byte)ResourceQualityTier.Unknown;
-                    }
-                    if (item.AverageQuality == 0)
-                    {
-                        item.AverageQuality = 200;
-                    }
-                    items[itemIndex] = item;
-                    matched = true;
-                    break;
+                    return false;
                 }
 
-                if (!matched)
+                if (!StorehouseMutationService.TryDepositWithPerTypeCapacity(
+                        outputIndex,
+                        amount,
+                        catalog,
+                        ref inventory,
+                        items,
+                        capacities,
+                        reservations,
+                        out var depositedAmount))
                 {
-                    items.Add(new StorehouseInventoryItem
-                    {
-                        ResourceTypeId = processorState.OutputResourceId,
-                        Amount = amount,
-                        Reserved = 0f,
-                        TierId = (byte)ResourceQualityTier.Unknown,
-                        AverageQuality = 200
-                    });
+                    return false;
                 }
 
-                inventory.TotalStored += amount;
-                inventory.ItemTypeCount = items.Length;
+                if (depositedAmount + 1e-3f < amount)
+                {
+                    processorState.OutputAmount = (int)math.max(1f, math.ceil(amount - depositedAmount));
+                    return false;
+                }
+
+                return true;
+            }
+
+            static ushort ResolveResourceTypeIndex(FixedString64Bytes resourceId, BlobAssetReference<ResourceTypeIndexBlob> catalog)
+            {
+                var index = catalog.Value.LookupIndex(resourceId);
+                return index < 0 ? ushort.MaxValue : (ushort)index;
             }
         }
     }
 }
-

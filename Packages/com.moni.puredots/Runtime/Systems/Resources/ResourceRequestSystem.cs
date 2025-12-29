@@ -199,6 +199,7 @@ namespace PureDOTS.Systems.Resources
                         sourceNode,
                         destination,
                         resourceId,
+                        (ushort)resourceIndex,
                         request.Amount,
                         LogisticsJobKind.Delivery,
                         tickTime.Tick,
@@ -255,13 +256,21 @@ namespace PureDOTS.Systems.Resources
                 case ShipmentFailureReason.NoInventory:
                     return RequestFailureReason.NoSupply;
                 case ShipmentFailureReason.InvalidDestination:
-                case ShipmentFailureReason.StorageFull:
                     return RequestFailureReason.InvalidTarget;
+                case ShipmentFailureReason.StorageFull:
+                case ShipmentFailureReason.NoCapacity:
+                case ShipmentFailureReason.CapacityFull:
+                    return RequestFailureReason.CapacityFull;
                 case ShipmentFailureReason.ReservationExpired:
                     return RequestFailureReason.Expired;
                 case ShipmentFailureReason.TransportLost:
-                case ShipmentFailureReason.NoCapacity:
                     return RequestFailureReason.ReservationFailed;
+                case ShipmentFailureReason.RouteUnavailable:
+                    return RequestFailureReason.RouteUnavailable;
+                case ShipmentFailureReason.NoCarrier:
+                    return RequestFailureReason.NoCarrier;
+                case ShipmentFailureReason.InvalidContainer:
+                    return RequestFailureReason.InvalidContainer;
                 case ShipmentFailureReason.Cancelled:
                     return RequestFailureReason.Cancelled;
                 default:

@@ -221,6 +221,7 @@ namespace PureDOTS.Tests.Logistics
                 SourceNode = sourceNode,
                 DestinationNode = Entity.Null,
                 ResourceId = new FixedString64Bytes(resourceId),
+                ResourceTypeIndex = 0,
                 RequestedAmount = requestedAmount,
                 ReservedAmount = 0f,
                 Status = LogisticsOrderStatus.Planning,

@@ -193,12 +193,14 @@ namespace PureDOTS.Tests.Logistics
 
         private Entity CreateShipment(FixedString64Bytes resourceId, float allocatedAmount, uint arrivalTick)
         {
+            var resourceIndex = GetResourceTypeIndex(resourceId);
             var entity = _entityManager.CreateEntity(typeof(Shipment));
             _entityManager.SetComponentData(entity, new Shipment
             {
                 ShipmentId = 1,
                 Status = ShipmentStatus.InTransit,
                 RepresentationMode = ShipmentRepresentationMode.Abstract,
+                ResourceTypeIndex = resourceIndex,
                 EstimatedArrivalTick = arrivalTick
             });
 
@@ -206,8 +208,10 @@ namespace PureDOTS.Tests.Logistics
             cargo.Add(new ShipmentCargoAllocation
             {
                 ResourceId = resourceId,
+                ResourceTypeIndex = resourceIndex,
                 AllocatedAmount = allocatedAmount,
                 ContainerEntity = Entity.Null,
+                ContainerHandle = default,
                 BatchEntity = Entity.Null
             });
 
@@ -216,6 +220,7 @@ namespace PureDOTS.Tests.Logistics
 
         private Entity CreateOrder(Entity destinationNode, FixedString64Bytes resourceId, float requestedAmount, Entity shipmentEntity)
         {
+            var resourceIndex = GetResourceTypeIndex(resourceId);
             var entity = _entityManager.CreateEntity(typeof(LogisticsOrder));
             _entityManager.SetComponentData(entity, new LogisticsOrder
             {
@@ -224,6 +229,7 @@ namespace PureDOTS.Tests.Logistics
                 SourceNode = Entity.Null,
                 DestinationNode = destinationNode,
                 ResourceId = resourceId,
+                ResourceTypeIndex = resourceIndex,
                 RequestedAmount = requestedAmount,
                 ReservedAmount = requestedAmount,
                 Status = LogisticsOrderStatus.InTransit,
@@ -247,6 +253,12 @@ namespace PureDOTS.Tests.Logistics
                 Status = ReservationStatus.Committed
             });
             return entity;
+        }
+
+        private ushort GetResourceTypeIndex(FixedString64Bytes resourceId)
+        {
+            var index = _resourceCatalog.Value.LookupIndex(resourceId);
+            return index < 0 ? ushort.MaxValue : (ushort)index;
         }
     }
 }

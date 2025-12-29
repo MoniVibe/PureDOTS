@@ -33,27 +33,36 @@ namespace PureDOTS.Systems.Input
 
             var clickBuffer = state.EntityManager.GetBuffer<SelectionClickEvent>(rtsInputEntity);
             var boxBuffer = state.EntityManager.GetBuffer<SelectionBoxEvent>(rtsInputEntity);
+            var clickEvents = new NativeArray<SelectionClickEvent>(clickBuffer.Length, Allocator.Temp);
+            var boxEvents = new NativeArray<SelectionBoxEvent>(boxBuffer.Length, Allocator.Temp);
+            clickBuffer.AsNativeArray().CopyTo(clickEvents);
+            boxBuffer.AsNativeArray().CopyTo(boxEvents);
 
             // Process click events
-            for (int i = 0; i < clickBuffer.Length; i++)
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            for (int i = 0; i < clickEvents.Length; i++)
             {
-                var clickEvent = clickBuffer[i];
-                ProcessSelectionClick(ref state, clickEvent);
+                var clickEvent = clickEvents[i];
+                ProcessSelectionClick(ref state, ref ecb, clickEvent);
             }
 
             // Process box events
-            for (int i = 0; i < boxBuffer.Length; i++)
+            for (int i = 0; i < boxEvents.Length; i++)
             {
-                var boxEvent = boxBuffer[i];
-                ProcessSelectionBox(ref state, boxEvent);
+                var boxEvent = boxEvents[i];
+                ProcessSelectionBox(ref state, ref ecb, boxEvent);
             }
 
             // Clear buffers after processing
             clickBuffer.Clear();
             boxBuffer.Clear();
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+            clickEvents.Dispose();
+            boxEvents.Dispose();
         }
 
-        private void ProcessSelectionClick(ref SystemState state, SelectionClickEvent clickEvent)
+        private void ProcessSelectionClick(ref SystemState state, ref EntityCommandBuffer ecb, SelectionClickEvent clickEvent)
         {
             // Get camera for raycast
             Camera camera = Camera.main;
@@ -80,7 +89,7 @@ namespace PureDOTS.Systems.Input
             {
                 if (clickEvent.Mode == SelectionClickMode.Replace)
                 {
-                    ClearAllSelections(ref state, clickEvent.PlayerId);
+                    ClearAllSelections(ref state, ref ecb, clickEvent.PlayerId);
                 }
                 return;
             }
@@ -107,21 +116,21 @@ namespace PureDOTS.Systems.Input
 
             if (clickEvent.Mode == SelectionClickMode.Replace)
             {
-                ClearAllSelections(ref state, clickEvent.PlayerId);
+                ClearAllSelections(ref state, ref ecb, clickEvent.PlayerId);
                 if (!isSelected)
                 {
-                    state.EntityManager.AddComponent<SelectedTag>(hitEntity);
+                    ecb.AddComponent<SelectedTag>(hitEntity);
                 }
             }
             else if (clickEvent.Mode == SelectionClickMode.Toggle)
             {
                 if (isSelected)
                 {
-                    state.EntityManager.RemoveComponent<SelectedTag>(hitEntity);
+                    ecb.RemoveComponent<SelectedTag>(hitEntity);
                 }
                 else
                 {
-                    state.EntityManager.AddComponent<SelectedTag>(hitEntity);
+                    ecb.AddComponent<SelectedTag>(hitEntity);
                 }
             }
         }
@@ -197,7 +206,7 @@ namespace PureDOTS.Systems.Input
             return best;
         }
 
-        private void ProcessSelectionBox(ref SystemState state, SelectionBoxEvent boxEvent)
+        private void ProcessSelectionBox(ref SystemState state, ref EntityCommandBuffer ecb, SelectionBoxEvent boxEvent)
         {
             // Get camera for frustum
             Camera camera = Camera.main;
@@ -249,10 +258,10 @@ namespace PureDOTS.Systems.Input
             // Apply selection mode
             if (boxEvent.Mode == SelectionBoxMode.Replace)
             {
-                ClearAllSelections(ref state, boxEvent.PlayerId);
+                ClearAllSelections(ref state, ref ecb, boxEvent.PlayerId);
                 foreach (var entity in selectableEntities)
                 {
-                    state.EntityManager.AddComponent<SelectedTag>(entity);
+                    ecb.AddComponent<SelectedTag>(entity);
                 }
             }
             else if (boxEvent.Mode == SelectionBoxMode.AdditiveToggle)
@@ -262,11 +271,11 @@ namespace PureDOTS.Systems.Input
                     bool isSelected = state.EntityManager.HasComponent<SelectedTag>(entity);
                     if (isSelected)
                     {
-                        state.EntityManager.RemoveComponent<SelectedTag>(entity);
+                        ecb.RemoveComponent<SelectedTag>(entity);
                     }
                     else
                     {
-                        state.EntityManager.AddComponent<SelectedTag>(entity);
+                        ecb.AddComponent<SelectedTag>(entity);
                     }
                 }
             }
@@ -274,10 +283,9 @@ namespace PureDOTS.Systems.Input
             selectableEntities.Dispose();
         }
 
-        private void ClearAllSelections(ref SystemState state, byte playerId)
+        private void ClearAllSelections(ref SystemState state, ref EntityCommandBuffer ecb, byte playerId)
         {
             // Clear all selected entities owned by this player
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (_, owner, entity) in SystemAPI.Query<SelectedTag, SelectionOwner>()
                          .WithEntityAccess())
             {
@@ -286,8 +294,6 @@ namespace PureDOTS.Systems.Input
                     ecb.RemoveComponent<SelectedTag>(entity);
                 }
             }
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }

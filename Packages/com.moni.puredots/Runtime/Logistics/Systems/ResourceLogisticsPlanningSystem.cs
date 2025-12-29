@@ -25,6 +25,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             state.RequireForUpdate<TickTimeState>();
             state.RequireForUpdate<LogisticsOrder>();
+            state.RequireForUpdate<ResourceTypeIndex>();
             _orderLookup = state.GetComponentLookup<LogisticsOrder>(false);
             _nodeLookup = state.GetComponentLookup<LogisticsNode>(false);
         }
@@ -50,6 +51,18 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 return;
             }
 
+            if (!SystemAPI.TryGetSingleton<ResourceTypeIndex>(out var resourceTypeIndex) ||
+                !resourceTypeIndex.Catalog.IsCreated)
+            {
+                return;
+            }
+
+            var routeGraphConfig = RouteGraphService.GetDefaultConfig();
+            if (SystemAPI.TryGetSingleton<RouteGraphConfig>(out var configuredRouteGraph))
+            {
+                routeGraphConfig = configuredRouteGraph;
+            }
+
             _orderLookup.Update(ref state);
             _nodeLookup.Update(ref state);
 
@@ -67,11 +80,50 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     continue;
                 }
 
+                if (order.ValueRO.SourceNode == Entity.Null ||
+                    !state.EntityManager.Exists(order.ValueRO.SourceNode))
+                {
+                    var invalidOrder = order.ValueRO;
+                    invalidOrder.Status = LogisticsOrderStatus.Failed;
+                    invalidOrder.FailureReason = ShipmentFailureReason.InvalidSource;
+                    _orderLookup[entity] = invalidOrder;
+                    continue;
+                }
+
+                if (order.ValueRO.DestinationNode == Entity.Null ||
+                    !state.EntityManager.Exists(order.ValueRO.DestinationNode))
+                {
+                    var invalidOrder = order.ValueRO;
+                    invalidOrder.Status = LogisticsOrderStatus.Failed;
+                    invalidOrder.FailureReason = ShipmentFailureReason.InvalidDestination;
+                    _orderLookup[entity] = invalidOrder;
+                    continue;
+                }
+
+                if (!RouteGraphService.TryGetRoute(routeGraphConfig, order.ValueRO.SourceNode, order.ValueRO.DestinationNode, out _))
+                {
+                    var invalidOrder = order.ValueRO;
+                    invalidOrder.Status = LogisticsOrderStatus.Failed;
+                    invalidOrder.FailureReason = ShipmentFailureReason.RouteUnavailable;
+                    _orderLookup[entity] = invalidOrder;
+                    continue;
+                }
+
+                var resourceTypeIndexResolved = ResolveResourceTypeIndex(order.ValueRO, resourceTypeIndex.Catalog);
+                if (resourceTypeIndexResolved == ushort.MaxValue)
+                {
+                    var invalidOrder = order.ValueRO;
+                    invalidOrder.Status = LogisticsOrderStatus.Failed;
+                    invalidOrder.FailureReason = ShipmentFailureReason.InvalidSource;
+                    _orderLookup[entity] = invalidOrder;
+                    continue;
+                }
+
                 var key = new OrderGroupKey
                 {
                     Source = order.ValueRO.SourceNode,
                     Destination = order.ValueRO.DestinationNode,
-                    ResourceId = order.ValueRO.ResourceId
+                    ResourceTypeIndex = resourceTypeIndexResolved
                 };
 
                 if (!orderGroups.TryGetValue(key, out var group))
@@ -102,6 +154,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     // Update first order, remove others
                     _orderLookup[kvp.Value[0]] = consolidated;
                     consolidated.Status = LogisticsOrderStatus.Planning;
+                    consolidated.FailureReason = ShipmentFailureReason.None;
                     _orderLookup[kvp.Value[0]] = consolidated;
 
                     for (int i = 1; i < kvp.Value.Length; i++)
@@ -116,6 +169,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     // Single order - mark as planning
                     var order = _orderLookup[kvp.Value[0]];
                     order.Status = LogisticsOrderStatus.Planning;
+                    order.FailureReason = ShipmentFailureReason.None;
                     _orderLookup[kvp.Value[0]] = order;
                 }
             }
@@ -134,19 +188,35 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             public Entity Source;
             public Entity Destination;
-            public FixedString64Bytes ResourceId;
+            public ushort ResourceTypeIndex;
 
             public bool Equals(OrderGroupKey other)
             {
                 return Source.Equals(other.Source) &&
                        Destination.Equals(other.Destination) &&
-                       ResourceId.Equals(other.ResourceId);
+                       ResourceTypeIndex == other.ResourceTypeIndex;
             }
 
             public override int GetHashCode()
             {
-                return HashCode.Combine(Source, Destination, ResourceId);
+                return HashCode.Combine(Source, Destination, ResourceTypeIndex);
             }
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in LogisticsOrder order,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            ref var ids = ref catalog.Value.Ids;
+            var existingIndex = (int)order.ResourceTypeIndex;
+            if (existingIndex >= 0 && existingIndex < ids.Length &&
+                ids[existingIndex].Equals(order.ResourceId))
+            {
+                return order.ResourceTypeIndex;
+            }
+
+            var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
         }
     }
 }

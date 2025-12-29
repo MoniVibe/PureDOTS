@@ -41,8 +41,13 @@ namespace PureDOTS.Systems
         private byte _enabled;
         private byte _triggerTickFromEnv;
         private byte _useScenarioTick;
+        private byte _loggedWaitingForTrigger;
+        private byte _loggedWaitingForPlay;
+        private byte _loggedQueuedRewind;
         private Entity _proofEntity;
         private HeadlessRewindProofConfig _config;
+        private uint _lastObservedTick;
+        private byte _hasObservedTick;
 
         public void OnCreate(ref SystemState state)
         {
@@ -65,6 +70,8 @@ namespace PureDOTS.Systems
 
             _config = BuildConfig();
             _proofEntity = EnsureProofEntity(ref state, _config);
+            _lastObservedTick = 0;
+            _hasObservedTick = 0;
         }
 
         public void OnUpdate(ref SystemState state)
@@ -109,6 +116,9 @@ namespace PureDOTS.Systems
             var rewindState = SystemAPI.GetSingleton<RewindState>();
             var rewindEntity = SystemAPI.GetSingletonEntity<RewindState>();
             var tick = tickTimeState.Tick;
+            var lastTick = _hasObservedTick != 0 ? _lastObservedTick : tick;
+            _lastObservedTick = tick;
+            _hasObservedTick = 1;
             var triggerTickSource = tick;
             if (_useScenarioTick != 0 && SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick))
             {
@@ -117,8 +127,37 @@ namespace PureDOTS.Systems
 
             if (proof.Phase == HeadlessRewindProofPhase.Idle)
             {
-                if (triggerTickSource < config.TriggerTick || rewindState.Mode != RewindMode.Play)
+                if (triggerTickSource < config.TriggerTick)
                 {
+                    if (_loggedWaitingForTrigger == 0)
+                    {
+                        var sourceLabel = _useScenarioTick != 0 ? "scenario" : "time";
+                        UnityDebug.Log($"[HeadlessRewindProof] waiting triggerTick={config.TriggerTick} current={triggerTickSource} source={sourceLabel}");
+                        _loggedWaitingForTrigger = 1;
+                    }
+                    return;
+                }
+
+                if (proof.StartTick == 0)
+                {
+                    proof.StartTick = tick;
+                    proof.DeadlineTick = config.TimeoutTicks > 0 ? tick + config.TimeoutTicks : 0u;
+                    state.EntityManager.SetComponentData(_proofEntity, proof);
+                }
+
+                if (rewindState.Mode != RewindMode.Play)
+                {
+                    if (_loggedWaitingForPlay == 0)
+                    {
+                        UnityDebug.Log($"[HeadlessRewindProof] waiting mode=Play currentMode={rewindState.Mode} tick={tick}");
+                        _loggedWaitingForPlay = 1;
+                    }
+
+                    if (proof.DeadlineTick > 0 && tick >= proof.DeadlineTick)
+                    {
+                        var guardViolations = ResolveGuardViolations(ref state, config);
+                        FinalizeProof(ref state, _proofEntity, config, ref proof, tick, guardViolations, timedOut: true);
+                    }
                     return;
                 }
 
@@ -133,6 +172,11 @@ namespace PureDOTS.Systems
                 proof.TargetTick = targetTick;
                 proof.DeadlineTick = config.TimeoutTicks > 0 ? tick + config.TimeoutTicks : 0u;
                 state.EntityManager.SetComponentData(_proofEntity, proof);
+                if (_loggedQueuedRewind == 0)
+                {
+                    UnityDebug.Log($"[HeadlessRewindProof] queued rewind tick={tick} target={targetTick} trigger={config.TriggerTick}");
+                    _loggedQueuedRewind = 1;
+                }
                 return;
             }
 
@@ -167,6 +211,27 @@ namespace PureDOTS.Systems
                 proof.SawRecord = 1;
                 proof.RecordReturnTick = tick;
                 dirty = true;
+            }
+
+            if (proof.Phase == HeadlessRewindProofPhase.Requested ||
+                proof.Phase == HeadlessRewindProofPhase.Playback ||
+                proof.Phase == HeadlessRewindProofPhase.CatchUp)
+            {
+                if (proof.SawPlayback == 0 && tick < lastTick)
+                {
+                    proof.Phase = HeadlessRewindProofPhase.Playback;
+                    proof.SawPlayback = 1;
+                    proof.PlaybackEnterTick = tick;
+                    dirty = true;
+                }
+
+                if (proof.SawPlayback != 0 && proof.SawRecord == 0 && rewindState.Mode == RewindMode.Play)
+                {
+                    proof.Phase = HeadlessRewindProofPhase.Record;
+                    proof.SawRecord = 1;
+                    proof.RecordReturnTick = tick;
+                    dirty = true;
+                }
             }
 
             if (proof.Phase == HeadlessRewindProofPhase.Record)

@@ -102,8 +102,33 @@ namespace PureDOTS.Runtime.Logistics.Systems
                     continue;
                 }
 
+                var resourceTypeIndexResolved = ResolveResourceTypeIndex(order.ValueRO, resourceTypeIndex.Catalog);
+                if (resourceTypeIndexResolved == ushort.MaxValue)
+                {
+                    order.ValueRW.Status = LogisticsOrderStatus.Failed;
+                    order.ValueRW.FailureReason = ShipmentFailureReason.InvalidSource;
+                    order.ValueRW.ReservedAmount = 0f;
+                    continue;
+                }
+
+                if (order.ValueRO.ResourceTypeIndex != resourceTypeIndexResolved)
+                {
+                    order.ValueRW.ResourceTypeIndex = resourceTypeIndexResolved;
+                }
+
+                order.ValueRW.SourceInventory = new InventoryHandle
+                {
+                    StorehouseEntity = order.ValueRO.SourceNode,
+                    ResourceTypeIndex = resourceTypeIndexResolved
+                };
+                order.ValueRW.DestinationInventory = new InventoryHandle
+                {
+                    StorehouseEntity = order.ValueRO.DestinationNode,
+                    ResourceTypeIndex = resourceTypeIndexResolved
+                };
+
                 if (!TryReserveInventory(order.ValueRO.SourceNode,
-                        order.ValueRO.ResourceId,
+                        resourceTypeIndexResolved,
                         order.ValueRO.RequestedAmount,
                         allowPartialReservations,
                         resourceTypeIndex.Catalog,
@@ -140,7 +165,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
             foreach (var (reservation, entity) in SystemAPI.Query<RefRW<InventoryReservation>>()
                 .WithEntityAccess())
             {
+                ApplyOrderCancellation(reservation.ValueRO, ref reservation.ValueRW);
                 ResourceReservationService.CancelExpiredReservation(ref reservation.ValueRW, tickTime.Tick);
+                if (reservation.ValueRO.Status == ReservationStatus.Expired)
+                {
+                    FailOrderForExpiredReservation(reservation.ValueRO);
+                }
                 if (reservation.ValueRO.Status == ReservationStatus.Released ||
                     reservation.ValueRO.Status == ReservationStatus.Expired ||
                     reservation.ValueRO.Status == ReservationStatus.Cancelled)
@@ -153,7 +183,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
             foreach (var (reservation, entity) in SystemAPI.Query<RefRW<CapacityReservation>>()
                 .WithEntityAccess())
             {
+                ApplyOrderCancellation(reservation.ValueRO, ref reservation.ValueRW);
                 ResourceReservationService.CancelExpiredReservation(ref reservation.ValueRW, tickTime.Tick);
+                if (reservation.ValueRO.Status == ReservationStatus.Expired)
+                {
+                    FailOrderForExpiredReservation(reservation.ValueRO);
+                }
                 if (reservation.ValueRO.Status == ReservationStatus.Released ||
                     reservation.ValueRO.Status == ReservationStatus.Expired ||
                     reservation.ValueRO.Status == ReservationStatus.Cancelled)
@@ -165,7 +200,12 @@ namespace PureDOTS.Runtime.Logistics.Systems
             foreach (var (reservation, entity) in SystemAPI.Query<RefRW<ServiceReservation>>()
                 .WithEntityAccess())
             {
+                ApplyOrderCancellation(reservation.ValueRO, ref reservation.ValueRW);
                 ResourceReservationService.CancelExpiredReservation(ref reservation.ValueRW, tickTime.Tick);
+                if (reservation.ValueRO.Status == ReservationStatus.Expired)
+                {
+                    FailOrderForExpiredReservation(reservation.ValueRO);
+                }
                 if (reservation.ValueRO.Status == ReservationStatus.Released ||
                     reservation.ValueRO.Status == ReservationStatus.Expired ||
                     reservation.ValueRO.Status == ReservationStatus.Cancelled)
@@ -179,7 +219,7 @@ namespace PureDOTS.Runtime.Logistics.Systems
 
         private bool TryReserveInventory(
             Entity sourceNode,
-            FixedString64Bytes resourceId,
+            ushort resourceTypeIndex,
             float requestedAmount,
             bool allowPartial,
             BlobAssetReference<ResourceTypeIndexBlob> catalog,
@@ -188,6 +228,13 @@ namespace PureDOTS.Runtime.Logistics.Systems
         {
             reservedAmount = 0f;
             failureReason = ShipmentFailureReason.None;
+
+            if (resourceTypeIndex == ushort.MaxValue ||
+                resourceTypeIndex >= catalog.Value.Ids.Length)
+            {
+                failureReason = ShipmentFailureReason.InvalidSource;
+                return false;
+            }
 
             if (sourceNode == Entity.Null ||
                 !_storehouseInventoryLookup.HasComponent(sourceNode) ||
@@ -203,16 +250,9 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 return false;
             }
 
-            var resourceIndex = catalog.Value.LookupIndex(resourceId);
-            if (resourceIndex < 0)
-            {
-                failureReason = ShipmentFailureReason.InvalidSource;
-                return false;
-            }
-
             var items = _storehouseInventoryItems[sourceNode];
             if (StorehouseMutationService.TryReserveOut(
-                    (ushort)resourceIndex,
+                    resourceTypeIndex,
                     requestedAmount,
                     allowPartial,
                     catalog,
@@ -258,6 +298,190 @@ namespace PureDOTS.Runtime.Logistics.Systems
                 reservation.ReservedAmount,
                 catalog,
                 items);
+        }
+
+        private void ApplyOrderCancellation(
+            InventoryReservation reservation,
+            ref InventoryReservation reservationMutable)
+        {
+            if (reservation.Status != ReservationStatus.Active)
+            {
+                return;
+            }
+
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                ResourceReservationService.CancelReservation(ref reservationMutable, ReservationCancelReason.Cancelled);
+            }
+            else if (order.Status == LogisticsOrderStatus.Failed)
+            {
+                var reason = MapCancelReason(order.FailureReason);
+                ResourceReservationService.CancelReservation(ref reservationMutable, reason);
+            }
+        }
+
+        private void ApplyOrderCancellation(
+            CapacityReservation reservation,
+            ref CapacityReservation reservationMutable)
+        {
+            if (reservation.Status != ReservationStatus.Active)
+            {
+                return;
+            }
+
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                ResourceReservationService.CancelReservation(ref reservationMutable, ReservationCancelReason.Cancelled);
+            }
+            else if (order.Status == LogisticsOrderStatus.Failed)
+            {
+                var reason = MapCancelReason(order.FailureReason);
+                ResourceReservationService.CancelReservation(ref reservationMutable, reason);
+            }
+        }
+
+        private void ApplyOrderCancellation(
+            ServiceReservation reservation,
+            ref ServiceReservation reservationMutable)
+        {
+            if (reservation.Status != ReservationStatus.Active)
+            {
+                return;
+            }
+
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                ResourceReservationService.CancelReservation(ref reservationMutable, ReservationCancelReason.Cancelled);
+            }
+            else if (order.Status == LogisticsOrderStatus.Failed)
+            {
+                var reason = MapCancelReason(order.FailureReason);
+                ResourceReservationService.CancelReservation(ref reservationMutable, reason);
+            }
+        }
+
+        private void FailOrderForExpiredReservation(InventoryReservation reservation)
+        {
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Delivered ||
+                order.Status == LogisticsOrderStatus.Failed ||
+                order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                return;
+            }
+
+            order.Status = LogisticsOrderStatus.Failed;
+            order.FailureReason = ShipmentFailureReason.ReservationExpired;
+            _orderLookup[reservation.OrderEntity] = order;
+        }
+
+        private void FailOrderForExpiredReservation(CapacityReservation reservation)
+        {
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Delivered ||
+                order.Status == LogisticsOrderStatus.Failed ||
+                order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                return;
+            }
+
+            order.Status = LogisticsOrderStatus.Failed;
+            order.FailureReason = ShipmentFailureReason.ReservationExpired;
+            _orderLookup[reservation.OrderEntity] = order;
+        }
+
+        private void FailOrderForExpiredReservation(ServiceReservation reservation)
+        {
+            if (reservation.OrderEntity == Entity.Null ||
+                !_orderLookup.HasComponent(reservation.OrderEntity))
+            {
+                return;
+            }
+
+            var order = _orderLookup[reservation.OrderEntity];
+            if (order.Status == LogisticsOrderStatus.Delivered ||
+                order.Status == LogisticsOrderStatus.Failed ||
+                order.Status == LogisticsOrderStatus.Cancelled)
+            {
+                return;
+            }
+
+            order.Status = LogisticsOrderStatus.Failed;
+            order.FailureReason = ShipmentFailureReason.ReservationExpired;
+            _orderLookup[reservation.OrderEntity] = order;
+        }
+
+        private static ReservationCancelReason MapCancelReason(ShipmentFailureReason failureReason)
+        {
+            switch (failureReason)
+            {
+                case ShipmentFailureReason.Cancelled:
+                    return ReservationCancelReason.Cancelled;
+                case ShipmentFailureReason.InvalidSource:
+                case ShipmentFailureReason.InvalidDestination:
+                case ShipmentFailureReason.InvalidContainer:
+                    return ReservationCancelReason.InvalidTarget;
+                case ShipmentFailureReason.TransportLost:
+                    return ReservationCancelReason.TransportLost;
+                case ShipmentFailureReason.NoInventory:
+                    return ReservationCancelReason.NoInventory;
+                case ShipmentFailureReason.NoCapacity:
+                case ShipmentFailureReason.CapacityFull:
+                    return ReservationCancelReason.NoCapacity;
+                case ShipmentFailureReason.ReservationExpired:
+                    return ReservationCancelReason.Timeout;
+                default:
+                    return ReservationCancelReason.Cancelled;
+            }
+        }
+
+        private static ushort ResolveResourceTypeIndex(
+            in LogisticsOrder order,
+            BlobAssetReference<ResourceTypeIndexBlob> catalog)
+        {
+            ref var ids = ref catalog.Value.Ids;
+            var existingIndex = (int)order.ResourceTypeIndex;
+            if (existingIndex >= 0 && existingIndex < ids.Length &&
+                ids[existingIndex].Equals(order.ResourceId))
+            {
+                return order.ResourceTypeIndex;
+            }
+
+            var resolvedIndex = catalog.Value.LookupIndex(order.ResourceId);
+            return resolvedIndex < 0 ? ushort.MaxValue : (ushort)resolvedIndex;
         }
     }
 }

@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Scenarios;
 
 namespace PureDOTS.Runtime.Time
 {
@@ -26,6 +27,20 @@ namespace PureDOTS.Runtime.Time
         {
             if (!Application.isPlaying)
                 return;
+
+            if (SystemAPI.HasSingleton<ScenarioRunnerTick>())
+            {
+                // ScenarioRunner uses the TickTimeState pipeline; disable legacy driver.
+                state.Enabled = false;
+                return;
+            }
+
+            if (SystemAPI.HasSingleton<TickTimeState>())
+            {
+                // Legacy driver; disable when the TickTimeState pipeline is active.
+                state.Enabled = false;
+                return;
+            }
 
             if (!SystemAPI.TryGetSingletonRW<RewindState>(out var rewind))
                 return;
@@ -74,4 +89,3 @@ namespace PureDOTS.Runtime.Time
         public void OnDestroy(ref SystemState state) { }
     }
 }
-

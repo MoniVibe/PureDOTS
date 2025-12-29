@@ -85,5 +85,23 @@ namespace PureDOTS.Runtime.Logistics.Components
         public byte SecrecyFlags;    // Secrecy requirements
         public FixedList64Bytes<ServiceType> RequiredServices;
     }
+
+    public enum RouteGraphMode : byte
+    {
+        Direct = 0,
+        None = 1
+    }
+
+    public struct RouteGraphConfig : IComponentData
+    {
+        public RouteGraphMode Mode;
+        public float DirectCost;
+    }
+
+    public struct RouteGraphResult
+    {
+        public byte HasRoute;
+        public float Cost;
+    }
 }
 

@@ -21,6 +21,7 @@ namespace PureDOTS.Runtime.Logistics
             in Entity sourceNode,
             in Entity destinationNode,
             in FixedString64Bytes resourceId,
+            ushort resourceTypeIndex,
             float requestedAmount,
             LogisticsJobKind kind,
             uint createdTick,
@@ -32,6 +33,18 @@ namespace PureDOTS.Runtime.Logistics
                 SourceNode = sourceNode,
                 DestinationNode = destinationNode,
                 ResourceId = resourceId,
+                ResourceTypeIndex = resourceTypeIndex,
+                SourceInventory = new InventoryHandle
+                {
+                    StorehouseEntity = sourceNode,
+                    ResourceTypeIndex = resourceTypeIndex
+                },
+                DestinationInventory = new InventoryHandle
+                {
+                    StorehouseEntity = destinationNode,
+                    ResourceTypeIndex = resourceTypeIndex
+                },
+                ContainerHandle = default,
                 RequestedAmount = requestedAmount,
                 ReservedAmount = 0f,
                 Kind = kind,
@@ -121,6 +134,8 @@ namespace PureDOTS.Runtime.Logistics
                 RouteEntity = routeEntity,
                 Status = ShipmentStatus.InTransit,
                 RepresentationMode = ShipmentRepresentationMode.Abstract,
+                ResourceTypeIndex = order.ResourceTypeIndex,
+                ContainerHandle = order.ContainerHandle,
                 AllocatedMass = 0f,
                 AllocatedVolume = 0f,
                 DepartureTick = currentTick,
