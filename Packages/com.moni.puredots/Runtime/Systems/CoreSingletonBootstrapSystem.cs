@@ -35,6 +35,8 @@ namespace PureDOTS.Systems
         private static BlobAssetReference<ResourceTypeIndexBlob> s_ResourceTypeIndexBlob;
         private static BlobAssetReference<KnowledgeLessonEffectBlob> s_KnowledgeLessonCatalogBlob;
         private static BlobAssetReference<ResourceRecipeSetBlob> s_ResourceRecipeSetBlob;
+        private const string HeadlessTimeScaleEnv = "PUREDOTS_HEADLESS_TIME_SCALE";
+        private const string HeadlessTimeScaleArg = "--headless-time-scale";
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         private static bool s_loggedTimeBootstrap;
         private static bool s_loggedTimeConfigs;
@@ -82,6 +84,7 @@ namespace PureDOTS.Systems
 
         private void EnsureIfMissing(ref SystemState state)
         {
+            ApplyHeadlessTimeScaleOverrideIfPresent(state.EntityManager);
             // This must be resilient to late SubScene streaming or world resets that can clear entities after OnCreate.
             // Only run the heavy singleton seeding path if the critical time singletons are missing.
             if (!_timeStateQuery.IsEmptyIgnoreFilter &&
@@ -1388,6 +1391,15 @@ namespace PureDOTS.Systems
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<SimulationFeatureFlags>());
             if (!query.IsEmptyIgnoreFilter)
             {
+                var existingValveEntity = query.GetSingletonEntity();
+                if (!entityManager.HasComponent<SimulationScalars>(existingValveEntity))
+                {
+                    entityManager.AddComponentData(existingValveEntity, SimulationScalars.Default);
+                }
+
+                var existingScalars = entityManager.GetComponentData<SimulationScalars>(existingValveEntity);
+                TryApplyHeadlessTimeScaleOverride(ref existingScalars);
+                entityManager.SetComponentData(existingValveEntity, existingScalars);
                 return;
             }
 
@@ -1397,10 +1409,131 @@ namespace PureDOTS.Systems
                 typeof(SimulationOverrides),
                 typeof(SimulationSandboxFlags));
 
+            var scalars = SimulationScalars.Default;
+            var overrides = SimulationOverrides.Default;
+            var sandbox = SimulationSandboxFlags.Default;
+            TryApplyHeadlessTimeScaleOverride(ref scalars);
+
             entityManager.SetComponentData(valveEntity, SimulationFeatureFlags.Default);
-            entityManager.SetComponentData(valveEntity, SimulationScalars.Default);
-            entityManager.SetComponentData(valveEntity, SimulationOverrides.Default);
-            entityManager.SetComponentData(valveEntity, SimulationSandboxFlags.Default);
+            entityManager.SetComponentData(valveEntity, scalars);
+            entityManager.SetComponentData(valveEntity, overrides);
+            entityManager.SetComponentData(valveEntity, sandbox);
+        }
+
+        private static void TryApplyHeadlessTimeScaleOverride(ref SimulationScalars scalars)
+        {
+            if (!TryGetHeadlessTimeScaleOverride(out var parsed))
+            {
+                return;
+            }
+
+            scalars.TimeScale = parsed;
+        }
+
+        private static void ApplyHeadlessTimeScaleOverrideIfPresent(EntityManager entityManager)
+        {
+            if (!TryGetHeadlessTimeScaleOverride(out var parsed))
+            {
+                return;
+            }
+
+            UnityEngine.Time.timeScale = parsed;
+
+            if (!HasSingleton<SimulationScalars>(entityManager))
+            {
+                return;
+            }
+
+            var valveEntity = GetSingletonEntity<SimulationScalars>(entityManager);
+            var scalars = entityManager.GetComponentData<SimulationScalars>(valveEntity);
+            scalars.TimeScale = parsed;
+            entityManager.SetComponentData(valveEntity, scalars);
+
+            if (entityManager.HasComponent<SimulationOverrides>(valveEntity))
+            {
+                var overrides = entityManager.GetComponentData<SimulationOverrides>(valveEntity);
+                overrides.OverrideTimeScale = true;
+                overrides.TimeScaleOverride = parsed;
+                entityManager.SetComponentData(valveEntity, overrides);
+            }
+
+            if (HasSingleton<TimeScaleConfig>(entityManager))
+            {
+                var configEntity = GetSingletonEntity<TimeScaleConfig>(entityManager);
+                var config = entityManager.GetComponentData<TimeScaleConfig>(configEntity);
+                config.DefaultScale = parsed;
+                entityManager.SetComponentData(configEntity, config);
+            }
+
+            if (HasSingleton<TimeScaleScheduleState>(entityManager))
+            {
+                var scheduleEntity = GetSingletonEntity<TimeScaleScheduleState>(entityManager);
+                var scheduleState = entityManager.GetComponentData<TimeScaleScheduleState>(scheduleEntity);
+                scheduleState.ResolvedScale = parsed;
+                scheduleState.IsPaused = false;
+                scheduleState.ActiveSource = TimeScaleSource.Default;
+                entityManager.SetComponentData(scheduleEntity, scheduleState);
+            }
+        }
+
+        private static bool TryGetHeadlessTimeScaleOverride(out float parsed)
+        {
+            parsed = 0f;
+            if (!Application.isBatchMode)
+            {
+                return false;
+            }
+
+            var value = global::System.Environment.GetEnvironmentVariable(HeadlessTimeScaleEnv);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                TryGetCommandLineArg(HeadlessTimeScaleArg, out value);
+            }
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            if (!float.TryParse(value, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var raw))
+            {
+                return false;
+            }
+
+            if (raw <= 0f)
+            {
+                return false;
+            }
+
+            parsed = math.clamp(raw, 0.1f, 16f);
+            return true;
+        }
+
+        private static bool TryGetCommandLineArg(string key, out string value)
+        {
+            var args = global::System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; i++)
+            {
+                var arg = args[i];
+                if (string.Equals(arg, key, global::System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        value = args[i + 1];
+                        return true;
+                    }
+                    break;
+                }
+
+                var prefix = key + "=";
+                if (arg.StartsWith(prefix, global::System.StringComparison.OrdinalIgnoreCase))
+                {
+                    value = arg.Substring(prefix.Length).Trim('"');
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
         }
 
         /// <summary>

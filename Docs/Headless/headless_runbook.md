@@ -5,26 +5,54 @@ Purpose: keep headless agents productive without rebuild churn and protect a pin
 2) a promotion gate (bank green/stable),
 3) a test bank (tiered, explicit pass signals).
 
-This runbook applies to PureDOTS + Godgame + Space4X.
+This runbook splits headless validation into two agents with per-project banks.
 
 ## Cross-OS caveats
 - Avoid editing `Assets/` or `.meta` from WSL; presentation owns those files.
 - Keep `Packages/manifest.json` and `Packages/packages-lock.json` synced across clones when logic changes.
 - Headless rebuilds in WSL should use Windows Unity interop (set `FORCE_WINDOWS_UNITY=1`); do not rely on Linux Unity licensing.
+- Align Unity versions before rebuilds: read `ProjectSettings/ProjectVersion.txt` in the target repo and set `UNITY_WIN` to that exact version; treat any mismatch as a stale build and fix before proceeding.
 
+## Productivity requirement (non-negotiable)
+- Each cycle must attempt at least one headlesstask from `headlesstasks.md`.
+- If telemetry already exposes the metric, compute it and update `headlesstasks.md` (status, baseline/threshold, notes).
+- If the metric is missing, add minimal telemetry in logic repos (PureDOTS) and rebuild; if it requires `Assets/` or `.meta` edits, log the requirement and switch to another task.
+- Do not end a cycle with only bank runs; the bank is gating, not sufficient.
+
+## Compile-error remediation (non-negotiable)
+- If a rebuild fails with compiler errors, attempt a minimal, logic-only fix, rebuild scratch, then rerun Tier 0.
+- If the compiler errors point to `Assets/` or `.meta` and the agent is running in WSL, log the blocker and switch tasks; do not edit those files from WSL.
+- If the agent is running in a Windows/presentation context, it may fix `Assets/` or `.meta` compiler errors before retrying the rebuild.
+- Record compile-fix attempts in the cycle log and note any blockers in `headlesstasks.md`.
+
+## Asset-fix escalation (Windows-only)
+- If a bank failure or headless task requires `Assets/` or `.meta` edits and a Windows/presentation context is available, switch to that mode for the fix only.
+- Keep edits minimal and limited to headless-critical assets (scenarios, headless scenes, headless ScriptableObjects, proof/config assets).
+- If Windows mode is not available, add a one-line request to `headless_asset_queue.md` with: paths, desired change, repro command, and why it blocks the bank.
+- After any asset fix, rebuild scratch, rerun the impacted bank tier(s), and update the runbook/prompt if expectations or toggles changed.
+- Asset import failures are rebuild-blocking, not run-blocking: continue the cycle using the current build and note that it is stale; only promote after the asset fix is applied.
+
+---
+
+## Agent split (per-project banks)
+
+- Godgame headless agent: only builds/runs Godgame; uses the Godgame bank only.
+- Space4X headless agent: only builds/runs Space4X; uses the Space4X bank only.
+- Banks are per project; do not block Godgame on Space4X failures (or vice versa).
+- P0.TIME_REWIND_MICRO runs in both banks, using each project's headless binary.
 
 ---
 
 ## Build Channels (scratch vs current)
 
-Definitions:
-- scratch build: any build produced during the shift
-- current build: the pinned build used by others (must remain stable)
+Definitions (per project):
+- scratch build: any build produced during the shift for that project
+- current build: the pinned build used by others for that project (must remain stable)
 
 Rules:
 1) Scratch builds may be rebuilt at will.
 2) Do not overwrite current build artifacts with scratch output.
-3) Promote scratch -> current only when the bank is green and stable.
+3) Promote scratch -> current only when that project's bank is green and stable.
 4) Promotion gate: Tier 0 passes twice consecutively (same seed), then Tier 1 passes once (or twice if affordable).
 5) Two-fail rule for escalation: a failure is actionable only after 2 consecutive FAIL runs (same seed).
 6) Keep artifacts for every promoted build (binary + logs + telemetry).
@@ -33,16 +61,18 @@ Rules:
 
 ## Bank Contract (Non-negotiables)
 
-- Tier 0 is a gate: if any Tier 0 test fails, stop and triage until green before Tier 1/2.
+- Tier 0 is a gate per project: if any Tier 0 test fails in that bank, stop and triage until green before Tier 1/2.
 - Two-green rule: a tier is stable only after 2 consecutive PASS runs (same seed).
 - Two-fail rule: treat a failure as real only after 2 consecutive FAIL runs (same seed).
 - Seed + minimum simSeconds are required for every bank entry; report both after each run.
 - Current build is immutable during a shift; scratch builds may be rebuilt at will, but do not promote until the gate passes.
+- Each cycle must include concrete headlesstask progress (see `headlesstasks.md`) and be recorded in `headless_agent_log.md`.
 - Prefer changes that can be validated without rebuilding:
   - Scenario JSON (swap/copy into build folder)
   - Environment flags (proof toggles, telemetry level, thresholds)
   - Report/telemetry output paths
 - If a proof is incompatible with a scenario, disable it for that scenario and document the reason in the headless proof system.
+- Space4X proof toggles are scenario-specific: set `SPACE4X_HEADLESS_MINING_PROOF=1` for S0/S1/S2 mining scenarios, unset/0 for S0 collision, and set `SPACE4X_HEADLESS_BEHAVIOR_PROOF=1` for S5.
 
 Telemetry defaults (use unless debugging):
 - PUREDOTS_TELEMETRY_LEVEL=summary
@@ -78,7 +108,7 @@ Note: Proof systems and scenario entry points must emit the BANK and TELEMETRY_O
 
 ## Promotion Gate (scratch -> current)
 
-Promote only if:
+Promote only if (per project):
 - Tier 0 is green twice (two-green, same seed), and
 - Tier 1 is green once (or twice if affordable).
 
@@ -94,6 +124,13 @@ Before escalating a failure or blocking promotion:
 5) Only then escalate.
 
 Note: authoring/baker/SubScene changes typically require rebuild; scenario/env changes do not.
+
+---
+
+## Cycle close-out (staleness check)
+
+- Before ending a cycle, confirm the runbook/prompt reflect any proof/env toggle changes, bank expectation edits, or bank failures that were fixed.
+- If you cannot update the docs in the same cycle, log a TODO in `headlesstasks.md` and mark the section that must be refreshed.
 
 ---
 
@@ -118,11 +155,13 @@ Keep artifacts for every promoted build (binary + logs + telemetry) for traceabi
 
 ---
 
-## Test Bank (tiered)
+## Test Bank (tiered, per project)
 
-### Tier 0 - Sanity (gate)
+### Godgame Bank
 
-P0.TIME_REWIND_MICRO (PureDOTS / ScenarioRunner)
+#### Tier 0 - Sanity (gate)
+
+P0.TIME_REWIND_MICRO (Godgame / ScenarioRunner)
 - Scenario: Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/headless_time_rewind_short.json
 - Seed: 13
 - Minimum simSeconds: 6 (runTicks 360 at 60hz)
@@ -148,25 +187,10 @@ G0.GODGAME_SMOKE
 - PASS signals:
   - BANK:G0.GODGAME_SMOKE:PASS
   - smoke diagnostics report TimeState/RewindState healthy
+  - Optional: set GODGAME_HEADLESS_EXIT_MIN_TICK=<tick> to delay exit until a shared tick for determinism.
+  - Determinism option: use Assets/Scenarios/Godgame/godgame_smoke_determinism.json (ScenarioRunner, runTicks=1800) and compare at tick=1800.
 
-S0.SPACE4X_COLLISION_MICRO
-- Scenario: Assets/Scenarios/space4x_collision_micro.json
-- Seed: 77
-- Minimum simSeconds: 20 (duration_s)
-- PASS signals:
-  - BANK:S0.SPACE4X_COLLISION_MICRO:PASS
-  - [Space4XCollisionProof] PASS ...
-
-S0.SPACE4X_SMOKE
-- Scenario: Assets/Scenarios/space4x_smoke.json
-- Seed: 77
-- Minimum simSeconds: 150 (duration_s)
-- PASS signals:
-  - BANK:S0.SPACE4X_SMOKE:PASS
-  - [Space4XMiningScenario] Loaded '...space4x_smoke.json' ...
-  - scenario telemetry expectations + export paths exist (json/csv)
-
-### Tier 1 - Canonical loops (nightly core)
+#### Tier 1 - Canonical loops (nightly core)
 
 G1.VILLAGER_LOOP_SMALL
 - Scenario: Assets/Scenarios/Godgame/villager_loop_small.json
@@ -176,6 +200,7 @@ G1.VILLAGER_LOOP_SMALL
   - BANK:G1.VILLAGER_LOOP_SMALL:PASS
   - [GodgameHeadlessVillagerProof] PASS ...
   - telemetry loop logistics/gather_deliver > 0
+  - Optional: set GODGAME_HEADLESS_VILLAGER_PROOF_EXIT_MIN_TICK=<tick> to delay proof exit for determinism comparisons.
 
 G2.VILLAGER_MOVEMENT_DIAGNOSTICS
 - Scenario: Assets/Scenarios/Godgame/villager_movement_diagnostics.json
@@ -186,6 +211,46 @@ G2.VILLAGER_MOVEMENT_DIAGNOSTICS
   - no FAIL lines
   - telemetry size stable
   - no stuck patterns beyond thresholds
+
+#### Tier 2 - Behavior loop proofs
+
+- Reserved for future Godgame behavior loop proofs (none defined yet).
+
+### Space4X Bank
+
+#### Tier 0 - Sanity (gate)
+
+P0.TIME_REWIND_MICRO (Space4X / ScenarioRunner)
+- Scenario: Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/headless_time_rewind_short.json
+- Seed: 13
+- Minimum simSeconds: 6 (runTicks 360 at 60hz)
+- Proofs: Headless time + rewind proofs
+- Command IDs: time.pause, time.play, time.setspeed, time.rewind, time.stoprewind, time.step
+- PASS signals:
+  - BANK:P0.TIME_REWIND_MICRO:PASS
+  - [HeadlessTimeControlProof] PASS ...
+  - [HeadlessRewindProof] PASS ...
+
+S0.SPACE4X_COLLISION_MICRO
+- Scenario: Assets/Scenarios/space4x_collision_micro.json
+- Seed: 77
+- Minimum simSeconds: 20 (duration_s)
+- Proofs: SPACE4X_HEADLESS_MINING_PROOF=0 (unset)
+- PASS signals:
+  - BANK:S0.SPACE4X_COLLISION_MICRO:PASS
+  - [Space4XCollisionProof] PASS ...
+
+S0.SPACE4X_SMOKE
+- Scenario: Assets/Scenarios/space4x_smoke.json
+- Seed: 77
+- Minimum simSeconds: 150 (duration_s)
+- Proofs: SPACE4X_HEADLESS_MINING_PROOF=1
+- PASS signals:
+  - BANK:S0.SPACE4X_SMOKE:PASS
+  - [Space4XMiningScenario] Loaded '...space4x_smoke.json' ...
+  - scenario telemetry expectations + export paths exist (json/csv)
+
+#### Tier 1 - Canonical loops (nightly core)
 
 S1.MINING_ONLY
 - Scenario: Assets/Scenarios/space4x_mining.json
@@ -201,6 +266,7 @@ S2.MINING_COMBAT
 - Scenario: Assets/Scenarios/space4x_mining_combat.json
 - Seed: 42
 - Minimum simSeconds: 120 (duration_s)
+- Proofs: SPACE4X_HEADLESS_MINING_PROOF=1
 - PASS signals:
   - BANK:S2.MINING_COMBAT:PASS
   - exports exist + expectations true (expectMiningYield, expectInterceptAttempts, etc.)
@@ -227,12 +293,13 @@ S4.RESEARCH_MVP
   - exports exist
 - Note: emit BANK lines via a ScenarioExpectationsProofSystem that reads telemetryExpectations/exports.
 
-### Tier 2 - Behavior loop proofs (run after Tier 1 is green)
+#### Tier 2 - Behavior loop proofs (run after Tier 1 is green)
 
 S5.SPACE4X_BEHAVIOR_LOOPS
 - Scenario: Assets/Scenarios/space4x_mining_combat.json (use a dedicated behavior scenario if available)
 - Seed: 42
 - Minimum simSeconds: 120 (duration_s)
+- Proofs: SPACE4X_HEADLESS_BEHAVIOR_PROOF=1
 - PASS signals:
   - BANK:S5.SPACE4X_BEHAVIOR_LOOPS:PASS
   - [Space4XHeadlessLoopProof] PASS Patrol ...
@@ -241,6 +308,7 @@ S5.SPACE4X_BEHAVIOR_LOOPS
   - [Space4XHeadlessLoopProof] PASS Docking ...
 - Notes:
   - Behavior proof disables patrol/attack/wing directive checks when the scenario path ends with space4x_smoke.json.
+  - Known issue: if the scenario does not spawn full loop behaviors, S5 will FAIL with reason=missing_loops; log it as a Tier 2 advisory and track in headlesstasks/backlog without blocking promotion.
 
 ---
 
@@ -315,8 +383,9 @@ If a code fix is needed:
 
 ## Promotion request template (scratch -> current)
 
+- Project: Godgame | Space4X
 - Scratch build stamp: (BUILD_STAMP line)
-- Bank evidence: Tier 0 two-green, Tier 1 pass (or two-green if required)
+- Bank evidence: Tier 0 two-green, Tier 1 pass (or two-green if required) for that project
 - Artifacts: binary + logs + telemetry paths
 - PRs included: (list)
 - Expected impact: (which tests flip red to green)
