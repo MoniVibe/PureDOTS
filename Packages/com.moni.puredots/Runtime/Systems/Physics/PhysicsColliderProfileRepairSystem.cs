@@ -22,7 +22,9 @@ namespace PureDOTS.Systems.Physics
         {
             _repairQuery = SystemAPI.QueryBuilder()
                 .WithAll<RenderSemanticKey>()
-                .WithNone<PhysicsCollider, PhysicsColliderSpec, PhysicsInteractionConfig, RequiresPhysics>()
+                .WithAny<RequiresPhysics, PhysicsInteractionConfig>()
+                .WithNone<PhysicsCollider>()
+                .WithNone<PhysicsColliderSpec>()
                 .Build();
 
             state.RequireForUpdate(_repairQuery);
@@ -43,7 +45,9 @@ namespace PureDOTS.Systems.Physics
 
             foreach (var (semanticKey, entity) in SystemAPI
                          .Query<RefRO<RenderSemanticKey>>()
-                         .WithNone<PhysicsCollider, PhysicsColliderSpec, PhysicsInteractionConfig, RequiresPhysics>()
+                         .WithAny<RequiresPhysics, PhysicsInteractionConfig>()
+                         .WithNone<PhysicsCollider>()
+                         .WithNone<PhysicsColliderSpec>()
                          .WithEntityAccess())
             {
                 if (!PhysicsColliderProfileHelpers.TryGetSpec(ref entries, semanticKey.ValueRO.Value, out var spec))
@@ -51,11 +55,14 @@ namespace PureDOTS.Systems.Physics
                     continue;
                 }
 
-                ecb.AddComponent(entity, new RequiresPhysics
+                if (!SystemAPI.HasComponent<RequiresPhysics>(entity))
                 {
-                    Priority = 0,
-                    Flags = spec.Flags
-                });
+                    ecb.AddComponent(entity, new RequiresPhysics
+                    {
+                        Priority = 0,
+                        Flags = spec.Flags
+                    });
+                }
                 ecb.AddComponent(entity, spec);
             }
 

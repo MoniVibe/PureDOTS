@@ -6,7 +6,7 @@ namespace PureDOTS.Runtime.Stats
     /// <summary>
     /// Single trait axis value (sparse storage; only non-default values stored).
     /// </summary>
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct TraitAxisValue : IBufferElementData
     {
         /// <summary>Axis identifier (e.g., "LawfulChaotic", "Cohesion", "Xenophobia").</summary>

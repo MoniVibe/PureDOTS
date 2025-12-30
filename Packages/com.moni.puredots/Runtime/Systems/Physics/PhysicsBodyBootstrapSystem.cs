@@ -85,7 +85,7 @@ namespace PureDOTS.Systems.Physics
                 var hasSpec = SystemAPI.HasComponent<PhysicsColliderSpec>(entity);
                 var spec = hasSpec
                     ? SystemAPI.GetComponent<PhysicsColliderSpec>(entity)
-                    : PhysicsColliderSpec.CreateSphere(ResolveCollisionRadius(entity), flags);
+                    : PhysicsColliderSpec.CreateSphere(ResolveCollisionRadius(state.EntityManager, entity), flags);
 
                 if (spec.Flags != 0)
                 {
@@ -225,7 +225,7 @@ namespace PureDOTS.Systems.Physics
             unchecked
             {
                 var hash = (int)spec.Shape;
-                hash = (hash * 397) ^ math.hash(spec.Dimensions);
+                hash = (hash * 397) ^ unchecked((int)math.hash(spec.Dimensions));
                 hash = (hash * 397) ^ (int)flags;
                 hash = (hash * 397) ^ (isTrigger ? 1 : 0);
                 hash = (hash * 397) ^ (spec.UseCustomFilter != 0 ? 1 : 0);
@@ -236,12 +236,12 @@ namespace PureDOTS.Systems.Physics
             }
         }
 
-        private float ResolveCollisionRadius(Entity entity)
+        private float ResolveCollisionRadius(EntityManager entityManager, Entity entity)
         {
             var collisionRadius = 1f;
-            if (SystemAPI.HasComponent<PhysicsInteractionConfig>(entity))
+            if (entityManager.HasComponent<PhysicsInteractionConfig>(entity))
             {
-                var interactionConfig = SystemAPI.GetComponent<PhysicsInteractionConfig>(entity);
+                var interactionConfig = entityManager.GetComponentData<PhysicsInteractionConfig>(entity);
                 collisionRadius = interactionConfig.CollisionRadius;
             }
 

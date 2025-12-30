@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,7 +15,6 @@ namespace PureDOTS.Runtime.Physics
         public byte HasHit;
     }
 
-    [BurstCompile]
     public static class KinematicSweepUtility
     {
         private struct ClosestBlockingHitCollector : ICollector<ColliderCastHit>
@@ -70,14 +68,13 @@ namespace PureDOTS.Runtime.Physics
             }
         }
 
-        [BurstCompile]
         public static unsafe bool TryResolveSweep(
             in PhysicsWorldSingleton physicsWorld,
             in PhysicsCollider collider,
-            Entity self,
-            float3 startPosition,
-            quaternion rotation,
-            float3 desiredDelta,
+            in Entity self,
+            in float3 startPosition,
+            in quaternion rotation,
+            in float3 desiredDelta,
             float skinDistance,
             bool allowSlide,
             bool ignoreTriggerHits,

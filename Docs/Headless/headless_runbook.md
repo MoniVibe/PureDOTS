@@ -7,6 +7,12 @@ Purpose: keep headless agents productive without rebuild churn and protect a pin
 
 This runbook applies to PureDOTS + Godgame + Space4X.
 
+## Cross-OS caveats
+- Avoid editing `Assets/` or `.meta` from WSL; presentation owns those files.
+- Keep `Packages/manifest.json` and `Packages/packages-lock.json` synced across clones when logic changes.
+- Headless rebuilds in WSL should use Windows Unity interop (set `FORCE_WINDOWS_UNITY=1`); do not rely on Linux Unity licensing.
+
+
 ---
 
 ## Build Channels (scratch vs current)

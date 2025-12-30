@@ -148,7 +148,7 @@ namespace PureDOTS.Runtime.Communication
         };
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct CommSendRequest : IBufferElementData
     {
         public Entity Receiver;
@@ -174,7 +174,7 @@ namespace PureDOTS.Runtime.Communication
         public uint ContextHash;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct CommAttempt : IBufferElementData
     {
         public Entity Sender;
@@ -202,7 +202,7 @@ namespace PureDOTS.Runtime.Communication
         public uint ContextHash;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct CommReceipt : IBufferElementData
     {
         public Entity Sender;
@@ -229,7 +229,7 @@ namespace PureDOTS.Runtime.Communication
         public uint ContextHash;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct CommOutboundEntry : IBufferElementData
     {
         public Entity Receiver;
@@ -254,7 +254,7 @@ namespace PureDOTS.Runtime.Communication
         public uint ContextHash;
     }
 
-    [InternalBufferCapacity(16)]
+    [InternalBufferCapacity(8)]
     public struct CommRecentMessage : IBufferElementData
     {
         public uint MessageId;
@@ -262,7 +262,7 @@ namespace PureDOTS.Runtime.Communication
         public CommMessageType MessageType;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(4)]
     public struct CommPendingClarify : IBufferElementData
     {
         public uint MessageId;
@@ -270,7 +270,7 @@ namespace PureDOTS.Runtime.Communication
         public byte Attempts;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct CommDecision : IBufferElementData
     {
         public CommDecisionType Type;

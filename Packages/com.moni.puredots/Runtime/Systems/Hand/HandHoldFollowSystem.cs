@@ -104,16 +104,16 @@ namespace PureDOTS.Systems.Hand
                     return false;
                 }
 
-                var transform = _transformLookup[target];
-                float followFactor = 1f;
+                var dragTransform = _transformLookup[target];
+                float dragFollowFactor = 1f;
                 if (_pickableLookup.HasComponent(target))
                 {
-                    followFactor = math.clamp(_pickableLookup[target].FollowLerp, 0.05f, 1f);
+                    dragFollowFactor = math.clamp(_pickableLookup[target].FollowLerp, 0.05f, 1f);
                 }
 
-                float3 targetPosition = command.TargetPosition;
-                transform.Position = math.lerp(transform.Position, targetPosition, followFactor);
-                _transformLookup[target] = transform;
+                float3 dragTargetPosition = command.TargetPosition;
+                dragTransform.Position = math.lerp(dragTransform.Position, dragTargetPosition, dragFollowFactor);
+                _transformLookup[target] = dragTransform;
                 return true;
             }
 
