@@ -1,2 +1,0 @@
-C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS\obj\Debug\PureDOTS.Config.csproj.AssemblyReference.cache
-C:\Users\Moni\Documents\claudeprojects\unity\PureDOTS\obj\Debug\PureDOTS.Config.csproj.CoreCompileInputs.cache
