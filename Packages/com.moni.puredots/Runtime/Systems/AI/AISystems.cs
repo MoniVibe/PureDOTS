@@ -3,6 +3,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Mobility;
 using PureDOTS.Runtime.Miracles;
+using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Spatial;
@@ -553,17 +554,25 @@ namespace PureDOTS.Systems.AI
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(AISystemGroup))]
     [UpdateAfter(typeof(AIUtilityScoringSystem))]
     public partial struct AISteeringSystem : ISystem
     {
+        private EntityStorageInfoLookup _entityInfoLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<FlowFieldAgentTag> _flowAgentLookup;
+        private ComponentLookup<FlowFieldGoalTag> _flowGoalLookup;
+        private ComponentLookup<FlowFieldState> _flowStateLookup;
+        private ComponentLookup<SteeringState> _localSteeringLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _entityInfoLookup = state.GetEntityStorageInfoLookup();
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _flowAgentLookup = state.GetComponentLookup<FlowFieldAgentTag>(true);
+            _flowGoalLookup = state.GetComponentLookup<FlowFieldGoalTag>(true);
+            _flowStateLookup = state.GetComponentLookup<FlowFieldState>();
+            _localSteeringLookup = state.GetComponentLookup<SteeringState>(true);
 
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<AISteeringConfig>();
@@ -572,7 +581,6 @@ namespace PureDOTS.Systems.AI
             state.RequireForUpdate<MindCadenceSettings>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -587,7 +595,12 @@ namespace PureDOTS.Systems.AI
                 return;
             }
 
+            _entityInfoLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _flowAgentLookup.Update(ref state);
+            _flowGoalLookup.Update(ref state);
+            _flowStateLookup.Update(ref state);
+            _localSteeringLookup.Update(ref state);
 
             foreach (var (config, steering, target, transform, entity) in SystemAPI.Query<RefRO<AISteeringConfig>, RefRW<AISteeringState>, RefRO<AITargetState>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
@@ -597,9 +610,11 @@ namespace PureDOTS.Systems.AI
                 var steeringConfig = config.ValueRO;
 
                 var targetPosition = targetState.TargetPosition;
-                if (targetState.TargetEntity != Entity.Null && _transformLookup.HasComponent(targetState.TargetEntity))
+                var targetEntity = targetState.TargetEntity;
+                var targetValid = targetEntity != Entity.Null && _entityInfoLookup.Exists(targetEntity);
+                if (targetValid && _transformLookup.HasComponent(targetEntity))
                 {
-                    targetPosition = _transformLookup[targetState.TargetEntity].Position;
+                    targetPosition = _transformLookup[targetEntity].Position;
                 }
 
                 var direction = targetPosition - transform.ValueRO.Position;
@@ -609,6 +624,42 @@ namespace PureDOTS.Systems.AI
                 var desiredDirection = distance > 1e-4f
                     ? math.normalizesafe(direction)
                     : float3.zero;
+
+                if (_flowAgentLookup.HasComponent(entity) && _flowStateLookup.HasComponent(entity))
+                {
+                    var flowState = _flowStateLookup[entity];
+                    if (targetValid && _flowGoalLookup.HasComponent(targetEntity))
+                    {
+                        var goalTag = _flowGoalLookup[targetEntity];
+                        if (flowState.CurrentLayerId != goalTag.LayerId)
+                        {
+                            flowState.CurrentLayerId = goalTag.LayerId;
+                            _flowStateLookup[entity] = flowState;
+                        }
+                    }
+
+                    var flowWeight = math.saturate(steeringConfig.FlowFieldWeight);
+                    if (flowWeight > 0f)
+                    {
+                        var flowHeading2 = flowState.CachedDirection;
+                        if (_localSteeringLookup.HasComponent(entity))
+                        {
+                            flowHeading2 = _localSteeringLookup[entity].BlendedHeading;
+                        }
+
+                        if (math.lengthsq(flowHeading2) > 1e-4f)
+                        {
+                            var flowHeading3 = new float3(flowHeading2.x, 0f, flowHeading2.y);
+                            flowHeading3 = ProjectDegreesOfFreedom(flowHeading3, steeringConfig.DegreesOfFreedom);
+
+                            if (math.lengthsq(flowHeading3) > 1e-4f)
+                            {
+                                flowHeading3 = math.normalizesafe(flowHeading3);
+                                desiredDirection = math.normalizesafe(math.lerp(desiredDirection, flowHeading3, flowWeight));
+                            }
+                        }
+                    }
+                }
 
                 var responsiveness = math.saturate(steeringConfig.Responsiveness);
                 steeringState.DesiredDirection = math.normalizesafe(math.lerp(steeringState.DesiredDirection, desiredDirection, responsiveness));
@@ -628,7 +679,6 @@ namespace PureDOTS.Systems.AI
             }
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
         }
