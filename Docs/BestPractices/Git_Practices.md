@@ -24,6 +24,15 @@ Purpose: prevent cross-OS git corruption, locks, invalid filenames, and auth chu
 - Avoid filenames that are illegal on Windows (trailing spaces, control chars).
 - If a WSL task needs `Assets/`, log a handoff and switch to Windows for the edit.
 
+## Push hygiene (prevent giant commits)
+- Never commit or push generated/backup artifacts:
+  - `Library_backup_*`, `Temp_backup_*`
+  - `Assets/_Recovery/`
+  - `Packages/*.bak`
+  - `*.apiupaterconfigs`
+- Before pushing, review the staged diff; if you see large binary adds or backup folders, stop and clean them first.
+- Stage only intended paths; avoid broad `git add -A` after Unity crashes or recovery prompts.
+
 ## Recovery notes
 - Divergent history: fetch then rebase `origin/main`.
 - Stale lock: remove `.git/index.lock` only after confirming no git process is active.
