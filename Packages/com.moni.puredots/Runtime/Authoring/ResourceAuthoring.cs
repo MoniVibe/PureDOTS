@@ -318,6 +318,16 @@ namespace PureDOTS.Authoring
                 DefaultUnits = math.max(0f, authoring.defaultUnits)
             });
 
+            AddComponent<PickableTag>(entity);
+            var mass = math.max(0.1f, authoring.massPerUnit * authoring.defaultUnits);
+            AddComponent(entity, new HandPickable
+            {
+                Mass = mass,
+                MaxHoldDistance = 12f,
+                ThrowImpulseMultiplier = 1f,
+                FollowLerp = 0.25f
+            });
+
             static FixedString64Bytes ToFixedString(string value)
             {
                 FixedString64Bytes str = default;

@@ -69,7 +69,7 @@ namespace PureDOTS.Systems.Navigation
                     steering.SeparationVector = float2.zero;
                     steering.AvoidanceVector = float2.zero;
                     steering.CohesionVector = float2.zero;
-                    steering.BlendedHeading = flowState.CachedDirection;
+                    steering.BlendedHeading = float2.zero;
                     return;
                 }
 
@@ -144,11 +144,14 @@ namespace PureDOTS.Systems.Navigation
                 }
 
                 // Blend flow field direction with steering
-                var flowDir = flowState.CachedDirection;
-                var blended = flowDir + separation + avoidance + cohesion;
+                var blended = separation + avoidance + cohesion;
                 if (math.lengthsq(blended) > 0.01f)
                 {
                     blended = math.normalize(blended);
+                }
+                else
+                {
+                    blended = float2.zero;
                 }
 
                 steering.SeparationVector = separation;
@@ -159,5 +162,4 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
-
 

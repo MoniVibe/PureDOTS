@@ -624,6 +624,8 @@ namespace PureDOTS.Systems.AI
                 var desiredDirection = distance > 1e-4f
                     ? math.normalizesafe(direction)
                     : float3.zero;
+                var localHeading2 = float2.zero;
+                var hasLocalHeading = false;
 
                 if (_flowAgentLookup.HasComponent(entity) && _flowStateLookup.HasComponent(entity))
                 {
@@ -644,7 +646,8 @@ namespace PureDOTS.Systems.AI
                         var flowHeading2 = flowState.CachedDirection;
                         if (_localSteeringLookup.HasComponent(entity))
                         {
-                            flowHeading2 = _localSteeringLookup[entity].BlendedHeading;
+                            localHeading2 = _localSteeringLookup[entity].BlendedHeading;
+                            hasLocalHeading = math.lengthsq(localHeading2) > 1e-4f;
                         }
 
                         if (math.lengthsq(flowHeading2) > 1e-4f)
@@ -655,9 +658,28 @@ namespace PureDOTS.Systems.AI
                             if (math.lengthsq(flowHeading3) > 1e-4f)
                             {
                                 flowHeading3 = math.normalizesafe(flowHeading3);
-                                desiredDirection = math.normalizesafe(math.lerp(desiredDirection, flowHeading3, flowWeight));
+                                var desired2 = new float2(desiredDirection.x, desiredDirection.z);
+                                var flow2 = new float2(flowHeading3.x, flowHeading3.z);
+                                AISteeringUtilities.BlendWithFlowField(ref flow2, ref desired2, flowWeight, 1f - flowWeight, out var blended2);
+                                desiredDirection = math.normalizesafe(new float3(blended2.x, 0f, blended2.y));
                             }
                         }
+                    }
+                }
+
+                if (_localSteeringLookup.HasComponent(entity) && !hasLocalHeading)
+                {
+                    localHeading2 = _localSteeringLookup[entity].BlendedHeading;
+                    hasLocalHeading = math.lengthsq(localHeading2) > 1e-4f;
+                }
+
+                if (hasLocalHeading)
+                {
+                    var localHeading3 = new float3(localHeading2.x, 0f, localHeading2.y);
+                    localHeading3 = ProjectDegreesOfFreedom(localHeading3, steeringConfig.DegreesOfFreedom);
+                    if (math.lengthsq(localHeading3) > 1e-4f)
+                    {
+                        desiredDirection = math.normalizesafe(desiredDirection + math.normalizesafe(localHeading3));
                     }
                 }
 
