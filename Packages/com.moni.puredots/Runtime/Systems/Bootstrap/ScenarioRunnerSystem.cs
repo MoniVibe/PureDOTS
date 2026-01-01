@@ -2,6 +2,7 @@
 
 using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
 using PureDOTS.Runtime.Village;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Runtime.Groups;
@@ -706,6 +707,12 @@ namespace PureDOTS.Systems.Bootstrap
             
             // Mark as pickable for hand interactions
             em.AddComponent<PickableTag>(entity);
+            em.AddComponent<HeldByPlayer>(entity);
+            em.SetComponentEnabled<HeldByPlayer>(entity, false);
+            em.AddComponent<MovementSuppressed>(entity);
+            em.SetComponentEnabled<MovementSuppressed>(entity, false);
+            em.AddComponent<BeingThrown>(entity);
+            em.SetComponentEnabled<BeingThrown>(entity, false);
 
             // Add type-specific tag
             // nodeType: 0=tree, 1=stone, 2=ore

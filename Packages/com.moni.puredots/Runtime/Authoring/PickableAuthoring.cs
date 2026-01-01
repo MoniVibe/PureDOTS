@@ -23,10 +23,15 @@ namespace PureDOTS.Authoring
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Pickable>(entity);
+            AddComponent<HeldByPlayer>(entity);
+            SetComponentEnabled<HeldByPlayer>(entity, false);
+            AddComponent<MovementSuppressed>(entity);
+            SetComponentEnabled<MovementSuppressed>(entity, false);
+            AddComponent<BeingThrown>(entity);
+            SetComponentEnabled<BeingThrown>(entity, false);
         }
     }
 }
-
 
 
 

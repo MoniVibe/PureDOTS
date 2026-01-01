@@ -6,6 +6,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics.Systems;
 using HandStateData = PureDOTS.Runtime.Hand.HandState;
 
 namespace PureDOTS.Systems.Hand
@@ -14,6 +15,7 @@ namespace PureDOTS.Systems.Hand
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandCommandEmitterSystem))]
     [UpdateBefore(typeof(HandThrowSystem))]
+    [UpdateBefore(typeof(PhysicsInitializeGroup))]
     public partial struct HandQueueThrowSystem : ISystem
     {
         private ComponentLookup<HandHeldTag> _heldLookup;
@@ -76,7 +78,7 @@ namespace PureDOTS.Systems.Hand
 
                     if (_movementLookup.HasComponent(cmd.TargetEntity))
                     {
-                        ecb.RemoveComponent<MovementSuppressed>(cmd.TargetEntity);
+                        ecb.SetComponentEnabled<MovementSuppressed>(cmd.TargetEntity, false);
                     }
 
                     if (handState.HeldEntity == cmd.TargetEntity)
@@ -103,6 +105,8 @@ namespace PureDOTS.Systems.Hand
     [UpdateBefore(typeof(HandThrowSystem))]
     public partial struct HandQueueReleaseSystem : ISystem
     {
+        private uint _lastInputSampleId;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -116,8 +120,11 @@ namespace PureDOTS.Systems.Hand
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
             var input = SystemAPI.GetSingleton<HandInputFrame>();
+            bool isNewSample = input.SampleId != _lastInputSampleId;
+            bool releaseOnePressed = isNewSample && input.ReleaseOnePressed;
+            bool releaseAllPressed = isNewSample && input.ReleaseAllPressed;
 
-            if (!input.ReleaseOnePressed && !input.ReleaseAllPressed)
+            if (!releaseOnePressed && !releaseAllPressed)
             {
                 return;
             }
@@ -131,7 +138,7 @@ namespace PureDOTS.Systems.Hand
                     continue;
                 }
 
-                if (input.ReleaseAllPressed)
+                if (releaseAllPressed)
                 {
                     for (int i = 0; i < throwQueue.Length; i++)
                     {
@@ -146,6 +153,11 @@ namespace PureDOTS.Systems.Hand
                     throwQueue.RemoveAt(0);
                     EmitThrow(commandBuffer, currentTick, entry);
                 }
+            }
+
+            if (isNewSample)
+            {
+                _lastInputSampleId = input.SampleId;
             }
         }
 

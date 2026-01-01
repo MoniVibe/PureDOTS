@@ -20,6 +20,7 @@ Documentation is organized by responsibility:
 - [Concepts/Core/Archetypical_Theme_Mapping.md](Concepts/Core/Archetypical_Theme_Mapping.md) – **archetypical theme mapping** for alignment/outlook/behavior combinations (visual aesthetics, cultural expressions, presentation theming)
 - [Concepts/Core/Entity_Traversal_System.md](Concepts/Core/Entity_Traversal_System.md) – **traversal graph system** for jump/climb/crawl/squeeze/drop (size-gated connectivity, deterministic execution)
 - [Concepts/Core/Tech_Tree_Flavors.md](Concepts/Core/Tech_Tree_Flavors.md) – **tech tree flavors** for cross-family, divergent, convergent, and outlook-specific techs (weapons, spells, modules, facilities, implants)
+- [Concepts/Core/Scenery_Desirability_And_Taxation.md](Concepts/Core/Scenery_Desirability_And_Taxation.md) – **scenery, desirability, and taxation systems** (flora/fauna-based scenery, housing preferences, behavior-driven taxation, segregation policies)
 
 ## UI / Presentation
 - [Presentation/TRI_UI_Launch_MainMenu.md](Presentation/TRI_UI_Launch_MainMenu.md) – shared launch/main menu + worldgen + time-controls contract

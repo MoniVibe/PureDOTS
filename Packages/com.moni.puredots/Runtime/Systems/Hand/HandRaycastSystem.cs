@@ -9,12 +9,12 @@ namespace PureDOTS.Systems.Hand
 {
     /// <summary>
     /// Performs raycast from hand input ray and updates HandHover singleton.
-    /// Runs in FixedStepSimulationSystemGroup after BuildPhysicsWorld.
+    /// Runs in FixedStepSimulationSystemGroup after PhysicsInitializeGroup.
     /// Uses deterministic tie-breaker: distance then entity index.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    [UpdateAfter(typeof(BuildPhysicsWorld))]
+    [UpdateAfter(typeof(PhysicsInitializeGroup))]
     [UpdateBefore(typeof(PhysicsSimulationGroup))]
     public partial struct HandRaycastSystem : ISystem
     {

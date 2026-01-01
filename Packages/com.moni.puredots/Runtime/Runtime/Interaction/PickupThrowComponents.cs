@@ -12,7 +12,7 @@ namespace PureDOTS.Runtime.Interaction
     /// <summary>
     /// Marks entity currently being held by a "hand" / player entity.
     /// </summary>
-    public struct HeldByPlayer : IComponentData
+    public struct HeldByPlayer : IComponentData, IEnableableComponent
     {
         /// <summary>
         /// Player/camera/hand entity holding this entity.
@@ -20,7 +20,7 @@ namespace PureDOTS.Runtime.Interaction
         public Entity Holder;
 
         /// <summary>
-        /// Local offset from holder pivot.
+        /// Local offset from entity origin to grab point (entity local space).
         /// </summary>
         public float3 LocalOffset;
 
@@ -38,12 +38,12 @@ namespace PureDOTS.Runtime.Interaction
     /// <summary>
     /// Indicates entity movement should be skipped by movement systems.
     /// </summary>
-    public struct MovementSuppressed : IComponentData { }
+    public struct MovementSuppressed : IComponentData, IEnableableComponent { }
 
     /// <summary>
     /// Marks entity in flight due to a throw.
     /// </summary>
-    public struct BeingThrown : IComponentData
+    public struct BeingThrown : IComponentData, IEnableableComponent
     {
         /// <summary>
         /// Initial velocity when thrown.
@@ -81,6 +81,11 @@ namespace PureDOTS.Runtime.Interaction
         /// Last raycast position for cursor movement tracking.
         /// </summary>
         public float3 LastRaycastPosition;
+
+        /// <summary>
+        /// Distance from the cursor ray origin to the grab point.
+        /// </summary>
+        public float HoldDistance;
 
         /// <summary>
         /// Accumulated cursor movement (in world space units).
@@ -202,9 +207,6 @@ namespace PureDOTS.Runtime.Interaction
         public ThrowQueueEntry Value;
     }
 }
-
-
-
 
 
 

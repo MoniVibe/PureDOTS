@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
@@ -319,6 +320,12 @@ namespace PureDOTS.Authoring
             });
 
             AddComponent<PickableTag>(entity);
+            AddComponent<HeldByPlayer>(entity);
+            SetComponentEnabled<HeldByPlayer>(entity, false);
+            AddComponent<MovementSuppressed>(entity);
+            SetComponentEnabled<MovementSuppressed>(entity, false);
+            AddComponent<BeingThrown>(entity);
+            SetComponentEnabled<BeingThrown>(entity, false);
             var mass = math.max(0.1f, authoring.massPerUnit * authoring.defaultUnits);
             AddComponent(entity, new HandPickable
             {

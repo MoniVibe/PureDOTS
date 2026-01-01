@@ -10,6 +10,7 @@ namespace PureDOTS.Runtime.Hand
     /// </summary>
     public struct HandInputFrame : IComponentData
     {
+        public uint SampleId;
         public float2 CursorScreenPos;
         public float3 RayOrigin;  // World ray origin (blittable)
         public float3 RayDirection;  // World ray direction (normalized, blittable)

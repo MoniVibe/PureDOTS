@@ -151,7 +151,7 @@ namespace PureDOTS.Systems.Physics
                     }
 
                     // Clear BeingThrown to stop further integration
-                    ecb.RemoveComponent<BeingThrown>(entity);
+                    ecb.SetComponentEnabled<BeingThrown>(entity, false);
 
                     // Zero velocity to prevent further movement
                     if (SystemAPI.HasComponent<PhysicsVelocity>(entity))
