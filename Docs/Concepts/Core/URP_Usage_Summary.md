@@ -341,3 +341,5 @@ Entities with RenderSemanticKey + presenters → MaterialMeshInfo + RenderBounds
 **For Technical Artists:** Materials must use URP shaders (`Universal Render Pipeline/Lit` or `/Unlit`), configure renderer features as needed
 
 
+
+

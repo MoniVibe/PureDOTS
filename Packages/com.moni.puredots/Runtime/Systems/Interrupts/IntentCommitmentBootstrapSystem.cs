@@ -1,7 +1,5 @@
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Comms;
 using PureDOTS.Runtime.Interrupts;
-using PureDOTS.Runtime.Perception;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -9,12 +7,11 @@ using Unity.Entities;
 namespace PureDOTS.Systems.Interrupts
 {
     /// <summary>
-    /// Structural-apply helper: ensures entities that emit/consume interrupts have an Interrupt buffer.
-    /// This prevents structural changes inside hot perception loops.
+    /// Ensures default intent commitment components exist for entities using EntityIntent.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    public partial struct InterruptBufferEnsureSystem : ISystem
+    public partial struct IntentCommitmentBootstrapSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -38,26 +35,31 @@ namespace PureDOTS.Systems.Interrupts
             }
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var defaultConfig = IntentCommitmentConfig.Default;
 
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<PerceptionState>>()
-                         .WithNone<Interrupt>()
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<EntityIntent>>()
+                         .WithNone<IntentCommitmentConfig>()
                          .WithEntityAccess())
             {
-                ecb.AddBuffer<Interrupt>(entity);
+                ecb.AddComponent(entity, defaultConfig);
+                ecb.AddComponent(entity, new IntentCommitmentState
+                {
+                    LockUntilTick = 0,
+                    CooldownUntilTick = 0,
+                    LastIntentTick = 0
+                });
             }
 
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<SignalPerceptionState>>()
-                         .WithNone<Interrupt, PerceptionState>()
+            foreach (var (_, entity) in SystemAPI.Query<RefRO<IntentCommitmentConfig>>()
+                         .WithNone<IntentCommitmentState>()
                          .WithEntityAccess())
             {
-                ecb.AddBuffer<Interrupt>(entity);
-            }
-
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<CommsReceiverConfig>>()
-                         .WithNone<Interrupt>()
-                         .WithEntityAccess())
-            {
-                ecb.AddBuffer<Interrupt>(entity);
+                ecb.AddComponent(entity, new IntentCommitmentState
+                {
+                    LockUntilTick = 0,
+                    CooldownUntilTick = 0,
+                    LastIntentTick = 0
+                });
             }
 
             ecb.Playback(state.EntityManager);
@@ -65,4 +67,3 @@ namespace PureDOTS.Systems.Interrupts
         }
     }
 }
-

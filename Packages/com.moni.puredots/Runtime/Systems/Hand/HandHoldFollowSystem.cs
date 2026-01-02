@@ -19,7 +19,7 @@ namespace PureDOTS.Systems.Hand
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandPickupSystem))]
-    [UpdateBefore(typeof(PhysicsSimulationGroup))]
+    [UpdateBefore(typeof(PhysicsInitializeGroup))]
     public partial struct HandHoldFollowSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;

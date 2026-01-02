@@ -10,6 +10,8 @@ using Unity.Physics;
 using Unity.Physics.Systems;
 using HandStateData = PureDOTS.Runtime.Hand.HandState;
 using Unity.Transforms;
+using UnityEngine;
+using UDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Systems.Hand
 {
@@ -19,7 +21,7 @@ namespace PureDOTS.Systems.Hand
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandHoldFollowSystem))]
-    [UpdateBefore(typeof(PhysicsSimulationGroup))]
+    [UpdateBefore(typeof(PhysicsInitializeGroup))]
     public partial struct HandSlingshotSystem : ISystem
     {
         private ComponentLookup<PhysicsVelocity> _velocityLookup;
@@ -28,6 +30,7 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<MovementSuppressed> _movementLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<BeingThrown> _beingThrownLookup;
+        private NativeParallelHashSet<Entity> _loggedFallbackEntities;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -39,6 +42,15 @@ namespace PureDOTS.Systems.Hand
             _movementLookup = state.GetComponentLookup<MovementSuppressed>(false);
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _beingThrownLookup = state.GetComponentLookup<BeingThrown>(false);
+            _loggedFallbackEntities = new NativeParallelHashSet<Entity>(128, Allocator.Persistent);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            if (_loggedFallbackEntities.IsCreated)
+            {
+                _loggedFallbackEntities.Dispose();
+            }
         }
 
         [BurstCompile]
@@ -46,6 +58,11 @@ namespace PureDOTS.Systems.Hand
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
+            var interactionPolicy = InteractionPolicy.CreateDefault();
+            if (SystemAPI.TryGetSingleton(out InteractionPolicy policyValue))
+            {
+                interactionPolicy = policyValue;
+            }
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             _velocityLookup.Update(ref state);
@@ -68,7 +85,7 @@ namespace PureDOTS.Systems.Hand
                         continue;
                     }
 
-                    if (ApplySlingshot(ref state, ref handState, cmd, ref ecb))
+                    if (ApplySlingshot(ref state, ref handState, cmd, interactionPolicy, ref ecb))
                     {
                         buffer.RemoveAt(i);
                     }
@@ -81,7 +98,7 @@ namespace PureDOTS.Systems.Hand
             ecb.Dispose();
         }
 
-        private bool ApplySlingshot(ref SystemState state, ref HandStateData handState, HandCommand command, ref EntityCommandBuffer ecb)
+        private bool ApplySlingshot(ref SystemState state, ref HandStateData handState, HandCommand command, InteractionPolicy interactionPolicy, ref EntityCommandBuffer ecb)
         {
             var target = command.TargetEntity;
             if (target == Entity.Null)
@@ -121,10 +138,19 @@ namespace PureDOTS.Systems.Hand
                 if (_beingThrownLookup.HasComponent(target))
                 {
                     ecb.SetComponent(target, thrown);
+                    ecb.SetComponentEnabled<BeingThrown>(target, true);
                 }
-                else
+                else if (interactionPolicy.AllowStructuralFallback != 0)
                 {
                     ecb.AddComponent(target, thrown);
+                    if (interactionPolicy.LogStructuralFallback != 0)
+                    {
+                        LogFallbackOnce(target, "BeingThrown", skipped: false);
+                    }
+                }
+                else if (interactionPolicy.LogStructuralFallback != 0)
+                {
+                    LogFallbackOnce(target, "BeingThrown", skipped: true);
                 }
             }
 
@@ -135,7 +161,7 @@ namespace PureDOTS.Systems.Hand
 
             if (_movementLookup.HasComponent(target))
             {
-                ecb.RemoveComponent<MovementSuppressed>(target);
+                ecb.SetComponentEnabled<MovementSuppressed>(target, false);
             }
 
             if (handState.HeldEntity == target)
@@ -148,6 +174,18 @@ namespace PureDOTS.Systems.Hand
             return true;
         }
 
+        [BurstDiscard]
+        private void LogFallbackOnce(Entity target, string componentName, bool skipped)
+        {
+            if (!_loggedFallbackEntities.IsCreated || !_loggedFallbackEntities.Add(target))
+            {
+                return;
+            }
+
+            var action = skipped ? "skipping throw tag (strict policy)" : "using structural fallback";
+            UDebug.LogWarning($"[HandSlingshotSystem] Missing {componentName} on entity {target.Index}:{target.Version}; {action}.");
+        }
+
         private bool ReleaseWithoutThrow(ref HandStateData handState, Entity target, ref EntityCommandBuffer ecb)
         {
             if (_heldLookup.HasComponent(target))
@@ -157,7 +195,7 @@ namespace PureDOTS.Systems.Hand
 
             if (_movementLookup.HasComponent(target))
             {
-                ecb.RemoveComponent<MovementSuppressed>(target);
+                ecb.SetComponentEnabled<MovementSuppressed>(target, false);
             }
 
             if (handState.HeldEntity == target)

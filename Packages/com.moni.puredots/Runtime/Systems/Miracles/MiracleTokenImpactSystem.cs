@@ -1,3 +1,4 @@
+using PureDOTS.Environment;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Miracles;
 using PureDOTS.Runtime.Physics;
@@ -25,19 +26,28 @@ namespace PureDOTS.Systems.Miracles
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<MiracleOnImpact>();
+            state.RequireForUpdate<TerrainModificationQueue>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
-            if (timeState.IsPaused)
+            var rewindState = SystemAPI.GetSingleton<RewindState>();
+            if (timeState.IsPaused || rewindState.Mode != RewindMode.Record)
             {
                 return;
             }
 
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            var hasQueue = SystemAPI.TryGetSingletonEntity<TerrainModificationQueue>(out var queueEntity);
+            DynamicBuffer<TerrainModificationRequest> modificationBuffer = default;
+            if (hasQueue)
+            {
+                modificationBuffer = SystemAPI.GetBuffer<TerrainModificationRequest>(queueEntity);
+            }
 
             foreach (var (impactRef, tokenRef, transformRef, entity) in SystemAPI
                          .Query<RefRW<MiracleOnImpact>, RefRO<ProjectileToken>, RefRO<LocalTransform>>()
@@ -78,6 +88,35 @@ namespace PureDOTS.Systems.Miracles
                     impactPosition = transformRef.ValueRO.Position;
                 }
 
+                if (hasQueue)
+                {
+                    var radius = math.max(0f, impact.ExplosionRadius);
+                    if (radius > 0f)
+                    {
+                        modificationBuffer.Add(new TerrainModificationRequest
+                        {
+                            Kind = TerrainModificationKind.Dig,
+                            Shape = TerrainModificationShape.Brush,
+                            ToolKind = TerrainModificationToolKind.Laser,
+                            Start = impactPosition,
+                            End = impactPosition,
+                            Radius = radius,
+                            Depth = radius,
+                            MaterialId = 0,
+                            DamageDelta = 0,
+                            DamageThreshold = 0,
+                            YieldMultiplier = 1f,
+                            HeatDelta = 0f,
+                            InstabilityDelta = 0f,
+                            Flags = TerrainModificationFlags.AffectsSurface | TerrainModificationFlags.AffectsVolume,
+                            RequestedTick = timeState.Tick,
+                            Actor = entity,
+                            VolumeEntity = Entity.Null,
+                            Space = TerrainModificationSpace.World
+                        });
+                    }
+                }
+
                 // Spawn impact effect at collision point
                 var impactEntity = ecb.CreateEntity();
                 ecb.AddComponent(impactEntity, LocalTransform.FromPosition(impactPosition));
@@ -99,4 +138,3 @@ namespace PureDOTS.Systems.Miracles
         }
     }
 }
-

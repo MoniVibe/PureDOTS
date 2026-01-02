@@ -85,6 +85,7 @@ namespace PureDOTS.Runtime.AI
         public float MaxSpeed;
         public float Acceleration;
         public float Responsiveness;
+        public float FlowFieldWeight;
         public byte DegreesOfFreedom; // 2 = planar, 3 = full
         public float ObstacleLookAhead;
     }

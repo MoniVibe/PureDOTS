@@ -1,3 +1,5 @@
+using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
 using PureDOTS.Runtime.Space;
 using Unity.Burst;
 using Unity.Collections;
@@ -56,6 +58,20 @@ namespace PureDOTS.Systems.Space
                 ecb.SetComponent(pileEntity, new ResourcePileVelocity
                 {
                     Velocity = jitterDir * 0.25f
+                });
+                ecb.AddComponent<PickableTag>(pileEntity);
+                ecb.AddComponent<HeldByPlayer>(pileEntity);
+                ecb.SetComponentEnabled<HeldByPlayer>(pileEntity, false);
+                ecb.AddComponent<MovementSuppressed>(pileEntity);
+                ecb.SetComponentEnabled<MovementSuppressed>(pileEntity, false);
+                ecb.AddComponent<BeingThrown>(pileEntity);
+                ecb.SetComponentEnabled<BeingThrown>(pileEntity, false);
+                ecb.AddComponent(pileEntity, new HandPickable
+                {
+                    Mass = math.max(0.1f, loopState.CurrentCargo),
+                    MaxHoldDistance = 50f,
+                    ThrowImpulseMultiplier = 1f,
+                    FollowLerp = 0.25f
                 });
 
                 loopState.CurrentCargo = 0f;

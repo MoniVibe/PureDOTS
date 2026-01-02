@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Navigation;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Systems;
 using PureDOTS.Systems.AI;
@@ -143,6 +144,89 @@ namespace PureDOTS.Tests.Playmode
             Assert.AreEqual(agent, command.Agent);
             Assert.AreEqual(utilityState.BestActionIndex, command.ActionIndex);
             Assert.AreNotEqual(Entity.Null, command.TargetEntity);
+        }
+
+        [Test]
+        public void AISteering_UsesFlowHeadingWhenWeighted()
+        {
+            var cadenceQuery = _entityManager.CreateEntityQuery(ComponentType.ReadWrite<MindCadenceSettings>());
+            var cadenceEntity = cadenceQuery.IsEmptyIgnoreFilter
+                ? _entityManager.CreateEntity(typeof(MindCadenceSettings))
+                : cadenceQuery.GetSingletonEntity();
+            _entityManager.SetComponentData(cadenceEntity, MindCadenceSettings.CreateDefault());
+
+            var goal = _entityManager.CreateEntity(typeof(LocalTransform), typeof(FlowFieldGoalTag));
+            _entityManager.SetComponentData(goal, LocalTransform.FromPosition(new float3(10f, 0f, 0f)));
+            _entityManager.SetComponentData(goal, new FlowFieldGoalTag
+            {
+                LayerId = 3,
+                Priority = 0
+            });
+
+            var agent = _entityManager.CreateEntity(
+                typeof(LocalTransform),
+                typeof(AISteeringConfig),
+                typeof(AISteeringState),
+                typeof(AITargetState),
+                typeof(FlowFieldAgentTag),
+                typeof(FlowFieldState),
+                typeof(SteeringState));
+
+            _entityManager.SetComponentData(agent, LocalTransform.FromPosition(float3.zero));
+            _entityManager.SetComponentData(agent, new AISteeringConfig
+            {
+                MaxSpeed = 4f,
+                Acceleration = 8f,
+                Responsiveness = 1f,
+                FlowFieldWeight = 1f,
+                DegreesOfFreedom = 2,
+                ObstacleLookAhead = 0f
+            });
+            _entityManager.SetComponentData(agent, new AISteeringState
+            {
+                DesiredDirection = float3.zero,
+                LinearVelocity = float3.zero,
+                LastSampledTarget = float3.zero,
+                LastUpdateTick = 0
+            });
+            _entityManager.SetComponentData(agent, new AITargetState
+            {
+                TargetEntity = goal,
+                TargetPosition = float3.zero,
+                ActionIndex = 0,
+                Flags = 0
+            });
+            _entityManager.SetComponentData(agent, new FlowFieldState
+            {
+                CurrentLayerId = 0,
+                CurrentCellIndex = 0,
+                CachedDirection = new float2(1f, 0f),
+                SpeedScalar = 1f,
+                LastUpdateTick = 0
+            });
+            _entityManager.SetComponentData(agent, new SteeringState
+            {
+                SeparationVector = float2.zero,
+                AvoidanceVector = float2.zero,
+                CohesionVector = float2.zero,
+                BlendedHeading = new float2(0f, 1f),
+                SpeedModifier = 1f
+            });
+
+            var timeState = _entityManager.GetComponentData<TimeState>(_timeEntity);
+            timeState.Tick = 1;
+            _entityManager.SetComponentData(_timeEntity, timeState);
+
+            var aiGroup = _world.GetOrCreateSystemManaged<AISystemGroup>();
+            aiGroup.Update();
+
+            var updatedSteering = _entityManager.GetComponentData<AISteeringState>(agent);
+            var expectedHeading = math.normalize(new float3(0f, 0f, 1f));
+            Assert.Greater(math.dot(updatedSteering.DesiredDirection, expectedHeading), 0.99f,
+                "Flow/local steering heading should override direct target steering when weighted.");
+
+            var updatedFlowState = _entityManager.GetComponentData<FlowFieldState>(agent);
+            Assert.AreEqual(3, updatedFlowState.CurrentLayerId, "Flow layer should follow the target's goal tag.");
         }
 
         private Entity CreateResourceTarget(float3 position, FixedString64Bytes typeId)

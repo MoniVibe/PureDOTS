@@ -16,11 +16,16 @@ namespace PureDOTS.Systems.Interrupts
     [UpdateInGroup(typeof(InterruptSystemGroup))]
     public partial struct InterruptHandlerSystem : ISystem
     {
+        private ComponentLookup<IntentCommitmentConfig> _commitmentConfigLookup;
+        private ComponentLookup<IntentCommitmentState> _commitmentStateLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _commitmentConfigLookup = state.GetComponentLookup<IntentCommitmentConfig>(true);
+            _commitmentStateLookup = state.GetComponentLookup<IntentCommitmentState>(false);
         }
 
         [BurstCompile]
@@ -39,6 +44,8 @@ namespace PureDOTS.Systems.Interrupts
 
             var interruptBufferLookup = SystemAPI.GetBufferLookup<Interrupt>(false);
             interruptBufferLookup.Update(ref state);
+            _commitmentConfigLookup.Update(ref state);
+            _commitmentStateLookup.Update(ref state);
 
             // Process interrupts for all entities with interrupt buffers
             foreach (var (intent, entity) in
@@ -90,8 +97,17 @@ namespace PureDOTS.Systems.Interrupts
                 {
                     ConvertInterruptToIntent(bestInterrupt, timeState.Tick, out var newIntent);
 
+                    if (!CanApplyIntent(entity, intent.ValueRO, newIntent, timeState.Tick))
+                    {
+                        bestInterrupt.IsProcessed = 1;
+                        interruptBuffer[bestIndex] = bestInterrupt;
+                        CleanupProcessedInterrupts(ref interruptBuffer, timeState.Tick, 300);
+                        continue;
+                    }
+
                     // Update intent
                     intent.ValueRW = newIntent;
+                    UpdateCommitmentState(entity, newIntent, timeState.Tick);
 
                     // Mark interrupt as processed
                     bestInterrupt.IsProcessed = 1;
@@ -106,6 +122,81 @@ namespace PureDOTS.Systems.Interrupts
                     // Intent will be cleared by behavior systems when completed
                 }
             }
+        }
+
+        [BurstCompile]
+        private bool CanApplyIntent(Entity entity, in EntityIntent currentIntent, in EntityIntent newIntent, uint currentTick)
+        {
+            if (!_commitmentConfigLookup.HasComponent(entity) || !_commitmentStateLookup.HasComponent(entity))
+            {
+                return true;
+            }
+
+            if (currentIntent.IsValid == 0 || currentIntent.Mode == IntentMode.Idle)
+            {
+                return true;
+            }
+
+            if (IsSameIntent(in currentIntent, in newIntent))
+            {
+                return false;
+            }
+
+            var config = _commitmentConfigLookup[entity];
+            var state = _commitmentStateLookup[entity];
+            var overridePriority = (byte)config.OverridePriority;
+            var newPriority = (byte)newIntent.Priority;
+            var currentPriority = (byte)currentIntent.Priority;
+
+            if (newPriority < currentPriority && newPriority < overridePriority)
+            {
+                return false;
+            }
+
+            if (currentTick < state.LockUntilTick && newPriority < overridePriority)
+            {
+                return false;
+            }
+
+            if (currentTick < state.CooldownUntilTick && newPriority < overridePriority)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        [BurstCompile]
+        private void UpdateCommitmentState(Entity entity, in EntityIntent newIntent, uint currentTick)
+        {
+            if (!_commitmentConfigLookup.HasComponent(entity) || !_commitmentStateLookup.HasComponent(entity))
+            {
+                return;
+            }
+
+            var config = _commitmentConfigLookup[entity];
+            var state = _commitmentStateLookup[entity];
+            state.LockUntilTick = currentTick + config.CommitmentTicks;
+            state.CooldownUntilTick = currentTick + config.ReplanCooldownTicks;
+            state.LastIntentTick = currentTick;
+            _commitmentStateLookup[entity] = state;
+        }
+
+        [BurstCompile]
+        private static bool IsSameIntent(in EntityIntent currentIntent, in EntityIntent newIntent)
+        {
+            if (currentIntent.Mode != newIntent.Mode)
+            {
+                return false;
+            }
+
+            if (currentIntent.TargetEntity != newIntent.TargetEntity)
+            {
+                return false;
+            }
+
+            var distanceSq = math.lengthsq(currentIntent.TargetPosition - newIntent.TargetPosition);
+            return distanceSq <= 0.01f;
         }
 
         /// <summary>

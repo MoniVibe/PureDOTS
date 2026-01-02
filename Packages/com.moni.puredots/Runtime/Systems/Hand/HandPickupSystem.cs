@@ -7,6 +7,9 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using Unity.Physics.Systems;
+using UnityEngine;
+using UDebug = UnityEngine.Debug;
 using HandStateData = PureDOTS.Runtime.Hand.HandState;
 using InteractionPickable = PureDOTS.Runtime.Interaction.Pickable;
 
@@ -19,6 +22,7 @@ namespace PureDOTS.Systems.Hand
     [BurstCompile]
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandCommandEmitterSystem))]
+    [UpdateBefore(typeof(PhysicsInitializeGroup))]
     public partial struct HandPickupSystem : ISystem
     {
         private ComponentLookup<PickableTag> _pickableTagLookup;
@@ -27,6 +31,8 @@ namespace PureDOTS.Systems.Hand
         private ComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<WorldManipulableTag> _worldManipulableLookup;
         private ComponentLookup<NeverPickableTag> _neverPickableLookup;
+        private ComponentLookup<MovementSuppressed> _movementSuppressedLookup;
+        private NativeParallelHashSet<Entity> _loggedFallbackEntities;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -39,6 +45,16 @@ namespace PureDOTS.Systems.Hand
             _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(false);
             _worldManipulableLookup = state.GetComponentLookup<WorldManipulableTag>(true);
             _neverPickableLookup = state.GetComponentLookup<NeverPickableTag>(true);
+            _movementSuppressedLookup = state.GetComponentLookup<MovementSuppressed>(true);
+            _loggedFallbackEntities = new NativeParallelHashSet<Entity>(128, Allocator.Persistent);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            if (_loggedFallbackEntities.IsCreated)
+            {
+                _loggedFallbackEntities.Dispose();
+            }
         }
 
         [BurstCompile]
@@ -47,6 +63,11 @@ namespace PureDOTS.Systems.Hand
             var timeState = SystemAPI.GetSingleton<TimeState>();
             uint currentTick = timeState.Tick;
             var input = SystemAPI.GetSingleton<HandInputFrame>();
+            var interactionPolicy = InteractionPolicy.CreateDefault();
+            if (SystemAPI.TryGetSingleton(out InteractionPolicy interactionPolicyValue))
+            {
+                interactionPolicy = interactionPolicyValue;
+            }
             var policy = new HandPickupPolicy
             {
                 AutoPickDynamicPhysics = 0,
@@ -54,9 +75,9 @@ namespace PureDOTS.Systems.Hand
                 DebugWorldGrabAny = 0,
                 WorldGrabRequiresTag = 1
             };
-            if (SystemAPI.TryGetSingleton(out HandPickupPolicy policyValue))
+            if (SystemAPI.TryGetSingleton(out HandPickupPolicy pickupPolicyValue))
             {
-                policy = policyValue;
+                policy = pickupPolicyValue;
             }
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
@@ -66,6 +87,7 @@ namespace PureDOTS.Systems.Hand
             _velocityLookup.Update(ref state);
             _worldManipulableLookup.Update(ref state);
             _neverPickableLookup.Update(ref state);
+            _movementSuppressedLookup.Update(ref state);
 
             foreach (var (handStateRef, commandBuffer, handEntity) in SystemAPI.Query<RefRW<HandStateData>, DynamicBuffer<HandCommand>>().WithEntityAccess())
             {
@@ -80,7 +102,7 @@ namespace PureDOTS.Systems.Hand
                         continue;
                     }
 
-                    if (ProcessPickCommand(ref state, handEntity, ref handState, cmd, input, policy, ref ecb))
+                    if (ProcessPickCommand(ref state, handEntity, ref handState, cmd, input, policy, interactionPolicy, ref ecb))
                     {
                         buffer.RemoveAt(i);
                     }
@@ -93,7 +115,7 @@ namespace PureDOTS.Systems.Hand
             ecb.Dispose();
         }
 
-        private bool ProcessPickCommand(ref SystemState state, Entity handEntity, ref HandStateData handState, HandCommand cmd, in HandInputFrame input, HandPickupPolicy policy, ref EntityCommandBuffer ecb)
+        private bool ProcessPickCommand(ref SystemState state, Entity handEntity, ref HandStateData handState, HandCommand cmd, in HandInputFrame input, HandPickupPolicy policy, InteractionPolicy interactionPolicy, ref EntityCommandBuffer ecb)
         {
             var target = cmd.TargetEntity;
             if (target == Entity.Null || !state.EntityManager.Exists(target))
@@ -127,8 +149,29 @@ namespace PureDOTS.Systems.Hand
                 return false;
             }
 
+            bool hasMovementSuppressed = _movementSuppressedLookup.HasComponent(target);
+            if (!hasMovementSuppressed && interactionPolicy.AllowStructuralFallback == 0)
+            {
+                if (interactionPolicy.LogStructuralFallback != 0)
+                {
+                    LogFallbackOnce(target, "MovementSuppressed", skipped: true);
+                }
+                return false;
+            }
+
             ecb.AddComponent(target, new HandHeldTag { Holder = handEntity });
-            ecb.AddComponent<MovementSuppressed>(target);
+            if (hasMovementSuppressed)
+            {
+                ecb.SetComponentEnabled<MovementSuppressed>(target, true);
+            }
+            else
+            {
+                ecb.AddComponent<MovementSuppressed>(target);
+                if (interactionPolicy.LogStructuralFallback != 0)
+                {
+                    LogFallbackOnce(target, "MovementSuppressed", skipped: false);
+                }
+            }
 
             if (hasPhysicsVelocity)
             {
@@ -145,6 +188,18 @@ namespace PureDOTS.Systems.Hand
             handState.HoldDistance = math.max(handState.HoldDistance, 0f);
 
             return true;
+        }
+
+        [BurstDiscard]
+        private void LogFallbackOnce(Entity target, string componentName, bool skipped)
+        {
+            if (!_loggedFallbackEntities.IsCreated || !_loggedFallbackEntities.Add(target))
+            {
+                return;
+            }
+
+            var action = skipped ? "skipping pick (strict policy)" : "using structural fallback";
+            UDebug.LogWarning($"[HandPickupSystem] Missing {componentName} on entity {target.Index}:{target.Version}; {action}.");
         }
     }
 }

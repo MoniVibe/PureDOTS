@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
 using PureDOTS.Runtime.Rendering;
 using PureDOTS.Runtime.Resource;
 using PureDOTS.Runtime.Spatial;
@@ -316,6 +317,22 @@ namespace PureDOTS.Authoring
                 MinScale = math.max(0f, authoring.minScale),
                 MaxScale = math.max(authoring.minScale, authoring.maxScale),
                 DefaultUnits = math.max(0f, authoring.defaultUnits)
+            });
+
+            AddComponent<PickableTag>(entity);
+            AddComponent<HeldByPlayer>(entity);
+            SetComponentEnabled<HeldByPlayer>(entity, false);
+            AddComponent<MovementSuppressed>(entity);
+            SetComponentEnabled<MovementSuppressed>(entity, false);
+            AddComponent<BeingThrown>(entity);
+            SetComponentEnabled<BeingThrown>(entity, false);
+            var mass = math.max(0.1f, authoring.massPerUnit * authoring.defaultUnits);
+            AddComponent(entity, new HandPickable
+            {
+                Mass = mass,
+                MaxHoldDistance = 12f,
+                ThrowImpulseMultiplier = 1f,
+                FollowLerp = 0.25f
             });
 
             static FixedString64Bytes ToFixedString(string value)

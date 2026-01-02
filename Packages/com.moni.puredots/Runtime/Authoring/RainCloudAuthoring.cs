@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interaction;
 using PureDOTS.Runtime.Spatial;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -74,6 +75,12 @@ namespace PureDOTS.Authoring
                 ThrowImpulseMultiplier = math.max(0.1f, authoring.pickableThrowMultiplier),
                 FollowLerp = math.clamp(authoring.pickableFollowLerp, 0.01f, 1f)
             });
+            AddComponent<HeldByPlayer>(entity);
+            SetComponentEnabled<HeldByPlayer>(entity, false);
+            AddComponent<MovementSuppressed>(entity);
+            SetComponentEnabled<MovementSuppressed>(entity, false);
+            AddComponent<BeingThrown>(entity);
+            SetComponentEnabled<BeingThrown>(entity, false);
 #endif
 
             AddBuffer<RainCloudMoistureHistory>(entity);

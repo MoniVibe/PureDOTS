@@ -120,7 +120,8 @@ namespace PureDOTS.Systems
                 [ChunkIndexInQuery] int chunkIndex)
             {
                 // Skip if movement is suppressed (e.g., being held by player)
-                if (MovementSuppressedLookup.HasComponent(entity))
+                if (MovementSuppressedLookup.HasComponent(entity) &&
+                    MovementSuppressedLookup.IsComponentEnabled(entity))
                 {
                     movement.Velocity = float3.zero;
                     movement.DesiredVelocity = float3.zero;

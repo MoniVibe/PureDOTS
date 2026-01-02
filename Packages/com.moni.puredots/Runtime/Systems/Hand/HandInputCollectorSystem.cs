@@ -20,6 +20,7 @@ namespace PureDOTS.Systems.Hand
         private bool _previousReleaseOnePressed;
         private bool _previousReleaseAllPressed;
         private bool _previousToggleThrowMode;
+        private uint _sampleId;
 
         public void OnCreate(ref SystemState state)
         {
@@ -78,9 +79,9 @@ namespace PureDOTS.Systems.Hand
             bool ctrlHeld = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
             bool altHeld = keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed;
 
-            // Read hotkeys (Q for release one, E for release all, T for toggle throw mode)
-            bool releaseOnePressed = keyboard.qKey.wasPressedThisFrame;
-            bool releaseAllPressed = keyboard.eKey.wasPressedThisFrame;
+            // Read hotkeys (Q/1 for release one, E/2 for release all, T for toggle throw mode)
+            bool releaseOnePressed = keyboard.qKey.wasPressedThisFrame || keyboard.digit1Key.wasPressedThisFrame;
+            bool releaseAllPressed = keyboard.eKey.wasPressedThisFrame || keyboard.digit2Key.wasPressedThisFrame;
             bool toggleThrowMode = keyboard.tKey.wasPressedThisFrame;
 
             // Read scroll delta
@@ -93,6 +94,7 @@ namespace PureDOTS.Systems.Hand
             // Write HandInputFrame singleton
             var inputFrame = new HandInputFrame
             {
+                SampleId = ++_sampleId,
                 CursorScreenPos = cursorScreenPos,
                 RayOrigin = rayOrigin,
                 RayDirection = rayDirection,
