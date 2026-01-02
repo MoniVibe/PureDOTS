@@ -16,6 +16,7 @@ This runbook splits headless validation into two agents with per-project banks.
 - Keep `Packages/manifest.json` and `Packages/packages-lock.json` synced across clones when logic changes.
 - Headless rebuilds in WSL should use Windows Unity interop (set `FORCE_WINDOWS_UNITY=1`); do not rely on Linux Unity licensing.
 - Align Unity versions before rebuilds: read `ProjectSettings/ProjectVersion.txt` in the target repo and set `UNITY_WIN` to that exact version; treat any mismatch as a stale build and fix before proceeding.
+- When requesting a Windows rebuild from WSL, write the JSON to `/home/oni/Tri/ops/requests` and mirror it to `/mnt/c/dev/Tri/ops/requests` so the PowerShell agent can see it.
 
 ## Productivity requirement (non-negotiable)
 - Each cycle must attempt at least one headlesstask from `headlesstasks.md`.
