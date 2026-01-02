@@ -151,10 +151,19 @@ namespace PureDOTS.Systems.Telemetry
 
                 if ((config.Flags & TelemetryExportFlags.IncludeTelemetryMetrics) != 0)
                 {
-                    if (!ExportTelemetryMetrics(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                    var cadence = config.CadenceTicks > 0 ? config.CadenceTicks : 30u;
+                    var shouldExport = cadence <= 1u || tick % cadence == 0u;
+                    if (shouldExport)
                     {
-                        HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
-                        return;
+                        if (!ExportTelemetryMetrics(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                        {
+                            HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        ClearTelemetryMetricsBuffer();
                     }
                 }
 
@@ -443,6 +452,25 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return completed;
+        }
+
+        private void ClearTelemetryMetricsBuffer()
+        {
+            if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
+            {
+                return;
+            }
+
+            if (!EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
+            {
+                return;
+            }
+
+            var buffer = EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+            if (buffer.Length > 0)
+            {
+                buffer.Clear();
+            }
         }
 
         private bool ExportFrameTiming(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)

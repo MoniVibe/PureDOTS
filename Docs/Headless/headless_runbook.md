@@ -1,5 +1,9 @@
 # Headless Runbook - Build Channels + Test Bank (TRI)
 
+## Canonical invocation (ACI)
+Use `Tools/Headless/headlessctl run_task <task_id> --seed <n> --pack nightly-default` as the canonical headless entrypoint.
+Manual shell commands are debug-only; prefer `headlessctl` for machine-gradable outputs and artifacts.
+
 Purpose: keep headless agents productive without rebuild churn and protect a pinned current build by enforcing:
 1) two build channels (scratch vs current),
 2) a promotion gate (bank green/stable),
