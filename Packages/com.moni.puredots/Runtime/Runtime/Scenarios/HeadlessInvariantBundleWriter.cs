@@ -2,18 +2,20 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Telemetry;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
-using SystemEnvironment = System.Environment;
 
 namespace PureDOTS.Runtime.Scenarios
 {
     public static class HeadlessInvariantBundleWriter
     {
-        private const string BundlePathEnvVar = "PUREDOTS_INVARIANT_BUNDLE_PATH";
-        private static string s_cachedPath;
-        private static bool s_pathResolved;
+        private const string TelemetryPathEnv = "PUREDOTS_TELEMETRY_PATH";
+        private const string Space4xScenarioPathEnv = "SPACE4X_SCENARIO_PATH";
+        private const string GodgameScenarioPathEnv = "GODGAME_SCENARIO_PATH";
+        private const string Space4xReportPathEnv = "SPACE4X_SCENARIO_REPORT_PATH";
 
         public static bool TryWriteBundle(
             EntityManager entityManager,
@@ -21,104 +23,109 @@ namespace PureDOTS.Runtime.Scenarios
             string message,
             uint tick,
             float worldSeconds,
-            Entity entity,
-            bool hasEntity,
-            float3 position,
-            bool hasPosition,
-            float3 velocity,
-            bool hasVelocity,
-            quaternion rotation,
-            bool hasRotation)
+            Entity entity = default,
+            bool hasEntity = false,
+            float3 position = default,
+            bool hasPosition = false,
+            float3 velocity = default,
+            bool hasVelocity = false,
+            quaternion rotation = default,
+            bool hasRotation = false)
         {
-            if (!TryResolvePath(out var path))
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
             {
                 return false;
             }
+
+            var telemetryPath = ResolveTelemetryPath(entityManager);
+            var scenarioPath = ResolveScenarioPath();
+            var reportPath = ResolveReportPath();
+            var outputDir = ResolveOutputDirectory(telemetryPath, reportPath, scenarioPath);
+            if (string.IsNullOrWhiteSpace(outputDir))
+            {
+                return false;
+            }
+
+            Directory.CreateDirectory(outputDir);
+            var baseName = ResolveBaseName(telemetryPath);
+            var fileName = $"{baseName}_invariant_{SanitizeFileName(code)}_tick{tick}.json";
+            var outputPath = Path.Combine(outputDir, fileName);
+
+            var scenarioId = string.Empty;
+            var seed = 0u;
+            if (TryGetScenarioInfo(entityManager, out var info))
+            {
+                scenarioId = info.ScenarioId.ToString();
+                seed = info.Seed;
+            }
+
+            var sb = new StringBuilder(512);
+            var first = true;
+            sb.Append('{');
+            AppendString(ref first, sb, "code", code ?? string.Empty);
+            AppendString(ref first, sb, "message", message ?? string.Empty);
+            AppendUInt(ref first, sb, "tick", tick);
+            AppendFloat(ref first, sb, "worldSeconds", worldSeconds);
+            if (!string.IsNullOrEmpty(scenarioId))
+            {
+                AppendString(ref first, sb, "scenarioId", scenarioId);
+                AppendUInt(ref first, sb, "seed", seed);
+            }
+            if (!string.IsNullOrEmpty(scenarioPath))
+            {
+                AppendString(ref first, sb, "scenarioPath", scenarioPath);
+            }
+            if (!string.IsNullOrEmpty(reportPath))
+            {
+                AppendString(ref first, sb, "reportPath", reportPath);
+            }
+            if (!string.IsNullOrEmpty(telemetryPath))
+            {
+                AppendString(ref first, sb, "telemetryPath", telemetryPath);
+            }
+            if (hasEntity)
+            {
+                AppendInt(ref first, sb, "entityIndex", entity.Index);
+                AppendInt(ref first, sb, "entityVersion", entity.Version);
+            }
+            if (hasPosition)
+            {
+                AppendFloat3(ref first, sb, "position", position);
+            }
+            if (hasVelocity)
+            {
+                AppendFloat3(ref first, sb, "velocity", velocity);
+            }
+            if (hasRotation)
+            {
+                AppendQuaternion(ref first, sb, "rotation", rotation);
+            }
+
+            AppendString(ref first, sb, "utc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            sb.Append('}');
 
             try
             {
-                var sb = new StringBuilder(512);
-                sb.Append('{');
-                sb.Append("\"code\":\"");
-                AppendEscaped(sb, code);
-                sb.Append("\",\"message\":\"");
-                AppendEscaped(sb, message);
-                sb.Append("\",\"tick\":");
-                sb.Append(tick);
-                sb.Append(",\"worldSeconds\":");
-                sb.Append(worldSeconds.ToString("0.###", CultureInfo.InvariantCulture));
-
-                if (TryGetScenarioInfo(entityManager, out var info))
-                {
-                    sb.Append(",\"scenarioId\":\"");
-                    AppendEscaped(sb, info.ScenarioId.ToString());
-                    sb.Append("\",\"seed\":");
-                    sb.Append(info.Seed);
-                    sb.Append(",\"runTicks\":");
-                    sb.Append(info.RunTicks);
-                }
-
-                if (hasEntity)
-                {
-                    sb.Append(",\"entity\":{");
-                    sb.Append("\"index\":");
-                    sb.Append(entity.Index);
-                    sb.Append(",\"version\":");
-                    sb.Append(entity.Version);
-                    sb.Append('}');
-                }
-
-                if (hasPosition)
-                {
-                    AppendVector3(sb, "position", position);
-                }
-
-                if (hasVelocity)
-                {
-                    AppendVector3(sb, "velocity", velocity);
-                }
-
-                if (hasRotation)
-                {
-                    AppendQuaternion(sb, "rotation", rotation);
-                }
-
-                sb.Append('}');
-
-                var directory = Path.GetDirectoryName(path);
-                if (!string.IsNullOrWhiteSpace(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                File.WriteAllText(path, sb.ToString());
+                File.WriteAllText(outputPath, sb.ToString());
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
-                Debug.LogWarning($"[HeadlessInvariantBundleWriter] Failed to write invariant bundle: {ex.Message}");
                 return false;
             }
-        }
-
-        private static bool TryResolvePath(out string path)
-        {
-            if (!s_pathResolved)
-            {
-                s_cachedPath = SystemEnvironment.GetEnvironmentVariable(BundlePathEnvVar);
-                s_pathResolved = true;
-            }
-
-            path = s_cachedPath;
-            return !string.IsNullOrWhiteSpace(path);
         }
 
         private static bool TryGetScenarioInfo(EntityManager entityManager, out ScenarioInfo info)
         {
+            info = default;
+            if (!entityManager.IsCreated)
+            {
+                return false;
+            }
+
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ScenarioInfo>());
             if (query.IsEmptyIgnoreFilter)
             {
-                info = default;
                 return false;
             }
 
@@ -126,64 +133,188 @@ namespace PureDOTS.Runtime.Scenarios
             return true;
         }
 
-        private static void AppendVector3(StringBuilder sb, string name, float3 value)
+        private static string ResolveTelemetryPath(EntityManager entityManager)
         {
-            sb.Append(",\"").Append(name).Append("\":{");
-            sb.Append("\"x\":").Append(value.x.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(",\"y\":").Append(value.y.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(",\"z\":").Append(value.z.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append('}');
+            if (entityManager.IsCreated)
+            {
+                using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportConfig>());
+                if (!query.IsEmptyIgnoreFilter)
+                {
+                    var config = query.GetSingleton<TelemetryExportConfig>();
+                    if (config.Enabled != 0 && config.OutputPath.Length > 0)
+                    {
+                        return config.OutputPath.ToString();
+                    }
+                }
+            }
+
+            return Environment.GetEnvironmentVariable(TelemetryPathEnv) ?? string.Empty;
         }
 
-        private static void AppendQuaternion(StringBuilder sb, string name, quaternion value)
+        private static string ResolveScenarioPath()
         {
-            sb.Append(",\"").Append(name).Append("\":{");
-            sb.Append("\"x\":").Append(value.value.x.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(",\"y\":").Append(value.value.y.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(",\"z\":").Append(value.value.z.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(",\"w\":").Append(value.value.w.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append('}');
+            var space4x = Environment.GetEnvironmentVariable(Space4xScenarioPathEnv);
+            if (!string.IsNullOrWhiteSpace(space4x))
+            {
+                return space4x;
+            }
+
+            return Environment.GetEnvironmentVariable(GodgameScenarioPathEnv) ?? string.Empty;
         }
 
-        private static void AppendEscaped(StringBuilder sb, string value)
+        private static string ResolveReportPath()
+        {
+            return Environment.GetEnvironmentVariable(Space4xReportPathEnv) ?? string.Empty;
+        }
+
+        private static string ResolveOutputDirectory(string telemetryPath, string reportPath, string scenarioPath)
+        {
+            var directory = GetDirectory(telemetryPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                return directory;
+            }
+
+            directory = GetDirectory(reportPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                return directory;
+            }
+
+            directory = GetDirectory(scenarioPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                return directory;
+            }
+
+            var fallback = Application.persistentDataPath;
+            return string.IsNullOrWhiteSpace(fallback) ? "." : Path.Combine(fallback, "headless_invariants");
+        }
+
+        private static string ResolveBaseName(string telemetryPath)
+        {
+            if (!string.IsNullOrWhiteSpace(telemetryPath))
+            {
+                return Path.GetFileNameWithoutExtension(telemetryPath);
+            }
+
+            return "headless";
+        }
+
+        private static string GetDirectory(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            return Path.GetDirectoryName(path) ?? string.Empty;
+        }
+
+        private static string SanitizeFileName(string value)
         {
             if (string.IsNullOrEmpty(value))
             {
+                return "invariant";
+            }
+
+            var sanitized = value.Replace('/', '_').Replace('\\', '_').Replace(' ', '_');
+            foreach (var ch in Path.GetInvalidFileNameChars())
+            {
+                sanitized = sanitized.Replace(ch, '_');
+            }
+
+            return sanitized;
+        }
+
+        private static void AppendString(ref bool first, StringBuilder sb, string key, string value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":\"").Append(Escape(value)).Append('"');
+        }
+
+        private static void AppendUInt(ref bool first, StringBuilder sb, string key, uint value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":").Append(value);
+        }
+
+        private static void AppendInt(ref bool first, StringBuilder sb, string key, int value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":").Append(value);
+        }
+
+        private static void AppendFloat(ref bool first, StringBuilder sb, string key, float value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":");
+            AppendFloatValue(sb, value);
+        }
+
+        private static void AppendFloat3(ref bool first, StringBuilder sb, string key, float3 value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":[");
+            AppendFloatValue(sb, value.x);
+            sb.Append(',');
+            AppendFloatValue(sb, value.y);
+            sb.Append(',');
+            AppendFloatValue(sb, value.z);
+            sb.Append(']');
+        }
+
+        private static void AppendQuaternion(ref bool first, StringBuilder sb, string key, quaternion value)
+        {
+            AppendSeparator(ref first, sb);
+            sb.Append('"').Append(key).Append("\":[");
+            var v = value.value;
+            AppendFloatValue(sb, v.x);
+            sb.Append(',');
+            AppendFloatValue(sb, v.y);
+            sb.Append(',');
+            AppendFloatValue(sb, v.z);
+            sb.Append(',');
+            AppendFloatValue(sb, v.w);
+            sb.Append(']');
+        }
+
+        private static void AppendSeparator(ref bool first, StringBuilder sb)
+        {
+            if (!first)
+            {
+                sb.Append(',');
                 return;
             }
 
-            foreach (var ch in value)
+            first = false;
+        }
+
+        private static void AppendFloatValue(StringBuilder sb, float value)
+        {
+            if (float.IsNaN(value))
             {
-                switch (ch)
-                {
-                    case '\\':
-                        sb.Append("\\\\");
-                        break;
-                    case '"':
-                        sb.Append("\\\"");
-                        break;
-                    case '\n':
-                        sb.Append("\\n");
-                        break;
-                    case '\r':
-                        sb.Append("\\r");
-                        break;
-                    case '\t':
-                        sb.Append("\\t");
-                        break;
-                    default:
-                        if (ch < ' ')
-                        {
-                            sb.Append("\\u");
-                            sb.Append(((int)ch).ToString("x4", CultureInfo.InvariantCulture));
-                        }
-                        else
-                        {
-                            sb.Append(ch);
-                        }
-                        break;
-                }
+                sb.Append("\"NaN\"");
+                return;
             }
+
+            if (float.IsInfinity(value))
+            {
+                sb.Append(value > 0f ? "\"Inf\"" : "\"-Inf\"");
+                return;
+            }
+
+            sb.Append(value.ToString("0.###", CultureInfo.InvariantCulture));
+        }
+
+        private static string Escape(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
     }
 }
