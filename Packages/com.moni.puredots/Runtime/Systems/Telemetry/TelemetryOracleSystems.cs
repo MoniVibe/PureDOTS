@@ -257,7 +257,7 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
-        private static void AccumulatePowerMetrics(ref SystemState state, float deltaSeconds, ref TelemetryOracleAccumulator acc)
+        private void AccumulatePowerMetrics(ref SystemState state, float deltaSeconds, ref TelemetryOracleAccumulator acc)
         {
             if (deltaSeconds <= 0f)
             {
@@ -316,7 +316,7 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
-        private static void AccumulateCollisionMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc)
+        private void AccumulateCollisionMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc)
         {
             uint collisionEvents = 0;
             foreach (var buffer in SystemAPI.Query<DynamicBuffer<PhysicsCollisionEventElement>>())
@@ -336,7 +336,7 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
-        private static void EmitOracleMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
+        private void EmitOracleMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
         {
             if (!SystemAPI.TryGetSingletonBuffer<TelemetryMetric>(out var metrics))
             {
