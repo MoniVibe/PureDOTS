@@ -92,18 +92,15 @@ namespace PureDOTS.Systems.Telemetry
                 return;
             }
 
-            if (!SystemAPI.HasSingleton<TelemetryOracleAccumulator>())
+            var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
+            if (!state.EntityManager.HasComponent<TelemetryOracleAccumulator>(telemetryEntity))
             {
-                var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
-                if (!state.EntityManager.HasComponent<TelemetryOracleAccumulator>(telemetryEntity))
-                {
-                    state.EntityManager.AddComponentData(telemetryEntity, TelemetryOracleAccumulator.CreateDefault());
-                }
+                state.EntityManager.AddComponentData(telemetryEntity, TelemetryOracleAccumulator.CreateDefault());
+            }
 
-                if (!state.EntityManager.HasBuffer<TelemetryOracleLatencySample>(telemetryEntity))
-                {
-                    state.EntityManager.AddBuffer<TelemetryOracleLatencySample>(telemetryEntity);
-                }
+            if (!state.EntityManager.HasBuffer<TelemetryOracleLatencySample>(telemetryEntity))
+            {
+                state.EntityManager.AddBuffer<TelemetryOracleLatencySample>(telemetryEntity);
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -116,9 +113,8 @@ namespace PureDOTS.Systems.Telemetry
             _movementModeLookup.Update(ref state);
             _moduleStateLookup.Update(ref state);
 
-            var accumulator = SystemAPI.GetSingletonRW<TelemetryOracleAccumulator>();
-            var acc = accumulator.ValueRO;
-            var latencyBuffer = SystemAPI.GetSingletonBuffer<TelemetryOracleLatencySample>();
+            var acc = state.EntityManager.GetComponentData<TelemetryOracleAccumulator>(telemetryEntity);
+            var latencyBuffer = state.EntityManager.GetBuffer<TelemetryOracleLatencySample>(telemetryEntity);
 
             var deltaSeconds = timeState.IsPaused ? 0f : math.max(0f, timeState.DeltaSeconds);
             acc.SampleTicks += 1;
@@ -136,7 +132,7 @@ namespace PureDOTS.Systems.Telemetry
                 acc = TelemetryOracleAccumulator.CreateDefault();
             }
 
-            accumulator.ValueRW = acc;
+            state.EntityManager.SetComponentData(telemetryEntity, acc);
         }
 
         private void AccumulateAiMetrics(ref SystemState state, uint tick, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
