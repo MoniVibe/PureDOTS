@@ -100,6 +100,10 @@ Builder modes:
 - `TRI_BUILDER_MODE=build`: run local Unity builds and publish artifacts.
 - `TRI_BUILDER_MODE=orchestrator`: do not run Unity; write a result with `status=queued_external` and unlock.
 
+Path compatibility:
+- `current_*.json` must use WSL/Linux paths for the runner.
+- When running on Windows, set `TRI_STATE_DIR_WSL=/home/oni/Tri/.tri/state` (or equivalent) so the builder/ingest writes WSL paths.
+
 ## Idempotency (Required)
 
 - Builder may re-run a request with the same id safely.

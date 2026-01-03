@@ -40,6 +40,20 @@ function Resolve-StateDir {
     }
 }
 
+$stateDirWin = $null
+$stateDirWsl = $null
+function Resolve-StateDirWsl {
+    $script:stateDirWin = $env:TRI_STATE_DIR
+    if ($env:TRI_STATE_DIR_WSL) {
+        $script:stateDirWsl = $env:TRI_STATE_DIR_WSL
+        return
+    }
+    if ($script:stateDirWin -match "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\") {
+        $script:stateDirWsl = $script:stateDirWin -replace "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\", ""
+        $script:stateDirWsl = "/" + ($script:stateDirWsl -replace "\\\\", "/")
+    }
+}
+
 function Get-ShellExe {
     if ($PSVersionTable.PSEdition -eq "Core") {
         return (Join-Path $PSHOME "pwsh.exe")
@@ -77,6 +91,7 @@ function Archive-RequestFiles([string]$RequestId) {
 
 Resolve-Root
 Resolve-StateDir
+Resolve-StateDirWsl
 
 $triOpsPath = Join-Path $PSScriptRoot "tri_ops.py"
 if (-not (Test-Path $triOpsPath)) {
@@ -206,17 +221,32 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
     $exePath = Join-Path $publishDir $ExeName
     $fullPublishDir = [System.IO.Path]::GetFullPath($publishDir)
     $fullExePath = [System.IO.Path]::GetFullPath($exePath)
+    $publishDirForOps = $fullPublishDir
+    $exePathForOps = $fullExePath
+    if ($stateDirWsl) {
+        $prefix = $stateDirWin.TrimEnd("\")
+        if ($fullPublishDir.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $suffix = $fullPublishDir.Substring($prefix.Length).TrimStart("\")
+            $suffix = $suffix -replace "\\\\", "/"
+            $publishDirForOps = $stateDirWsl.TrimEnd("/") + "/" + $suffix
+        }
+        if ($fullExePath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $suffix = $fullExePath.Substring($prefix.Length).TrimStart("\")
+            $suffix = $suffix -replace "\\\\", "/"
+            $exePathForOps = $stateDirWsl.TrimEnd("/") + "/" + $suffix
+        }
+    }
 
     Invoke-TriOps @(
-        "write_current", "--project", $Project, "--path", $fullPublishDir,
-        "--executable", $fullExePath, "--build-commit", $commit,
+        "write_current", "--project", $Project, "--path", $publishDirForOps,
+        "--executable", $exePathForOps, "--build-commit", $commit,
         "--build-id", $buildId, "--request-id", $RequestId
     ) | Out-Null
 
     return @{
         BuildCommit = $commit
-        PublishedPath = $fullPublishDir
-        ExecutablePath = $fullExePath
+        PublishedPath = $publishDirForOps
+        ExecutablePath = $exePathForOps
         BuildId = $buildId
     }
 }
