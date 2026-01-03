@@ -11,3 +11,10 @@
   - Mitigation: set PUREDOTS_TELEMETRY_LEVEL=summary (optionally PUREDOTS_TELEMETRY_FLAGS=metrics,frame)
   - Fix: TelemetryExportBootstrapSystem defaults to Summary in batch when level is Unspecified and flags unset (commit f0e2fa8)
   - Evidence (pre-fix): Space4x smoke summary 184,947,236 and 213,574,673 bytes on build_id 20260103_214440_1db54f9099 (cycle_telemetry_safe_20260103_222942); no telemetryTruncated marker
+- UTC: 2026-01-03T21:41:29Z
+  - Signature: ORACLE_KEYS_MISSING (telemetry.oracle.heartbeat, move.stuck_ticks, ai.idle_with_work_ratio absent)
+  - Repro: Space4x smoke on build_id 20260103_233603_1db54f9099 and Godgame smoke on build_id 20260103_233651_a518b02816
+  - Evidence: `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/telemetry/space4x_smoke_oracle.ndjson` + excerpt `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/oracle_missing_excerpt.txt`
+  - Likely cause: TelemetryOracleAccumulatorSystem not emitting to telemetry buffer (heartbeat missing)
+  - Mitigation: none yet (do not assume oracle keys exist; treat H-T02 as FAIL)
+  - Fix attempts: emit metrics via stream buffer (commit 9c56043), run before export (commit d13436d), bind oracle state to stream entity (commit c7094cf)

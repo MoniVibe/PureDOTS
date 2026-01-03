@@ -283,6 +283,17 @@ Format:
 - Result: FAIL (payload exceeds threshold; no truncation markers found)
 - Notes: `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_telemetry_safe_20260103_222942/space4x/telemetry/space4x_smoke_run1.ndjson` and `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_telemetry_safe_20260103_222942/space4x/telemetry/space4x_smoke_run2.ndjson`.
 
+- UTC: 2026-01-03T21:41:29Z
+- Agent: WSL-Headless
+- Project: Cross-cutting
+- Task: H-T02 Payload stability / oracle coverage
+- Scenario: `/mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json` + `/mnt/c/dev/Tri/godgame/Assets/Scenarios/Godgame/godgame_smoke.json`
+- Baseline: N/A (oracle keys missing)
+- Threshold: telemetry.oracle.heartbeat + move.stuck_ticks + ai.idle_with_work_ratio present in NDJSON
+- Action: Ran smoke on new builds and scanned for oracle keys; captured excerpt for missing keys.
+- Result: FAIL (oracle heartbeat missing in both runs)
+- Notes: Space4x `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/telemetry/space4x_smoke_oracle.ndjson` and excerpt `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/oracle_missing_excerpt.txt` (build_id 20260103_233603_1db54f9099). Godgame `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/godgame/telemetry/godgame_smoke_oracle.ndjson` (build_id 20260103_233651_a518b02816).
+
 ## Cross-cutting
 - H-C01 Frame-rate independence (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: end-of-run total resource delta (pile + storehouse). Target: 30 vs 120 tick rate drift <= 1 unit. Status: pending.
 - H-C02 Resource conservation (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: AggregatePile.Take/Add and Storehouse.Add totals. Target: siphon 200 and dump 200 with no loss; events match totals. Status: pending.
@@ -325,7 +336,7 @@ Format:
 
 ## Telemetry Integrity
 - H-T01 Event ordering. Scenario: any headless run. Metric: monotonic tick + no duplicate IDs. Target: 0 violations. Status: pending.
-- H-T02 Payload stability. Scenario: any headless run. Metric: payload truncation and event rate. Target: zero truncation; stable rate within bounds. Status: pending.
+- H-T02 Payload stability / oracle coverage. Scenario: any headless run. Metric: payload truncation plus oracle keys (telemetry.oracle.heartbeat, move.stuck_ticks, ai.idle_with_work_ratio). Target: zero truncation; oracle keys present. Status: pending.
 
 ## Advanced Combat Tactics (Space4X)
 - H-CA01 Flanking behavior. Scenario: `space4x/Assets/Scenarios/space4x_mining_combat.json`. Metric: flank angle at first contact. Target: >= baseline flank rate with no path stalls. Status: pending.
