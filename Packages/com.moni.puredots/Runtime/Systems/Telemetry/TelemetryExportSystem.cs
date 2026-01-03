@@ -37,6 +37,7 @@ namespace PureDOTS.Systems.Telemetry
         private bool _oracleProbeEnabled;
         private bool _oracleProbeInitialized;
         private string _oracleProbeLoggedRunId;
+        private const string OracleProbeVersion = "oracle_probe_v1";
 
         protected override void OnCreate()
         {
@@ -972,6 +973,30 @@ namespace PureDOTS.Systems.Telemetry
             writer.Write("\",\"unityVersion\":\"");
             WriteEscapedString(writer, Application.unityVersion);
             writer.Write("\"");
+
+            var envOracleProbe = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_ORACLE_PROBE") ?? string.Empty;
+            var envTelemetryLevel = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_LEVEL") ?? string.Empty;
+            var envTelemetryFlags = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_FLAGS") ?? string.Empty;
+            var hasScenarioRunnerTick = SystemAPI.HasSingleton<ScenarioRunnerTick>();
+            var hasTickTimeState = SystemAPI.HasSingleton<TickTimeState>();
+            var hasTimeState = SystemAPI.HasSingleton<TimeState>();
+
+            writer.Write(",\"probeVersion\":\"");
+            WriteEscapedString(writer, OracleProbeVersion);
+            writer.Write("\",\"envOracleProbe\":\"");
+            WriteEscapedString(writer, envOracleProbe);
+            writer.Write("\",\"envTelemetryLevel\":\"");
+            WriteEscapedString(writer, envTelemetryLevel);
+            writer.Write("\",\"envTelemetryFlags\":\"");
+            WriteEscapedString(writer, envTelemetryFlags);
+            writer.Write("\",\"cadenceTicks\":");
+            writer.Write(config.CadenceTicks);
+            writer.Write(",\"hasScenarioRunnerTick\":");
+            writer.Write(hasScenarioRunnerTick ? "true" : "false");
+            writer.Write(",\"hasTickTimeState\":");
+            writer.Write(hasTickTimeState ? "true" : "false");
+            writer.Write(",\"hasTimeState\":");
+            writer.Write(hasTimeState ? "true" : "false");
 
             writer.Write(",\"scenarioId\":\"");
             WriteEscapedString(writer, _scenarioIdString);

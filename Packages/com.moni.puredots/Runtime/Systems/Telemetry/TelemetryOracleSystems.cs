@@ -10,6 +10,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace PureDOTS.Systems.Telemetry
 {
@@ -75,7 +76,6 @@ namespace PureDOTS.Systems.Telemetry
         {
             state.RequireForUpdate<TelemetryStream>();
             state.RequireForUpdate<TelemetryExportConfig>();
-            state.RequireForUpdate<TimeState>();
 
             _interruptLookup = state.GetBufferLookup<Interrupt>(true);
             _queuedIntentLookup = state.GetBufferLookup<QueuedIntent>(true);
@@ -103,9 +103,8 @@ namespace PureDOTS.Systems.Telemetry
                 state.EntityManager.AddBuffer<TelemetryOracleLatencySample>(telemetryEntity);
             }
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            var tick = timeState.Tick;
             var cadence = exportConfig.CadenceTicks > 0 ? exportConfig.CadenceTicks : 30u;
+            var tick = ResolveOracleTick(ref state);
             var shouldExport = cadence <= 1u || tick % cadence == 0u;
 
             _interruptLookup.Update(ref state);
@@ -116,7 +115,15 @@ namespace PureDOTS.Systems.Telemetry
             var acc = state.EntityManager.GetComponentData<TelemetryOracleAccumulator>(telemetryEntity);
             var latencyBuffer = state.EntityManager.GetBuffer<TelemetryOracleLatencySample>(telemetryEntity);
 
-            var deltaSeconds = timeState.IsPaused ? 0f : math.max(0f, timeState.DeltaSeconds);
+            float deltaSeconds;
+            if (SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+            {
+                deltaSeconds = timeState.IsPaused ? 0f : math.max(0f, timeState.DeltaSeconds);
+            }
+            else
+            {
+                deltaSeconds = math.max(0f, (float)SystemAPI.Time.DeltaTime);
+            }
             acc.SampleTicks += 1;
             acc.SampleSeconds += deltaSeconds;
 
@@ -133,6 +140,63 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             state.EntityManager.SetComponentData(telemetryEntity, acc);
+        }
+
+        private uint ResolveOracleTick(ref SystemState state)
+        {
+            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
+            {
+                return scenarioTick.Tick;
+            }
+
+            if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
+            {
+                var tick = tickState.Tick;
+                if (SystemAPI.TryGetSingleton<TimeState>(out var timeState) && timeState.Tick > tick)
+                {
+                    tick = timeState.Tick;
+                }
+
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var elapsedTick = ResolveBatchElapsedTick();
+                    if (elapsedTick > tick)
+                    {
+                        tick = elapsedTick;
+                    }
+                }
+
+                return tick;
+            }
+
+            if (SystemAPI.TryGetSingleton<TimeState>(out var legacyTime))
+            {
+                var tick = legacyTime.Tick;
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var elapsedTick = ResolveBatchElapsedTick();
+                    if (elapsedTick > tick)
+                    {
+                        tick = elapsedTick;
+                    }
+                }
+
+                return tick;
+            }
+
+            return Application.isBatchMode ? ResolveBatchElapsedTick() : 0u;
+        }
+
+        private uint ResolveBatchElapsedTick()
+        {
+            var dt = (float)SystemAPI.Time.DeltaTime;
+            var elapsed = (float)SystemAPI.Time.ElapsedTime;
+            if (dt > 0f && elapsed > 0f)
+            {
+                return (uint)(elapsed / dt);
+            }
+
+            return 0u;
         }
 
         private void AccumulateAiMetrics(ref SystemState state, uint tick, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
