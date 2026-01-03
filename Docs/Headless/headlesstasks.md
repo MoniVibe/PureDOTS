@@ -452,3 +452,13 @@ Format:
 - Action: Ran cycle_smoke_20260103_205559_2 for Space4x + Godgame; recorded telemetry paths
 - Result: PASS
 - Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205559_2/space4x/telemetry/space4x_headless_run_20260103_205559.ndjson; godgame telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205559_2/godgame/telemetry/godgame_headless_run_20260103_205832.ndjson
+- UTC: 2026-01-03T19:38:16Z
+- Agent: wsl-walktest
+- Project: Cross-cutting
+- Task: H-T02 Payload stability
+- Scenario: /mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json
+- Baseline: TelemetryOracle metrics missing (move.stuck_ticks, ai.idle_with_work_ratio); space4x.movement.stuck=685; space4x.movement.accelClamp=26576
+- Threshold: TelemetryOracle metrics present in telemetry output; no truncation markers
+- Action: Ran Space4x smoke (cycle_walktest_20260103_212146); confirmed oracle metrics absent in telemetry payload
+- Result: Pending (baseline captured)
+- Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_20260103_212146/space4x/telemetry/space4x_headless_run_20260103_212200.ndjson

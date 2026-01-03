@@ -76,7 +76,6 @@ namespace PureDOTS.Systems.Telemetry
             state.RequireForUpdate<TelemetryStream>();
             state.RequireForUpdate<TelemetryExportConfig>();
             state.RequireForUpdate<TimeState>();
-            state.RequireForUpdate<TelemetryOracleAccumulator>();
 
             _interruptLookup = state.GetBufferLookup<Interrupt>(true);
             _queuedIntentLookup = state.GetBufferLookup<QueuedIntent>(true);
@@ -91,6 +90,20 @@ namespace PureDOTS.Systems.Telemetry
                 (exportConfig.Flags & TelemetryExportFlags.IncludeTelemetryMetrics) == 0)
             {
                 return;
+            }
+
+            if (!SystemAPI.HasSingleton<TelemetryOracleAccumulator>())
+            {
+                var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
+                if (!state.EntityManager.HasComponent<TelemetryOracleAccumulator>(telemetryEntity))
+                {
+                    state.EntityManager.AddComponentData(telemetryEntity, TelemetryOracleAccumulator.CreateDefault());
+                }
+
+                if (!state.EntityManager.HasBuffer<TelemetryOracleLatencySample>(telemetryEntity))
+                {
+                    state.EntityManager.AddBuffer<TelemetryOracleLatencySample>(telemetryEntity);
+                }
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
