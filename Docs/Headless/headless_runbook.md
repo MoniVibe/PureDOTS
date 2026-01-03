@@ -99,6 +99,11 @@ Telemetry defaults (use unless debugging):
 - PUREDOTS_TELEMETRY_LEVEL=summary
 - PUREDOTS_TELEMETRY_MAX_BYTES=524288000
 
+## Oracle probe mode
+- Enable: set PUREDOTS_TELEMETRY_ORACLE_PROBE=1
+- Where to look: NDJSON lines with type="debug" in the telemetry output
+- Cycle log: paste the debug line(s) plus build_id and telemetry path(s)
+
 ---
 
 ## Machine-checkable PASS/FAIL contract
