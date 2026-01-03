@@ -462,3 +462,13 @@ Format:
 - Action: Ran Space4x smoke (cycle_walktest_20260103_212146); confirmed oracle metrics absent in telemetry payload
 - Result: Pending (baseline captured)
 - Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_20260103_212146/space4x/telemetry/space4x_headless_run_20260103_212200.ndjson
+- UTC: 2026-01-03T19:59:45Z
+- Agent: wsl-walktest
+- Project: Cross-cutting
+- Task: H-T02 Payload stability
+- Scenario: /mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json
+- Baseline: oracle metrics still absent after rebuild; space4x.movement.stuck=691/682; space4x.movement.accelClamp=28124/27584
+- Threshold: TelemetryOracle metrics present in telemetry output; no truncation markers
+- Action: Ran space4x_smoke twice on rebuilt binaries (cycle_walktest_postrebuild_20260103_214644)
+- Result: FAIL (oracle metrics missing)
+- Notes: telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_postrebuild_20260103_214644/space4x_run1/telemetry/space4x_headless_run_20260103_214658.ndjson and /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_postrebuild_20260103_214644/space4x_run2/telemetry/space4x_headless_run_20260103_214919.ndjson
