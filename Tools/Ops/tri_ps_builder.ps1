@@ -61,7 +61,12 @@ function Get-ShellExe {
     return (Join-Path $PSHOME "powershell.exe")
 }
 
-function Invoke-Git([string]$ProjectRoot, [string[]]$Args) {
+function Invoke-Git {
+    param(
+        [string]$ProjectRoot,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Args
+    )
     $prev = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
@@ -193,7 +198,7 @@ function Get-ProjectInfo([string]$Project) {
 }
 
 function Clean-Worktree([string]$ProjectRoot, [string]$ProjectName, [bool]$AutoClean) {
-    $statusResult = Invoke-Git $ProjectRoot @("status", "--porcelain")
+    $statusResult = Invoke-Git $ProjectRoot status --porcelain
     if ($statusResult.ExitCode -ne 0) {
         return @{
             Ok = $false
@@ -210,21 +215,21 @@ function Clean-Worktree([string]$ProjectRoot, [string]$ProjectName, [bool]$AutoC
             Error = "dirty worktree for ${ProjectName}; set TRI_GIT_AUTOCLEAN=1 or supply desired_build_commit. Dirty files: $dirtyLines"
         }
     }
-    $resetResult = Invoke-Git $ProjectRoot @("reset", "--hard", "--quiet")
+    $resetResult = Invoke-Git $ProjectRoot reset --hard --quiet
     if ($resetResult.ExitCode -ne 0) {
         return @{
             Ok = $false
             Error = "git reset --hard failed for ${ProjectName}: $($resetResult.Output)"
         }
     }
-    $cleanResult = Invoke-Git $ProjectRoot @("clean", "-fd", "--quiet")
+    $cleanResult = Invoke-Git $ProjectRoot clean -fd --quiet
     if ($cleanResult.ExitCode -ne 0) {
         return @{
             Ok = $false
             Error = "git clean -fd failed for ${ProjectName}: $($cleanResult.Output)"
         }
     }
-    $statusResult = Invoke-Git $ProjectRoot @("status", "--porcelain")
+    $statusResult = Invoke-Git $ProjectRoot status --porcelain
     if ($statusResult.ExitCode -ne 0) {
         return @{
             Ok = $false
@@ -252,14 +257,14 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
         return $cleanResult
     }
 
-    $fetchResult = Invoke-Git $ProjectRoot @("fetch", "--prune")
+    $fetchResult = Invoke-Git $ProjectRoot fetch --prune
     if ($fetchResult.ExitCode -ne 0) {
         return @{
             Ok = $false
             Error = "git fetch failed for ${ProjectName}: $($fetchResult.Output)"
         }
     }
-    $branchResult = Invoke-Git $ProjectRoot @("rev-parse", "--abbrev-ref", "HEAD")
+    $branchResult = Invoke-Git $ProjectRoot rev-parse --abbrev-ref HEAD
     if ($branchResult.ExitCode -ne 0) {
         return @{
             Ok = $false
@@ -268,7 +273,7 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
     }
     $currentBranch = $branchResult.Output
     if ($DesiredCommit) {
-        $checkoutResult = Invoke-Git $ProjectRoot @("checkout", "--quiet", $DesiredCommit)
+        $checkoutResult = Invoke-Git $ProjectRoot checkout --quiet $DesiredCommit
         if ($checkoutResult.ExitCode -ne 0) {
             return @{
                 Ok = $false
@@ -277,9 +282,9 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
         }
         return @{ Ok = $true; Error = ""; OriginalBranch = $currentBranch }
     }
-    $upstreamResult = Invoke-Git $ProjectRoot @("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    $upstreamResult = Invoke-Git $ProjectRoot rev-parse --abbrev-ref --symbolic-full-name "@{u}"
     $upstream = if ($upstreamResult.ExitCode -eq 0) { $upstreamResult.Output } else { "origin/$currentBranch" }
-    $pullResult = Invoke-Git $ProjectRoot @("merge", "--ff-only", "--quiet", $upstream)
+    $pullResult = Invoke-Git $ProjectRoot merge --ff-only --quiet $upstream
     if ($pullResult.ExitCode -ne 0) {
         return @{
             Ok = $false
@@ -484,7 +489,7 @@ while ($true) {
         if ($desiredCommit -and $originalBranches.Count -gt 0) {
             foreach ($entry in $originalBranches.GetEnumerator()) {
                 $projectRoot = Join-Path $env:TRI_ROOT $entry.Key
-                $restoreResult = Invoke-Git $projectRoot @("checkout", "--quiet", $entry.Value)
+                $restoreResult = Invoke-Git $projectRoot checkout --quiet $entry.Value
                 if ($restoreResult.ExitCode -ne 0 -and $overallStatus -eq "ok") {
                     $overallStatus = "failed"
                     $errorMessage = "git checkout restore failed for $($entry.Key): $($restoreResult.Output)"
