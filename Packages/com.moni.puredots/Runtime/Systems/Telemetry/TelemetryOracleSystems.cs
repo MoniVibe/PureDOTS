@@ -62,8 +62,8 @@ namespace PureDOTS.Systems.Telemetry
     }
 
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(PureDOTS.Runtime.Telemetry.BehaviorTelemetryAggregateSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateBefore(typeof(TelemetryExportSystem))]
     public partial struct TelemetryOracleAccumulatorSystem : ISystem
     {
         private BufferLookup<Interrupt> _interruptLookup;
