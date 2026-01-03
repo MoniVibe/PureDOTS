@@ -54,6 +54,23 @@ function Write-Supervisor([string]$Message) {
     "$stamp $Message" | Out-File -Encoding ascii -Append -FilePath $superLog
 }
 
+function Acquire-SupervisorMutex {
+    $createdNew = $false
+    $mutexName = "Global\\TriOpsPsSupervisor"
+    try {
+        $script:SupervisorMutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
+    } catch {
+        $mutexName = "Local\\TriOpsPsSupervisor"
+        $script:SupervisorMutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
+    }
+    if (-not $createdNew) {
+        Write-Supervisor "supervisor already running; exiting"
+        return $false
+    }
+    Write-Supervisor "mutex_acquired $mutexName"
+    return $true
+}
+
 function Get-ShellExe {
     if ($PSVersionTable.PSEdition -eq "Core") {
         return (Join-Path $PSHOME "pwsh.exe")
@@ -79,6 +96,10 @@ function Is-Running([string]$ScriptName) {
 
 $bootstrapPath = Join-Path $PSScriptRoot "tri_ps_bootstrap.ps1"
 $ingestPath = Join-Path $PSScriptRoot "tri_ps_ingest.ps1"
+
+if (-not (Acquire-SupervisorMutex)) {
+    return
+}
 
 Write-Supervisor "supervisor_start"
 
