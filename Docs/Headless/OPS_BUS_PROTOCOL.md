@@ -103,6 +103,7 @@ Builder modes:
 Path compatibility:
 - `current_*.json` must use WSL/Linux paths for the runner.
 - When running on Windows, set `TRI_STATE_DIR_WSL=/home/oni/Tri/.tri/state` (or equivalent) so the builder/ingest writes WSL paths.
+- If builds are copied from Windows into WSL, the executable bit may be stripped; the WSL runner enforces `chmod +x` before execution.
 
 ## Idempotency (Required)
 
