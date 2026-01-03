@@ -96,8 +96,8 @@ $pollSeconds = if ($env:TRI_OPS_POLL_SECONDS) { [int]$env:TRI_OPS_POLL_SECONDS }
 $leaseSeconds = if ($env:TRI_OPS_LEASE_SECONDS) { [int]$env:TRI_OPS_LEASE_SECONDS } else { 900 }
 
 function Invoke-TriOps {
-    param([string[]]$Args)
-    $output = & $pythonCmd.Exe @($pythonCmd.Args + @($triOpsPath) + $Args) 2>&1 | Out-String
+    param([string[]]$TriOpsArgs)
+    $output = & $pythonCmd.Exe @($pythonCmd.Args + @($triOpsPath) + $TriOpsArgs) 2>&1 | Out-String
     return [pscustomobject]@{
         ExitCode = $LASTEXITCODE
         Output = $output.Trim()
