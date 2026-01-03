@@ -306,6 +306,17 @@ Format:
 - Result: FAIL (no debug record emitted)
 - Notes: Space4x `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe_20260104_000042/space4x/telemetry/space4x_smoke_oracle_probe.ndjson` (build_id 20260103_235930_1db54f9099). Godgame `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe_20260104_000042/godgame/telemetry/godgame_smoke_oracle_probe.ndjson` (build_id 20260104_000017_a518b02816). No `type=debug` lines found.
 
+- UTC: 2026-01-03T22:35:14Z
+- Agent: WSL-Headless
+- Project: Cross-cutting
+- Task: H-T02 Payload stability / oracle coverage
+- Scenario: `/mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json` + `/mnt/c/dev/Tri/godgame/Assets/Scenarios/Godgame/godgame_smoke.json`
+- Baseline: N/A (oracle keys + probe header missing)
+- Threshold: run header includes probe fields; oracle keys present
+- Action: Ran smoke with PUREDOTS_TELEMETRY_ORACLE_PROBE=1 and captured run header lines.
+- Result: FAIL (run header has no probe fields; oracle keys still missing)
+- Notes: Space4x run header `{\"type\":\"run\",\"runId\":\"8fb865d640a7421e91ad8e5635970b74\",\"timestamp\":\"2026-01-03T22:31:20.2153440+00:00\",\"world\":\"Game World\",\"flags\":3,\"application\":\"Space4x\",\"unityVersion\":\"6000.3.1f1\",\"scenarioId\":\"space4x_smoke\",\"seed\":77,\"scenarioKind\":0,\"scenarioKindLabel\":\"AllSystemsShowcase\",\"bootPhase\":0,\"isInitialized\":false,\"enableGodgame\":true,\"enableSpace4x\":true,\"enableEconomy\":false}`; Godgame run header `{\"type\":\"run\",\"runId\":\"547d49d4e48849498c7e43f8ceec3299\",\"timestamp\":\"2026-01-03T22:34:09.2203220+00:00\",\"world\":\"Game World\",\"flags\":3,\"application\":\"Godgame\",\"unityVersion\":\"6000.3.1f1\",\"scenarioId\":\"scenario.godgame.smoke\",\"seed\":42,\"scenarioKind\":0,\"scenarioKindLabel\":\"AllSystemsShowcase\",\"bootPhase\":0,\"isInitialized\":false,\"enableGodgame\":true,\"enableSpace4x\":true,\"enableEconomy\":false}`. NDJSON: `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe2_20260104_003105/space4x/telemetry/space4x_smoke_oracle_probe.ndjson` (build_id 20260104_002948_1db54f9099), `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe2_20260104_003105/godgame/telemetry/godgame_smoke_oracle_probe.ndjson` (build_id 20260104_003036_a518b02816).
+
 ## Cross-cutting
 - H-C01 Frame-rate independence (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: end-of-run total resource delta (pile + storehouse). Target: 30 vs 120 tick rate drift <= 1 unit. Status: pending.
 - H-C02 Resource conservation (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: AggregatePile.Take/Add and Storehouse.Add totals. Target: siphon 200 and dump 200 with no loss; events match totals. Status: pending.
