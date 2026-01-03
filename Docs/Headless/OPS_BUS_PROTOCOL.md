@@ -192,3 +192,9 @@ Both scripts set `TRI_STATE_DIR` and keep heartbeats fresh while polling.
 
 - WSL startup helper: `Tools/Ops/tri_wsl_startup.sh` (tmux if available, otherwise nohup).
 - Windows startup helper: `Tools/Ops/tri_ps_startup.ps1` (launches `tri_ps_bootstrap.ps1` hidden).
+- If Task Scheduler is blocked by permissions, use a Startup folder .cmd that calls
+  `Tools/Ops/tri_ps_task_wrapper.ps1` with parameters, for example:
+  `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\TriOps-PS.cmd`
+  ```
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\dev\Tri\puredots\Tools\Ops\tri_ps_task_wrapper.ps1" -TriRoot "C:\dev\Tri" -TriStateDir "\\wsl$\Ubuntu\home\oni\Tri\.tri\state" -BuilderMode orchestrator -Distro Ubuntu
+  ```
