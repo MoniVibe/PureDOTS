@@ -3,6 +3,13 @@ set -u -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSION_NAME="${TRI_OPS_TMUX_SESSION:-tri-ops}"
+STATE_LOCKDOWN="${SCRIPT_DIR}/tri_state_lockdown.sh"
+
+export TRI_ROOT="${TRI_ROOT:-/mnt/c/dev/Tri}"
+export TRI_STATE_DIR="${TRI_STATE_DIR:-/mnt/c/dev/Tri/.tri/state}"
+if [ -x "$STATE_LOCKDOWN" ]; then
+  "$STATE_LOCKDOWN" || true
+fi
 
 if command -v tmux >/dev/null 2>&1; then
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then

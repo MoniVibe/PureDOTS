@@ -2,6 +2,7 @@
 set -u -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+STATE_LOCKDOWN="${SCRIPT_DIR}/tri_state_lockdown.sh"
 
 require_workspace() {
   local root="$1"
@@ -11,9 +12,13 @@ require_workspace() {
   fi
 }
 
+if [ -x "$STATE_LOCKDOWN" ]; then
+  "$STATE_LOCKDOWN" || true
+fi
+
 if [ -z "${TRI_ROOT:-}" ]; then
-  if [ -d "/home/oni/Tri/space4x" ] && [ -d "/home/oni/Tri/godgame" ] && [ -d "/home/oni/Tri/Tools" ]; then
-    TRI_ROOT="/home/oni/Tri"
+  if [ -d "/mnt/c/dev/Tri/space4x" ] && [ -d "/mnt/c/dev/Tri/godgame" ] && [ -d "/mnt/c/dev/Tri/Tools" ]; then
+    TRI_ROOT="/mnt/c/dev/Tri"
   else
     echo "TRI_ROOT must be set; required folders: space4x, godgame, Tools"
     exit 2
@@ -22,13 +27,7 @@ fi
 
 require_workspace "$TRI_ROOT"
 
-if [ -z "${TRI_STATE_DIR:-}" ]; then
-  if [ -d "/home/oni/Tri" ]; then
-    TRI_STATE_DIR="/home/oni/Tri/.tri/state"
-  else
-    TRI_STATE_DIR="${TRI_ROOT}/.tri/state"
-  fi
-fi
+TRI_STATE_DIR="${TRI_STATE_DIR:-/mnt/c/dev/Tri/.tri/state}"
 export TRI_ROOT
 export TRI_STATE_DIR
 
