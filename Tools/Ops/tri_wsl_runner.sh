@@ -178,6 +178,51 @@ append_recurring_error() {
   printf -- '- UTC: %s | %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$message" >>"$REC_ERRORS_PATH"
 }
 
+check_telemetry_truncation() {
+  local project="$1"
+  local telemetry_dir="$2"
+  local summary="${TRI_RUNS_DIR}/summary.md"
+  if [ ! -d "$telemetry_dir" ]; then
+    return
+  fi
+  local file line size found=0
+  while IFS= read -r -d '' file; do
+    line="$(grep -m 1 -n '\"type\":\"telemetryTruncated\"' "$file" 2>/dev/null || true)"
+    if [ -z "$line" ]; then
+      line="$(grep -m 1 -n 'telemetryTruncated' "$file" 2>/dev/null || true)"
+    fi
+    if [ -z "$line" ]; then
+      continue
+    fi
+    size="$(stat -c %s "$file" 2>/dev/null || wc -c <"$file" 2>/dev/null || true)"
+    append_recurring_error "telemetry truncated (${project}): file=${file} size_bytes=${size} line=${line}"
+    printf '[%s] telemetry_truncated project=%s file=%s size_bytes=%s line=%s\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      "$project" \
+      "$file" \
+      "$size" \
+      "$line" >>"$summary"
+    if [ -f "$HEADLESSTASKS_PATH" ]; then
+      {
+        printf -- "- UTC: %s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf -- "- Agent: wsl-runner\n"
+        printf -- "- Project: %s\n" "$project"
+        printf -- "- Task: H-T02 Payload stability\n"
+        printf -- "- Scenario: %s\n" "$file"
+        printf -- "- Baseline: N/A\n"
+        printf -- "- Threshold: no telemetryTruncated markers\n"
+        printf -- "- Action: scanned telemetry output for truncation markers\n"
+        printf -- "- Result: FAIL\n"
+        printf -- "- Notes: size_bytes=%s line=%s\n" "$size" "$line"
+      } >>"$HEADLESSTASKS_PATH"
+    fi
+    found=1
+  done < <(find "$telemetry_dir" -maxdepth 1 -type f -name '*.ndjson' -print0 2>/dev/null)
+  if [ "$found" -eq 1 ]; then
+    mark_work_done
+  fi
+}
+
 log_blocker_once() {
   local key="$1"
   local message="$2"
@@ -426,6 +471,7 @@ run_project() {
 
   stop_heartbeat_loop
   tri_ops heartbeat --agent wsl --phase "done_${project}" --current-task "exit=$exit_code" --cycle "$cycle" >/dev/null 2>&1 || true
+  check_telemetry_truncation "$project" "$telemetry_dir"
   mark_work_done
 }
 
