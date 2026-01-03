@@ -95,6 +95,9 @@ run_project() {
     tri_ops heartbeat --agent wsl --phase "skip_no_build" --current-task "$project" --cycle "$cycle" >/dev/null 2>&1 || true
     return
   fi
+  if [ -f "$executable" ] && [ ! -x "$executable" ]; then
+    chmod +x "$executable" 2>/dev/null || true
+  fi
 
   if [ ! -f "$runner" ]; then
     tri_ops heartbeat --agent wsl --phase "skip_missing_runner" --current-task "$project" --cycle "$cycle" >/dev/null 2>&1 || true
