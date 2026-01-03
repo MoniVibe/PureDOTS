@@ -12,8 +12,8 @@ require_workspace() {
   fi
 }
 
-if [ -x "$STATE_LOCKDOWN" ]; then
-  "$STATE_LOCKDOWN" || true
+if [ -f "$STATE_LOCKDOWN" ]; then
+  bash "$STATE_LOCKDOWN" || true
 fi
 
 if [ -z "${TRI_ROOT:-}" ]; then

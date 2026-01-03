@@ -7,8 +7,8 @@ STATE_LOCKDOWN="${SCRIPT_DIR}/tri_state_lockdown.sh"
 
 export TRI_ROOT="${TRI_ROOT:-/mnt/c/dev/Tri}"
 export TRI_STATE_DIR="${TRI_STATE_DIR:-/mnt/c/dev/Tri/.tri/state}"
-if [ -x "$STATE_LOCKDOWN" ]; then
-  "$STATE_LOCKDOWN" || true
+if [ -f "$STATE_LOCKDOWN" ]; then
+  bash "$STATE_LOCKDOWN" || true
 fi
 
 if command -v tmux >/dev/null 2>&1; then

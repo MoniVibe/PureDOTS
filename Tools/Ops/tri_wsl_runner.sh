@@ -10,8 +10,8 @@ TRI_STATE_DIR="${TRI_STATE_DIR:-/mnt/c/dev/Tri/.tri/state}"
 export TRI_ROOT
 export TRI_STATE_DIR
 
-if [ -x "$STATE_LOCKDOWN" ]; then
-  "$STATE_LOCKDOWN" || true
+if [ -f "$STATE_LOCKDOWN" ]; then
+  bash "$STATE_LOCKDOWN" || true
 fi
 
 TRI_RUNS_DIR="${TRI_RUNS_DIR:-${TRI_STATE_DIR}/runs/$(date +%Y-%m-%d)}"
@@ -438,8 +438,8 @@ while true; do
   cycle=$((cycle + 1))
   work_done=0
 
-  if [ -x "$DOCS_SYNC" ]; then
-    "$DOCS_SYNC" start >/dev/null 2>&1 || true
+  if [ -f "$DOCS_SYNC" ]; then
+    bash "$DOCS_SYNC" start >/dev/null 2>&1 || true
   fi
 
   update_state_paths
@@ -459,9 +459,9 @@ while true; do
     if [ "$work_done" -eq 0 ]; then
       log_blocker_once "locked_cycle" "cycle skipped due to active build.lock"
     fi
-    if [ -x "$DOCS_SYNC" ]; then
-      "$DOCS_SYNC" end >/dev/null 2>&1 || true
-      "$DOCS_SYNC" start >/dev/null 2>&1 || true
+    if [ -f "$DOCS_SYNC" ]; then
+      bash "$DOCS_SYNC" end >/dev/null 2>&1 || true
+      bash "$DOCS_SYNC" start >/dev/null 2>&1 || true
     fi
     sleep "$POLL_SECS"
     continue
@@ -482,9 +482,9 @@ while true; do
     log_blocker_once "no_work" "cycle produced no runs or requests; attempted recovery and logged state"
   fi
 
-  if [ -x "$DOCS_SYNC" ]; then
-    "$DOCS_SYNC" end >/dev/null 2>&1 || true
-    "$DOCS_SYNC" start >/dev/null 2>&1 || true
+  if [ -f "$DOCS_SYNC" ]; then
+    bash "$DOCS_SYNC" end >/dev/null 2>&1 || true
+    bash "$DOCS_SYNC" start >/dev/null 2>&1 || true
   fi
 
   sleep "$POLL_SECS"
