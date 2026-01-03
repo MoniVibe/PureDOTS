@@ -65,7 +65,7 @@ function Convert-WinToWsl([string]$PathValue) {
     $prefix = $stateDirWin.TrimEnd("\")
     if ($PathValue.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         $suffix = $PathValue.Substring($prefix.Length).TrimStart("\")
-        $suffix = $suffix -replace "\\\\", "/"
+        $suffix = $suffix.Replace("\", "/")
         return ($stateDirWsl.TrimEnd("/") + "/" + $suffix)
     }
     return $PathValue
