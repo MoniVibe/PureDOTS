@@ -83,16 +83,28 @@ $ingestPath = Join-Path $PSScriptRoot "tri_ps_ingest.ps1"
 Write-Supervisor "supervisor_start"
 
 $delaySeconds = 30
+$cooldownSeconds = 60
+$lastStart = @{
+    bootstrap = [DateTime]::MinValue
+    ingest = [DateTime]::MinValue
+}
+
+function Can-Restart([string]$Key) {
+    return ((Get-Date) - $lastStart[$Key]).TotalSeconds -ge $cooldownSeconds
+}
+
 while ($true) {
     $bootRunning = Is-Running "tri_ps_bootstrap.ps1"
     $ingestRunning = Is-Running "tri_ps_ingest.ps1"
 
-    if (-not $bootRunning) {
+    if (-not $bootRunning -and (Can-Restart "bootstrap")) {
         Start-Worker $bootstrapPath "ps_bootstrap"
+        $lastStart["bootstrap"] = Get-Date
         Write-Supervisor "restart bootstrap"
     }
-    if (-not $ingestRunning) {
+    if (-not $ingestRunning -and (Can-Restart "ingest")) {
         Start-Worker $ingestPath "ps_ingest"
+        $lastStart["ingest"] = Get-Date
         Write-Supervisor "restart ingest"
     }
 

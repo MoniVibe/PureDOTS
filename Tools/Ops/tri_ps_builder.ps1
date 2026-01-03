@@ -185,15 +185,15 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
             Error = "git fetch failed for ${ProjectName}: $($fetchOutput.Trim())"
         }
     }
-    if ($DesiredCommit) {
-        $branchOutput = & git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>&1 | Out-String
-        if ($LASTEXITCODE -ne 0) {
-            return @{
-                Ok = $false
-                Error = "git rev-parse failed for ${ProjectName}: $($branchOutput.Trim())"
-            }
+    $branchOutput = & git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git rev-parse failed for ${ProjectName}: $($branchOutput.Trim())"
         }
-        $currentBranch = $branchOutput.Trim()
+    }
+    $currentBranch = $branchOutput.Trim()
+    if ($DesiredCommit) {
         $checkoutOutput = & git -C $ProjectRoot checkout $DesiredCommit 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) {
             return @{
@@ -203,11 +203,13 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
         }
         return @{ Ok = $true; Error = ""; OriginalBranch = $currentBranch }
     }
-    $pullOutput = & git -C $ProjectRoot pull --ff-only 2>&1 | Out-String
+    $upstreamOutput = & git -C $ProjectRoot rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>&1 | Out-String
+    $upstream = if ($LASTEXITCODE -eq 0) { $upstreamOutput.Trim() } else { "origin/$currentBranch" }
+    $pullOutput = & git -C $ProjectRoot merge --ff-only $upstream 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
         return @{
             Ok = $false
-            Error = "git pull --ff-only failed for ${ProjectName}: $($pullOutput.Trim())"
+            Error = "git merge --ff-only failed for ${ProjectName} ($upstream): $($pullOutput.Trim())"
         }
     }
     return @{ Ok = $true; Error = ""; OriginalBranch = "" }
