@@ -83,6 +83,12 @@ if (-not (Test-Path $triOpsPath)) {
     throw "tri_ops not found: $triOpsPath"
 }
 
+$builderMode = if ($env:TRI_BUILDER_MODE) { $env:TRI_BUILDER_MODE } else { "orchestrator" }
+$builderMode = $builderMode.ToLowerInvariant()
+if ($builderMode -notin @("build", "orchestrator")) {
+    throw "TRI_BUILDER_MODE must be 'build' or 'orchestrator'"
+}
+
 $pythonCmd = Get-PythonCommand
 $shellExe = Get-ShellExe
 $heartbeatSeconds = if ($env:TRI_OPS_HEARTBEAT_SECONDS) { [int]$env:TRI_OPS_HEARTBEAT_SECONDS } else { 45 }
@@ -256,36 +262,44 @@ while ($true) {
     $errorMessage = ""
 
     try {
-        foreach ($project in $projects) {
-            $info = Get-ProjectInfo $project
-            if (-not $info) {
-                $overallStatus = "failed"
-                $errorMessage = "unknown project: $project"
-                continue
+        if ($builderMode -eq "orchestrator") {
+            Write-Heartbeat "queued_external" "req=$requestId" $cycle
+            $overallStatus = "queued_external"
+            $publishedPath = "n/a"
+            $buildCommit = "unknown"
+            $logs.Add("mode=orchestrator")
+        } else {
+            foreach ($project in $projects) {
+                $info = Get-ProjectInfo $project
+                if (-not $info) {
+                    $overallStatus = "failed"
+                    $errorMessage = "unknown project: $project"
+                    continue
+                }
+
+                $projectRoot = Join-Path $env:TRI_ROOT $info.Name
+                $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
+                New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
+                $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
+
+                $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
+                $logs.Add("build_log=" + $logPath)
+
+                if ($exitCode -ne 0) {
+                    $overallStatus = "failed"
+                    $errorMessage = "build failed for $project (exit $exitCode)"
+                    continue
+                }
+
+                Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
+                Renew-Leases $requestId
+
+                $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
+                $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId
+                $logs.Add("publish_path=" + $publish.PublishedPath)
+                $publishedPath = $publish.PublishedPath
+                $buildCommit = $publish.BuildCommit
             }
-
-            $projectRoot = Join-Path $env:TRI_ROOT $info.Name
-            $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
-            New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
-            $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
-
-            $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
-            $logs.Add("build_log=" + $logPath)
-
-            if ($exitCode -ne 0) {
-                $overallStatus = "failed"
-                $errorMessage = "build failed for $project (exit $exitCode)"
-                continue
-            }
-
-            Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
-            Renew-Leases $requestId
-
-            $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
-            $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId
-            $logs.Add("publish_path=" + $publish.PublishedPath)
-            $publishedPath = $publish.PublishedPath
-            $buildCommit = $publish.BuildCommit
         }
     } catch {
         $overallStatus = "failed"

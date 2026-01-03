@@ -91,6 +91,10 @@ Default lease: 900s. Renew at least every 60s during long work.
 - Builder lane may require a licensed environment to rebuild binaries.
 - If the builder lane is also license-free, it acts as an orchestrator only (queues a request to a licensed build provider and updates current build pointers only after artifacts are available).
 
+Builder modes:
+- `TRI_BUILDER_MODE=build`: run local Unity builds and publish artifacts.
+- `TRI_BUILDER_MODE=orchestrator`: do not run Unity; write a result with `status=queued_external` and unlock.
+
 ## Idempotency (Required)
 
 - Builder may re-run a request with the same id safely.
@@ -102,6 +106,12 @@ Default lease: 900s. Renew at least every 60s during long work.
 - When a request completes, the builder archives or deletes `ops/requests/<id>.json` and `ops/claims/<id>.json`.
 - `ops/results/<id>.json` is the durable record and is never deleted automatically.
 - Archived requests live under `ops/archive/requests/` and claims under `ops/archive/claims/`.
+
+## Result Status Semantics
+
+- `ok`: build/publish completed; `published_build_path` and `build_commit` are valid.
+- `failed`: build/publish failed; `error` is required.
+- `queued_external`: orchestrator-only lane queued an external build; `published_build_path` should be `n/a` and `build_commit` `unknown`.
 
 ## Failure Recovery
 
@@ -146,3 +156,8 @@ Required commands:
 - PowerShell builder: `Tools/Ops/tri_ps_bootstrap.ps1`
 
 Both scripts set `TRI_STATE_DIR` and keep heartbeats fresh while polling.
+
+## Always-On Startup
+
+- WSL startup helper: `Tools/Ops/tri_wsl_startup.sh` (tmux if available, otherwise nohup).
+- Windows startup helper: `Tools/Ops/tri_ps_startup.ps1` (launches `tri_ps_bootstrap.ps1` hidden).
