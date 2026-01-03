@@ -432,3 +432,23 @@ Format:
 - Action: Ran cycle_overnight_ready_20260103_204157 for Space4x + Godgame; recorded telemetry paths
 - Result: PASS
 - Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_overnight_ready_20260103_204157/space4x/telemetry/space4x_headless_run_20260103_204216.ndjson; godgame telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_overnight_ready_20260103_204157/godgame/telemetry/godgame_headless_run_20260103_204451.ndjson
+- UTC: 2026-01-03T20:53:18Z
+- Agent: wsl-polisher
+- Project: Ops
+- Task: Overnight-ready smoke cycle
+- Scenario: /mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json + /mnt/c/dev/Tri/godgame/Assets/Scenarios/Godgame/godgame_smoke.json
+- Baseline: N/A
+- Threshold: telemetry emitted for both projects
+- Action: Ran cycle_smoke_20260103_205318_1 for Space4x + Godgame; recorded telemetry paths
+- Result: PASS
+- Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205318_1/space4x/telemetry/space4x_headless_run_20260103_205318.ndjson; godgame telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205318_1/godgame/telemetry/godgame_headless_run_20260103_205551.ndjson
+- UTC: 2026-01-03T20:55:59Z
+- Agent: wsl-polisher
+- Project: Ops
+- Task: Overnight-ready smoke cycle
+- Scenario: /mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json + /mnt/c/dev/Tri/godgame/Assets/Scenarios/Godgame/godgame_smoke.json
+- Baseline: N/A
+- Threshold: telemetry emitted for both projects
+- Action: Ran cycle_smoke_20260103_205559_2 for Space4x + Godgame; recorded telemetry paths
+- Result: PASS
+- Notes: space4x telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205559_2/space4x/telemetry/space4x_headless_run_20260103_205559.ndjson; godgame telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_smoke_20260103_205559_2/godgame/telemetry/godgame_headless_run_20260103_205832.ndjson
