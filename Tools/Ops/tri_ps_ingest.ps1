@@ -19,6 +19,15 @@ if (-not $env:TRI_STATE_DIR) {
     throw "TRI_STATE_DIR must be set for ingest"
 }
 
+$stateDirWin = $env:TRI_STATE_DIR
+$stateDirWsl = $null
+if ($env:TRI_STATE_DIR_WSL) {
+    $stateDirWsl = $env:TRI_STATE_DIR_WSL
+} elseif ($stateDirWin -match "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\") {
+    $stateDirWsl = $stateDirWin -replace "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\", ""
+    $stateDirWsl = "/" + ($stateDirWsl -replace "\\\\", "/")
+}
+
 $triOpsPath = Join-Path $PSScriptRoot "tri_ops.py"
 if (-not (Test-Path $triOpsPath)) {
     throw "tri_ops not found: $triOpsPath"
@@ -51,6 +60,17 @@ function Write-Result([string]$RequestId, [string]$Status, [string]$PublishedPat
     Invoke-TriOps $args | Out-Null
 }
 
+function Convert-WinToWsl([string]$PathValue) {
+    if (-not $stateDirWsl) { return $PathValue }
+    $prefix = $stateDirWin.TrimEnd("\")
+    if ($PathValue.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $suffix = $PathValue.Substring($prefix.Length).TrimStart("\")
+        $suffix = $suffix -replace "\\\\", "/"
+        return ($stateDirWsl.TrimEnd("/") + "/" + $suffix)
+    }
+    return $PathValue
+}
+
 function Get-ProjectInfo([string]$Project) {
     switch ($Project.ToLowerInvariant()) {
         "space4x" { return @{ Name = "space4x"; Exe = "Space4X_Headless.x86_64" } }
@@ -79,18 +99,20 @@ function Publish-Project([string]$InboxRoot, [string]$Project, [string]$BuildCom
         throw "executable missing after publish: $exePath"
     }
 
+    $publishDirWsl = Convert-WinToWsl $publishDir
+    $exePathWsl = Convert-WinToWsl $exePath
     Invoke-TriOps @(
         "write_current", "--project", $info.Name,
-        "--path", ([System.IO.Path]::GetFullPath($publishDir)),
-        "--executable", ([System.IO.Path]::GetFullPath($exePath)),
+        "--path", $publishDirWsl,
+        "--executable", $exePathWsl,
         "--build-commit", $BuildCommit,
         "--build-id", $buildId,
         "--request-id", $RequestId
     ) | Out-Null
 
     return @{
-        PublishDir = $publishDir
-        Executable = $exePath
+        PublishDir = $publishDirWsl
+        Executable = $exePathWsl
         BuildId = $buildId
     }
 }
