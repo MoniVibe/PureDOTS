@@ -30,6 +30,9 @@ TRI_STATE_DIR/
       <uuid>.json
     locks/
       build.lock
+    archive/
+      requests/
+      claims/
   builds/
     current_space4x.json
     current_godgame.json
@@ -82,11 +85,23 @@ Never write JSON directly to the final path.
 
 Default lease: 900s. Renew at least every 60s during long work.
 
+## License Boundary (Required)
+
+- WSL runner lane is Editorless: it must not invoke the Unity Editor or `-runTests`.
+- Builder lane may require a licensed environment to rebuild binaries.
+- If the builder lane is also license-free, it acts as an orchestrator only (queues a request to a licensed build provider and updates current build pointers only after artifacts are available).
+
 ## Idempotency (Required)
 
 - Builder may re-run a request with the same id safely.
 - Published outputs must be versioned by `timestamp + commit` to avoid overwrites.
 - Result files can be overwritten atomically with the latest outcome.
+
+## Request Lifecycle (Required)
+
+- When a request completes, the builder archives or deletes `ops/requests/<id>.json` and `ops/claims/<id>.json`.
+- `ops/results/<id>.json` is the durable record and is never deleted automatically.
+- Archived requests live under `ops/archive/requests/` and claims under `ops/archive/claims/`.
 
 ## Failure Recovery
 

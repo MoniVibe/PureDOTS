@@ -60,7 +60,7 @@ def get_state_dir(args: argparse.Namespace) -> Path:
 
 def ensure_ops_dirs(state_dir: Path) -> Path:
     ops_dir = state_dir / "ops"
-    for sub in ("heartbeats", "requests", "claims", "results", "locks"):
+    for sub in ("heartbeats", "requests", "claims", "results", "locks", "archive/requests", "archive/claims"):
         (ops_dir / sub).mkdir(parents=True, exist_ok=True)
     (state_dir / "builds").mkdir(parents=True, exist_ok=True)
     (state_dir / "runs").mkdir(parents=True, exist_ok=True)

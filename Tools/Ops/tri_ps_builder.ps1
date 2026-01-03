@@ -15,10 +15,21 @@ function Get-PythonCommand {
     throw "python not found"
 }
 
+function Test-WorkspaceRoot([string]$Root) {
+    if ([string]::IsNullOrWhiteSpace($Root)) { return $false }
+    $full = [System.IO.Path]::GetFullPath($Root)
+    return (Test-Path (Join-Path $full "space4x")) -and `
+        (Test-Path (Join-Path $full "godgame")) -and `
+        (Test-Path (Join-Path $full "Tools"))
+}
+
 function Resolve-Root {
-    $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
     if (-not $env:TRI_ROOT) {
-        $env:TRI_ROOT = $repoRoot
+        throw "TRI_ROOT must be set to the workspace containing: space4x, godgame, Tools"
+    }
+    $env:TRI_ROOT = [System.IO.Path]::GetFullPath($env:TRI_ROOT)
+    if (-not (Test-WorkspaceRoot $env:TRI_ROOT)) {
+        throw "TRI_ROOT must contain: space4x, godgame, Tools"
     }
 }
 
@@ -34,6 +45,34 @@ function Get-ShellExe {
         return (Join-Path $PSHOME "pwsh.exe")
     }
     return (Join-Path $PSHOME "powershell.exe")
+}
+
+function Archive-File([string]$SourcePath, [string]$ArchiveDir) {
+    if (-not (Test-Path $SourcePath)) {
+        return
+    }
+    New-Item -ItemType Directory -Path $ArchiveDir -Force | Out-Null
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($SourcePath)
+    $ext = [System.IO.Path]::GetExtension($SourcePath)
+    $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $dest = Join-Path $ArchiveDir ("{0}_{1}{2}" -f $base, $stamp, $ext)
+    try {
+        Move-Item -Path $SourcePath -Destination $dest -Force -ErrorAction Stop
+    } catch {
+        Remove-Item -Path $SourcePath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Archive-RequestFiles([string]$RequestId) {
+    $opsDir = Join-Path $env:TRI_STATE_DIR "ops"
+    $requestsDir = Join-Path $opsDir "requests"
+    $claimsDir = Join-Path $opsDir "claims"
+    $archiveReqDir = Join-Path $opsDir "archive\requests"
+    $archiveClaimDir = Join-Path $opsDir "archive\claims"
+    $requestPath = Join-Path $requestsDir ("{0}.json" -f $RequestId)
+    $claimPath = Join-Path $claimsDir ("{0}.json" -f $RequestId)
+    Archive-File $requestPath $archiveReqDir
+    Archive-File $claimPath $archiveClaimDir
 }
 
 Resolve-Root
@@ -269,6 +308,7 @@ while ($true) {
 
         Invoke-TriOps @("unlock_build", "--owner", "ps", "--request-id", $requestId) | Out-Null
         Write-Heartbeat "watching" "unlocked" $cycle
+        Archive-RequestFiles $requestId
     }
 
     if ($Once) { break }
