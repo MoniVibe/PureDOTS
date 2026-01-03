@@ -227,12 +227,12 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
         $prefix = $stateDirWin.TrimEnd("\")
         if ($fullPublishDir.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
             $suffix = $fullPublishDir.Substring($prefix.Length).TrimStart("\")
-            $suffix = $suffix -replace "\\\\", "/"
+            $suffix = $suffix.Replace("\", "/")
             $publishDirForOps = $stateDirWsl.TrimEnd("/") + "/" + $suffix
         }
         if ($fullExePath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
             $suffix = $fullExePath.Substring($prefix.Length).TrimStart("\")
-            $suffix = $suffix -replace "\\\\", "/"
+            $suffix = $suffix.Replace("\", "/")
             $exePathForOps = $stateDirWsl.TrimEnd("/") + "/" + $suffix
         }
     }
