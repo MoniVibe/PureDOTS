@@ -295,6 +295,17 @@ Format:
 - Notes: Space4x `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/telemetry/space4x_smoke_oracle.ndjson` and excerpt `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/oracle_missing_excerpt.txt` (build_id 20260103_233603_1db54f9099). Godgame `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/godgame/telemetry/godgame_smoke_oracle.ndjson` (build_id 20260103_233651_a518b02816). Attempted oracle fixes (stream buffer + heartbeat + LateSimulation before export) did not surface; next step is export-side probe record.
 - Next diagnostic: export-side NDJSON debug probe (type=debug) gated by PUREDOTS_TELEMETRY_ORACLE_PROBE=1; capture metric_buffer_len, oracle_candidate_count + sample keys, skipped_by_loop_filter_count (GetLoopLabel+ShouldWriteLoop false), export_tick vs TimeState.Tick vs ScenarioRunnerTick (if present).
 
+- UTC: 2026-01-03T22:05:26Z
+- Agent: WSL-Headless
+- Project: Cross-cutting
+- Task: H-T02 Payload stability / oracle coverage
+- Scenario: `/mnt/c/dev/Tri/space4x/Assets/Scenarios/space4x_smoke.json` + `/mnt/c/dev/Tri/godgame/Assets/Scenarios/Godgame/godgame_smoke.json`
+- Baseline: N/A (oracle probe debug record missing)
+- Threshold: NDJSON debug record type=debug (oracleProbe) present; oracle keys present
+- Action: Ran smoke with PUREDOTS_TELEMETRY_ORACLE_PROBE=1; searched NDJSON for type=debug lines.
+- Result: FAIL (no debug record emitted)
+- Notes: Space4x `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe_20260104_000042/space4x/telemetry/space4x_smoke_oracle_probe.ndjson` (build_id 20260103_235930_1db54f9099). Godgame `/mnt/c/dev/Tri/.tri/state/runs/2026-01-04/cycle_oracle_probe_20260104_000042/godgame/telemetry/godgame_smoke_oracle_probe.ndjson` (build_id 20260104_000017_a518b02816). No `type=debug` lines found.
+
 ## Cross-cutting
 - H-C01 Frame-rate independence (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: end-of-run total resource delta (pile + storehouse). Target: 30 vs 120 tick rate drift <= 1 unit. Status: pending.
 - H-C02 Resource conservation (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: AggregatePile.Take/Add and Storehouse.Add totals. Target: siphon 200 and dump 200 with no loss; events match totals. Status: pending.
