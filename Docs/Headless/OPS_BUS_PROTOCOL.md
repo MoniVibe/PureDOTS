@@ -34,6 +34,11 @@ TRI_STATE_DIR/
       requests/
       claims/
   builds/
+    inbox/
+      <request_id>/
+        <project>/
+        READY.json
+    inbox_archive/
     current_space4x.json
     current_godgame.json
   runs/
@@ -107,11 +112,32 @@ Builder modes:
 - `ops/results/<id>.json` is the durable record and is never deleted automatically.
 - Archived requests live under `ops/archive/requests/` and claims under `ops/archive/claims/`.
 
+## External Build Inbox (Required)
+
+External builders drop artifacts into:
+
+`TRI_STATE_DIR/builds/inbox/<request_id>/<project>/`
+
+When all artifacts are present, create:
+`TRI_STATE_DIR/builds/inbox/<request_id>/READY.json`
+
+Example READY.json:
+```json
+{ "request_id": "...", "projects": ["space4x","godgame"], "build_commit": "...", "utc": "..." }
+```
+
+The ingest watcher publishes the artifacts, updates `current_*.json`, and moves the inbox folder to `builds/inbox_archive/<request_id>_timestamp/`.
+
 ## Result Status Semantics
 
 - `ok`: build/publish completed; `published_build_path` and `build_commit` are valid.
 - `failed`: build/publish failed; `error` is required.
 - `queued_external`: orchestrator-only lane queued an external build; `published_build_path` should be `n/a` and `build_commit` `unknown`.
+
+## Ingest Watcher
+
+- PowerShell ingest script: `Tools/Ops/tri_ps_ingest.ps1`
+- Runs without Unity; watches `builds/inbox` for READY.json and publishes artifacts.
 
 ## Failure Recovery
 
