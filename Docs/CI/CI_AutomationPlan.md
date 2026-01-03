@@ -81,13 +81,16 @@ This document outlines the plan for automating build, test, and deployment pipel
    - Replay capture/playback tests
    - Snapshot comparison across runs
    - Scenario run log digests compared against stored baselines (see *Scenario Run Metadata* below)
+4. **Nightly Scenario + Telemetry Diffs**
+   - Scenario runs with telemetry diffs against baselines
+   - Performance regression checks on runtime metrics
 
-4. **IL2CPP Full Build**
+5. **IL2CPP Full Build**
    - Windows IL2CPP build
    - Run full test suite in IL2CPP
    - Burst compilation validation
 
-5. **Test Coverage Report**
+6. **Test Coverage Report**
    - Generate coverage report
    - Compare against baseline
    - Alert if coverage drops
@@ -97,6 +100,15 @@ This document outlines the plan for automating build, test, and deployment pipel
 **Output**: Comprehensive test results, coverage reports, performance baselines
 
 ## Build Configuration
+
+## Ops Bus Coordination (Nightly)
+
+Nightly multi-agent runs use the ops bus protocol (`../Headless/OPS_BUS_PROTOCOL.md`) and these scripts:
+- `Tools/Ops/tri_ops.py` (CLI for heartbeats/requests/claims/locks/results)
+- `Tools/Ops/tri_wsl_bootstrap.sh` (WSL runner loop)
+- `Tools/Ops/tri_ps_bootstrap.ps1` (Windows builder loop)
+
+Use the ops bus for rebuild requests/results; do not rely on chat-only coordination.
 
 ## Scenario Run Metadata & Determinism Guards
 

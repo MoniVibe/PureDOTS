@@ -1,3 +1,9 @@
+# Ops Bus Rules (Headless Cycles)
+
+- Agents running headless cycles must write heartbeats every 30-60s.
+- Use ops bus requests/results (`TRI_STATE_DIR/ops`) instead of chat-only coordination.
+- Do not exit early; idle and keep polling during no-work windows.
+
 # Phase 3 DOTS Push - Agent Prompts
 
 Use these prompts to run agents on the Phase 3 TODO in `phase3.md`. PureDOTS is the shared Entities 1.4 template (see `TRI_PROJECT_BRIEFING.md`); keep new systems inside `Packages/com.moni.puredots` and touch `projects/space4x` / `projects/godgame` only for demo/bootstrap wiring. Reuse PureDOTS time/rewind + ScenarioRunner; avoid per-game time pipelines or hybrid references. Keep work Burst-safe, deterministic, and ScenarioRunner-runnable. Current state: Agent C landed mobility registry scaffolds (waypoints/highways/gateways) with HUD/telemetry plus batch inventory (spoilage/FIFO/pricing multipliers) and sample scenarios; Agent C reports nothing else to do under the current instruction set. Agent Beta delivered presentation schema/samples with a pending companion sync follow-up.
