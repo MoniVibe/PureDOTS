@@ -351,10 +351,12 @@ namespace PureDOTS.Systems.Telemetry
 
         private void EmitOracleMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
         {
-            if (!SystemAPI.TryGetSingletonBuffer<TelemetryMetric>(out var metrics))
+            var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
+            if (!state.EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
             {
-                return;
+                state.EntityManager.AddBuffer<TelemetryMetric>(telemetryEntity);
             }
+            var metrics = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
 
             var exportState = SystemAPI.GetSingleton<TelemetryExportState>();
             var nearMissCount = 0u;
@@ -371,6 +373,7 @@ namespace PureDOTS.Systems.Telemetry
             var latencyMean = acc.IntentSamples > 0 ? (float)acc.IntentAgeSumTicks / acc.IntentSamples : 0f;
             var latencyP95 = ResolveP95(latencyBuffer, acc.IntentAgeMaxTicks);
 
+            metrics.AddMetric("telemetry.oracle.heartbeat", 1f, TelemetryMetricUnit.Count);
             metrics.AddMetric("ai.idle_with_work_ratio", idleRatio, TelemetryMetricUnit.Ratio);
             metrics.AddMetric("ai.task_latency_ticks.mean", latencyMean, TelemetryMetricUnit.Count);
             metrics.AddMetric("ai.task_latency_ticks.p95", latencyP95, TelemetryMetricUnit.Count);
