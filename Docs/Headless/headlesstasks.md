@@ -262,12 +262,32 @@ Format:
 - Action: No runs; PS heartbeat stale and build.lock present, offline-only cycle.
 - Result: Blocked (0 runs)
 - Notes: ps_heartbeat_utc=2026-01-03T00:16:16Z; build pointers missing under /mnt/c/dev/Tri/.tri/state.
+- UTC: 2026-01-03T20:39:45Z
+- Agent: WSL-Headless
+- Project: Space4X
+- Task: H-S01 Mining throughput
+- Scenario: `space4x/Assets/Scenarios/space4x_mining.json`
+- Baseline: avg outputPerTick 0.01228 (164 samples; ~44.21/min @60 tps assumption)
+- Threshold: >= 0.011 outputPerTick (~40/min @60 tps)
+- Action: Ran Space4x smoke x2 (summary telemetry) + mining scenario; parsed loop.extract.outputPerTick from telemetry.
+- Result: Pending (telemetry-native baseline captured; needs two-run confirmation)
+- Notes: Mining telemetry `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_telemetry_safe_20260103_222942/space4x_mining/telemetry/space4x_mining_run1.ndjson`.
+- UTC: 2026-01-03T20:40:10Z
+- Agent: WSL-Headless
+- Project: Cross-cutting
+- Task: H-C04 Telemetry health
+- Scenario: `space4x/Assets/Scenarios/space4x_smoke.json`
+- Baseline: 184,947,236 bytes and 213,574,673 bytes (summary telemetry)
+- Threshold: <= 7,000,000 bytes; zero telemetryTruncated markers
+- Action: Ran Space4x smoke x2 with PUREDOTS_TELEMETRY_LEVEL=summary; scanned for telemetryTruncated marker.
+- Result: FAIL (payload exceeds threshold; no truncation markers found)
+- Notes: `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_telemetry_safe_20260103_222942/space4x/telemetry/space4x_smoke_run1.ndjson` and `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_telemetry_safe_20260103_222942/space4x/telemetry/space4x_smoke_run2.ndjson`.
 
 ## Cross-cutting
 - H-C01 Frame-rate independence (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: end-of-run total resource delta (pile + storehouse). Target: 30 vs 120 tick rate drift <= 1 unit. Status: pending.
 - H-C02 Resource conservation (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: AggregatePile.Take/Add and Storehouse.Add totals. Target: siphon 200 and dump 200 with no loss; events match totals. Status: pending.
 - H-C03 Determinism smoke (Godgame). Scenario: `godgame/Assets/Scenarios/Godgame/godgame_smoke_determinism.json`. Metric: fixed-tick metrics at tick=1800. Target: same seed produces identical summary within epsilon at tick=1800. Status: PASS (hash d454dde295bce26ae3a543fc2b729274ddbe4b0dff9d371f30108e28dc1a3516 across 2 runs, 42 metrics).
-- H-C04 Telemetry health (all). Scenario: any headless run. Metric: telemetry payload length and file size. Baseline: 5,369,447 and 5,571,497 bytes (summary telemetry). Target: <= 7,000,000 bytes; no truncation markers. Status: pass (cycle57).
+- H-C04 Telemetry health (all). Scenario: any headless run. Metric: telemetry payload length and file size; hard-fail on telemetryTruncated marker. Baseline: Godgame summary 5,369,447 and 5,571,497 bytes; Space4x smoke summary 184,947,236 and 213,574,673 bytes (cycle_telemetry_safe_20260103_222942). Target: <= 7,000,000 bytes; zero telemetryTruncated markers. Status: FAIL (Space4x summary bloat; no truncation markers).
 
 ## Godgame
 - H-G01 Villager loop latency. Scenario: `godgame/Assets/Scenarios/Godgame/villager_loop_small.json`. Metric: time from siphon start -> storehouse add. Target: average latency <= baseline, no long-tail stalls. Status: pending.
@@ -276,7 +296,7 @@ Format:
 - H-G04 Stuck movement. Scenario: `godgame/Assets/Scenarios/Godgame/villager_movement_diagnostics.json`. Metric: units with zero displacement for N seconds. Target: 0 after warm-up. Status: pending.
 
 ## Space4X
-- H-S01 Mining throughput. Scenario: `space4x/Assets/Scenarios/space4x_mining.json`. Metric: total yield per simulated minute. Baseline: 136.1 cargo/min (avg of 270.82, 273.69 cargoSum/2m). Target: >= 130 cargo/min. Status: pending (latest runs ~51.8 cargo/min from cargoSum 102.13/104.97; telemetry missing; needs mining yield metric).
+- H-S01 Mining throughput. Scenario: `space4x/Assets/Scenarios/space4x_mining.json`. Metric: loop.extract.outputPerTick (avg across run; output/min ≈ outputPerTick * 3600 @ 60 tps). Baseline: 0.01228 output/tick (~44.21/min @60 tps) from cycle_telemetry_safe_20260103_222942. Target: >= 0.011 output/tick (~40/min @60 tps). Status: pending (telemetry-native metric adopted; confirm across 2 runs).
 - H-S02 Dropoff stall. Scenario: `space4x/Assets/Scenarios/space4x_mining.json`. Metric: time from full cargo -> dropoff. Target: no stall events after warm-up. Status: pending.
 - H-S03 Collision micro stability. Scenario: `space4x/Assets/Scenarios/space4x_collision_micro.json`. Metric: velocity/position NaNs, excessive spikes. Target: zero NaNs, bounded deltas. Status: pending.
 - H-S04 Fleet cohesion. Scenario: `space4x/Assets/Scenarios/space4x_smoke.json`. Metric: miner distance to carrier band. Target: within band for > X% of ticks. Status: pending.
