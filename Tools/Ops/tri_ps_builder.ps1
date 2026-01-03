@@ -48,8 +48,8 @@ function Resolve-StateDirWsl {
         $script:stateDirWsl = $env:TRI_STATE_DIR_WSL
         return
     }
-    if ($script:stateDirWin -match "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\") {
-        $script:stateDirWsl = $script:stateDirWin -replace "^\\\\\\\\wsl(\\.localhost)?\\\\[^\\\\]+\\\\", ""
+    if ($script:stateDirWin -match '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\') {
+        $script:stateDirWsl = $script:stateDirWin -replace '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\', ""
         $script:stateDirWsl = "/" + ($script:stateDirWsl -replace "\\\\", "/")
     }
 }
@@ -59,6 +59,26 @@ function Get-ShellExe {
         return (Join-Path $PSHOME "pwsh.exe")
     }
     return (Join-Path $PSHOME "powershell.exe")
+}
+
+function Invoke-Git {
+    param(
+        [string]$ProjectRoot,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Args
+    )
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & git -C $ProjectRoot @Args 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    return @{
+        ExitCode = $exitCode
+        Output = $output.Trim()
+    }
 }
 
 function Archive-File([string]$SourcePath, [string]$ArchiveDir) {
@@ -177,6 +197,103 @@ function Get-ProjectInfo([string]$Project) {
     }
 }
 
+function Clean-Worktree([string]$ProjectRoot, [string]$ProjectName, [bool]$AutoClean) {
+    $statusResult = Invoke-Git $ProjectRoot status --porcelain
+    if ($statusResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git status failed for ${ProjectName}: $($statusResult.Output)"
+        }
+    }
+    $dirtyLines = $statusResult.Output
+    if (-not $dirtyLines) {
+        return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+    }
+    if (-not $AutoClean) {
+        return @{
+            Ok = $false
+            Error = "dirty worktree for ${ProjectName}; set TRI_GIT_AUTOCLEAN=1 or supply desired_build_commit. Dirty files: $dirtyLines"
+        }
+    }
+    $resetResult = Invoke-Git $ProjectRoot reset --hard --quiet
+    if ($resetResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git reset --hard failed for ${ProjectName}: $($resetResult.Output)"
+        }
+    }
+    $cleanResult = Invoke-Git $ProjectRoot clean -fd --quiet
+    if ($cleanResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git clean -fd failed for ${ProjectName}: $($cleanResult.Output)"
+        }
+    }
+    $statusResult = Invoke-Git $ProjectRoot status --porcelain
+    if ($statusResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git status failed for ${ProjectName} after clean: $($statusResult.Output)"
+        }
+    }
+    $dirtyLines = $statusResult.Output
+    if ($dirtyLines) {
+        return @{
+            Ok = $false
+            Error = "worktree still dirty after clean for ${ProjectName}: $dirtyLines"
+        }
+    }
+    return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+}
+
+function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$DesiredCommit) {
+    $autoCleanEnabled = $false
+    if ($env:TRI_GIT_AUTOCLEAN -eq "1") {
+        $autoCleanEnabled = $true
+    }
+    $forceClean = [bool]$DesiredCommit
+    $cleanResult = Clean-Worktree $ProjectRoot $ProjectName ($autoCleanEnabled -or $forceClean)
+    if (-not $cleanResult.Ok) {
+        return $cleanResult
+    }
+
+    $fetchResult = Invoke-Git $ProjectRoot fetch --prune
+    if ($fetchResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git fetch failed for ${ProjectName}: $($fetchResult.Output)"
+        }
+    }
+    $branchResult = Invoke-Git $ProjectRoot rev-parse --abbrev-ref HEAD
+    if ($branchResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git rev-parse failed for ${ProjectName}: $($branchResult.Output)"
+        }
+    }
+    $currentBranch = $branchResult.Output
+    if ($DesiredCommit) {
+        $checkoutResult = Invoke-Git $ProjectRoot checkout --quiet $DesiredCommit
+        if ($checkoutResult.ExitCode -ne 0) {
+            return @{
+                Ok = $false
+                Error = "git checkout failed for ${ProjectName} (${DesiredCommit}): $($checkoutResult.Output)"
+            }
+        }
+        return @{ Ok = $true; Error = ""; OriginalBranch = $currentBranch }
+    }
+    $upstreamResult = Invoke-Git $ProjectRoot rev-parse --abbrev-ref --symbolic-full-name "@{u}"
+    $upstream = if ($upstreamResult.ExitCode -eq 0) { $upstreamResult.Output } else { "origin/$currentBranch" }
+    $pullResult = Invoke-Git $ProjectRoot merge --ff-only --quiet $upstream
+    if ($pullResult.ExitCode -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git merge --ff-only failed for ${ProjectName} ($upstream): $($pullResult.Output)"
+        }
+    }
+    return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+}
+
 function Get-LatestBuildPath([string]$ProjectRoot, [string]$BuildRootName, [string]$ExeName) {
     $buildRoot = Join-Path $ProjectRoot ("Builds\" + $BuildRootName)
     if (-not (Test-Path $buildRoot)) {
@@ -236,6 +353,14 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
             $exePathForOps = $stateDirWsl.TrimEnd("/") + "/" + $suffix
         }
     }
+    if ($publishDirForOps -match '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\') {
+        $suffix = $publishDirForOps -replace '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\', ""
+        $publishDirForOps = "/" + ($suffix -replace "\\\\", "/")
+    }
+    if ($exePathForOps -match '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\') {
+        $suffix = $exePathForOps -replace '^\\\\\\\\wsl(\\.localhost)?\\$?\\\\[^\\\\]+\\\\', ""
+        $exePathForOps = "/" + ($suffix -replace "\\\\", "/")
+    }
 
     Invoke-TriOps @(
         "write_current", "--project", $Project, "--path", $publishDirForOps,
@@ -274,6 +399,10 @@ while ($true) {
     }
 
     $projects = Get-Projects $reqObj
+    $desiredCommit = $null
+    if ($reqObj -and $reqObj.desired_build_commit) {
+        $desiredCommit = [string]$reqObj.desired_build_commit
+    }
 
     while ($true) {
         $lockResult = Invoke-TriOps @("lock_build", "--owner", "ps", "--request-id", $requestId, "--lease-seconds", $leaseSeconds)
@@ -290,6 +419,7 @@ while ($true) {
     $buildCommit = ""
     $logs = New-Object System.Collections.Generic.List[string]
     $errorMessage = ""
+    $originalBranches = @{}
 
     try {
         if ($builderMode -eq "orchestrator") {
@@ -299,42 +429,78 @@ while ($true) {
             $buildCommit = "unknown"
             $logs.Add("mode=orchestrator")
         } else {
+            $projectInfos = New-Object System.Collections.Generic.List[object]
             foreach ($project in $projects) {
                 $info = Get-ProjectInfo $project
                 if (-not $info) {
                     $overallStatus = "failed"
                     $errorMessage = "unknown project: $project"
-                    continue
+                    break
                 }
+                $projectInfos.Add($info)
+            }
 
-                $projectRoot = Join-Path $env:TRI_ROOT $info.Name
-                $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
-                New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
-                $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
-
-                $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
-                $logs.Add("build_log=" + $logPath)
-
-                if ($exitCode -ne 0) {
-                    $overallStatus = "failed"
-                    $errorMessage = "build failed for $project (exit $exitCode)"
-                    continue
+            if ($overallStatus -eq "ok") {
+                foreach ($info in $projectInfos) {
+                    $projectRoot = Join-Path $env:TRI_ROOT $info.Name
+                    $syncResult = Sync-Project $projectRoot $info.Name $desiredCommit
+                    if (-not $syncResult.Ok) {
+                        $overallStatus = "failed"
+                        $errorMessage = $syncResult.Error
+                        break
+                    }
+                    if ($syncResult.OriginalBranch) {
+                        $originalBranches[$info.Name] = $syncResult.OriginalBranch
+                    }
                 }
+            }
 
-                Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
-                Renew-Leases $requestId
+            if ($overallStatus -eq "ok") {
+                foreach ($info in $projectInfos) {
+                    $projectRoot = Join-Path $env:TRI_ROOT $info.Name
+                    $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
+                    New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
+                    $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
 
-                $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
-                $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId
-                $logs.Add("publish_path=" + $publish.PublishedPath)
-                $publishedPath = $publish.PublishedPath
-                $buildCommit = $publish.BuildCommit
+                    $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
+                    $logs.Add("build_log=" + $logPath)
+
+                    if ($exitCode -ne 0) {
+                        $overallStatus = "failed"
+                        $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
+                        break
+                    }
+
+                    Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
+                    Renew-Leases $requestId
+
+                    $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
+                    $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId
+                    $logs.Add("publish_path=" + $publish.PublishedPath)
+                    $publishedPath = $publish.PublishedPath
+                    $buildCommit = $publish.BuildCommit
+                }
             }
         }
     } catch {
         $overallStatus = "failed"
         $errorMessage = $_.Exception.Message
     } finally {
+        if ($desiredCommit -and $originalBranches.Count -gt 0) {
+            foreach ($entry in $originalBranches.GetEnumerator()) {
+                $projectRoot = Join-Path $env:TRI_ROOT $entry.Key
+                $restoreResult = Invoke-Git $projectRoot checkout --quiet $entry.Value
+                if ($restoreResult.ExitCode -ne 0 -and $overallStatus -eq "ok") {
+                    $overallStatus = "failed"
+                    $errorMessage = "git checkout restore failed for $($entry.Key): $($restoreResult.Output)"
+                }
+                $cleanResult = Clean-Worktree $projectRoot $entry.Key $true
+                if (-not $cleanResult.Ok -and $overallStatus -eq "ok") {
+                    $overallStatus = "failed"
+                    $errorMessage = $cleanResult.Error
+                }
+            }
+        }
         if (-not $publishedPath) { $publishedPath = "n/a" }
         if (-not $buildCommit) { $buildCommit = "unknown" }
 
