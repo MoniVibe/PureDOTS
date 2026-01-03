@@ -175,6 +175,47 @@ function Get-GitCommit([string]$ProjectRoot) {
     return "unknown"
 }
 
+function Get-PureDotsInfo {
+    $root = Join-Path $env:TRI_ROOT "puredots"
+    $shaResult = Invoke-Git $root rev-parse HEAD
+    $branchResult = Invoke-Git $root rev-parse --abbrev-ref HEAD
+    $sha = if ($shaResult.ExitCode -eq 0 -and $shaResult.Output) { $shaResult.Output } else { "unknown" }
+    $branch = if ($branchResult.ExitCode -eq 0 -and $branchResult.Output) { $branchResult.Output } else { "unknown" }
+    return @{
+        Root = $root
+        Sha = $sha
+        Branch = $branch
+    }
+}
+
+function Sync-PureDots([string]$DesiredRef) {
+    if (-not $DesiredRef) {
+        return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+    }
+    $root = Join-Path $env:TRI_ROOT "puredots"
+    if (-not (Test-Path $root)) {
+        return @{ Ok = $false; Error = "puredots root missing: $root"; OriginalBranch = "" }
+    }
+    $branchResult = Invoke-Git $root rev-parse --abbrev-ref HEAD
+    if ($branchResult.ExitCode -ne 0) {
+        return @{ Ok = $false; Error = "git rev-parse failed for puredots: $($branchResult.Output)"; OriginalBranch = "" }
+    }
+    $originalBranch = $branchResult.Output
+    $fetchResult = Invoke-Git $root fetch --prune
+    if ($fetchResult.ExitCode -ne 0) {
+        return @{ Ok = $false; Error = "git fetch failed for puredots: $($fetchResult.Output)"; OriginalBranch = "" }
+    }
+    $checkoutResult = Invoke-Git $root checkout --quiet $DesiredRef
+    if ($checkoutResult.ExitCode -ne 0) {
+        return @{ Ok = $false; Error = "git checkout failed for puredots (${DesiredRef}): $($checkoutResult.Output)"; OriginalBranch = "" }
+    }
+    $resetResult = Invoke-Git $root reset --hard --quiet $DesiredRef
+    if ($resetResult.ExitCode -ne 0) {
+        return @{ Ok = $false; Error = "git reset --hard failed for puredots (${DesiredRef}): $($resetResult.Output)"; OriginalBranch = "" }
+    }
+    return @{ Ok = $true; Error = ""; OriginalBranch = $originalBranch }
+}
+
 function Get-ProjectInfo([string]$Project) {
     switch ($Project.ToLowerInvariant()) {
         "space4x" {
@@ -325,7 +366,7 @@ function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phas
     return $proc.ExitCode
 }
 
-function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [string]$RequestId) {
+function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [string]$RequestId, [string]$PureDotsBranch, [string]$PureDotsSha) {
     $commit = Get-GitCommit (Join-Path $env:TRI_ROOT $Project)
     $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $buildId = "${stamp}_${commit}"
@@ -362,10 +403,12 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
         $exePathForOps = "/" + ($suffix -replace "\\\\", "/")
     }
 
+    $notes = "puredots_branch=$PureDotsBranch;puredots_sha=$PureDotsSha"
     Invoke-TriOps @(
         "write_current", "--project", $Project, "--path", $publishDirForOps,
         "--executable", $exePathForOps, "--build-commit", $commit,
-        "--build-id", $buildId, "--request-id", $RequestId
+        "--build-id", $buildId, "--request-id", $RequestId,
+        "--notes", $notes
     ) | Out-Null
 
     return @{
@@ -403,6 +446,13 @@ while ($true) {
     if ($reqObj -and $reqObj.desired_build_commit) {
         $desiredCommit = [string]$reqObj.desired_build_commit
     }
+    $requestedPureDotsRef = $null
+    if ($reqObj -and $reqObj.notes) {
+        $notesText = [string]$reqObj.notes
+        if ($notesText -match "puredots_ref=([^;\\s]+)") {
+            $requestedPureDotsRef = $Matches[1]
+        }
+    }
 
     while ($true) {
         $lockResult = Invoke-TriOps @("lock_build", "--owner", "ps", "--request-id", $requestId, "--lease-seconds", $leaseSeconds)
@@ -422,7 +472,25 @@ while ($true) {
     $originalBranches = @{}
 
     try {
-        if ($builderMode -eq "orchestrator") {
+        $puredotsInfo = $null
+        if ($requestedPureDotsRef) {
+            $syncPureDots = Sync-PureDots $requestedPureDotsRef
+            if (-not $syncPureDots.Ok) {
+                $overallStatus = "failed"
+                $errorMessage = $syncPureDots.Error
+            } elseif ($syncPureDots.OriginalBranch) {
+                $originalBranches["puredots"] = $syncPureDots.OriginalBranch
+            }
+        }
+
+        if ($overallStatus -eq "ok") {
+            $puredotsInfo = Get-PureDotsInfo
+            $logs.Add("puredots_branch=" + $puredotsInfo.Branch)
+            $logs.Add("puredots_sha=" + $puredotsInfo.Sha)
+        }
+
+        if ($overallStatus -ne "ok") {
+        } elseif ($builderMode -eq "orchestrator") {
             Write-Heartbeat "queued_external" "req=$requestId" $cycle
             $overallStatus = "queued_external"
             $publishedPath = "n/a"
@@ -475,7 +543,7 @@ while ($true) {
                     Renew-Leases $requestId
 
                     $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
-                    $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId
+                    $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId $puredotsInfo.Branch $puredotsInfo.Sha
                     $logs.Add("publish_path=" + $publish.PublishedPath)
                     $publishedPath = $publish.PublishedPath
                     $buildCommit = $publish.BuildCommit
