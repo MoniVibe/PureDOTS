@@ -56,11 +56,11 @@ function Write-Supervisor([string]$Message) {
 
 function Acquire-SupervisorMutex {
     $createdNew = $false
-    $mutexName = "Global\\TriOpsPsSupervisor"
+    $mutexName = "Global\TriOpsPsSupervisor"
     try {
         $script:SupervisorMutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
     } catch {
-        $mutexName = "Local\\TriOpsPsSupervisor"
+        $mutexName = "Local\TriOpsPsSupervisor"
         $script:SupervisorMutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
     }
     if (-not $createdNew) {
