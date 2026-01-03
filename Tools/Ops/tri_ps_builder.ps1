@@ -177,7 +177,66 @@ function Get-ProjectInfo([string]$Project) {
     }
 }
 
+function Clean-Worktree([string]$ProjectRoot, [string]$ProjectName, [bool]$AutoClean) {
+    $statusOutput = & git -C $ProjectRoot status --porcelain 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git status failed for ${ProjectName}: $($statusOutput.Trim())"
+        }
+    }
+    $dirtyLines = $statusOutput.Trim()
+    if (-not $dirtyLines) {
+        return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+    }
+    if (-not $AutoClean) {
+        return @{
+            Ok = $false
+            Error = "dirty worktree for ${ProjectName}; set TRI_GIT_AUTOCLEAN=1 or supply desired_build_commit. Dirty files: $dirtyLines"
+        }
+    }
+    $resetOutput = & git -C $ProjectRoot reset --hard 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git reset --hard failed for ${ProjectName}: $($resetOutput.Trim())"
+        }
+    }
+    $cleanOutput = & git -C $ProjectRoot clean -fd 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git clean -fd failed for ${ProjectName}: $($cleanOutput.Trim())"
+        }
+    }
+    $statusOutput = & git -C $ProjectRoot status --porcelain 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Ok = $false
+            Error = "git status failed for ${ProjectName} after clean: $($statusOutput.Trim())"
+        }
+    }
+    $dirtyLines = $statusOutput.Trim()
+    if ($dirtyLines) {
+        return @{
+            Ok = $false
+            Error = "worktree still dirty after clean for ${ProjectName}: $dirtyLines"
+        }
+    }
+    return @{ Ok = $true; Error = ""; OriginalBranch = "" }
+}
+
 function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$DesiredCommit) {
+    $autoCleanEnabled = $false
+    if ($env:TRI_GIT_AUTOCLEAN -eq "1") {
+        $autoCleanEnabled = $true
+    }
+    $forceClean = [bool]$DesiredCommit
+    $cleanResult = Clean-Worktree $ProjectRoot $ProjectName ($autoCleanEnabled -or $forceClean)
+    if (-not $cleanResult.Ok) {
+        return $cleanResult
+    }
+
     $fetchOutput = & git -C $ProjectRoot fetch 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
         return @{
@@ -414,6 +473,11 @@ while ($true) {
                 if ($LASTEXITCODE -ne 0 -and $overallStatus -eq "ok") {
                     $overallStatus = "failed"
                     $errorMessage = "git checkout restore failed for $($entry.Key): $($restoreOutput.Trim())"
+                }
+                $cleanResult = Clean-Worktree $projectRoot $entry.Key $true
+                if (-not $cleanResult.Ok -and $overallStatus -eq "ok") {
+                    $overallStatus = "failed"
+                    $errorMessage = $cleanResult.Error
                 }
             }
         }
