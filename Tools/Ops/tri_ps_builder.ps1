@@ -109,6 +109,317 @@ function Archive-RequestFiles([string]$RequestId) {
     Archive-File $claimPath $archiveClaimDir
 }
 
+function Get-NotesRaw($reqObj) {
+    if (-not $reqObj -or -not $reqObj.notes) {
+        return ""
+    }
+    if ($reqObj.notes -is [System.Array]) {
+        return ($reqObj.notes -join ";")
+    }
+    return [string]$reqObj.notes
+}
+
+function Get-NoteValue([string]$NotesRaw, [string]$Key) {
+    if ([string]::IsNullOrWhiteSpace($NotesRaw)) {
+        return $null
+    }
+    $pattern = [regex]::Escape($Key) + "=([^;]+)"
+    $match = [regex]::Match($NotesRaw, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+    $value = $match.Groups[1].Value
+    $value = $value.Trim().Trim('"').Trim("'")
+    $value = ($value -replace '[\s\u00AD]+', '')
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $null
+    }
+    return $value
+}
+
+function Normalize-Path([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $Path
+    }
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Set-LogValue([System.Collections.Generic.List[string]]$Logs, [string]$Key, [string]$Value) {
+    for ($i = $Logs.Count - 1; $i -ge 0; $i--) {
+        if ($Logs[$i] -like "$Key=*") {
+            $Logs.RemoveAt($i)
+        }
+    }
+    $Logs.Add("$Key=$Value")
+}
+
+function Get-UnityProjectPathFromLog([string]$LogPath) {
+    if (-not (Test-Path $LogPath)) {
+        return $null
+    }
+    $line = Select-String -Path $LogPath -Pattern "-projectPath\\s+\"?([^\"]+)\"?" -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($line -and $line.Matches.Count -gt 0) {
+        return $line.Matches[0].Groups[1].Value.Trim()
+    }
+    $line = Select-String -Path $LogPath -Pattern "Using project path\\s*[:=]\\s*(.+)$" -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($line -and $line.Matches.Count -gt 0) {
+        return $line.Matches[0].Groups[1].Value.Trim()
+    }
+    return $null
+}
+
+function Get-ManifestPureDots([string]$ProjectPath) {
+    $manifestPath = Join-Path $ProjectPath "Packages\manifest.json"
+    if (-not (Test-Path $manifestPath)) {
+        return @{ Value = ""; Path = $manifestPath; Error = "manifest_missing" }
+    }
+    try {
+        $manifest = Get-Content -Path $manifestPath -Raw | ConvertFrom-Json
+        $value = $manifest.dependencies."com.moni.puredots"
+        return @{ Value = $value; Path = $manifestPath; Error = "" }
+    } catch {
+        return @{ Value = ""; Path = $manifestPath; Error = $_.Exception.Message }
+    }
+}
+
+function Get-PackagesLockPureDots([string]$ProjectPath) {
+    $lockPath = Join-Path $ProjectPath "Packages\packages-lock.json"
+    if (-not (Test-Path $lockPath)) {
+        return @{ Version = ""; Source = ""; Path = $lockPath; Error = "lock_missing" }
+    }
+    try {
+        $lock = Get-Content -Path $lockPath -Raw | ConvertFrom-Json
+        $dep = $null
+        if ($lock -and $lock.dependencies) {
+            $dep = $lock.dependencies."com.moni.puredots"
+        }
+        $version = if ($dep -and $dep.version) { $dep.version } else { "" }
+        $source = if ($dep -and $dep.source) { $dep.source } else { "" }
+        return @{ Version = $version; Source = $source; Path = $lockPath; Error = "" }
+    } catch {
+        return @{ Version = ""; Source = ""; Path = $lockPath; Error = $_.Exception.Message }
+    }
+}
+
+function Resolve-PureDotsPath([string]$ProjectPath, [string]$ManifestValue) {
+    if ([string]::IsNullOrWhiteSpace($ManifestValue)) {
+        return $null
+    }
+    if ($ManifestValue -notmatch "^file:") {
+        return $null
+    }
+    $rel = $ManifestValue -replace "^file:(//)?", ""
+    $rel = $rel.TrimStart("/")
+    $rel = $rel.Replace("/", "\")
+    if ([System.IO.Path]::IsPathRooted($rel)) {
+        return Normalize-Path $rel
+    }
+    return Normalize-Path (Join-Path $ProjectPath $rel)
+}
+
+function Get-SourceSentinelInfo([string]$ResolvedPath, [string]$Sentinel) {
+    $info = @{ Present = $false; Hash = ""; Path = "" }
+    if ([string]::IsNullOrWhiteSpace($ResolvedPath)) {
+        return $info
+    }
+    $path = Join-Path $ResolvedPath "Runtime\Systems\Telemetry\TelemetryExportSystem.cs"
+    $info.Path = $path
+    if (-not (Test-Path $path)) {
+        return $info
+    }
+    $info.Present = Select-String -Path $path -Pattern $Sentinel -Quiet
+    $info.Hash = (Get-FileHash -Path $path -Algorithm SHA256).Hash
+    return $info
+}
+
+function Test-ByteSequence([byte[]]$Data, [byte[]]$Pattern) {
+    if (-not $Data -or -not $Pattern -or $Pattern.Length -eq 0 -or $Data.Length -lt $Pattern.Length) {
+        return $false
+    }
+    for ($i = 0; $i -le $Data.Length - $Pattern.Length; $i++) {
+        $match = $true
+        for ($j = 0; $j -lt $Pattern.Length; $j++) {
+            if ($Data[$i + $j] -ne $Pattern[$j]) {
+                $match = $false
+                break
+            }
+        }
+        if ($match) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-BinaryContains([string]$Path, [string]$Text) {
+    if (-not (Test-Path $Path)) {
+        return $false
+    }
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($Path)
+    } catch {
+        return $false
+    }
+    $ascii = [System.Text.Encoding]::ASCII.GetBytes($Text)
+    if (Test-ByteSequence $bytes $ascii) {
+        return $true
+    }
+    $utf16 = [System.Text.Encoding]::Unicode.GetBytes($Text)
+    return (Test-ByteSequence $bytes $utf16)
+}
+
+function Get-ScriptAssembliesHits([string]$ProjectPath, [string]$Sentinel) {
+    $dir = Join-Path $ProjectPath "Library\ScriptAssemblies"
+    $hits = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-Path $dir)) {
+        return $hits
+    }
+    $dlls = Get-ChildItem -Path $dir -Filter "*.dll" -File -ErrorAction SilentlyContinue
+    foreach ($dll in $dlls) {
+        if (Test-BinaryContains $dll.FullName $Sentinel) {
+            $hits.Add($dll.Name)
+        }
+    }
+    return $hits
+}
+
+function Get-ManagedDir([string]$BuildDir) {
+    if (-not (Test-Path $BuildDir)) {
+        return $null
+    }
+    $dataDir = Get-ChildItem -Path $BuildDir -Directory -Filter "*_Data" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $dataDir) {
+        return $null
+    }
+    $managedDir = Join-Path $dataDir.FullName "Managed"
+    if (Test-Path $managedDir) {
+        return $managedDir
+    }
+    return $null
+}
+
+function Get-BackendGuess([string]$BuildDir) {
+    if (Test-Path (Join-Path $BuildDir "GameAssembly.so")) {
+        return "il2cpp"
+    }
+    return "mono"
+}
+
+function Apply-PureDotsManifestOverride([string]$ProjectPath, [string]$AbsolutePureDotsPath) {
+    $manifestPath = Join-Path $ProjectPath "Packages\manifest.json"
+    $lockPath = Join-Path $ProjectPath "Packages\packages-lock.json"
+    $restore = @{
+        Applied = $false
+        ManifestPath = $manifestPath
+        LockPath = $lockPath
+        ManifestContent = $null
+        LockContent = $null
+        Error = ""
+    }
+    if (Test-Path $manifestPath) {
+        $restore.ManifestContent = Get-Content -Path $manifestPath -Raw
+    }
+    if (Test-Path $lockPath) {
+        $restore.LockContent = Get-Content -Path $lockPath -Raw
+    }
+    try {
+        $manifest = Get-Content -Path $manifestPath -Raw | ConvertFrom-Json
+        if (-not $manifest.dependencies) {
+            $manifest | Add-Member -MemberType NoteProperty -Name dependencies -Value @{}
+        }
+        $manifest.dependencies."com.moni.puredots" = ("file:" + $AbsolutePureDotsPath.Replace("\", "/"))
+        $manifest | ConvertTo-Json -Depth 100 | Set-Content -Path $manifestPath -Encoding ASCII
+        if (Test-Path $lockPath) {
+            Remove-Item -Path $lockPath -Force -ErrorAction SilentlyContinue
+        }
+        $restore.Applied = $true
+    } catch {
+        $restore.Error = $_.Exception.Message
+    }
+    return $restore
+}
+
+function Restore-PureDotsManifestOverride($RestoreInfo) {
+    if (-not $RestoreInfo -or -not $RestoreInfo.Applied) {
+        return
+    }
+    if ($RestoreInfo.ManifestContent -ne $null) {
+        Set-Content -Path $RestoreInfo.ManifestPath -Value $RestoreInfo.ManifestContent -Encoding ASCII
+    }
+    if ($RestoreInfo.LockContent -ne $null) {
+        Set-Content -Path $RestoreInfo.LockPath -Value $RestoreInfo.LockContent -Encoding ASCII
+    }
+}
+
+function Sanitize-NoteValue([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ""
+    }
+    $clean = $Value -replace "[\r\n;]+", " "
+    return $clean.Trim()
+}
+
+function Prepare-RequestBuildDir(
+    [string]$ProjectRoot,
+    [string]$BuildRootName,
+    [string]$BuildDir,
+    [string]$RequestId
+) {
+    $buildRoot = Join-Path $ProjectRoot ("Builds\" + $BuildRootName)
+    $dest = Join-Path $buildRoot ("Linux_req_" + $RequestId)
+    if (Test-Path $dest) {
+        Remove-Item -Path $dest -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    New-Item -ItemType Directory -Path $dest -Force | Out-Null
+    Copy-Item -Path (Join-Path $BuildDir "*") -Destination $dest -Recurse -Force
+    return $dest
+}
+
+function Get-PlayerSentinelInfo([string]$BuildDir, [string]$Sentinel) {
+    $backend = Get-BackendGuess $BuildDir
+    $target = ""
+    $found = $false
+    if ($backend -eq "il2cpp") {
+        $gameAsm = Join-Path $BuildDir "GameAssembly.so"
+        if (Test-Path $gameAsm) {
+            $target = $gameAsm
+            $found = Test-BinaryContains $gameAsm $Sentinel
+        }
+        if (-not $found) {
+            $dataDir = Get-ChildItem -Path $BuildDir -Directory -Filter "*_Data" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($dataDir) {
+                $metaPath = Join-Path $dataDir.FullName "il2cpp_data\Metadata\global-metadata.dat"
+                if (Test-Path $metaPath) {
+                    $target = $metaPath
+                    $found = Test-BinaryContains $metaPath $Sentinel
+                }
+            }
+        }
+        return @{ Backend = $backend; Target = $target; Found = $found }
+    }
+    $managedDir = Get-ManagedDir $BuildDir
+    if ($managedDir) {
+        $targets = @()
+        foreach ($name in @("PureDOTS.Systems.dll", "PureDOTS.Runtime.dll")) {
+            $path = Join-Path $managedDir $name
+            if (Test-Path $path) {
+                $targets += $path
+            }
+        }
+        if (-not $targets) {
+            $targets = Get-ChildItem -Path $managedDir -Filter "PureDOTS*.dll" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+        }
+        foreach ($path in $targets) {
+            $target = $path
+            if (Test-BinaryContains $path $Sentinel) {
+                $found = $true
+                break
+            }
+        }
+    }
+    return @{ Backend = $backend; Target = $target; Found = $found }
+}
+
 Resolve-Root
 Resolve-StateDir
 Resolve-StateDirWsl
@@ -341,6 +652,7 @@ function Get-LatestBuildPath([string]$ProjectRoot, [string]$BuildRootName, [stri
         throw "Build root missing: $buildRoot"
     }
     $latest = Get-ChildItem -Path $buildRoot -Directory -Filter "Linux_*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "Linux_req_*" } |
         Sort-Object Name -Descending |
         Select-Object -First 1
     $buildDir = if ($latest) { $latest.FullName } else { Join-Path $buildRoot "Linux" }
@@ -366,7 +678,15 @@ function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phas
     return $proc.ExitCode
 }
 
-function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [string]$RequestId, [string]$PureDotsBranch, [string]$PureDotsSha) {
+function Publish-Build(
+    [string]$Project,
+    [string]$BuildDir,
+    [string]$ExeName,
+    [string]$RequestId,
+    [string]$PureDotsBranch,
+    [string]$PureDotsSha,
+    [string]$ExtraNotes
+) {
     $commit = Get-GitCommit (Join-Path $env:TRI_ROOT $Project)
     $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $buildId = "${stamp}_${commit}"
@@ -404,6 +724,9 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
     }
 
     $notes = "puredots_branch=$PureDotsBranch;puredots_sha=$PureDotsSha"
+    if ($ExtraNotes) {
+        $notes = $notes + ";" + $ExtraNotes
+    }
     Invoke-TriOps @(
         "write_current", "--project", $Project, "--path", $publishDirForOps,
         "--executable", $exePathForOps, "--build-commit", $commit,
@@ -417,6 +740,98 @@ function Publish-Build([string]$Project, [string]$BuildDir, [string]$ExeName, [s
         ExecutablePath = $exePathForOps
         BuildId = $buildId
     }
+}
+
+function Ensure-PureDotsResolution(
+    [string]$ProjectName,
+    [string]$UnityProjectPath,
+    [string]$ExpectedPureDotsPath,
+    [string]$Sentinel,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    $prefix = $ProjectName.ToLowerInvariant()
+    $expectedFull = Normalize-Path $ExpectedPureDotsPath
+
+    Set-LogValue $Logs "${prefix}_unity_project_path" $UnityProjectPath
+    Set-LogValue $Logs "unity_project_path" $UnityProjectPath
+
+    $manifestInfo = Get-ManifestPureDots $UnityProjectPath
+    Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
+    Set-LogValue $Logs "manifest_puredots" $manifestInfo.Value
+    if ($manifestInfo.Error) {
+        $Logs.Add("${prefix}_manifest_puredots_error=" + $manifestInfo.Error)
+    }
+    $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
+    Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
+    Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
+    Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
+    Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
+    if ($lockInfo.Error) {
+        $Logs.Add("${prefix}_lock_puredots_error=" + $lockInfo.Error)
+    }
+
+    $resolvedPath = Resolve-PureDotsPath $UnityProjectPath $manifestInfo.Value
+    $resolvedFull = Normalize-Path $resolvedPath
+    $resolvedExists = $resolvedFull -and (Test-Path $resolvedFull)
+    Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
+    Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
+
+    $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinel
+    Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+    Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+    if ($sourceInfo.Hash) {
+        Set-LogValue $Logs "${prefix}_resolved_source_file_hash" $sourceInfo.Hash
+        Set-LogValue $Logs "resolved_source_file_hash" $sourceInfo.Hash
+    }
+
+    $resolvedMatches = $resolvedExists -and $resolvedFull -and ($resolvedFull.TrimEnd('\') -ieq $expectedFull.TrimEnd('\'))
+
+    $restore = $null
+    if (-not $resolvedMatches -or -not $sourceInfo.Present -or -not $resolvedExists) {
+        $Logs.Add("${prefix}_manifest_override_reason=resolved_mismatch_or_missing")
+        $restore = Apply-PureDotsManifestOverride $UnityProjectPath $expectedFull
+        if (-not $restore.Applied) {
+            $err = if ($restore.Error) { $restore.Error } else { "manifest_override_failed" }
+            return @{ Ok = $false; Error = "PACKAGE_RESOLUTION_MISMATCH_PUREDOTS $err"; Restore = $restore; ResolvedPath = $resolvedFull; UnityProjectPath = $UnityProjectPath }
+        }
+        $Logs.Add("${prefix}_manifest_override_applied=1")
+
+        $libraryPath = Join-Path $UnityProjectPath "Library"
+        if (Test-Path $libraryPath) {
+            Remove-Item -Path $libraryPath -Recurse -Force -ErrorAction SilentlyContinue
+            $Logs.Add("${prefix}_full_library_wipe=1")
+        }
+
+        $manifestInfo = Get-ManifestPureDots $UnityProjectPath
+        Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
+        Set-LogValue $Logs "manifest_puredots" $manifestInfo.Value
+        $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
+        Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
+        Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
+        Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
+        Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
+
+        $resolvedPath = Resolve-PureDotsPath $UnityProjectPath $manifestInfo.Value
+        $resolvedFull = Normalize-Path $resolvedPath
+        $resolvedExists = $resolvedFull -and (Test-Path $resolvedFull)
+        Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
+        Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
+
+        $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinel
+        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+        Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+        if ($sourceInfo.Hash) {
+            Set-LogValue $Logs "${prefix}_resolved_source_file_hash" $sourceInfo.Hash
+            Set-LogValue $Logs "resolved_source_file_hash" $sourceInfo.Hash
+        }
+
+        $resolvedMatches = $resolvedExists -and $resolvedFull -and ($resolvedFull.TrimEnd('\') -ieq $expectedFull.TrimEnd('\'))
+        if (-not $resolvedMatches -or -not $sourceInfo.Present -or -not $resolvedExists) {
+            return @{ Ok = $false; Error = "PACKAGE_RESOLUTION_MISMATCH_PUREDOTS"; Restore = $restore; ResolvedPath = $resolvedFull; UnityProjectPath = $UnityProjectPath }
+        }
+    }
+
+    return @{ Ok = $true; Error = ""; Restore = $restore; ResolvedPath = $resolvedFull; UnityProjectPath = $UnityProjectPath }
 }
 
 Invoke-TriOps @("init") | Out-Null
@@ -446,13 +861,8 @@ while ($true) {
     if ($reqObj -and $reqObj.desired_build_commit) {
         $desiredCommit = [string]$reqObj.desired_build_commit
     }
-    $requestedPureDotsRef = $null
-    if ($reqObj -and $reqObj.notes) {
-        $notesText = [string]$reqObj.notes
-        if ($notesText -match "puredots_ref=([^;\\s]+)") {
-            $requestedPureDotsRef = $Matches[1]
-        }
-    }
+    $notesRaw = Get-NotesRaw $reqObj
+    $requestedPureDotsRef = Get-NoteValue $notesRaw "puredots_ref"
 
     while ($true) {
         $lockResult = Invoke-TriOps @("lock_build", "--owner", "ps", "--request-id", $requestId, "--lease-seconds", $leaseSeconds)
@@ -470,6 +880,30 @@ while ($true) {
     $logs = New-Object System.Collections.Generic.List[string]
     $errorMessage = ""
     $originalBranches = @{}
+    $scriptPath = $PSCommandPath
+    $scriptHash = (Get-FileHash -Path $scriptPath -Algorithm SHA256).Hash
+    $logs.Add("builder_script_path=" + $scriptPath)
+    $logs.Add("builder_script_hash=" + $scriptHash)
+    $logs.Add("builder_boot_utc=" + (Get-Date).ToUniversalTime().ToString("o"))
+    if ($notesRaw) {
+        $logs.Add("notes_raw=" + ($notesRaw -replace "[\r\n]+", " "))
+    }
+    if ($requestedPureDotsRef) {
+        $logs.Add("puredots_ref_parsed=" + $requestedPureDotsRef + " len=" + $requestedPureDotsRef.Length)
+    }
+    Set-LogValue $logs "backend_guess" "unknown"
+    Set-LogValue $logs "build_dir_selected" "unknown"
+    Set-LogValue $logs "sentinel_target" "unknown"
+    if ($requestedPureDotsRef) {
+        Set-LogValue $logs "unity_project_path" "unknown"
+        Set-LogValue $logs "manifest_puredots" "unknown"
+        Set-LogValue $logs "lock_puredots_source" "unknown"
+        Set-LogValue $logs "lock_puredots_version" "unknown"
+        Set-LogValue $logs "resolved_puredots_path" "unknown"
+        Set-LogValue $logs "resolved_source_sentinel_present" "unknown"
+        Set-LogValue $logs "resolved_source_file_hash" "unknown"
+        Set-LogValue $logs "scriptassemblies_hits" ""
+    }
 
     try {
         $puredotsInfo = $null
@@ -497,6 +931,9 @@ while ($true) {
             $buildCommit = "unknown"
             $logs.Add("mode=orchestrator")
         } else {
+            $probeBuild = [bool]$requestedPureDotsRef
+            $sentinel = "probeVersion"
+            $expectedPureDotsPath = Join-Path $env:TRI_ROOT "puredots\Packages\com.moni.puredots"
             $projectInfos = New-Object System.Collections.Generic.List[object]
             foreach ($project in $projects) {
                 $info = Get-ProjectInfo $project
@@ -526,27 +963,103 @@ while ($true) {
             if ($overallStatus -eq "ok") {
                 foreach ($info in $projectInfos) {
                     $projectRoot = Join-Path $env:TRI_ROOT $info.Name
+                    $unityProjectPath = $projectRoot
+                    $resolvedPureDotsPath = ""
+                    $prefix = $info.Name.ToLowerInvariant()
+                    $overrideInfo = $null
                     $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
                     New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
                     $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
 
-                    $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
-                    $logs.Add("build_log=" + $logPath)
+                    try {
+                        if ($probeBuild) {
+                            $resolution = Ensure-PureDotsResolution $info.Name $unityProjectPath $expectedPureDotsPath $sentinel $logs
+                            $overrideInfo = $resolution.Restore
+                            $unityProjectPath = $resolution.UnityProjectPath
+                            $resolvedPureDotsPath = $resolution.ResolvedPath
+                            if (-not $resolution.Ok) {
+                                $overallStatus = "failed"
+                                $errorMessage = $resolution.Error
+                                break
+                            }
+                        }
 
-                    if ($exitCode -ne 0) {
-                        $overallStatus = "failed"
-                        $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
+                        $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
+                        $logs.Add("build_log_" + $info.Name + "=" + $logPath)
+
+                        if ($exitCode -ne 0) {
+                            $overallStatus = "failed"
+                            $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
+                            break
+                        }
+
+                        $logProjectPath = Get-UnityProjectPathFromLog $logPath
+                        if ($logProjectPath) {
+                            $unityProjectPath = $logProjectPath
+                            Set-LogValue $logs "${prefix}_unity_project_path" $logProjectPath
+                            Set-LogValue $logs "unity_project_path" $logProjectPath
+                        }
+
+                        if ($probeBuild) {
+                            $scriptHits = Get-ScriptAssembliesHits $unityProjectPath $sentinel
+                            $hitsText = if ($scriptHits.Count -gt 0) { ($scriptHits -join ",") } else { "" }
+                            Set-LogValue $logs "${prefix}_scriptassemblies_hits" $hitsText
+                            Set-LogValue $logs "scriptassemblies_hits" $hitsText
+                            if ($scriptHits.Count -eq 0) {
+                                $overallStatus = "failed"
+                                $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
+                                break
+                            }
+                            $pureDotsHits = @($scriptHits | Where-Object { $_ -like "PureDOTS*" })
+                            if ($pureDotsHits.Count -eq 0) {
+                                $overallStatus = "failed"
+                                $errorMessage = "SCRIPTASSEMBLIES_MISSING_PUREDOTS_PROBEVERSION"
+                                break
+                            }
+                        }
+
+                        Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
+                        Renew-Leases $requestId
+
+                        $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
+                        if ($probeBuild) {
+                            $stagedDir = Prepare-RequestBuildDir $projectRoot $info.BuildRootName $buildDir $requestId
+                            $logs.Add("${prefix}_staged_from=" + $buildDir)
+                            $buildDir = $stagedDir
+                        }
+
+                        if ($probeBuild) {
+                            $sentinelInfo = Get-PlayerSentinelInfo $buildDir $sentinel
+                            Set-LogValue $logs "${prefix}_backend_guess" $sentinelInfo.Backend
+                            Set-LogValue $logs "backend_guess" $sentinelInfo.Backend
+                            Set-LogValue $logs "${prefix}_build_dir_selected" $buildDir
+                            Set-LogValue $logs "build_dir_selected" $buildDir
+                            Set-LogValue $logs "${prefix}_sentinel_target" $sentinelInfo.Target
+                            Set-LogValue $logs "sentinel_target" $sentinelInfo.Target
+                            if (-not $sentinelInfo.Found) {
+                                $overallStatus = "failed"
+                                $errorMessage = "BUILD_MISMATCH_PUREDOTS_CACHE sentinel_missing=probeVersion"
+                                break
+                            }
+                            $logs.Add("${prefix}_sentinel_found=probeVersion")
+                        }
+
+                        $extraNotes = ""
+                        if ($probeBuild) {
+                            $unityNote = Sanitize-NoteValue $unityProjectPath
+                            $resolvedNote = Sanitize-NoteValue $resolvedPureDotsPath
+                            $extraNotes = "unity_project_path=$unityNote;resolved_puredots_path=$resolvedNote"
+                        }
+                        $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId $puredotsInfo.Branch $puredotsInfo.Sha $extraNotes
+                        $logs.Add("publish_path_" + $info.Name + "=" + $publish.PublishedPath)
+                        $publishedPath = $publish.PublishedPath
+                        $buildCommit = $publish.BuildCommit
+                    } finally {
+                        Restore-PureDotsManifestOverride $overrideInfo
+                    }
+                    if ($overallStatus -ne "ok") {
                         break
                     }
-
-                    Write-Heartbeat ("publishing_" + $info.Name) "req=$requestId" $cycle
-                    Renew-Leases $requestId
-
-                    $buildDir = Get-LatestBuildPath $projectRoot $info.BuildRootName $info.ExecutableName
-                    $publish = Publish-Build $info.Name $buildDir $info.ExecutableName $requestId $puredotsInfo.Branch $puredotsInfo.Sha
-                    $logs.Add("publish_path=" + $publish.PublishedPath)
-                    $publishedPath = $publish.PublishedPath
-                    $buildCommit = $publish.BuildCommit
                 }
             }
         }
