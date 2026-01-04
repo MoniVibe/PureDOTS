@@ -121,6 +121,8 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
         "utc": utc_iso(),
         "version": args.version,
     }
+    if args.builder_git_sha:
+        data["builder_git_sha"] = args.builder_git_sha
     atomic_write_json(ops_dir / "heartbeats" / f"{agent}.json", data)
     return 0
 
@@ -375,6 +377,7 @@ def build_parser() -> argparse.ArgumentParser:
     heartbeat.add_argument("--cycle", type=int, default=0)
     heartbeat.add_argument("--version", default="1")
     heartbeat.add_argument("--host")
+    heartbeat.add_argument("--builder-git-sha")
     heartbeat.set_defaults(func=cmd_heartbeat)
 
     request = subparsers.add_parser("request_rebuild")

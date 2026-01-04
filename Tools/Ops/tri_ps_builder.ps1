@@ -263,15 +263,19 @@ function Ensure-SourceSentinel(
     $packagesDir = Join-Path $UnityProjectPath "Packages"
     $manifestInfo = Get-ManifestPureDots $UnityProjectPath
     $resolvedFull = Resolve-FilePackagePath $manifestInfo.Value $packagesDir
+    Set-LogValue $Logs "${prefix}_manifest_puredots_raw" $manifestInfo.Value
+    Set-LogValue $Logs "manifest_puredots_raw" $manifestInfo.Value
+    Set-LogValue $Logs "${prefix}_manifest_puredots_resolved_full" $resolvedFull
+    Set-LogValue $Logs "manifest_puredots_resolved_full" $resolvedFull
     $sentinelPath = Get-SourceSentinelPath $resolvedFull
-    if ([string]::IsNullOrWhiteSpace($sentinelPath)) {
-        Set-LogValue $Logs "${prefix}_sentinel_target" "unknown"
-        Set-LogValue $Logs "sentinel_target" "unknown"
-        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present_pre" "unknown"
-        Set-LogValue $Logs "resolved_source_sentinel_present_pre" "unknown"
-        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present_post" "unknown"
-        Set-LogValue $Logs "resolved_source_sentinel_present_post" "unknown"
-        return @{ Ok = $true; Error = ""; Path = "" }
+    if ([string]::IsNullOrWhiteSpace($resolvedFull) -or [string]::IsNullOrWhiteSpace($sentinelPath)) {
+        Set-LogValue $Logs "${prefix}_sentinel_target" "unresolved"
+        Set-LogValue $Logs "sentinel_target" "unresolved"
+        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present_pre" "0"
+        Set-LogValue $Logs "resolved_source_sentinel_present_pre" "0"
+        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present_post" "0"
+        Set-LogValue $Logs "resolved_source_sentinel_present_post" "0"
+        return @{ Ok = $false; Error = "SENTINEL_PATH_UNRESOLVED"; Path = "" }
     }
 
     Set-LogValue $Logs "${prefix}_sentinel_target" $sentinelPath
@@ -625,16 +629,23 @@ function Resolve-FilePackagePath([string]$Value, [string]$BaseDir) {
     if ($Value -notmatch "^file:") {
         return $null
     }
-    $rel = $Value -replace "^file:(//)?", ""
-    $rel = $rel.TrimStart("/")
-    $rel = $rel.Replace("/", "\")
-    if ([System.IO.Path]::IsPathRooted($rel)) {
-        return Normalize-Path $rel
+    $raw = $Value -replace "^file:(//)?", ""
+    $raw = $raw.Trim()
+    $raw = $raw.TrimStart("/")
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return $null
+    }
+    $raw = $raw.Replace("/", "\")
+    if ($raw -match "^[A-Za-z]:") {
+        return Normalize-Path $raw
+    }
+    if ([System.IO.Path]::IsPathRooted($raw)) {
+        return Normalize-Path $raw
     }
     if ([string]::IsNullOrWhiteSpace($BaseDir)) {
-        return Normalize-Path $rel
+        return Normalize-Path $raw
     }
-    return Normalize-Path (Join-Path $BaseDir $rel)
+    return Normalize-Path (Join-Path $BaseDir $raw)
 }
 
 function Test-PureDotsPackage([string]$Path) {
@@ -831,6 +842,8 @@ function Get-PureDotsResolutionSnapshot(
     $lockFull = Resolve-FilePackagePath $lockInfo.Version $packagesDir
     Set-LogValue $Logs "${prefix}_manifest_puredots_full" $manifestFull
     Set-LogValue $Logs "manifest_puredots_full" $manifestFull
+    Set-LogValue $Logs "${prefix}_manifest_puredots_resolved_full" $manifestFull
+    Set-LogValue $Logs "manifest_puredots_resolved_full" $manifestFull
     Set-LogValue $Logs "${prefix}_lock_puredots_full" $lockFull
     Set-LogValue $Logs "lock_puredots_full" $lockFull
     Set-LogValue $Logs "${prefix}_expected_puredots_full" $ExpectedFull
@@ -1154,6 +1167,14 @@ $shellExe = Get-ShellExe
 $heartbeatSeconds = if ($env:TRI_OPS_HEARTBEAT_SECONDS) { [int]$env:TRI_OPS_HEARTBEAT_SECONDS } else { 45 }
 $pollSeconds = if ($env:TRI_OPS_POLL_SECONDS) { [int]$env:TRI_OPS_POLL_SECONDS } else { 30 }
 $leaseSeconds = if ($env:TRI_OPS_LEASE_SECONDS) { [int]$env:TRI_OPS_LEASE_SECONDS } else { 900 }
+$script:BuilderGitSha = "unknown"
+try {
+    $builderRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
+    $shaResult = Invoke-Git $builderRoot rev-parse HEAD
+    if ($shaResult.ExitCode -eq 0 -and $shaResult.Output) {
+        $script:BuilderGitSha = $shaResult.Output.Trim()
+    }
+} catch { }
 
 function Invoke-TriOps {
     param([string[]]$TriOpsArgs)
@@ -1165,10 +1186,14 @@ function Invoke-TriOps {
 }
 
 function Write-Heartbeat([string]$Phase, [string]$Task, [int]$Cycle) {
-    Invoke-TriOps @(
+    $args = @(
         "heartbeat", "--agent", "ps", "--phase", $Phase,
         "--current-task", $Task, "--cycle", $Cycle
-    ) | Out-Null
+    )
+    if ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
+        $args += @("--builder-git-sha", $script:BuilderGitSha)
+    }
+    Invoke-TriOps $args | Out-Null
 }
 
 function Renew-Leases([string]$RequestId) {
@@ -1640,6 +1665,9 @@ while ($true) {
     $unityEditorPath = if ($env:TRI_UNITY_EXE) { $env:TRI_UNITY_EXE } elseif ($env:UNITY_WIN) { $env:UNITY_WIN } else { "" }
     $logs.Add("build_user=" + $buildUser)
     $logs.Add("session_type=" + $sessionType)
+    if ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
+        $logs.Add("builder_git_sha=" + $script:BuilderGitSha)
+    }
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
     }
