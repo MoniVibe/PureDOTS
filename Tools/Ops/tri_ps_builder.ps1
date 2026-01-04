@@ -689,6 +689,92 @@ function Get-PureDotsResolutionSnapshot(
     }
 }
 
+function Log-HeadlessPackagePaths(
+    [string]$ProjectName,
+    [string]$ProjectRoot,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    $key = $ProjectName.ToLowerInvariant()
+    $packagesDir = Join-Path $ProjectRoot "Packages"
+    $lockPath = Join-Path $packagesDir "packages-lock.json"
+    $lockHeadlessPath = Join-Path $packagesDir "packages-lock.headless.json"
+    $manifestPath = Join-Path $packagesDir "manifest.json"
+    $manifestHeadlessPath = Join-Path $packagesDir "manifest.headless.json"
+
+    $Logs.Add("${key}_packages_dir=" + $packagesDir)
+    $Logs.Add("${key}_lock_path=" + $lockPath)
+    $Logs.Add("${key}_lock_headless_path=" + $lockHeadlessPath)
+    $Logs.Add("${key}_manifest_path=" + $manifestPath)
+    $Logs.Add("${key}_manifest_headless_path=" + $manifestHeadlessPath)
+
+    return @{
+        PackagesDir = $packagesDir
+        LockPath = $lockPath
+        LockHeadlessPath = $lockHeadlessPath
+        ManifestPath = $manifestPath
+        ManifestHeadlessPath = $manifestHeadlessPath
+    }
+}
+
+function Validate-HeadlessLockPostSwap(
+    [string]$ProjectName,
+    [string]$ProjectRoot,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    $key = $ProjectName.ToLowerInvariant()
+    $paths = Log-HeadlessPackagePaths $ProjectName $ProjectRoot $Logs
+    $packagesDir = $paths.PackagesDir
+    $lockPath = $paths.LockPath
+    $lockHeadlessPath = $paths.LockHeadlessPath
+
+    $lockExists = Test-Path $lockPath
+    if (-not $lockExists) {
+        if (Test-Path $lockHeadlessPath) {
+            Copy-Item -Path $lockHeadlessPath -Destination $lockPath -Force -ErrorAction SilentlyContinue
+        }
+        $lockExists = Test-Path $lockPath
+    }
+    $Logs.Add("${key}_packages_lock_exists_postswap=" + ([int]$lockExists))
+
+    if (-not $lockExists) {
+        $listing = Get-ChildItem -Path $packagesDir -Name -ErrorAction SilentlyContinue | Select-Object -First 40
+        $listingText = Trim-LogValue ($listing -join ",")
+        $Logs.Add("${key}_packages_dir_listing_top=" + $listingText)
+        return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_NOT_CREATED" }
+    }
+
+    $raw = $null
+    $lockData = $null
+    try {
+        $raw = Get-Content -Path $lockPath -Raw -ErrorAction Stop
+        $lockData = $raw | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        $size = ""
+        try {
+            $size = (Get-Item -Path $lockPath -ErrorAction SilentlyContinue).Length
+        } catch { }
+        $lines = Get-Content -Path $lockPath -TotalCount 20 -ErrorAction SilentlyContinue
+        $Logs.Add("${key}_lock_size_bytes=" + $size)
+        $Logs.Add("${key}_lock_first20_lines=" + (Trim-LogValue ($lines -join " | ")))
+        return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_PARSE_ERROR" }
+    }
+
+    $hasPureDots = $false
+    if ($lockData) {
+        if ($lockData.dependencies -and $lockData.dependencies."com.moni.puredots") {
+            $hasPureDots = $true
+        } elseif ($lockData.packages -and $lockData.packages."com.moni.puredots") {
+            $hasPureDots = $true
+        }
+    }
+    $Logs.Add("${key}_lock_contains_puredots=" + ([int]$hasPureDots))
+    if (-not $hasPureDots) {
+        return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_MISSING_PUREDOTS_KEY" }
+    }
+
+    return @{ Ok = $true; Error = "" }
+}
+
 function Sanitize-NoteValue([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) {
         return ""
@@ -1321,6 +1407,13 @@ while ($true) {
                         if (-not $swapResult.Ok) {
                             $overallStatus = "failed"
                             $errorMessage = $swapResult.Error
+                            break
+                        }
+
+                        $lockGuard = Validate-HeadlessLockPostSwap $info.Name $projectRoot $logs
+                        if (-not $lockGuard.Ok) {
+                            $overallStatus = "failed"
+                            $errorMessage = $lockGuard.Error
                             break
                         }
 
