@@ -722,6 +722,12 @@ function Get-PureDotsResolutionSnapshot(
     if (-not $lockInfo.Version -and $guard -and $guard.LockVersionJson) {
         $lockInfo.Version = $guard.LockVersionJson
     }
+    if (-not $lockInfo.Source -and $lockInfo.Version) {
+        $lockInfo.Source = "local"
+    }
+    if ($lockInfo.Version -and $lockInfo.Error) {
+        $lockInfo.Error = ""
+    }
     Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
     Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
     Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
@@ -772,6 +778,8 @@ function Get-PureDotsResolutionSnapshot(
         ManifestMatches = $manifestMatches
         LockMatches = $lockMatches
         PackageJsonPresent = $packageJsonPresent
+        PackagesLockExists = $packagesLockExists
+        LockContainsPureDots = $lockContainsPureDots
         ResolvedMatches = $resolvedMatches
     }
 }
@@ -1393,6 +1401,33 @@ function Ensure-PureDotsResolution(
     $resolvedExists = $snapshot.ResolvedExists
     $sourceInfo = $snapshot.SourceInfo
     $resolvedMatches = $snapshot.ResolvedMatches
+    $packagesLockExists = $snapshot.PackagesLockExists
+    $lockContainsPureDots = $snapshot.LockContainsPureDots
+    $manifestMatches = $snapshot.ManifestMatches
+    $lockMatches = $snapshot.LockMatches
+    $packageJsonPresent = $snapshot.PackageJsonPresent
+    $manifestFull = $snapshot.ManifestFull
+    $lockFull = $snapshot.LockFull
+
+    $gateReason = "PASS:lock_ok_fullpath_match"
+    if (-not $resolvedMatches) {
+        if (-not $packagesLockExists) {
+            $gateReason = "FAIL:lock_missing_file"
+        } elseif (-not $lockContainsPureDots) {
+            $gateReason = "FAIL:lock_missing_key"
+        } elseif (-not $manifestMatches -or -not $lockMatches) {
+            $gateReason = "FAIL:fullpath_mismatch manifest=$manifestFull lock=$lockFull expected=$expectedFull"
+        } elseif (-not $packageJsonPresent) {
+            $gateReason = "FAIL:package_json_missing"
+        } elseif (-not $resolvedExists) {
+            $gateReason = "FAIL:resolved_path_missing"
+        } elseif (-not $sourceInfo.Present) {
+            $gateReason = "FAIL:sentinel_missing"
+        } else {
+            $gateReason = "FAIL:unknown"
+        }
+    }
+    Set-LogValue $Logs "puredots_gate_reason" $gateReason
 
     $restore = $null
     if (-not $resolvedMatches) {
@@ -1415,6 +1450,33 @@ function Ensure-PureDotsResolution(
         $resolvedExists = $snapshot.ResolvedExists
         $sourceInfo = $snapshot.SourceInfo
         $resolvedMatches = $snapshot.ResolvedMatches
+        $packagesLockExists = $snapshot.PackagesLockExists
+        $lockContainsPureDots = $snapshot.LockContainsPureDots
+        $manifestMatches = $snapshot.ManifestMatches
+        $lockMatches = $snapshot.LockMatches
+        $packageJsonPresent = $snapshot.PackageJsonPresent
+        $manifestFull = $snapshot.ManifestFull
+        $lockFull = $snapshot.LockFull
+
+        $gateReason = "PASS:lock_ok_fullpath_match"
+        if (-not $resolvedMatches) {
+            if (-not $packagesLockExists) {
+                $gateReason = "FAIL:lock_missing_file"
+            } elseif (-not $lockContainsPureDots) {
+                $gateReason = "FAIL:lock_missing_key"
+            } elseif (-not $manifestMatches -or -not $lockMatches) {
+                $gateReason = "FAIL:fullpath_mismatch manifest=$manifestFull lock=$lockFull expected=$expectedFull"
+            } elseif (-not $packageJsonPresent) {
+                $gateReason = "FAIL:package_json_missing"
+            } elseif (-not $resolvedExists) {
+                $gateReason = "FAIL:resolved_path_missing"
+            } elseif (-not $sourceInfo.Present) {
+                $gateReason = "FAIL:sentinel_missing"
+            } else {
+                $gateReason = "FAIL:unknown"
+            }
+        }
+        Set-LogValue $Logs "puredots_gate_reason" $gateReason
 
         if (-not $resolvedMatches) {
             return @{ Ok = $false; Error = "PACKAGE_RESOLUTION_MISMATCH_PUREDOTS"; Restore = $restore; ResolvedPath = $resolvedFull; UnityProjectPath = $UnityProjectPath }
