@@ -1168,11 +1168,21 @@ $heartbeatSeconds = if ($env:TRI_OPS_HEARTBEAT_SECONDS) { [int]$env:TRI_OPS_HEAR
 $pollSeconds = if ($env:TRI_OPS_POLL_SECONDS) { [int]$env:TRI_OPS_POLL_SECONDS } else { 30 }
 $leaseSeconds = if ($env:TRI_OPS_LEASE_SECONDS) { [int]$env:TRI_OPS_LEASE_SECONDS } else { 900 }
 $script:BuilderGitSha = "unknown"
+$script:BuilderGitShaShort = "unknown"
+$script:BuilderGitBranch = "unknown"
 try {
     $builderRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
     $shaResult = Invoke-Git $builderRoot rev-parse HEAD
     if ($shaResult.ExitCode -eq 0 -and $shaResult.Output) {
         $script:BuilderGitSha = $shaResult.Output.Trim()
+    }
+    $shaShortResult = Invoke-Git $builderRoot rev-parse --short=10 HEAD
+    if ($shaShortResult.ExitCode -eq 0 -and $shaShortResult.Output) {
+        $script:BuilderGitShaShort = $shaShortResult.Output.Trim()
+    }
+    $branchResult = Invoke-Git $builderRoot rev-parse --abbrev-ref HEAD
+    if ($branchResult.ExitCode -eq 0 -and $branchResult.Output) {
+        $script:BuilderGitBranch = $branchResult.Output.Trim()
     }
 } catch { }
 
@@ -1190,8 +1200,13 @@ function Write-Heartbeat([string]$Phase, [string]$Task, [int]$Cycle) {
         "heartbeat", "--agent", "ps", "--phase", $Phase,
         "--current-task", $Task, "--cycle", $Cycle
     )
-    if ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
+    if ($script:BuilderGitShaShort -and $script:BuilderGitShaShort -ne "unknown") {
+        $args += @("--builder-git-sha", $script:BuilderGitShaShort)
+    } elseif ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
         $args += @("--builder-git-sha", $script:BuilderGitSha)
+    }
+    if ($script:BuilderGitBranch -and $script:BuilderGitBranch -ne "unknown") {
+        $args += @("--builder-git-branch", $script:BuilderGitBranch)
     }
     Invoke-TriOps $args | Out-Null
 }
@@ -1665,9 +1680,8 @@ while ($true) {
     $unityEditorPath = if ($env:TRI_UNITY_EXE) { $env:TRI_UNITY_EXE } elseif ($env:UNITY_WIN) { $env:UNITY_WIN } else { "" }
     $logs.Add("build_user=" + $buildUser)
     $logs.Add("session_type=" + $sessionType)
-    if ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
-        $logs.Add("builder_git_sha=" + $script:BuilderGitSha)
-    }
+    $logs.Add("builder_git_sha=" + $script:BuilderGitShaShort)
+    $logs.Add("builder_git_branch=" + $script:BuilderGitBranch)
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
     }
