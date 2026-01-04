@@ -192,7 +192,12 @@ function Get-PackagesLockPureDots([string]$ProjectPath) {
         $lock = Get-Content -Path $lockPath -Raw | ConvertFrom-Json
         $dep = $null
         if ($lock -and $lock.dependencies) {
-            $dep = $lock.dependencies."com.moni.puredots"
+            $prop = $lock.dependencies.PSObject.Properties["com.moni.puredots"]
+            if ($prop) { $dep = $prop.Value }
+        }
+        if (-not $dep -and $lock -and $lock.packages) {
+            $prop = $lock.packages.PSObject.Properties["com.moni.puredots"]
+            if ($prop) { $dep = $prop.Value }
         }
         $version = if ($dep -and $dep.version) { $dep.version } else { "" }
         $source = if ($dep -and $dep.source) { $dep.source } else { "" }
@@ -675,7 +680,12 @@ function Get-PureDotsResolutionSnapshot(
         }
     }
 
-    $lockContainsPureDots = $containsLiteral
+    $lockContainsPureDotsJson = $null
+    if ($guard -and $guard.LockContainsPureDotsJson -ne $null) {
+        $lockContainsPureDotsJson = [bool]$guard.LockContainsPureDotsJson
+    }
+
+    $lockContainsPureDots = if ($lockContainsPureDotsJson -ne $null) { $lockContainsPureDotsJson } else { $containsLiteral }
     if (-not $lockContainsPureDots -and $packagesLockExists) {
         $lockContainsPureDots = Select-String -Path $packagesLockPath -SimpleMatch -Pattern '"com.moni.puredots"' -Quiet
     }
@@ -683,6 +693,10 @@ function Get-PureDotsResolutionSnapshot(
     Set-LogValue $Logs "packages_lock_exists" ([int]$packagesLockExists)
     Set-LogValue $Logs "${prefix}_lock_contains_puredots" ([int]$lockContainsPureDots)
     Set-LogValue $Logs "lock_contains_puredots" ([int]$lockContainsPureDots)
+    if ($lockContainsPureDotsJson -ne $null) {
+        Set-LogValue $Logs "${prefix}_lock_contains_puredots_json" ([int]$lockContainsPureDotsJson)
+    }
+    Set-LogValue $Logs "${prefix}_lock_parse_mode" "json"
     Set-LogValue $Logs "${prefix}_lock_contains_puredots_literal" ([int]$containsLiteral)
     Set-LogValue $Logs "${prefix}_lock_file_size_bytes" $lockFileSize
     if ($lockRawExtracted) {
@@ -704,6 +718,9 @@ function Get-PureDotsResolutionSnapshot(
     $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
     if (-not $lockInfo.Version -and $lockRawExtracted) {
         $lockInfo.Version = $lockRawExtracted
+    }
+    if (-not $lockInfo.Version -and $guard -and $guard.LockVersionJson) {
+        $lockInfo.Version = $guard.LockVersionJson
     }
     Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
     Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
@@ -886,15 +903,35 @@ function Validate-HeadlessLockPostSwap(
     }
 
     $hasPureDots = $false
+    $hasPureDotsJson = $false
+    $lockVersionJson = ""
     if ($lockData) {
-        if ($lockData.dependencies -and $lockData.dependencies."com.moni.puredots") {
-            $hasPureDots = $true
-        } elseif ($lockData.packages -and $lockData.packages."com.moni.puredots") {
-            $hasPureDots = $true
+        if ($lockData.dependencies) {
+            $prop = $lockData.dependencies.PSObject.Properties["com.moni.puredots"]
+            if ($prop) {
+                $hasPureDotsJson = $true
+                if ($prop.Value -and $prop.Value.version) {
+                    $lockVersionJson = $prop.Value.version
+                }
+            }
+        }
+        if (-not $hasPureDotsJson -and $lockData.packages) {
+            $prop = $lockData.packages.PSObject.Properties["com.moni.puredots"]
+            if ($prop) {
+                $hasPureDotsJson = $true
+                if ($prop.Value -and $prop.Value.version) {
+                    $lockVersionJson = $prop.Value.version
+                }
+            }
         }
     }
-    if ($containsLiteral) {
+    if ($hasPureDotsJson -or $containsLiteral) {
         $hasPureDots = $true
+    }
+    $Logs.Add("${key}_lock_parse_mode=json")
+    $Logs.Add("${key}_lock_contains_puredots_json=" + ([int]$hasPureDotsJson))
+    if ($lockVersionJson) {
+        $Logs.Add("${key}_lock_version_json=" + (Trim-LogValue $lockVersionJson))
     }
     $Logs.Add("${key}_lock_contains_puredots=" + ([int]$hasPureDots))
     if (-not $hasPureDots) {
@@ -909,6 +946,8 @@ function Validate-HeadlessLockPostSwap(
             LockRawExtracted = $lockRawExtracted
             LockExcerpt = $excerpt
             LockContainsPureDots = $false
+            LockContainsPureDotsJson = $hasPureDotsJson
+            LockVersionJson = $lockVersionJson
         }
         return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_MISSING_PUREDOTS_KEY" }
     }
@@ -924,6 +963,8 @@ function Validate-HeadlessLockPostSwap(
         LockRawExtracted = $lockRawExtracted
         LockExcerpt = $excerpt
         LockContainsPureDots = $true
+        LockContainsPureDotsJson = $hasPureDotsJson
+        LockVersionJson = $lockVersionJson
     }
     return @{ Ok = $true; Error = "" }
 }
@@ -1367,10 +1408,6 @@ function Ensure-PureDotsResolution(
         if (Test-Path $libraryPath) {
             Remove-Item -Path $libraryPath -Recurse -Force -ErrorAction SilentlyContinue
             $Logs.Add("${prefix}_full_library_wipe=1")
-        }
-
-        if ($script:LockGuardByProject.ContainsKey($prefix)) {
-            $script:LockGuardByProject.Remove($prefix)
         }
 
         $snapshot = Get-PureDotsResolutionSnapshot $ProjectName $UnityProjectPath $expectedFull $Sentinels $Logs
