@@ -524,6 +524,138 @@ function Restore-PureDotsManifestOverride($RestoreInfo) {
     }
 }
 
+function Resolve-FilePackagePath([string]$Value, [string]$BaseDir) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    if ($Value -notmatch "^file:") {
+        return $null
+    }
+    $rel = $Value -replace "^file:(//)?", ""
+    $rel = $rel.TrimStart("/")
+    $rel = $rel.Replace("/", "\")
+    if ([System.IO.Path]::IsPathRooted($rel)) {
+        return Normalize-Path $rel
+    }
+    if ([string]::IsNullOrWhiteSpace($BaseDir)) {
+        return Normalize-Path $rel
+    }
+    return Normalize-Path (Join-Path $BaseDir $rel)
+}
+
+function Test-PureDotsPackage([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $false
+    }
+    $pkgPath = Join-Path $Path "package.json"
+    if (-not (Test-Path $pkgPath)) {
+        return $false
+    }
+    try {
+        $pkg = Get-Content -Path $pkgPath -Raw | ConvertFrom-Json
+        return ($pkg -and $pkg.name -eq "com.moni.puredots")
+    } catch {
+        return $false
+    }
+}
+
+function Invoke-HeadlessManifestSwap(
+    [string]$ProjectName,
+    [string]$ProjectRoot,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    $scriptPath = Join-Path $env:TRI_ROOT "Tools\Tools\use_headless_manifest_windows.ps1"
+    if (-not (Test-Path $scriptPath)) {
+        $Logs.Add("headless_manifest_script_missing=1")
+        return @{ Ok = $false; Error = "HEADLESS_MANIFEST_SCRIPT_MISSING" }
+    }
+    try {
+        & $scriptPath -ProjectPath $ProjectRoot
+        $exitCode = $LASTEXITCODE
+    } catch {
+        return @{ Ok = $false; Error = ("HEADLESS_MANIFEST_SWAP_FAILED " + $_.Exception.Message) }
+    }
+    $key = $ProjectName.ToLowerInvariant()
+    $Logs.Add(("headless_manifest_swap_{0}={1}" -f $key, $exitCode))
+    if ($exitCode -ne 0) {
+        return @{ Ok = $false; Error = ("HEADLESS_MANIFEST_SWAP_FAILED exit=" + $exitCode) }
+    }
+    return @{ Ok = $true; Error = "" }
+}
+
+function Get-PureDotsResolutionSnapshot(
+    [string]$ProjectName,
+    [string]$UnityProjectPath,
+    [string]$ExpectedFull,
+    [string[]]$Sentinels,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    $prefix = $ProjectName.ToLowerInvariant()
+    $packagesDir = Join-Path $UnityProjectPath "Packages"
+
+    $manifestInfo = Get-ManifestPureDots $UnityProjectPath
+    Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
+    Set-LogValue $Logs "manifest_puredots" $manifestInfo.Value
+    Set-LogValue $Logs "${prefix}_manifest_puredots_raw" $manifestInfo.Value
+    Set-LogValue $Logs "manifest_puredots_raw" $manifestInfo.Value
+    if ($manifestInfo.Error) {
+        $Logs.Add("${prefix}_manifest_puredots_error=" + $manifestInfo.Error)
+    }
+
+    $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
+    Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
+    Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
+    Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
+    Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
+    Set-LogValue $Logs "${prefix}_lock_puredots_raw" $lockInfo.Version
+    Set-LogValue $Logs "lock_puredots_raw" $lockInfo.Version
+    if ($lockInfo.Error) {
+        $Logs.Add("${prefix}_lock_puredots_error=" + $lockInfo.Error)
+    }
+
+    $manifestFull = Resolve-FilePackagePath $manifestInfo.Value $packagesDir
+    $lockFull = Resolve-FilePackagePath $lockInfo.Version $packagesDir
+    Set-LogValue $Logs "${prefix}_manifest_puredots_full" $manifestFull
+    Set-LogValue $Logs "manifest_puredots_full" $manifestFull
+    Set-LogValue $Logs "${prefix}_lock_puredots_full" $lockFull
+    Set-LogValue $Logs "lock_puredots_full" $lockFull
+    Set-LogValue $Logs "${prefix}_expected_puredots_full" $ExpectedFull
+    Set-LogValue $Logs "expected_puredots_full" $ExpectedFull
+
+    $packageJsonPresent = Test-PureDotsPackage $ExpectedFull
+    Set-LogValue $Logs "${prefix}_package_json_present" ([int]$packageJsonPresent)
+    Set-LogValue $Logs "package_json_present" ([int]$packageJsonPresent)
+
+    $resolvedFull = $manifestFull
+    $resolvedExists = $resolvedFull -and (Test-Path $resolvedFull)
+    Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
+    Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
+
+    $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinels
+    Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+    Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
+    if ($sourceInfo.Hash) {
+        Set-LogValue $Logs "${prefix}_resolved_source_file_hash" $sourceInfo.Hash
+        Set-LogValue $Logs "resolved_source_file_hash" $sourceInfo.Hash
+    }
+
+    $manifestMatches = $manifestFull -and ($manifestFull.TrimEnd('\') -ieq $ExpectedFull.TrimEnd('\'))
+    $lockMatches = $lockFull -and ($lockFull.TrimEnd('\') -ieq $ExpectedFull.TrimEnd('\'))
+    $resolvedMatches = $manifestMatches -and $lockMatches -and $packageJsonPresent -and $resolvedExists -and $sourceInfo.Present
+
+    return @{
+        ManifestFull = $manifestFull
+        LockFull = $lockFull
+        ResolvedFull = $resolvedFull
+        ResolvedExists = $resolvedExists
+        SourceInfo = $sourceInfo
+        ManifestMatches = $manifestMatches
+        LockMatches = $lockMatches
+        PackageJsonPresent = $packageJsonPresent
+        ResolvedMatches = $resolvedMatches
+    }
+}
+
 function Sanitize-NoteValue([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) {
         return ""
@@ -943,40 +1075,14 @@ function Ensure-PureDotsResolution(
 
     Set-LogValue $Logs "${prefix}_unity_project_path" $UnityProjectPath
     Set-LogValue $Logs "unity_project_path" $UnityProjectPath
-
-    $manifestInfo = Get-ManifestPureDots $UnityProjectPath
-    Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
-    Set-LogValue $Logs "manifest_puredots" $manifestInfo.Value
-    if ($manifestInfo.Error) {
-        $Logs.Add("${prefix}_manifest_puredots_error=" + $manifestInfo.Error)
-    }
-    $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
-    Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
-    Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
-    Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
-    Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
-    if ($lockInfo.Error) {
-        $Logs.Add("${prefix}_lock_puredots_error=" + $lockInfo.Error)
-    }
-
-    $resolvedPath = Resolve-PureDotsPath $UnityProjectPath $manifestInfo.Value
-    $resolvedFull = Normalize-Path $resolvedPath
-    $resolvedExists = $resolvedFull -and (Test-Path $resolvedFull)
-    Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
-    Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
-
-    $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinels
-    Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
-    Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
-    if ($sourceInfo.Hash) {
-        Set-LogValue $Logs "${prefix}_resolved_source_file_hash" $sourceInfo.Hash
-        Set-LogValue $Logs "resolved_source_file_hash" $sourceInfo.Hash
-    }
-
-    $resolvedMatches = $resolvedExists -and $resolvedFull -and ($resolvedFull.TrimEnd('\') -ieq $expectedFull.TrimEnd('\'))
+    $snapshot = Get-PureDotsResolutionSnapshot $ProjectName $UnityProjectPath $expectedFull $Sentinels $Logs
+    $resolvedFull = $snapshot.ResolvedFull
+    $resolvedExists = $snapshot.ResolvedExists
+    $sourceInfo = $snapshot.SourceInfo
+    $resolvedMatches = $snapshot.ResolvedMatches
 
     $restore = $null
-    if (-not $resolvedMatches -or -not $sourceInfo.Present -or -not $resolvedExists) {
+    if (-not $resolvedMatches) {
         $Logs.Add("${prefix}_manifest_override_reason=resolved_mismatch_or_missing")
         $restore = Apply-PureDotsManifestOverride $UnityProjectPath $expectedFull
         if (-not $restore.Applied) {
@@ -991,31 +1097,13 @@ function Ensure-PureDotsResolution(
             $Logs.Add("${prefix}_full_library_wipe=1")
         }
 
-        $manifestInfo = Get-ManifestPureDots $UnityProjectPath
-        Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
-        Set-LogValue $Logs "manifest_puredots" $manifestInfo.Value
-        $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
-        Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
-        Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
-        Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
-        Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
+        $snapshot = Get-PureDotsResolutionSnapshot $ProjectName $UnityProjectPath $expectedFull $Sentinels $Logs
+        $resolvedFull = $snapshot.ResolvedFull
+        $resolvedExists = $snapshot.ResolvedExists
+        $sourceInfo = $snapshot.SourceInfo
+        $resolvedMatches = $snapshot.ResolvedMatches
 
-        $resolvedPath = Resolve-PureDotsPath $UnityProjectPath $manifestInfo.Value
-        $resolvedFull = Normalize-Path $resolvedPath
-        $resolvedExists = $resolvedFull -and (Test-Path $resolvedFull)
-        Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
-        Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
-
-        $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinels
-        Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
-        Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
-        if ($sourceInfo.Hash) {
-            Set-LogValue $Logs "${prefix}_resolved_source_file_hash" $sourceInfo.Hash
-            Set-LogValue $Logs "resolved_source_file_hash" $sourceInfo.Hash
-        }
-
-        $resolvedMatches = $resolvedExists -and $resolvedFull -and ($resolvedFull.TrimEnd('\') -ieq $expectedFull.TrimEnd('\'))
-        if (-not $resolvedMatches -or -not $sourceInfo.Present -or -not $resolvedExists) {
+        if (-not $resolvedMatches) {
             return @{ Ok = $false; Error = "PACKAGE_RESOLUTION_MISMATCH_PUREDOTS"; Restore = $restore; ResolvedPath = $resolvedFull; UnityProjectPath = $UnityProjectPath }
         }
     }
@@ -1196,6 +1284,12 @@ while ($true) {
 
                     try {
                         if ($probeBuild) {
+                            $swapResult = Invoke-HeadlessManifestSwap $info.Name $projectRoot $logs
+                            if (-not $swapResult.Ok) {
+                                $overallStatus = "failed"
+                                $errorMessage = $swapResult.Error
+                                break
+                            }
                             $resolution = Ensure-PureDotsResolution $info.Name $unityProjectPath $expectedPureDotsPath $sentinels $logs
                             $overrideInfo = $resolution.Restore
                             $unityProjectPath = $resolution.UnityProjectPath
