@@ -157,11 +157,11 @@ function Get-UnityProjectPathFromLog([string]$LogPath) {
     if (-not (Test-Path $LogPath)) {
         return $null
     }
-    $line = Select-String -Path $LogPath -Pattern "-projectPath\\s+\"?([^\"]+)\"?" -ErrorAction SilentlyContinue | Select-Object -Last 1
+    $line = Select-String -Path $LogPath -Pattern '-projectPath\s+"?([^"]+)"?' -ErrorAction SilentlyContinue | Select-Object -Last 1
     if ($line -and $line.Matches.Count -gt 0) {
         return $line.Matches[0].Groups[1].Value.Trim()
     }
-    $line = Select-String -Path $LogPath -Pattern "Using project path\\s*[:=]\\s*(.+)$" -ErrorAction SilentlyContinue | Select-Object -Last 1
+    $line = Select-String -Path $LogPath -Pattern 'Using project path\s*[:=]\s*(.+)$' -ErrorAction SilentlyContinue | Select-Object -Last 1
     if ($line -and $line.Matches.Count -gt 0) {
         return $line.Matches[0].Groups[1].Value.Trim()
     }
