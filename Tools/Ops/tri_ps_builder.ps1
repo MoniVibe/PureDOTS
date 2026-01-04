@@ -819,6 +819,22 @@ function Sync-Project([string]$ProjectRoot, [string]$ProjectName, [string]$Desir
     return @{ Ok = $true; Error = ""; OriginalBranch = "" }
 }
 
+function Test-ProjectPin([string]$ProjectRoot, [string]$ProjectName, [string]$DesiredCommit, [System.Collections.Generic.List[string]]$Logs) {
+    if (-not $DesiredCommit) {
+        return @{ Ok = $true; Error = "" }
+    }
+    $fetchResult = Invoke-Git $ProjectRoot fetch --prune
+    if ($fetchResult.ExitCode -ne 0) {
+        return @{ Ok = $false; Error = "git fetch failed for ${ProjectName}: $($fetchResult.Output)" }
+    }
+    $verifyResult = Invoke-Git $ProjectRoot rev-parse --verify --quiet $DesiredCommit
+    if ($verifyResult.ExitCode -ne 0) {
+        $Logs.Add("bad_project_pin=$DesiredCommit;repo=$ProjectName")
+        return @{ Ok = $false; Error = "BAD_PROJECT_PIN" }
+    }
+    return @{ Ok = $true; Error = "" }
+}
+
 function Get-LatestBuildPath([string]$ProjectRoot, [string]$BuildRootName, [string]$ExeName) {
     $buildRoot = Join-Path $ProjectRoot ("Builds\" + $BuildRootName)
     if (-not (Test-Path $buildRoot)) {
@@ -1146,6 +1162,14 @@ while ($true) {
             if ($overallStatus -eq "ok") {
                 foreach ($info in $projectInfos) {
                     $projectRoot = Join-Path $env:TRI_ROOT $info.Name
+                    if ($desiredCommit) {
+                        $pinCheck = Test-ProjectPin $projectRoot $info.Name $desiredCommit $logs
+                        if (-not $pinCheck.Ok) {
+                            $overallStatus = "failed"
+                            $errorMessage = $pinCheck.Error
+                            break
+                        }
+                    }
                     $syncResult = Sync-Project $projectRoot $info.Name $desiredCommit
                     if (-not $syncResult.Ok) {
                         $overallStatus = "failed"
