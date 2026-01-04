@@ -309,6 +309,15 @@ function Get-UnityLogDiagnostics([string]$LogPath) {
     }
 }
 
+function Get-UnityLicensingLines([string]$LogPath) {
+    if (-not (Test-Path $LogPath)) {
+        return @()
+    }
+    $lines = Select-String -Path $LogPath -Pattern "\[Licensing::Module\]\s*Error:|Access token is unavailable" -ErrorAction SilentlyContinue |
+        Select-Object -First 10 | ForEach-Object { $_.Line }
+    return $lines
+}
+
 function Get-DllCandidates([string]$ProjectRoot, [int]$Minutes = 60, [int]$Max = 10) {
     $roots = @(
         (Join-Path $ProjectRoot "Library"),
@@ -1049,6 +1058,14 @@ while ($true) {
     $logs.Add("builder_script_path=" + $scriptPath)
     $logs.Add("builder_script_hash=" + $scriptHash)
     $logs.Add("builder_boot_utc=" + (Get-Date).ToUniversalTime().ToString("o"))
+    $buildUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $sessionType = if ([Environment]::UserInteractive) { "interactive" } else { "non-interactive" }
+    $unityEditorPath = if ($env:TRI_UNITY_EXE) { $env:TRI_UNITY_EXE } elseif ($env:UNITY_WIN) { $env:UNITY_WIN } else { "" }
+    $logs.Add("build_user=" + $buildUser)
+    $logs.Add("session_type=" + $sessionType)
+    if ($unityEditorPath) {
+        $logs.Add("unity_editor_path=" + $unityEditorPath)
+    }
     if ($notesRaw) {
         $logs.Add("notes_raw=" + ($notesRaw -replace "[\r\n]+", " "))
     }
@@ -1071,6 +1088,8 @@ while ($true) {
         Set-LogValue $logs "unity_cmdline_projectPath" "unknown"
         Set-LogValue $logs "unity_log_tail" ""
         Set-LogValue $logs "unity_error_lines" ""
+        Set-LogValue $logs "unity_license_error" "0"
+        Set-LogValue $logs "licensing_lines" ""
         Set-LogValue $logs "library_exists" "unknown"
         Set-LogValue $logs "library_dirs_top" ""
         Set-LogValue $logs "found_PlayerScriptAssemblies_dirs" ""
@@ -1167,13 +1186,24 @@ while ($true) {
                         $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
                         $logs.Add("build_log_" + $info.Name + "=" + $logPath)
 
+                        if ($probeBuild) {
+                            Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
+                            $licensingLines = Get-UnityLicensingLines $logPath
+                            if ($licensingLines.Count -gt 0) {
+                                Set-LogValue $logs "unity_license_error" "1"
+                                Set-LogValue $logs "licensing_lines" (Format-LogSnippet $licensingLines)
+                                $overallStatus = "failed"
+                                $errorMessage = "UNITY_LICENSE_ERROR"
+                                break
+                            }
+                        }
+
                         if ($exitCode -ne 0) {
                             if ($probeBuild) {
                                 $compileInfo = Get-CompileHits $unityProjectPath $sentinels $logs
                                 $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
                                 Set-LogValue $logs "compile_hits" $hitsText
                                 Set-LogValue $logs "compile_hits_source" $compileInfo.Source
-                                Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
                             }
                             $overallStatus = "failed"
                             $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
@@ -1194,7 +1224,6 @@ while ($true) {
                             Set-LogValue $logs "compile_hits" $hitsText
                             Set-LogValue $logs "compile_hits_source" $compileInfo.Source
                             if ($compileInfo.Hits.Count -eq 0) {
-                                Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
                                 $outputsMissing = (-not $compileInfo.PlayerExists) -and (-not $compileInfo.ScriptExists) -and ($compileInfo.BeeCount -eq 0)
                                 $overallStatus = "failed"
                                 if ($outputsMissing) {
