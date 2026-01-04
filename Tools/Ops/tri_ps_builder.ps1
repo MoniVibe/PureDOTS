@@ -42,6 +42,7 @@ function Resolve-StateDir {
 
 $stateDirWin = $null
 $stateDirWsl = $null
+$script:LockGuardByProject = @{}
 function Resolve-StateDirWsl {
     $script:stateDirWin = $env:TRI_STATE_DIR
     if ($env:TRI_STATE_DIR_WSL) {
@@ -614,17 +615,82 @@ function Get-PureDotsResolutionSnapshot(
     [System.Collections.Generic.List[string]]$Logs
 ) {
     $prefix = $ProjectName.ToLowerInvariant()
-    $packagesDir = Join-Path $UnityProjectPath "Packages"
-    $packagesLockPath = Join-Path $packagesDir "packages-lock.json"
-    $packagesLockExists = Test-Path $packagesLockPath
-    $lockContainsPureDots = $false
-    if ($packagesLockExists) {
+    $guard = $null
+    if ($script:LockGuardByProject.ContainsKey($prefix)) {
+        $guard = $script:LockGuardByProject[$prefix]
+    }
+
+    $packagesDir = if ($guard -and $guard.PackagesDir) { $guard.PackagesDir } else { Join-Path $UnityProjectPath "Packages" }
+    $packagesLockPath = if ($guard -and $guard.LockPath) { $guard.LockPath } else { Join-Path $packagesDir "packages-lock.json" }
+    $packagesLockExists = if ($guard) { [bool]$guard.LockExists } else { Test-Path $packagesLockPath }
+
+    $lockText = ""
+    if ($guard -and $guard.LockText -ne $null) {
+        $lockText = $guard.LockText
+    } elseif ($packagesLockExists) {
+        $lockText = Get-Content -Path $packagesLockPath -Raw -ErrorAction SilentlyContinue
+    }
+
+    $lockFileSize = ""
+    if ($guard -and $guard.LockFileSizeBytes -ne $null) {
+        $lockFileSize = $guard.LockFileSizeBytes
+    } elseif ($packagesLockExists) {
+        try {
+            $lockFileSize = (Get-Item -Path $packagesLockPath -ErrorAction SilentlyContinue).Length
+        } catch { }
+    }
+
+    $containsLiteral = $false
+    if ($guard -and $guard.ContainsLiteral -ne $null) {
+        $containsLiteral = [bool]$guard.ContainsLiteral
+    } elseif (-not [string]::IsNullOrWhiteSpace($lockText)) {
+        $containsLiteral = ($lockText -match '"com\.moni\.puredots"\s*:')
+    }
+
+    $lockRawExtracted = ""
+    if ($guard -and $guard.LockRawExtracted) {
+        $lockRawExtracted = $guard.LockRawExtracted
+    } elseif (-not [string]::IsNullOrWhiteSpace($lockText)) {
+        $m = [regex]::Match($lockText, '"com\.moni\.puredots"\s*:\s*\{[^}]*"version"\s*:\s*"([^"]+)"', 'Singleline')
+        if ($m.Success) {
+            $lockRawExtracted = $m.Groups[1].Value
+        }
+    }
+
+    $lockExcerpt = ""
+    if ($guard -and $guard.LockExcerpt) {
+        $lockExcerpt = $guard.LockExcerpt
+    } elseif ($packagesLockExists) {
+        $match = Select-String -Path $packagesLockPath -Pattern '"com\.moni\.puredots"' -Context 0,6 -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($match) {
+            $lines = @()
+            if ($match.Context -and $match.Context.PreContext) {
+                $lines += $match.Context.PreContext
+            }
+            $lines += $match.Line
+            if ($match.Context -and $match.Context.PostContext) {
+                $lines += $match.Context.PostContext
+            }
+            $lockExcerpt = Trim-LogValue ($lines -join " | ")
+        }
+    }
+
+    $lockContainsPureDots = $containsLiteral
+    if (-not $lockContainsPureDots -and $packagesLockExists) {
         $lockContainsPureDots = Select-String -Path $packagesLockPath -SimpleMatch -Pattern '"com.moni.puredots"' -Quiet
     }
     Set-LogValue $Logs "${prefix}_packages_lock_exists" ([int]$packagesLockExists)
     Set-LogValue $Logs "packages_lock_exists" ([int]$packagesLockExists)
     Set-LogValue $Logs "${prefix}_lock_contains_puredots" ([int]$lockContainsPureDots)
     Set-LogValue $Logs "lock_contains_puredots" ([int]$lockContainsPureDots)
+    Set-LogValue $Logs "${prefix}_lock_contains_puredots_literal" ([int]$containsLiteral)
+    Set-LogValue $Logs "${prefix}_lock_file_size_bytes" $lockFileSize
+    if ($lockRawExtracted) {
+        Set-LogValue $Logs "${prefix}_lock_puredots_raw_extracted" (Trim-LogValue $lockRawExtracted)
+    }
+    if ($lockExcerpt) {
+        Set-LogValue $Logs "${prefix}_lock_excerpt" $lockExcerpt
+    }
 
     $manifestInfo = Get-ManifestPureDots $UnityProjectPath
     Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
@@ -636,12 +702,16 @@ function Get-PureDotsResolutionSnapshot(
     }
 
     $lockInfo = Get-PackagesLockPureDots $UnityProjectPath
+    if (-not $lockInfo.Version -and $lockRawExtracted) {
+        $lockInfo.Version = $lockRawExtracted
+    }
     Set-LogValue $Logs "${prefix}_lock_puredots_version" $lockInfo.Version
     Set-LogValue $Logs "${prefix}_lock_puredots_source" $lockInfo.Source
     Set-LogValue $Logs "lock_puredots_version" $lockInfo.Version
     Set-LogValue $Logs "lock_puredots_source" $lockInfo.Source
-    Set-LogValue $Logs "${prefix}_lock_puredots_raw" $lockInfo.Version
-    Set-LogValue $Logs "lock_puredots_raw" $lockInfo.Version
+    $lockRawValue = if ($lockRawExtracted) { $lockRawExtracted } else { $lockInfo.Version }
+    Set-LogValue $Logs "${prefix}_lock_puredots_raw" $lockRawValue
+    Set-LogValue $Logs "lock_puredots_raw" $lockRawValue
     if ($lockInfo.Error) {
         $Logs.Add("${prefix}_lock_puredots_error=" + $lockInfo.Error)
     }
@@ -740,7 +810,63 @@ function Validate-HeadlessLockPostSwap(
         $listing = Get-ChildItem -Path $packagesDir -Name -ErrorAction SilentlyContinue | Select-Object -First 40
         $listingText = Trim-LogValue ($listing -join ",")
         $Logs.Add("${key}_packages_dir_listing_top=" + $listingText)
+        $script:LockGuardByProject[$key] = @{
+            PackagesDir = $packagesDir
+            LockPath = $lockPath
+            LockHeadlessPath = $lockHeadlessPath
+            LockExists = $false
+            LockText = ""
+            LockFileSizeBytes = ""
+            ContainsLiteral = $false
+            LockRawExtracted = ""
+            LockExcerpt = ""
+            LockContainsPureDots = $false
+        }
         return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_NOT_CREATED" }
+    }
+
+    $lockText = ""
+    $lockFileSize = ""
+    try {
+        $lockText = Get-Content -Path $lockPath -Raw -ErrorAction Stop
+        $lockFileSize = $lockText.Length
+    } catch {
+        try {
+            $lockFileSize = (Get-Item -Path $lockPath -ErrorAction SilentlyContinue).Length
+        } catch { }
+    }
+
+    $containsLiteral = $false
+    if (-not [string]::IsNullOrWhiteSpace($lockText)) {
+        $containsLiteral = ($lockText -match '"com\.moni\.puredots"\s*:')
+    }
+    $Logs.Add("${key}_lock_contains_puredots_literal=" + ([int]$containsLiteral))
+    $Logs.Add("${key}_lock_file_size_bytes=" + $lockFileSize)
+
+    $lockRawExtracted = ""
+    if (-not [string]::IsNullOrWhiteSpace($lockText)) {
+        $m = [regex]::Match($lockText, '"com\.moni\.puredots"\s*:\s*\{[^}]*"version"\s*:\s*"([^"]+)"', 'Singleline')
+        if ($m.Success) {
+            $lockRawExtracted = $m.Groups[1].Value
+        }
+    }
+    if ($lockRawExtracted) {
+        $Logs.Add("${key}_lock_puredots_raw_extracted=" + (Trim-LogValue $lockRawExtracted))
+    }
+
+    $excerpt = ""
+    $match = Select-String -Path $lockPath -Pattern '"com\.moni\.puredots"' -Context 0,6 -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($match) {
+        $lines = @()
+        if ($match.Context -and $match.Context.PreContext) {
+            $lines += $match.Context.PreContext
+        }
+        $lines += $match.Line
+        if ($match.Context -and $match.Context.PostContext) {
+            $lines += $match.Context.PostContext
+        }
+        $excerpt = Trim-LogValue ($lines -join " | ")
+        $Logs.Add("${key}_lock_excerpt=" + $excerpt)
     }
 
     $raw = $null
@@ -767,11 +893,38 @@ function Validate-HeadlessLockPostSwap(
             $hasPureDots = $true
         }
     }
+    if ($containsLiteral) {
+        $hasPureDots = $true
+    }
     $Logs.Add("${key}_lock_contains_puredots=" + ([int]$hasPureDots))
     if (-not $hasPureDots) {
+        $script:LockGuardByProject[$key] = @{
+            PackagesDir = $packagesDir
+            LockPath = $lockPath
+            LockHeadlessPath = $lockHeadlessPath
+            LockExists = $true
+            LockText = $lockText
+            LockFileSizeBytes = $lockFileSize
+            ContainsLiteral = $containsLiteral
+            LockRawExtracted = $lockRawExtracted
+            LockExcerpt = $excerpt
+            LockContainsPureDots = $false
+        }
         return @{ Ok = $false; Error = "HEADLESS_SWAP_LOCK_MISSING_PUREDOTS_KEY" }
     }
 
+    $script:LockGuardByProject[$key] = @{
+        PackagesDir = $packagesDir
+        LockPath = $lockPath
+        LockHeadlessPath = $lockHeadlessPath
+        LockExists = $true
+        LockText = $lockText
+        LockFileSizeBytes = $lockFileSize
+        ContainsLiteral = $containsLiteral
+        LockRawExtracted = $lockRawExtracted
+        LockExcerpt = $excerpt
+        LockContainsPureDots = $true
+    }
     return @{ Ok = $true; Error = "" }
 }
 
@@ -1214,6 +1367,10 @@ function Ensure-PureDotsResolution(
         if (Test-Path $libraryPath) {
             Remove-Item -Path $libraryPath -Recurse -Force -ErrorAction SilentlyContinue
             $Logs.Add("${prefix}_full_library_wipe=1")
+        }
+
+        if ($script:LockGuardByProject.ContainsKey($prefix)) {
+            $script:LockGuardByProject.Remove($prefix)
         }
 
         $snapshot = Get-PureDotsResolutionSnapshot $ProjectName $UnityProjectPath $expectedFull $Sentinels $Logs
