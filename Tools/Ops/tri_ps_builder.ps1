@@ -565,20 +565,43 @@ function Invoke-HeadlessManifestSwap(
     [System.Collections.Generic.List[string]]$Logs
 ) {
     $scriptPath = Join-Path $env:TRI_ROOT "Tools\Tools\use_headless_manifest_windows.ps1"
-    if (-not (Test-Path $scriptPath)) {
-        $Logs.Add("headless_manifest_script_missing=1")
-        return @{ Ok = $false; Error = "HEADLESS_MANIFEST_SCRIPT_MISSING" }
-    }
-    try {
-        & $scriptPath -ProjectPath $ProjectRoot
-        $exitCode = $LASTEXITCODE
-    } catch {
-        return @{ Ok = $false; Error = ("HEADLESS_MANIFEST_SWAP_FAILED " + $_.Exception.Message) }
-    }
     $key = $ProjectName.ToLowerInvariant()
-    $Logs.Add(("headless_manifest_swap_{0}={1}" -f $key, $exitCode))
+    $Logs.Add("headless_swap_script_path=" + $scriptPath)
+    if (-not (Test-Path $scriptPath)) {
+        $Logs.Add("headless_swap_exit_code_" + $key + "=missing")
+        $Logs.Add("headless_swap_error_" + $key + "=missing_script")
+        $Logs.Add("headless_manifest_swap_" + $key + "=0")
+        return @{ Ok = $false; Error = "HEADLESS_MANIFEST_SWAP_FAILED" }
+    }
+
+    $stderrPath = Join-Path $env:TEMP ("headless_swap_{0}_{1}.err.log" -f $key, [Guid]::NewGuid().ToString("N"))
+    $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath, "-ProjectPath", $ProjectRoot)
+    try {
+        $proc = Start-Process -FilePath (Get-ShellExe) -ArgumentList $args -PassThru -Wait -RedirectStandardError $stderrPath
+        $exitCode = $proc.ExitCode
+    } catch {
+        $Logs.Add("headless_swap_exit_code_" + $key + "=exception")
+        $Logs.Add("headless_swap_error_" + $key + "=" + (Trim-LogValue $_.Exception.Message))
+        $Logs.Add("headless_manifest_swap_" + $key + "=0")
+        return @{ Ok = $false; Error = "HEADLESS_MANIFEST_SWAP_FAILED" }
+    }
+
+    $Logs.Add("headless_swap_exit_code_" + $key + "=" + $exitCode)
+    $Logs.Add("headless_manifest_swap_" + $key + "=" + ($(if ($exitCode -eq 0) { "1" } else { "0" })))
+    if (Test-Path $stderrPath) {
+        $stderrText = Get-Content -Path $stderrPath -ErrorAction SilentlyContinue | Out-String
+        if (-not [string]::IsNullOrWhiteSpace($stderrText)) {
+            $Logs.Add("headless_swap_error_" + $key + "=" + (Trim-LogValue $stderrText))
+        }
+        Remove-Item -Path $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+
     if ($exitCode -ne 0) {
-        return @{ Ok = $false; Error = ("HEADLESS_MANIFEST_SWAP_FAILED exit=" + $exitCode) }
+        $existing = $Logs | Where-Object { $_ -like ("headless_swap_error_" + $key + "=*") }
+        if (-not $existing) {
+            $Logs.Add("headless_swap_error_" + $key + "=exit_code=" + $exitCode)
+        }
+        return @{ Ok = $false; Error = "HEADLESS_MANIFEST_SWAP_FAILED" }
     }
     return @{ Ok = $true; Error = "" }
 }
@@ -592,6 +615,16 @@ function Get-PureDotsResolutionSnapshot(
 ) {
     $prefix = $ProjectName.ToLowerInvariant()
     $packagesDir = Join-Path $UnityProjectPath "Packages"
+    $packagesLockPath = Join-Path $packagesDir "packages-lock.json"
+    $packagesLockExists = Test-Path $packagesLockPath
+    $lockContainsPureDots = $false
+    if ($packagesLockExists) {
+        $lockContainsPureDots = Select-String -Path $packagesLockPath -SimpleMatch -Pattern '"com.moni.puredots"' -Quiet
+    }
+    Set-LogValue $Logs "${prefix}_packages_lock_exists" ([int]$packagesLockExists)
+    Set-LogValue $Logs "packages_lock_exists" ([int]$packagesLockExists)
+    Set-LogValue $Logs "${prefix}_lock_contains_puredots" ([int]$lockContainsPureDots)
+    Set-LogValue $Logs "lock_contains_puredots" ([int]$lockContainsPureDots)
 
     $manifestInfo = Get-ManifestPureDots $UnityProjectPath
     Set-LogValue $Logs "${prefix}_manifest_puredots" $manifestInfo.Value
@@ -641,7 +674,7 @@ function Get-PureDotsResolutionSnapshot(
 
     $manifestMatches = $manifestFull -and ($manifestFull.TrimEnd('\') -ieq $ExpectedFull.TrimEnd('\'))
     $lockMatches = $lockFull -and ($lockFull.TrimEnd('\') -ieq $ExpectedFull.TrimEnd('\'))
-    $resolvedMatches = $manifestMatches -and $lockMatches -and $packageJsonPresent -and $resolvedExists -and $sourceInfo.Present
+    $resolvedMatches = $manifestMatches -and $lockMatches -and $packageJsonPresent -and $resolvedExists -and $sourceInfo.Present -and $packagesLockExists -and $lockContainsPureDots
 
     return @{
         ManifestFull = $manifestFull
@@ -1162,6 +1195,7 @@ while ($true) {
     $logs.Add("builder_script_path=" + $scriptPath)
     $logs.Add("builder_script_hash=" + $scriptHash)
     $logs.Add("builder_boot_utc=" + (Get-Date).ToUniversalTime().ToString("o"))
+    $logs.Add("state_dir_wsl=" + $stateDirWsl)
     $buildUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $sessionType = if ([Environment]::UserInteractive) { "interactive" } else { "non-interactive" }
     $unityEditorPath = if ($env:TRI_UNITY_EXE) { $env:TRI_UNITY_EXE } elseif ($env:UNITY_WIN) { $env:UNITY_WIN } else { "" }
@@ -1283,13 +1317,14 @@ while ($true) {
                     $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
 
                     try {
+                        $swapResult = Invoke-HeadlessManifestSwap $info.Name $projectRoot $logs
+                        if (-not $swapResult.Ok) {
+                            $overallStatus = "failed"
+                            $errorMessage = $swapResult.Error
+                            break
+                        }
+
                         if ($probeBuild) {
-                            $swapResult = Invoke-HeadlessManifestSwap $info.Name $projectRoot $logs
-                            if (-not $swapResult.Ok) {
-                                $overallStatus = "failed"
-                                $errorMessage = $swapResult.Error
-                                break
-                            }
                             $resolution = Ensure-PureDotsResolution $info.Name $unityProjectPath $expectedPureDotsPath $sentinels $logs
                             $overrideInfo = $resolution.Restore
                             $unityProjectPath = $resolution.UnityProjectPath
