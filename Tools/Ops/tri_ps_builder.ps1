@@ -275,6 +275,107 @@ function Test-BinaryContains([string]$Path, [string]$Text) {
     return (Test-ByteSequence $bytes $utf16)
 }
 
+function Trim-LogValue([string]$Value, [int]$MaxLen = 1500) {
+    if ($Value -eq $null) {
+        return ""
+    }
+    if ($Value.Length -le $MaxLen) {
+        return $Value
+    }
+    return $Value.Substring(0, $MaxLen)
+}
+
+function Format-LogSnippet([string[]]$Lines, [int]$MaxLen = 1500) {
+    if (-not $Lines) {
+        return ""
+    }
+    $clean = $Lines | ForEach-Object {
+        ($_ -replace "[\r\n]+", " ").Trim()
+    } | Where-Object { $_ }
+    $joined = ($clean -join " | ")
+    return (Trim-LogValue $joined $MaxLen)
+}
+
+function Get-UnityLogDiagnostics([string]$LogPath) {
+    if (-not (Test-Path $LogPath)) {
+        return @{ Tail = ""; Errors = "" }
+    }
+    $tailLines = Get-Content -Path $LogPath -Tail 30 -ErrorAction SilentlyContinue
+    $errorLines = Select-String -Path $LogPath -Pattern "(?i)(error|exception|aborting batchmode)" -ErrorAction SilentlyContinue |
+        Select-Object -First 10 | ForEach-Object { $_.Line }
+    return @{
+        Tail = (Format-LogSnippet $tailLines)
+        Errors = (Format-LogSnippet $errorLines)
+    }
+}
+
+function Get-DllCandidates([string]$ProjectRoot, [int]$Minutes = 60, [int]$Max = 10) {
+    $roots = @(
+        (Join-Path $ProjectRoot "Library"),
+        (Join-Path $ProjectRoot "Temp"),
+        (Join-Path $ProjectRoot "Builds")
+    )
+    $cutoff = (Get-Date).AddMinutes(-$Minutes)
+    $candidates = New-Object System.Collections.Generic.List[object]
+    foreach ($root in $roots) {
+        if (-not (Test-Path $root)) {
+            continue
+        }
+        $dlls = Get-ChildItem -Path $root -Recurse -Filter "*.dll" -File -ErrorAction SilentlyContinue
+        foreach ($dll in $dlls) {
+            if ($dll.Name -like "PureDOTS*.dll" -or $dll.LastWriteTime -ge $cutoff) {
+                $candidates.Add($dll)
+            }
+        }
+    }
+    $unique = $candidates | Sort-Object FullName -Unique
+    $ordered = $unique | Sort-Object LastWriteTime -Descending | Select-Object -First $Max
+    $entries = $ordered | ForEach-Object {
+        "{0}@{1}" -f $_.FullName, $_.LastWriteTime.ToString("s")
+    }
+    return (Trim-LogValue ($entries -join ","))
+}
+
+function Add-CompileDiagnostics(
+    [string]$ProjectRoot,
+    [string]$LogPath,
+    [int]$ExitCode,
+    [string]$CmdProjectPath,
+    [System.Collections.Generic.List[string]]$Logs
+) {
+    Set-LogValue $Logs "unity_exit_code" $ExitCode
+    Set-LogValue $Logs "unity_log_path" $LogPath
+    Set-LogValue $Logs "unity_cmdline_projectPath" $CmdProjectPath
+
+    $diag = Get-UnityLogDiagnostics $LogPath
+    Set-LogValue $Logs "unity_log_tail" $diag.Tail
+    Set-LogValue $Logs "unity_error_lines" $diag.Errors
+
+    $libraryPath = Join-Path $ProjectRoot "Library"
+    $libraryExists = Test-Path $libraryPath
+    Set-LogValue $Logs "library_exists" ([int]$libraryExists)
+    $libraryDirsTop = ""
+    if ($libraryExists) {
+        $dirs = Get-ChildItem -Path $libraryPath -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name
+        $libraryDirsTop = Trim-LogValue ($dirs -join ",")
+    }
+    Set-LogValue $Logs "library_dirs_top" $libraryDirsTop
+
+    $playerDirs = Get-ChildItem -Path $ProjectRoot -Directory -Recurse -Filter "PlayerScriptAssemblies" -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty FullName
+    $scriptDirs = Get-ChildItem -Path $ProjectRoot -Directory -Recurse -Filter "ScriptAssemblies" -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty FullName
+    $beeDirs = Get-ChildItem -Path $ProjectRoot -Directory -Recurse -Filter "Bee" -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 3 -ExpandProperty FullName
+
+    Set-LogValue $Logs "found_PlayerScriptAssemblies_dirs" (Trim-LogValue ($playerDirs -join ","))
+    Set-LogValue $Logs "found_ScriptAssemblies_dirs" (Trim-LogValue ($scriptDirs -join ","))
+    Set-LogValue $Logs "found_Bee_dirs" (Trim-LogValue ($beeDirs -join ","))
+
+    $candidates = Get-DllCandidates $ProjectRoot 60 10
+    Set-LogValue $Logs "discovered_dll_candidates" $candidates
+}
+
 function Test-BinaryContainsAny([string]$Path, [string[]]$Texts) {
     foreach ($text in $Texts) {
         if (Test-BinaryContains $Path $text) {
@@ -321,12 +422,12 @@ function Get-CompileHits(
 
     $hits = ScanDir $playerDir
     if ($hits.Count -gt 0) {
-        return @{ Hits = $hits; Source = "PlayerScriptAssemblies"; PlayerDir = $playerDir }
+        return @{ Hits = $hits; Source = "PlayerScriptAssemblies"; PlayerDir = $playerDir; PlayerExists = $playerExists; ScriptExists = $scriptExists; BeeCount = $beeDirs.Count }
     }
 
     $hits = ScanDir $scriptDir
     if ($hits.Count -gt 0) {
-        return @{ Hits = $hits; Source = "ScriptAssemblies"; PlayerDir = $playerDir }
+        return @{ Hits = $hits; Source = "ScriptAssemblies"; PlayerDir = $playerDir; PlayerExists = $playerExists; ScriptExists = $scriptExists; BeeCount = $beeDirs.Count }
     }
 
     if ($beeDirs.Count -gt 0) {
@@ -339,11 +440,11 @@ function Get-CompileHits(
             }
         }
         if ($beeHits.Count -gt 0) {
-            return @{ Hits = $beeHits; Source = "Bee"; PlayerDir = $playerDir }
+            return @{ Hits = $beeHits; Source = "Bee"; PlayerDir = $playerDir; PlayerExists = $playerExists; ScriptExists = $scriptExists; BeeCount = $beeDirs.Count }
         }
     }
 
-    return @{ Hits = @(); Source = ""; PlayerDir = $playerDir }
+    return @{ Hits = @(); Source = ""; PlayerDir = $playerDir; PlayerExists = $playerExists; ScriptExists = $scriptExists; BeeCount = $beeDirs.Count }
 }
 
 function Get-ManagedDir([string]$BuildDir) {
@@ -965,6 +1066,17 @@ while ($true) {
         Set-LogValue $logs "resolved_puredots_path" "unknown"
         Set-LogValue $logs "resolved_source_sentinel_present" "unknown"
         Set-LogValue $logs "resolved_source_file_hash" "unknown"
+        Set-LogValue $logs "unity_exit_code" "unknown"
+        Set-LogValue $logs "unity_log_path" "unknown"
+        Set-LogValue $logs "unity_cmdline_projectPath" "unknown"
+        Set-LogValue $logs "unity_log_tail" ""
+        Set-LogValue $logs "unity_error_lines" ""
+        Set-LogValue $logs "library_exists" "unknown"
+        Set-LogValue $logs "library_dirs_top" ""
+        Set-LogValue $logs "found_PlayerScriptAssemblies_dirs" ""
+        Set-LogValue $logs "found_ScriptAssemblies_dirs" ""
+        Set-LogValue $logs "found_Bee_dirs" ""
+        Set-LogValue $logs "discovered_dll_candidates" ""
         Set-LogValue $logs "player_script_assemblies_dir" "unknown"
         Set-LogValue $logs "script_assemblies_dir" "unknown"
         Set-LogValue $logs "bee_managed_dirs_count" "unknown"
@@ -1034,6 +1146,7 @@ while ($true) {
                     $resolvedPureDotsPath = ""
                     $prefix = $info.Name.ToLowerInvariant()
                     $overrideInfo = $null
+                    $compileInfo = $null
                     $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
                     New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
                     $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
@@ -1060,6 +1173,7 @@ while ($true) {
                                 $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
                                 Set-LogValue $logs "compile_hits" $hitsText
                                 Set-LogValue $logs "compile_hits_source" $compileInfo.Source
+                                Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
                             }
                             $overallStatus = "failed"
                             $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
@@ -1080,8 +1194,14 @@ while ($true) {
                             Set-LogValue $logs "compile_hits" $hitsText
                             Set-LogValue $logs "compile_hits_source" $compileInfo.Source
                             if ($compileInfo.Hits.Count -eq 0) {
+                                Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
+                                $outputsMissing = (-not $compileInfo.PlayerExists) -and (-not $compileInfo.ScriptExists) -and ($compileInfo.BeeCount -eq 0)
                                 $overallStatus = "failed"
-                                $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
+                                if ($outputsMissing) {
+                                    $errorMessage = "BUILD_OUTPUTS_MISSING"
+                                } else {
+                                    $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
+                                }
                                 break
                             }
                         }
