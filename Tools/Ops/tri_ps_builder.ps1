@@ -217,7 +217,7 @@ function Resolve-PureDotsPath([string]$ProjectPath, [string]$ManifestValue) {
     return Normalize-Path (Join-Path $ProjectPath $rel)
 }
 
-function Get-SourceSentinelInfo([string]$ResolvedPath, [string]$Sentinel) {
+function Get-SourceSentinelInfo([string]$ResolvedPath, [string[]]$Sentinels) {
     $info = @{ Present = $false; Hash = ""; Path = "" }
     if ([string]::IsNullOrWhiteSpace($ResolvedPath)) {
         return $info
@@ -227,7 +227,14 @@ function Get-SourceSentinelInfo([string]$ResolvedPath, [string]$Sentinel) {
     if (-not (Test-Path $path)) {
         return $info
     }
-    $info.Present = Select-String -Path $path -Pattern $Sentinel -Quiet
+    $present = $false
+    foreach ($sentinel in $Sentinels) {
+        if (Select-String -Path $path -Pattern $sentinel -SimpleMatch -Quiet) {
+            $present = $true
+            break
+        }
+    }
+    $info.Present = $present
     $info.Hash = (Get-FileHash -Path $path -Algorithm SHA256).Hash
     return $info
 }
@@ -268,19 +275,75 @@ function Test-BinaryContains([string]$Path, [string]$Text) {
     return (Test-ByteSequence $bytes $utf16)
 }
 
-function Get-ScriptAssembliesHits([string]$ProjectPath, [string]$Sentinel) {
-    $dir = Join-Path $ProjectPath "Library\ScriptAssemblies"
-    $hits = New-Object System.Collections.Generic.List[string]
-    if (-not (Test-Path $dir)) {
-        return $hits
-    }
-    $dlls = Get-ChildItem -Path $dir -Filter "*.dll" -File -ErrorAction SilentlyContinue
-    foreach ($dll in $dlls) {
-        if (Test-BinaryContains $dll.FullName $Sentinel) {
-            $hits.Add($dll.Name)
+function Test-BinaryContainsAny([string]$Path, [string[]]$Texts) {
+    foreach ($text in $Texts) {
+        if (Test-BinaryContains $Path $text) {
+            return $true
         }
     }
-    return $hits
+    return $false
+}
+
+function Get-CompileHits(
+    [string]$ProjectPath,
+    [string[]]$Sentinels,
+    [System.Collections.Generic.List[string]]$Logs,
+    [int]$MaxBeeDirs = 5
+) {
+    $playerDir = Join-Path $ProjectPath "Library\PlayerScriptAssemblies"
+    $scriptDir = Join-Path $ProjectPath "Library\ScriptAssemblies"
+    $beeRoot = Join-Path $ProjectPath "Library\Bee"
+
+    $playerExists = Test-Path $playerDir
+    $scriptExists = Test-Path $scriptDir
+    Set-LogValue $Logs "player_script_assemblies_dir" ("{0} exists={1}" -f $playerDir, [int]$playerExists)
+    Set-LogValue $Logs "script_assemblies_dir" ("{0} exists={1}" -f $scriptDir, [int]$scriptExists)
+
+    $beeDirs = @()
+    if (Test-Path $beeRoot) {
+        $beeDirs = Get-ChildItem -Path $beeRoot -Directory -Recurse -Filter "ManagedStripped" -ErrorAction SilentlyContinue
+    }
+    Set-LogValue $Logs "bee_managed_dirs_count" $beeDirs.Count
+
+    function ScanDir([string]$DirPath) {
+        $hits = New-Object System.Collections.Generic.List[string]
+        if (-not (Test-Path $DirPath)) {
+            return $hits
+        }
+        $dlls = Get-ChildItem -Path $DirPath -Filter "*.dll" -File -ErrorAction SilentlyContinue
+        foreach ($dll in $dlls) {
+            if (Test-BinaryContainsAny $dll.FullName $Sentinels) {
+                $hits.Add($dll.FullName)
+            }
+        }
+        return $hits
+    }
+
+    $hits = ScanDir $playerDir
+    if ($hits.Count -gt 0) {
+        return @{ Hits = $hits; Source = "PlayerScriptAssemblies"; PlayerDir = $playerDir }
+    }
+
+    $hits = ScanDir $scriptDir
+    if ($hits.Count -gt 0) {
+        return @{ Hits = $hits; Source = "ScriptAssemblies"; PlayerDir = $playerDir }
+    }
+
+    if ($beeDirs.Count -gt 0) {
+        $beeDirs = $beeDirs | Sort-Object LastWriteTime -Descending | Select-Object -First $MaxBeeDirs
+        $beeHits = New-Object System.Collections.Generic.List[string]
+        foreach ($dir in $beeDirs) {
+            $dirHits = ScanDir $dir.FullName
+            foreach ($hit in $dirHits) {
+                $beeHits.Add($hit)
+            }
+        }
+        if ($beeHits.Count -gt 0) {
+            return @{ Hits = $beeHits; Source = "Bee"; PlayerDir = $playerDir }
+        }
+    }
+
+    return @{ Hits = @(); Source = ""; PlayerDir = $playerDir }
 }
 
 function Get-ManagedDir([string]$BuildDir) {
@@ -375,7 +438,7 @@ function Prepare-RequestBuildDir(
     return $dest
 }
 
-function Get-PlayerSentinelInfo([string]$BuildDir, [string]$Sentinel) {
+function Get-PlayerSentinelInfo([string]$BuildDir, [string[]]$Sentinels) {
     $backend = Get-BackendGuess $BuildDir
     $target = ""
     $found = $false
@@ -383,7 +446,7 @@ function Get-PlayerSentinelInfo([string]$BuildDir, [string]$Sentinel) {
         $gameAsm = Join-Path $BuildDir "GameAssembly.so"
         if (Test-Path $gameAsm) {
             $target = $gameAsm
-            $found = Test-BinaryContains $gameAsm $Sentinel
+            $found = Test-BinaryContainsAny $gameAsm $Sentinels
         }
         if (-not $found) {
             $dataDir = Get-ChildItem -Path $BuildDir -Directory -Filter "*_Data" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -391,7 +454,7 @@ function Get-PlayerSentinelInfo([string]$BuildDir, [string]$Sentinel) {
                 $metaPath = Join-Path $dataDir.FullName "il2cpp_data\Metadata\global-metadata.dat"
                 if (Test-Path $metaPath) {
                     $target = $metaPath
-                    $found = Test-BinaryContains $metaPath $Sentinel
+                    $found = Test-BinaryContainsAny $metaPath $Sentinels
                 }
             }
         }
@@ -411,7 +474,7 @@ function Get-PlayerSentinelInfo([string]$BuildDir, [string]$Sentinel) {
         }
         foreach ($path in $targets) {
             $target = $path
-            if (Test-BinaryContains $path $Sentinel) {
+            if (Test-BinaryContainsAny $path $Sentinels) {
                 $found = $true
                 break
             }
@@ -746,7 +809,7 @@ function Ensure-PureDotsResolution(
     [string]$ProjectName,
     [string]$UnityProjectPath,
     [string]$ExpectedPureDotsPath,
-    [string]$Sentinel,
+    [string[]]$Sentinels,
     [System.Collections.Generic.List[string]]$Logs
 ) {
     $prefix = $ProjectName.ToLowerInvariant()
@@ -776,7 +839,7 @@ function Ensure-PureDotsResolution(
     Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
     Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
 
-    $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinel
+    $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinels
     Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
     Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
     if ($sourceInfo.Hash) {
@@ -817,7 +880,7 @@ function Ensure-PureDotsResolution(
         Set-LogValue $Logs "${prefix}_resolved_puredots_path" $resolvedFull
         Set-LogValue $Logs "resolved_puredots_path" $resolvedFull
 
-        $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinel
+        $sourceInfo = Get-SourceSentinelInfo $resolvedFull $Sentinels
         Set-LogValue $Logs "${prefix}_resolved_source_sentinel_present" ([int]$sourceInfo.Present)
         Set-LogValue $Logs "resolved_source_sentinel_present" ([int]$sourceInfo.Present)
         if ($sourceInfo.Hash) {
@@ -902,7 +965,11 @@ while ($true) {
         Set-LogValue $logs "resolved_puredots_path" "unknown"
         Set-LogValue $logs "resolved_source_sentinel_present" "unknown"
         Set-LogValue $logs "resolved_source_file_hash" "unknown"
-        Set-LogValue $logs "scriptassemblies_hits" ""
+        Set-LogValue $logs "player_script_assemblies_dir" "unknown"
+        Set-LogValue $logs "script_assemblies_dir" "unknown"
+        Set-LogValue $logs "bee_managed_dirs_count" "unknown"
+        Set-LogValue $logs "compile_hits" ""
+        Set-LogValue $logs "compile_hits_source" ""
     }
 
     try {
@@ -932,7 +999,7 @@ while ($true) {
             $logs.Add("mode=orchestrator")
         } else {
             $probeBuild = [bool]$requestedPureDotsRef
-            $sentinel = "probeVersion"
+            $sentinels = @("oracle_probe_v1", "probeVersion")
             $expectedPureDotsPath = Join-Path $env:TRI_ROOT "puredots\Packages\com.moni.puredots"
             $projectInfos = New-Object System.Collections.Generic.List[object]
             foreach ($project in $projects) {
@@ -973,7 +1040,7 @@ while ($true) {
 
                     try {
                         if ($probeBuild) {
-                            $resolution = Ensure-PureDotsResolution $info.Name $unityProjectPath $expectedPureDotsPath $sentinel $logs
+                            $resolution = Ensure-PureDotsResolution $info.Name $unityProjectPath $expectedPureDotsPath $sentinels $logs
                             $overrideInfo = $resolution.Restore
                             $unityProjectPath = $resolution.UnityProjectPath
                             $resolvedPureDotsPath = $resolution.ResolvedPath
@@ -988,6 +1055,12 @@ while ($true) {
                         $logs.Add("build_log_" + $info.Name + "=" + $logPath)
 
                         if ($exitCode -ne 0) {
+                            if ($probeBuild) {
+                                $compileInfo = Get-CompileHits $unityProjectPath $sentinels $logs
+                                $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
+                                Set-LogValue $logs "compile_hits" $hitsText
+                                Set-LogValue $logs "compile_hits_source" $compileInfo.Source
+                            }
                             $overallStatus = "failed"
                             $errorMessage = "build failed for $($info.Name) (exit $exitCode)"
                             break
@@ -1000,20 +1073,15 @@ while ($true) {
                             Set-LogValue $logs "unity_project_path" $logProjectPath
                         }
 
+                        $compileInfo = $null
                         if ($probeBuild) {
-                            $scriptHits = Get-ScriptAssembliesHits $unityProjectPath $sentinel
-                            $hitsText = if ($scriptHits.Count -gt 0) { ($scriptHits -join ",") } else { "" }
-                            Set-LogValue $logs "${prefix}_scriptassemblies_hits" $hitsText
-                            Set-LogValue $logs "scriptassemblies_hits" $hitsText
-                            if ($scriptHits.Count -eq 0) {
+                            $compileInfo = Get-CompileHits $unityProjectPath $sentinels $logs
+                            $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
+                            Set-LogValue $logs "compile_hits" $hitsText
+                            Set-LogValue $logs "compile_hits_source" $compileInfo.Source
+                            if ($compileInfo.Hits.Count -eq 0) {
                                 $overallStatus = "failed"
                                 $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
-                                break
-                            }
-                            $pureDotsHits = @($scriptHits | Where-Object { $_ -like "PureDOTS*" })
-                            if ($pureDotsHits.Count -eq 0) {
-                                $overallStatus = "failed"
-                                $errorMessage = "SCRIPTASSEMBLIES_MISSING_PUREDOTS_PROBEVERSION"
                                 break
                             }
                         }
@@ -1029,13 +1097,36 @@ while ($true) {
                         }
 
                         if ($probeBuild) {
-                            $sentinelInfo = Get-PlayerSentinelInfo $buildDir $sentinel
+                            $sentinelInfo = Get-PlayerSentinelInfo $buildDir $sentinels
                             Set-LogValue $logs "${prefix}_backend_guess" $sentinelInfo.Backend
                             Set-LogValue $logs "backend_guess" $sentinelInfo.Backend
                             Set-LogValue $logs "${prefix}_build_dir_selected" $buildDir
                             Set-LogValue $logs "build_dir_selected" $buildDir
                             Set-LogValue $logs "${prefix}_sentinel_target" $sentinelInfo.Target
                             Set-LogValue $logs "sentinel_target" $sentinelInfo.Target
+
+                            if (-not $sentinelInfo.Found -and $compileInfo -and $compileInfo.Hits.Count -gt 0 -and $sentinelInfo.Backend -eq "mono" -and $compileInfo.Source -eq "PlayerScriptAssemblies") {
+                                $managedDir = Get-ManagedDir $buildDir
+                                if ($managedDir) {
+                                    $patched = $false
+                                    foreach ($hit in $compileInfo.Hits) {
+                                        $name = Split-Path -Leaf $hit
+                                        if ($name -like "PureDOTS*.dll") {
+                                            Copy-Item -Path $hit -Destination (Join-Path $managedDir $name) -Force
+                                            $patched = $true
+                                        }
+                                    }
+                                    if ($patched) {
+                                        $logs.Add("${prefix}_patched_managed_dlls=1")
+                                        $sentinelInfo = Get-PlayerSentinelInfo $buildDir $sentinels
+                                        Set-LogValue $logs "${prefix}_sentinel_target" $sentinelInfo.Target
+                                        Set-LogValue $logs "sentinel_target" $sentinelInfo.Target
+                                    } else {
+                                        $logs.Add("${prefix}_patched_managed_dlls=0")
+                                    }
+                                }
+                            }
+
                             if (-not $sentinelInfo.Found) {
                                 $overallStatus = "failed"
                                 $errorMessage = "BUILD_MISMATCH_PUREDOTS_CACHE sentinel_missing=probeVersion"
