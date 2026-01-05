@@ -159,7 +159,7 @@ namespace PureDOTS.Systems.Telemetry
 
                 if (tick == 0 && Application.isBatchMode)
                 {
-                    var elapsedTick = ResolveBatchElapsedTick();
+                    var elapsedTick = ResolveBatchElapsedTick(ref state);
                     if (elapsedTick > tick)
                     {
                         tick = elapsedTick;
@@ -174,7 +174,7 @@ namespace PureDOTS.Systems.Telemetry
                 var tick = legacyTime.Tick;
                 if (tick == 0 && Application.isBatchMode)
                 {
-                    var elapsedTick = ResolveBatchElapsedTick();
+                    var elapsedTick = ResolveBatchElapsedTick(ref state);
                     if (elapsedTick > tick)
                     {
                         tick = elapsedTick;
@@ -184,10 +184,10 @@ namespace PureDOTS.Systems.Telemetry
                 return tick;
             }
 
-            return Application.isBatchMode ? ResolveBatchElapsedTick() : 0u;
+            return Application.isBatchMode ? ResolveBatchElapsedTick(ref state) : 0u;
         }
 
-        private uint ResolveBatchElapsedTick()
+        private uint ResolveBatchElapsedTick(ref SystemState state)
         {
             var dt = (float)SystemAPI.Time.DeltaTime;
             var elapsed = (float)SystemAPI.Time.ElapsedTime;
