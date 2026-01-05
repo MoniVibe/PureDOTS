@@ -2145,12 +2145,24 @@ while ($true) {
                                 $managedDir = Get-ManagedDir $buildDir
                                 if ($managedDir) {
                                     $patched = $false
+                                    $patchErrors = New-Object System.Collections.Generic.List[string]
                                     foreach ($hit in $compileInfo.Hits) {
                                         $name = Split-Path -Leaf $hit
                                         if ($name -like "PureDOTS*.dll") {
-                                            Copy-Item -Path $hit -Destination (Join-Path $managedDir $name) -Force
-                                            $patched = $true
+                                            if (-not (Test-Path $hit)) {
+                                                $patchErrors.Add("missing:" + $hit)
+                                                continue
+                                            }
+                                            try {
+                                                Copy-Item -Path $hit -Destination (Join-Path $managedDir $name) -Force
+                                                $patched = $true
+                                            } catch {
+                                                $patchErrors.Add("copy_failed:" + (Trim-LogValue $_.Exception.Message))
+                                            }
                                         }
+                                    }
+                                    if ($patchErrors.Count -gt 0) {
+                                        Set-LogValue $logs "${prefix}_patched_managed_dlls_errors" (Trim-LogValue ($patchErrors -join ",")) 
                                     }
                                     if ($patched) {
                                         $logs.Add("${prefix}_patched_managed_dlls=1")
