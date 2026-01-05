@@ -1216,10 +1216,10 @@ function Invoke-TriOps {
 
 function Quote-ProcessArg([string]$Arg) {
     if ($null -eq $Arg) {
-        return "\"\""
+        return '""'
     }
     if ($Arg -match "\s") {
-        return "\"" + $Arg + "\""
+        return '"' + $Arg + '"'
     }
     return $Arg
 }
