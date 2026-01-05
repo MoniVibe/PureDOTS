@@ -1224,8 +1224,11 @@ function Quote-ProcessArg([string]$Arg) {
     return $Arg
 }
 
-function Build-ProcessArgumentString([string[]]$Args) {
-    return (($Args | ForEach-Object { Quote-ProcessArg $_ }) -join " ")
+function Build-ProcessArgumentString([string[]]$InputArgs) {
+    if (-not $InputArgs) {
+        return ""
+    }
+    return (($InputArgs | ForEach-Object { Quote-ProcessArg $_ }) -join " ")
 }
 
 function Test-TriOpsSupports([string]$Token) {
