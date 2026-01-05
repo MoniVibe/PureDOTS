@@ -45,6 +45,7 @@ $stateDirWsl = $null
 $script:LockGuardByProject = @{}
 $script:TriOpsLastError = ""
 $script:EnforceLicenseError = ($env:TRI_ENFORCE_LICENSE_ERROR -eq "1")
+$script:EnforceCompileProbe = ($env:TRI_ENFORCE_COMPILE_PROBE -eq "1")
 function Resolve-StateDirWsl {
     $script:stateDirWin = $env:TRI_STATE_DIR
     if ($env:TRI_STATE_DIR_WSL) {
@@ -1868,6 +1869,7 @@ while ($true) {
     $logs.Add("builder_git_sha=" + $script:BuilderGitShaShort)
     $logs.Add("builder_git_branch=" + $script:BuilderGitBranch)
     Set-LogValue $logs "unity_license_gate_enforced" ([int]$script:EnforceLicenseError)
+    Set-LogValue $logs "compile_probe_enforced" ([int]$script:EnforceCompileProbe)
     Add-LicensingPreflight $logs
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
@@ -2058,7 +2060,11 @@ while ($true) {
                         }
 
                         if ($probeBuild) {
-                            Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs $logPathPublic
+                            try {
+                                Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs $logPathPublic
+                            } catch {
+                                Set-LogValue $logs "compile_diag_error" (Trim-LogValue $_.Exception.Message)
+                            }
                             $licensingLines = Get-UnityLicensingLines $logPath
                             if ($licensingLines.Count -gt 0) {
                                 Set-LogValue $logs "unity_license_error" "1"
@@ -2093,19 +2099,26 @@ while ($true) {
 
                         $compileInfo = $null
                         if ($probeBuild) {
-                            $compileInfo = Get-CompileHits $unityProjectPath $sentinels $logs
-                            $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
-                            Set-LogValue $logs "compile_hits" $hitsText
-                            Set-LogValue $logs "compile_hits_source" $compileInfo.Source
-                            if ($compileInfo.Hits.Count -eq 0) {
-                                $outputsMissing = (-not $compileInfo.PlayerExists) -and (-not $compileInfo.ScriptExists) -and ($compileInfo.BeeCount -eq 0)
-                                $overallStatus = "failed"
-                                if ($outputsMissing) {
-                                    $errorMessage = "BUILD_OUTPUTS_MISSING"
-                                } else {
-                                    $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
+                            try {
+                                $compileInfo = Get-CompileHits $unityProjectPath $sentinels $logs
+                                $hitsText = if ($compileInfo.Hits.Count -gt 0) { ($compileInfo.Hits -join ",") } else { "" }
+                                Set-LogValue $logs "compile_hits" $hitsText
+                                Set-LogValue $logs "compile_hits_source" $compileInfo.Source
+                                if ($compileInfo.Hits.Count -eq 0) {
+                                    Set-LogValue $logs "compile_probe_missing_hits" "1"
+                                    if ($script:EnforceCompileProbe) {
+                                        $outputsMissing = (-not $compileInfo.PlayerExists) -and (-not $compileInfo.ScriptExists) -and ($compileInfo.BeeCount -eq 0)
+                                        $overallStatus = "failed"
+                                        if ($outputsMissing) {
+                                            $errorMessage = "BUILD_OUTPUTS_MISSING"
+                                        } else {
+                                            $errorMessage = "SCRIPTASSEMBLIES_MISSING_PROBEVERSION"
+                                        }
+                                        break
+                                    }
                                 }
-                                break
+                            } catch {
+                                Set-LogValue $logs "compile_probe_error" (Trim-LogValue $_.Exception.Message)
                             }
                         }
 
