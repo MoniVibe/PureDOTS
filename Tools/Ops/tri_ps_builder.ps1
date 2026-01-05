@@ -1847,7 +1847,7 @@ while ($true) {
                     $logName = "{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss")
                     $logPathPublic = Join-Path $buildLogDir $logName
                     $logPath = $logPathPublic
-                    if ($logPathPublic.StartsWith("\\\\wsl$\\", [System.StringComparison]::OrdinalIgnoreCase)) {
+                    if ($logPathPublic -like '\\wsl$\*') {
                         $localLogDir = Join-Path $env:TRI_ROOT ".tri\\logs"
                         New-Item -ItemType Directory -Path $localLogDir -Force | Out-Null
                         $logPath = Join-Path $localLogDir $logName
