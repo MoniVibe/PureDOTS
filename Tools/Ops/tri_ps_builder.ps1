@@ -454,7 +454,7 @@ function Test-FileReadable([string]$Path) {
 }
 
 function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) {
-    if (-not $Logs) {
+    if ($null -eq $Logs) {
         return
     }
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
