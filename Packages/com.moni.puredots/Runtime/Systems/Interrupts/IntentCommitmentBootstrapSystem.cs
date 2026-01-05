@@ -9,11 +9,10 @@ namespace PureDOTS.Systems.Interrupts
     /// <summary>
     /// Ensures default intent commitment components exist for entities using EntityIntent.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct IntentCommitmentBootstrapSystem : ISystem
     {
-        [BurstCompile]
+        // Keep OnCreate non-burst; burst direct-call recursion can stack overflow in headless player startup.
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
