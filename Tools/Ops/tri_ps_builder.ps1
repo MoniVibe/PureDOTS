@@ -1327,27 +1327,41 @@ function Write-FallbackResultFile(
     [string]$PublishedPath,
     [string]$BuildCommit,
     [System.Collections.Generic.List[string]]$Logs,
-    [string]$ErrorMessage
+    [string]$ErrorMessage,
+    [string]$StateDir
 ) {
-    $opsDir = Join-Path $env:TRI_STATE_DIR "ops"
-    $resultsDir = Join-Path $opsDir "results"
-    New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
-    $resultPath = Join-Path $resultsDir ("{0}.json" -f $RequestId)
-    $data = [ordered]@{
-        id = $RequestId
-        status = $Status
-        utc = (Get-Date).ToUniversalTime().ToString("o")
-        published_build_path = $PublishedPath
-        build_commit = $BuildCommit
-        logs = @($Logs)
+    $targetStateDir = if ($StateDir) { $StateDir } else { $env:TRI_STATE_DIR }
+    if ([string]::IsNullOrWhiteSpace($targetStateDir)) {
+        return [pscustomobject]@{ Ok = $false; Path = ""; Error = "state_dir_missing" }
     }
-    if ($ErrorMessage) {
-        $data.error = $ErrorMessage
+    try {
+        $opsDir = Join-Path $targetStateDir "ops"
+        $resultsDir = Join-Path $opsDir "results"
+        New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
+        $resultPath = Join-Path $resultsDir ("{0}.json" -f $RequestId)
+        $data = [ordered]@{
+            id = $RequestId
+            status = $Status
+            utc = (Get-Date).ToUniversalTime().ToString("o")
+            published_build_path = $PublishedPath
+            build_commit = $BuildCommit
+            logs = @($Logs)
+        }
+        if ($ErrorMessage) {
+            $data.error = $ErrorMessage
+        }
+        $tmpPath = $resultPath + ".tmp"
+        $json = $data | ConvertTo-Json -Compress
+        Set-Content -Path $tmpPath -Value $json -Encoding UTF8
+        Move-Item -Path $tmpPath -Destination $resultPath -Force
+        return [pscustomobject]@{ Ok = $true; Path = $resultPath; Error = "" }
+    } catch {
+        $resultPath = ""
+        try {
+            $resultPath = Join-Path $targetStateDir ("ops\\results\\{0}.json" -f $RequestId)
+        } catch { }
+        return [pscustomobject]@{ Ok = $false; Path = $resultPath; Error = $_.Exception.Message }
     }
-    $tmpPath = $resultPath + ".tmp"
-    $json = $data | ConvertTo-Json -Compress
-    Set-Content -Path $tmpPath -Value $json -Encoding UTF8
-    Move-Item -Path $tmpPath -Destination $resultPath -Force
 }
 
 function Quote-ProcessArg([string]$Arg) {
@@ -2336,12 +2350,50 @@ while ($true) {
         }
         $writeResult = Invoke-TriOps $resultArgs
         $resultPath = Join-Path $env:TRI_STATE_DIR ("ops\\results\\{0}.json" -f $requestId)
-        if (-not (Test-Path $resultPath)) {
+        $resultWritten = $false
+        try {
+            $resultWritten = Test-Path $resultPath
+        } catch { }
+        if (-not $resultWritten) {
             $logs.Add("write_result_fallback=1")
             if ($writeResult.Output) {
                 $logs.Add("write_result_error=" + (Trim-LogValue $writeResult.Output))
             }
-            Write-FallbackResultFile $requestId $overallStatus $publishedPath $buildCommit $logs $errorMessage
+            $fallbackDirs = New-Object System.Collections.Generic.List[string]
+            if ($env:TRI_STATE_DIR) { $fallbackDirs.Add($env:TRI_STATE_DIR) }
+            if ($stateDirWsl) {
+                $distro = if ($env:TRI_WSL_DISTRO) { $env:TRI_WSL_DISTRO } else { "Ubuntu" }
+                $wslPath = ($stateDirWsl.TrimStart("/") -replace "/", "\\")
+                $wslUnc = "\\\\wsl$\\$distro\\$wslPath"
+                if ($wslUnc -ne $env:TRI_STATE_DIR) { $fallbackDirs.Add($wslUnc) }
+            }
+            $localStateDir = Join-Path $env:TRI_ROOT ".tri\\state"
+            $fallbackDirs.Add($localStateDir)
+            foreach ($dir in ($fallbackDirs | Select-Object -Unique)) {
+                if ([string]::IsNullOrWhiteSpace($dir)) { continue }
+                $fallbackTarget = Join-Path $dir ("ops\\results\\{0}.json" -f $requestId)
+                $logs.Add("write_result_fallback_target=" + $fallbackTarget)
+                $fallbackResult = Write-FallbackResultFile $requestId $overallStatus $publishedPath $buildCommit $logs $errorMessage $dir
+                if ($fallbackResult.Ok) {
+                    $resultWritten = $true
+                    break
+                }
+                if ($fallbackResult.Error) {
+                    $logs.Add("write_result_fallback_error=" + (Trim-LogValue $fallbackResult.Error))
+                }
+            }
+            if (-not $resultWritten) {
+                try {
+                    $failDir = Join-Path $env:TRI_ROOT ".tri\\logs"
+                    New-Item -ItemType Directory -Path $failDir -Force | Out-Null
+                    $failPath = Join-Path $failDir ("write_result_fail_{0}.log" -f $requestId)
+                    $failText = "state_dir=" + $env:TRI_STATE_DIR + "`nerror=" + $errorMessage + "`nlogs=`n" + ($logs -join "`n")
+                    Set-Content -Path $failPath -Value $failText -Encoding UTF8
+                    $logs.Add("write_result_fail_log=" + $failPath)
+                } catch {
+                    $logs.Add("write_result_fail_log_error=" + (Trim-LogValue $_.Exception.Message))
+                }
+            }
         }
 
         Invoke-TriOps @("unlock_build", "--owner", "ps", "--request-id", $requestId) | Out-Null
