@@ -1171,6 +1171,7 @@ $leaseSeconds = if ($env:TRI_OPS_LEASE_SECONDS) { [int]$env:TRI_OPS_LEASE_SECOND
 $script:BuilderGitSha = "unknown"
 $script:BuilderGitShaShort = "unknown"
 $script:BuilderGitBranch = "unknown"
+$script:TriOpsHelpText = $null
 try {
     $builderRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path
     $shaResult = Invoke-Git $builderRoot rev-parse HEAD
@@ -1211,17 +1212,43 @@ function Invoke-TriOps {
     }
 }
 
+function Test-TriOpsSupports([string]$Token) {
+    if ([string]::IsNullOrWhiteSpace($Token)) {
+        return $false
+    }
+    if ($null -eq $script:TriOpsHelpText) {
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            $output = & $pythonCmd.Exe @($pythonCmd.Args + @($triOpsPath, "--help")) 2>&1 | Out-String
+            $script:TriOpsHelpText = if ($output) { $output.Trim() } else { "" }
+        } catch {
+            $script:TriOpsHelpText = ""
+        } finally {
+            $ErrorActionPreference = $prev
+        }
+    }
+    if (-not $script:TriOpsHelpText) {
+        return $false
+    }
+    return ($script:TriOpsHelpText -match [regex]::Escape($Token))
+}
+
 function Write-Heartbeat([string]$Phase, [string]$Task, [int]$Cycle) {
     $args = @(
         "heartbeat", "--agent", "ps", "--phase", $Phase,
         "--current-task", $Task, "--cycle", $Cycle
     )
-    if ($script:BuilderGitShaShort -and $script:BuilderGitShaShort -ne "unknown") {
-        $args += @("--builder-git-sha", $script:BuilderGitShaShort)
-    } elseif ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
-        $args += @("--builder-git-sha", $script:BuilderGitSha)
+    $supportsSha = Test-TriOpsSupports "builder-git-sha"
+    $supportsBranch = Test-TriOpsSupports "builder-git-branch"
+    if ($supportsSha) {
+        if ($script:BuilderGitShaShort -and $script:BuilderGitShaShort -ne "unknown") {
+            $args += @("--builder-git-sha", $script:BuilderGitShaShort)
+        } elseif ($script:BuilderGitSha -and $script:BuilderGitSha -ne "unknown") {
+            $args += @("--builder-git-sha", $script:BuilderGitSha)
+        }
     }
-    if ($script:BuilderGitBranch -and $script:BuilderGitBranch -ne "unknown") {
+    if ($supportsBranch -and $script:BuilderGitBranch -and $script:BuilderGitBranch -ne "unknown") {
         $args += @("--builder-git-branch", $script:BuilderGitBranch)
     }
     Invoke-TriOps $args | Out-Null
@@ -1294,6 +1321,7 @@ function Sync-PureDots([string]$DesiredRef) {
     if ($resetResult.ExitCode -ne 0) {
         return @{ Ok = $false; Error = "git reset --hard failed for puredots (${DesiredRef}): $($resetResult.Output)"; OriginalBranch = "" }
     }
+    $script:TriOpsHelpText = $null
     return @{ Ok = $true; Error = ""; OriginalBranch = $originalBranch }
 }
 
