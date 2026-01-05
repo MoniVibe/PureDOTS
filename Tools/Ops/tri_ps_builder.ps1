@@ -44,6 +44,7 @@ $stateDirWin = $null
 $stateDirWsl = $null
 $script:LockGuardByProject = @{}
 $script:TriOpsLastError = ""
+$script:EnforceLicenseError = ($env:TRI_ENFORCE_LICENSE_ERROR -eq "1")
 function Resolve-StateDirWsl {
     $script:stateDirWin = $env:TRI_STATE_DIR
     if ($env:TRI_STATE_DIR_WSL) {
@@ -1860,6 +1861,7 @@ while ($true) {
     $logs.Add("session_type=" + $sessionType)
     $logs.Add("builder_git_sha=" + $script:BuilderGitShaShort)
     $logs.Add("builder_git_branch=" + $script:BuilderGitBranch)
+    Set-LogValue $logs "unity_license_gate_enforced" ([int]$script:EnforceLicenseError)
     Add-LicensingPreflight $logs
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
@@ -2054,9 +2056,12 @@ while ($true) {
                             if ($licensingLines.Count -gt 0) {
                                 Set-LogValue $logs "unity_license_error" "1"
                                 Set-LogValue $logs "licensing_lines" (Format-LogSnippet $licensingLines)
-                                $overallStatus = "failed"
-                                $errorMessage = "UNITY_LICENSE_ERROR"
-                                break
+                                if ($script:EnforceLicenseError) {
+                                    $overallStatus = "failed"
+                                    $errorMessage = "UNITY_LICENSE_ERROR"
+                                    break
+                                }
+                                Set-LogValue $logs "unity_license_warning" "1"
                             }
                         }
 
