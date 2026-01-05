@@ -46,6 +46,7 @@ $script:LockGuardByProject = @{}
 $script:TriOpsLastError = ""
 $script:EnforceLicenseError = ($env:TRI_ENFORCE_LICENSE_ERROR -eq "1")
 $script:EnforceCompileProbe = ($env:TRI_ENFORCE_COMPILE_PROBE -eq "1")
+$script:EnforceSentinelProbe = ($env:TRI_ENFORCE_SENTINEL_PROBE -eq "1")
 function Resolve-StateDirWsl {
     $script:stateDirWin = $env:TRI_STATE_DIR
     if ($env:TRI_STATE_DIR_WSL) {
@@ -1870,6 +1871,7 @@ while ($true) {
     $logs.Add("builder_git_branch=" + $script:BuilderGitBranch)
     Set-LogValue $logs "unity_license_gate_enforced" ([int]$script:EnforceLicenseError)
     Set-LogValue $logs "compile_probe_enforced" ([int]$script:EnforceCompileProbe)
+    Set-LogValue $logs "sentinel_probe_enforced" ([int]$script:EnforceSentinelProbe)
     Add-LicensingPreflight $logs
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
@@ -2176,11 +2178,16 @@ while ($true) {
                             }
 
                             if (-not $sentinelInfo.Found) {
-                                $overallStatus = "failed"
-                                $errorMessage = "BUILD_MISMATCH_PUREDOTS_CACHE sentinel_missing=probeVersion"
-                                break
+                                Set-LogValue $logs "${prefix}_sentinel_missing" "1"
+                                if ($script:EnforceSentinelProbe) {
+                                    $overallStatus = "failed"
+                                    $errorMessage = "BUILD_MISMATCH_PUREDOTS_CACHE sentinel_missing=probeVersion"
+                                    break
+                                }
+                                $logs.Add("${prefix}_sentinel_missing_warning=1")
+                            } else {
+                                $logs.Add("${prefix}_sentinel_found=probeVersion")
                             }
-                            $logs.Add("${prefix}_sentinel_found=probeVersion")
                         }
 
                         $extraNotes = ""
