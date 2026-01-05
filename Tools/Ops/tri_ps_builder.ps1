@@ -2172,6 +2172,22 @@ while ($true) {
                                             $patchErrors.Add("copy_failed:" + (Trim-LogValue $_.Exception.Message))
                                         }
                                     }
+                                    if ($info.Name -eq "space4x") {
+                                        $gameplayPath = Join-Path $unityProjectPath "Library\\PlayerScriptAssemblies\\Space4X.Gameplay.dll"
+                                        if (Test-Path $gameplayPath) {
+                                            try {
+                                                Copy-Item -Path $gameplayPath -Destination (Join-Path $managedDir "Space4X.Gameplay.dll") -Force
+                                                $patched = $true
+                                                if (-not $patchedNames.Contains("Space4X.Gameplay.dll")) {
+                                                    $patchedNames.Add("Space4X.Gameplay.dll")
+                                                }
+                                            } catch {
+                                                $patchErrors.Add("copy_failed:" + (Trim-LogValue $_.Exception.Message))
+                                            }
+                                        } else {
+                                            $patchErrors.Add("missing:" + $gameplayPath)
+                                        }
+                                    }
                                     if ($patchErrors.Count -gt 0) {
                                         Set-LogValue $logs "${prefix}_patched_managed_dlls_errors" (Trim-LogValue ($patchErrors -join ",")) 
                                     }
