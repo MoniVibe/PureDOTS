@@ -10,6 +10,7 @@ using PureDOTS.Systems;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using SystemEnvironment = global::System.Environment;
 using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Systems.Telemetry
@@ -974,9 +975,9 @@ namespace PureDOTS.Systems.Telemetry
             WriteEscapedString(writer, Application.unityVersion);
             writer.Write("\"");
 
-            var envOracleProbe = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_ORACLE_PROBE") ?? string.Empty;
-            var envTelemetryLevel = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_LEVEL") ?? string.Empty;
-            var envTelemetryFlags = Environment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_FLAGS") ?? string.Empty;
+            var envOracleProbe = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_ORACLE_PROBE") ?? string.Empty;
+            var envTelemetryLevel = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_LEVEL") ?? string.Empty;
+            var envTelemetryFlags = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_FLAGS") ?? string.Empty;
             var hasScenarioRunnerTick = SystemAPI.HasSingleton<ScenarioRunnerTick>();
             var hasTickTimeState = SystemAPI.HasSingleton<TickTimeState>();
             var hasTimeState = SystemAPI.HasSingleton<TimeState>();

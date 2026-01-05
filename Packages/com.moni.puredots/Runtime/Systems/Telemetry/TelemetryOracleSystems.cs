@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Intent;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Power;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Space;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Burst;
