@@ -1495,16 +1495,16 @@ function Get-LatestBuildPath([string]$ProjectRoot, [string]$BuildRootName, [stri
 
 function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phase, [string]$RequestId, [int]$Cycle) {
     $unityExe = if ($env:TRI_UNITY_EXE) { $env:TRI_UNITY_EXE } else { $env:UNITY_WIN }
-    $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath, "-TriRoot", $env:TRI_ROOT, "-LogPath", $LogPath)
+    $procArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath, "-TriRoot", $env:TRI_ROOT, "-LogPath", $LogPath)
     if ($unityExe) {
-        $args += @("-UnityExe", $unityExe)
+        $procArgs += @("-UnityExe", $unityExe)
     }
     $logsDir = Join-Path $env:TRI_ROOT ".tri\\logs"
     New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
     $phaseToken = ($Phase -replace "[^A-Za-z0-9_-]", "_")
     $stdoutPath = Join-Path $logsDir ("build_{0}_{1}_stdout.log" -f $phaseToken, $RequestId)
     $stderrPath = Join-Path $logsDir ("build_{0}_{1}_stderr.log" -f $phaseToken, $RequestId)
-    $argString = Build-ProcessArgumentString $args
+    $argString = Build-ProcessArgumentString $procArgs
     $proc = Start-Process -FilePath $shellExe -ArgumentList $argString -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     while (-not $proc.HasExited) {
         Write-Heartbeat $Phase "req=$RequestId" $Cycle
