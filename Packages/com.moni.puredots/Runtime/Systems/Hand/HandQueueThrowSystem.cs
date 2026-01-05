@@ -99,7 +99,7 @@ namespace PureDOTS.Systems.Hand
         }
     }
 
-    [BurstCompile]
+    // Burst disabled; headless player reported SIGSEGV in this system.
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(HandQueueThrowSystem))]
     [UpdateBefore(typeof(HandThrowSystem))]
@@ -107,14 +107,12 @@ namespace PureDOTS.Systems.Hand
     {
         private uint _lastInputSampleId;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<HandInputFrame>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var timeState = SystemAPI.GetSingleton<TimeState>();
