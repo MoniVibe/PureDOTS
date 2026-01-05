@@ -1619,8 +1619,14 @@ function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phas
         Renew-Leases $RequestId
         Start-Sleep -Seconds $heartbeatSeconds
     }
+    $exitCode = $proc.ExitCode
+    $exitCodeNull = ($exitCode -eq $null)
+    if ($exitCodeNull) {
+        $exitCode = 0
+    }
     return [pscustomobject]@{
-        ExitCode = $proc.ExitCode
+        ExitCode = $exitCode
+        ExitCodeNull = $exitCodeNull
         StdOutPath = $stdoutPath
         StdErrPath = $stderrPath
     }
@@ -2017,6 +2023,7 @@ while ($true) {
 
                         $buildResult = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
                         $exitCode = $buildResult.ExitCode
+                        Set-LogValue $logs ("build_exitcode_null_" + $info.Name) ([int]$buildResult.ExitCodeNull)
                         $logs.Add("build_log_" + $info.Name + "=" + $logPathPublic)
                         if ($buildResult.StdOutPath) {
                             $logs.Add("build_script_stdout_path_" + $info.Name + "=" + $buildResult.StdOutPath)
