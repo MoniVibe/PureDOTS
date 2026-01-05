@@ -43,6 +43,7 @@ function Resolve-StateDir {
 $stateDirWin = $null
 $stateDirWsl = $null
 $script:LockGuardByProject = @{}
+$script:TriOpsLastError = ""
 function Resolve-StateDirWsl {
     $script:stateDirWin = $env:TRI_STATE_DIR
     if ($env:TRI_STATE_DIR_WSL) {
@@ -1188,10 +1189,25 @@ try {
 
 function Invoke-TriOps {
     param([string[]]$TriOpsArgs)
-    $output = & $pythonCmd.Exe @($pythonCmd.Args + @($triOpsPath) + $TriOpsArgs) 2>&1 | Out-String
+    $context = "unknown"
+    if ($TriOpsArgs -and $TriOpsArgs.Count -gt 0 -and $TriOpsArgs[0]) {
+        $context = [string]$TriOpsArgs[0]
+    }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $pythonCmd.Exe @($pythonCmd.Args + @($triOpsPath) + $TriOpsArgs) 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    $clean = if ($output) { $output.Trim() } else { "" }
+    if ($exitCode -ne 0) {
+        $script:TriOpsLastError = ("tri_ops_fail_{0}=exit_{1} {2}" -f $context, $exitCode, (Trim-LogValue $clean))
+    }
     return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
-        Output = $output.Trim()
+        ExitCode = $exitCode
+        Output = $clean
     }
 }
 
@@ -1668,6 +1684,7 @@ while ($true) {
     $buildCommit = ""
     $logs = New-Object System.Collections.Generic.List[string]
     $errorMessage = ""
+    $script:TriOpsLastError = ""
     $originalBranches = @{}
     $scriptPath = $PSCommandPath
     $scriptHash = (Get-FileHash -Path $scriptPath -Algorithm SHA256).Hash
@@ -1967,6 +1984,9 @@ while ($true) {
         }
         if (-not $publishedPath) { $publishedPath = "n/a" }
         if (-not $buildCommit) { $buildCommit = "unknown" }
+        if ($script:TriOpsLastError) {
+            $logs.Add($script:TriOpsLastError)
+        }
 
         $resultArgs = @(
             "write_result", "--id", $requestId, "--status", $overallStatus,
