@@ -417,6 +417,100 @@ function Get-UnityLicensingLines([string]$LogPath) {
     return $lines
 }
 
+function Get-ProcessOwnerSummary([object[]]$Processes) {
+    if (-not $Processes) {
+        return ""
+    }
+    $summaries = New-Object System.Collections.Generic.List[string]
+    foreach ($proc in ($Processes | Select-Object -First 10)) {
+        $owner = "unknown"
+        try {
+            $ownerInfo = Invoke-CimMethod -InputObject $proc -MethodName GetOwner -ErrorAction SilentlyContinue
+            if ($ownerInfo -and $ownerInfo.User) {
+                if ($ownerInfo.Domain) {
+                    $owner = "{0}\\{1}" -f $ownerInfo.Domain, $ownerInfo.User
+                } else {
+                    $owner = $ownerInfo.User
+                }
+            }
+        } catch {
+            $owner = "unknown"
+        }
+        $summaries.Add("{0}:{1}:{2}" -f $proc.Name, $proc.ProcessId, $owner)
+    }
+    return (Trim-LogValue ($summaries -join ","))
+}
+
+function Test-FileReadable([string]$Path) {
+    if (-not (Test-Path $Path -PathType Leaf)) {
+        return 0
+    }
+    try {
+        $null = Get-Content -Path $Path -TotalCount 1 -ErrorAction Stop
+        return 1
+    } catch {
+        return 0
+    }
+}
+
+function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) {
+    if (-not $Logs) {
+        return
+    }
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $userName = if ($identity) { $identity.Name } else { $env:USERNAME }
+    Set-LogValue $Logs "licensing_preflight_user" $userName
+    $isAdmin = 0
+    try {
+        $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+        if ($principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            $isAdmin = 1
+        }
+    } catch {
+        $isAdmin = 0
+    }
+    Set-LogValue $Logs "licensing_preflight_is_admin" $isAdmin
+
+    $procMatches = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match "UnityHub|Unity\\.Licensing\\.Client" }
+    $hubProcs = @()
+    $licProcs = @()
+    foreach ($proc in $procMatches) {
+        if ($proc.Name -match "UnityHub") {
+            $hubProcs += $proc
+        } elseif ($proc.Name -match "Unity\\.Licensing\\.Client") {
+            $licProcs += $proc
+        }
+    }
+    Set-LogValue $Logs "unityhub_process_count" $hubProcs.Count
+    Set-LogValue $Logs "unityhub_process_owners" (Get-ProcessOwnerSummary $hubProcs)
+    Set-LogValue $Logs "unity_licensing_client_process_count" $licProcs.Count
+    Set-LogValue $Logs "unity_licensing_client_owners" (Get-ProcessOwnerSummary $licProcs)
+
+    $tokenDir = ""
+    if ($env:APPDATA) {
+        $tokenDir = Join-Path $env:APPDATA "UnityHub"
+    }
+    Set-LogValue $Logs "unityhub_token_dir" $tokenDir
+    $dirExists = if ($tokenDir) { [int](Test-Path $tokenDir) } else { 0 }
+    Set-LogValue $Logs "unityhub_token_dir_exists" $dirExists
+    if ($dirExists -eq 1) {
+        $recent = Get-ChildItem -Path $tokenDir -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 8 |
+            ForEach-Object { "{0}@{1}" -f $_.Name, $_.LastWriteTime.ToString("s") }
+        Set-LogValue $Logs "unityhub_token_dir_recent" (Trim-LogValue ($recent -join ","))
+        $candidates = @("access-token", "access-token.json", "oauth_token", "unityhub.token", "token", "token.json")
+        $candResults = New-Object System.Collections.Generic.List[string]
+        foreach ($candidate in $candidates) {
+            $path = Join-Path $tokenDir $candidate
+            $exists = [int](Test-Path $path -PathType Leaf)
+            $readable = if ($exists -eq 1) { Test-FileReadable $path } else { 0 }
+            $candResults.Add("{0}:{1}:{2}" -f $candidate, $exists, $readable)
+        }
+        Set-LogValue $Logs "unityhub_token_candidates" (Trim-LogValue ($candResults -join ","))
+    }
+}
+
 function Get-DllCandidates([string]$ProjectRoot, [int]$Minutes = 60, [int]$Max = 10) {
     $roots = @(
         (Join-Path $ProjectRoot "Library"),
@@ -1756,6 +1850,7 @@ while ($true) {
     $logs.Add("session_type=" + $sessionType)
     $logs.Add("builder_git_sha=" + $script:BuilderGitShaShort)
     $logs.Add("builder_git_branch=" + $script:BuilderGitBranch)
+    Add-LicensingPreflight $logs
     if ($unityEditorPath) {
         $logs.Add("unity_editor_path=" + $unityEditorPath)
     }
