@@ -1321,6 +1321,35 @@ function Invoke-TriOps {
     }
 }
 
+function Write-FallbackResultFile(
+    [string]$RequestId,
+    [string]$Status,
+    [string]$PublishedPath,
+    [string]$BuildCommit,
+    [System.Collections.Generic.List[string]]$Logs,
+    [string]$ErrorMessage
+) {
+    $opsDir = Join-Path $env:TRI_STATE_DIR "ops"
+    $resultsDir = Join-Path $opsDir "results"
+    New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
+    $resultPath = Join-Path $resultsDir ("{0}.json" -f $RequestId)
+    $data = [ordered]@{
+        id = $RequestId
+        status = $Status
+        utc = (Get-Date).ToUniversalTime().ToString("o")
+        published_build_path = $PublishedPath
+        build_commit = $BuildCommit
+        logs = @($Logs)
+    }
+    if ($ErrorMessage) {
+        $data.error = $ErrorMessage
+    }
+    $tmpPath = $resultPath + ".tmp"
+    $json = $data | ConvertTo-Json -Compress
+    Set-Content -Path $tmpPath -Value $json -Encoding UTF8
+    Move-Item -Path $tmpPath -Destination $resultPath -Force
+}
+
 function Quote-ProcessArg([string]$Arg) {
     if ($null -eq $Arg) {
         return '""'
@@ -2305,7 +2334,15 @@ while ($true) {
         if ($errorMessage) {
             $resultArgs += @("--error", $errorMessage)
         }
-        Invoke-TriOps $resultArgs | Out-Null
+        $writeResult = Invoke-TriOps $resultArgs
+        $resultPath = Join-Path $env:TRI_STATE_DIR ("ops\\results\\{0}.json" -f $requestId)
+        if (-not (Test-Path $resultPath)) {
+            $logs.Add("write_result_fallback=1")
+            if ($writeResult.Output) {
+                $logs.Add("write_result_error=" + (Trim-LogValue $writeResult.Output))
+            }
+            Write-FallbackResultFile $requestId $overallStatus $publishedPath $buildCommit $logs $errorMessage
+        }
 
         Invoke-TriOps @("unlock_build", "--owner", "ps", "--request-id", $requestId) | Out-Null
         Write-Heartbeat "watching" "unlocked" $cycle
