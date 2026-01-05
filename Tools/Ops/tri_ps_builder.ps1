@@ -499,7 +499,17 @@ function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) 
             Sort-Object LastWriteTime -Descending | Select-Object -First 8 |
             ForEach-Object { "{0}@{1}" -f $_.Name, $_.LastWriteTime.ToString("s") }
         Set-LogValue $Logs "unityhub_token_dir_recent" (Trim-LogValue ($recent -join ","))
-        $candidates = @("access-token", "access-token.json", "oauth_token", "unityhub.token", "token", "token.json")
+        $candidates = @(
+            "access-token",
+            "access-token.json",
+            "oauth_token",
+            "unityhub.token",
+            "token",
+            "token.json",
+            "encryptedTokens.json",
+            "Network\\Trust Tokens",
+            "Network\\Trust Tokens-journal"
+        )
         $candResults = New-Object System.Collections.Generic.List[string]
         foreach ($candidate in $candidates) {
             $path = Join-Path $tokenDir $candidate
