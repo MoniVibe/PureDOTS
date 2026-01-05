@@ -2143,6 +2143,39 @@ while ($true) {
                             Set-LogValue $logs "${prefix}_sentinel_target" $sentinelInfo.Target
                             Set-LogValue $logs "sentinel_target" $sentinelInfo.Target
 
+                            if ($info.Name -eq "space4x") {
+                                $managedDir = Get-ManagedDir $buildDir
+                                if ($managedDir) {
+                                    $gameplaySource = $null
+                                    $gameplayCandidates = @(
+                                        (Join-Path $unityProjectPath "Library\\ScriptAssemblies\\Space4X.Gameplay.dll"),
+                                        (Join-Path $unityProjectPath "Library\\PlayerScriptAssemblies\\Space4X.Gameplay.dll")
+                                    )
+                                    foreach ($candidate in $gameplayCandidates) {
+                                        if (Test-Path $candidate) {
+                                            $gameplaySource = $candidate
+                                            break
+                                        }
+                                    }
+                                    if ($gameplaySource) {
+                                        try {
+                                            Copy-Item -Path $gameplaySource -Destination (Join-Path $managedDir "Space4X.Gameplay.dll") -Force
+                                            $logs.Add("${prefix}_gameplay_patch_source=" + $gameplaySource)
+                                            $logs.Add("${prefix}_gameplay_patch_copied=1")
+                                        } catch {
+                                            $logs.Add("${prefix}_gameplay_patch_copied=0")
+                                            $logs.Add("${prefix}_gameplay_patch_error=" + (Trim-LogValue $_.Exception.Message))
+                                        }
+                                    } else {
+                                        $logs.Add("${prefix}_gameplay_patch_copied=0")
+                                        $logs.Add("${prefix}_gameplay_patch_error=missing_source")
+                                    }
+                                } else {
+                                    $logs.Add("${prefix}_gameplay_patch_copied=0")
+                                    $logs.Add("${prefix}_gameplay_patch_error=missing_managed_dir")
+                                }
+                            }
+
                             if (-not $sentinelInfo.Found -and $compileInfo -and $compileInfo.Hits.Count -gt 0 -and $sentinelInfo.Backend -eq "mono" -and $compileInfo.Source -eq "PlayerScriptAssemblies") {
                                 $managedDir = Get-ManagedDir $buildDir
                                 if ($managedDir) {
