@@ -1887,7 +1887,11 @@ while ($true) {
                             $copyOk = $false
                             try {
                                 New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
-                                if (Test-Path $logPath) {
+                                $localExists = Test-Path $logPath
+                                $localBytes = if ($localExists) { (Get-Item -Path $logPath).Length } else { 0 }
+                                $logs.Add("unity_log_local_exists=" + ([int]$localExists))
+                                $logs.Add("unity_log_local_bytes=" + $localBytes)
+                                if ($localExists) {
                                     Copy-Item -Path $logPath -Destination $logPathPublic -Force
                                     $copyOk = $true
                                 }
