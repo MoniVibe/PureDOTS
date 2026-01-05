@@ -428,7 +428,7 @@ function Get-ProcessOwnerSummary([object[]]$Processes) {
             $ownerInfo = Invoke-CimMethod -InputObject $proc -MethodName GetOwner -ErrorAction SilentlyContinue
             if ($ownerInfo -and $ownerInfo.User) {
                 if ($ownerInfo.Domain) {
-                    $owner = "{0}\\{1}" -f $ownerInfo.Domain, $ownerInfo.User
+                    $owner = "$($ownerInfo.Domain)\\$($ownerInfo.User)"
                 } else {
                     $owner = $ownerInfo.User
                 }
@@ -436,7 +436,7 @@ function Get-ProcessOwnerSummary([object[]]$Processes) {
         } catch {
             $owner = "unknown"
         }
-        $summaries.Add("{0}:{1}:{2}" -f $proc.Name, $proc.ProcessId, $owner)
+        $summaries.Add("$($proc.Name):$($proc.ProcessId):$owner")
     }
     return (Trim-LogValue ($summaries -join ","))
 }
@@ -497,7 +497,7 @@ function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) 
     if ($dirExists -eq 1) {
         $recent = Get-ChildItem -Path $tokenDir -File -ErrorAction SilentlyContinue |
             Sort-Object LastWriteTime -Descending | Select-Object -First 8 |
-            ForEach-Object { "{0}@{1}" -f $_.Name, $_.LastWriteTime.ToString("s") }
+            ForEach-Object { "$($_.Name)@$($_.LastWriteTime.ToString("s"))" }
         Set-LogValue $Logs "unityhub_token_dir_recent" (Trim-LogValue ($recent -join ","))
         $candidates = @(
             "access-token",
@@ -515,7 +515,7 @@ function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) 
             $path = Join-Path $tokenDir $candidate
             $exists = [int](Test-Path $path -PathType Leaf)
             $readable = if ($exists -eq 1) { Test-FileReadable $path } else { 0 }
-            $candResults.Add("{0}:{1}:{2}" -f $candidate, $exists, $readable)
+            $candResults.Add("$candidate:$exists:$readable")
         }
         Set-LogValue $Logs "unityhub_token_candidates" (Trim-LogValue ($candResults -join ","))
     }
