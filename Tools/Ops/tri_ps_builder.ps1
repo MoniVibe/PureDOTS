@@ -515,7 +515,7 @@ function Add-LicensingPreflight([System.Collections.Generic.List[string]]$Logs) 
             $path = Join-Path $tokenDir $candidate
             $exists = [int](Test-Path $path -PathType Leaf)
             $readable = if ($exists -eq 1) { Test-FileReadable $path } else { 0 }
-            $candResults.Add("$candidate:$exists:$readable")
+        $candResults.Add("${candidate}:${exists}:${readable}")
         }
         Set-LogValue $Logs "unityhub_token_candidates" (Trim-LogValue ($candResults -join ","))
     }
