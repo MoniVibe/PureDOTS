@@ -1214,6 +1214,20 @@ function Invoke-TriOps {
     }
 }
 
+function Quote-ProcessArg([string]$Arg) {
+    if ($null -eq $Arg) {
+        return "\"\""
+    }
+    if ($Arg -match "\s") {
+        return "\"" + $Arg + "\""
+    }
+    return $Arg
+}
+
+function Build-ProcessArgumentString([string[]]$Args) {
+    return (($Args | ForEach-Object { Quote-ProcessArg $_ }) -join " ")
+}
+
 function Test-TriOpsSupports([string]$Token) {
     if ([string]::IsNullOrWhiteSpace($Token)) {
         return $false
@@ -1490,7 +1504,8 @@ function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phas
     $phaseToken = ($Phase -replace "[^A-Za-z0-9_-]", "_")
     $stdoutPath = Join-Path $logsDir ("build_{0}_{1}_stdout.log" -f $phaseToken, $RequestId)
     $stderrPath = Join-Path $logsDir ("build_{0}_{1}_stderr.log" -f $phaseToken, $RequestId)
-    $proc = Start-Process -FilePath $shellExe -ArgumentList $args -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    $argString = Build-ProcessArgumentString $args
+    $proc = Start-Process -FilePath $shellExe -ArgumentList $argString -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     while (-not $proc.HasExited) {
         Write-Heartbeat $Phase "req=$RequestId" $Cycle
         Renew-Leases $RequestId
