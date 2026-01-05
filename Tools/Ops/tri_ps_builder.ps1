@@ -1485,13 +1485,22 @@ function Invoke-BuildScript([string]$ScriptPath, [string]$LogPath, [string]$Phas
     if ($unityExe) {
         $args += @("-UnityExe", $unityExe)
     }
-    $proc = Start-Process -FilePath $shellExe -ArgumentList $args -PassThru
+    $logsDir = Join-Path $env:TRI_ROOT ".tri\\logs"
+    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+    $phaseToken = ($Phase -replace "[^A-Za-z0-9_-]", "_")
+    $stdoutPath = Join-Path $logsDir ("build_{0}_{1}_stdout.log" -f $phaseToken, $RequestId)
+    $stderrPath = Join-Path $logsDir ("build_{0}_{1}_stderr.log" -f $phaseToken, $RequestId)
+    $proc = Start-Process -FilePath $shellExe -ArgumentList $args -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     while (-not $proc.HasExited) {
         Write-Heartbeat $Phase "req=$RequestId" $Cycle
         Renew-Leases $RequestId
         Start-Sleep -Seconds $heartbeatSeconds
     }
-    return $proc.ExitCode
+    return [pscustomobject]@{
+        ExitCode = $proc.ExitCode
+        StdOutPath = $stdoutPath
+        StdErrPath = $stderrPath
+    }
 }
 
 function Publish-Build(
@@ -1881,8 +1890,23 @@ while ($true) {
                             }
                         }
 
-                        $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
+                        $buildResult = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
+                        $exitCode = $buildResult.ExitCode
                         $logs.Add("build_log_" + $info.Name + "=" + $logPathPublic)
+                        if ($buildResult.StdOutPath) {
+                            $logs.Add("build_script_stdout_path_" + $info.Name + "=" + $buildResult.StdOutPath)
+                            if (Test-Path $buildResult.StdOutPath) {
+                                $stdoutLines = Get-Content -Path $buildResult.StdOutPath -Tail 40 -ErrorAction SilentlyContinue
+                                Set-LogValue $logs ("build_script_stdout_" + $info.Name) (Format-LogSnippet $stdoutLines)
+                            }
+                        }
+                        if ($buildResult.StdErrPath) {
+                            $logs.Add("build_script_stderr_path_" + $info.Name + "=" + $buildResult.StdErrPath)
+                            if (Test-Path $buildResult.StdErrPath) {
+                                $stderrLines = Get-Content -Path $buildResult.StdErrPath -Tail 40 -ErrorAction SilentlyContinue
+                                Set-LogValue $logs ("build_script_stderr_" + $info.Name) (Format-LogSnippet $stderrLines)
+                            }
+                        }
                         if ($logPath -ne $logPathPublic) {
                             $copyOk = $false
                             try {
