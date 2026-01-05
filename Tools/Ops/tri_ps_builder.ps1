@@ -2169,7 +2169,7 @@ while ($true) {
         $overallStatus = "failed"
         $errorMessage = $_.Exception.Message
     } finally {
-        if ($desiredCommit -and $originalBranches.Count -gt 0) {
+        if ($originalBranches.Count -gt 0) {
             foreach ($entry in $originalBranches.GetEnumerator()) {
                 $projectRoot = Join-Path $env:TRI_ROOT $entry.Key
                 $restoreResult = Invoke-Git $projectRoot checkout --quiet $entry.Value
