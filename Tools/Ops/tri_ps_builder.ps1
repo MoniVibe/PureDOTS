@@ -449,10 +449,12 @@ function Add-CompileDiagnostics(
     [string]$LogPath,
     [int]$ExitCode,
     [string]$CmdProjectPath,
-    [System.Collections.Generic.List[string]]$Logs
+    [System.Collections.Generic.List[string]]$Logs,
+    [string]$LogPathPublic = ""
 ) {
+    $publicLogPath = if ($LogPathPublic) { $LogPathPublic } else { $LogPath }
     Set-LogValue $Logs "unity_exit_code" $ExitCode
-    Set-LogValue $Logs "unity_log_path" $LogPath
+    Set-LogValue $Logs "unity_log_path" $publicLogPath
     Set-LogValue $Logs "unity_cmdline_projectPath" $CmdProjectPath
 
     $diag = Get-UnityLogDiagnostics $LogPath
@@ -1842,7 +1844,15 @@ while ($true) {
                     $compileInfo = $null
                     $buildLogDir = Join-Path $env:TRI_STATE_DIR "builds\logs"
                     New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
-                    $logPath = Join-Path $buildLogDir ("{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss"))
+                    $logName = "{0}_{1}.log" -f $info.Name, (Get-Date -Format "yyyyMMdd_HHmmss")
+                    $logPathPublic = Join-Path $buildLogDir $logName
+                    $logPath = $logPathPublic
+                    if ($logPathPublic.StartsWith("\\\\wsl$\\", [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $localLogDir = Join-Path $env:TRI_ROOT ".tri\\logs"
+                        New-Item -ItemType Directory -Path $localLogDir -Force | Out-Null
+                        $logPath = Join-Path $localLogDir $logName
+                        $logs.Add("unity_log_local_path=" + $logPath)
+                    }
 
                     try {
                         $swapResult = Invoke-HeadlessManifestSwap $info.Name $projectRoot $logs
@@ -1872,10 +1882,23 @@ while ($true) {
                         }
 
                         $exitCode = Invoke-BuildScript $info.BuildScript $logPath ("building_" + $info.Name) $requestId $cycle
-                        $logs.Add("build_log_" + $info.Name + "=" + $logPath)
+                        $logs.Add("build_log_" + $info.Name + "=" + $logPathPublic)
+                        if ($logPath -ne $logPathPublic) {
+                            $copyOk = $false
+                            try {
+                                New-Item -ItemType Directory -Path $buildLogDir -Force | Out-Null
+                                if (Test-Path $logPath) {
+                                    Copy-Item -Path $logPath -Destination $logPathPublic -Force
+                                    $copyOk = $true
+                                }
+                            } catch {
+                                $logs.Add("unity_log_copy_failed=" + (Trim-LogValue $_.Exception.Message))
+                            }
+                            $logs.Add("unity_log_copy_ok=" + ([int]$copyOk))
+                        }
 
                         if ($probeBuild) {
-                            Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs
+                            Add-CompileDiagnostics $projectRoot $logPath $exitCode $projectRoot $logs $logPathPublic
                             $licensingLines = Get-UnityLicensingLines $logPath
                             if ($licensingLines.Count -gt 0) {
                                 Set-LogValue $logs "unity_license_error" "1"
