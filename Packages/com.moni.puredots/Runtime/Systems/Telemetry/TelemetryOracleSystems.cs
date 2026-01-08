@@ -4,12 +4,14 @@ using PureDOTS.Runtime.Intent;
 using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Power;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Space;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace PureDOTS.Systems.Telemetry
 {
@@ -62,8 +64,8 @@ namespace PureDOTS.Systems.Telemetry
     }
 
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(PureDOTS.Runtime.Telemetry.BehaviorTelemetryAggregateSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateBefore(typeof(TelemetryExportSystem))]
     public partial struct TelemetryOracleAccumulatorSystem : ISystem
     {
         private BufferLookup<Interrupt> _interruptLookup;
@@ -75,8 +77,6 @@ namespace PureDOTS.Systems.Telemetry
         {
             state.RequireForUpdate<TelemetryStream>();
             state.RequireForUpdate<TelemetryExportConfig>();
-            state.RequireForUpdate<TimeState>();
-            state.RequireForUpdate<TelemetryOracleAccumulator>();
 
             _interruptLookup = state.GetBufferLookup<Interrupt>(true);
             _queuedIntentLookup = state.GetBufferLookup<QueuedIntent>(true);
@@ -93,9 +93,19 @@ namespace PureDOTS.Systems.Telemetry
                 return;
             }
 
-            var timeState = SystemAPI.GetSingleton<TimeState>();
-            var tick = timeState.Tick;
+            var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
+            if (!state.EntityManager.HasComponent<TelemetryOracleAccumulator>(telemetryEntity))
+            {
+                state.EntityManager.AddComponentData(telemetryEntity, TelemetryOracleAccumulator.CreateDefault());
+            }
+
+            if (!state.EntityManager.HasBuffer<TelemetryOracleLatencySample>(telemetryEntity))
+            {
+                state.EntityManager.AddBuffer<TelemetryOracleLatencySample>(telemetryEntity);
+            }
+
             var cadence = exportConfig.CadenceTicks > 0 ? exportConfig.CadenceTicks : 30u;
+            var tick = ResolveOracleTick(ref state);
             var shouldExport = cadence <= 1u || tick % cadence == 0u;
 
             _interruptLookup.Update(ref state);
@@ -103,11 +113,18 @@ namespace PureDOTS.Systems.Telemetry
             _movementModeLookup.Update(ref state);
             _moduleStateLookup.Update(ref state);
 
-            var accumulator = SystemAPI.GetSingletonRW<TelemetryOracleAccumulator>();
-            var acc = accumulator.ValueRO;
-            var latencyBuffer = SystemAPI.GetSingletonBuffer<TelemetryOracleLatencySample>();
+            var acc = state.EntityManager.GetComponentData<TelemetryOracleAccumulator>(telemetryEntity);
+            var latencyBuffer = state.EntityManager.GetBuffer<TelemetryOracleLatencySample>(telemetryEntity);
 
-            var deltaSeconds = timeState.IsPaused ? 0f : math.max(0f, timeState.DeltaSeconds);
+            float deltaSeconds;
+            if (SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+            {
+                deltaSeconds = timeState.IsPaused ? 0f : math.max(0f, timeState.DeltaSeconds);
+            }
+            else
+            {
+                deltaSeconds = math.max(0f, (float)SystemAPI.Time.DeltaTime);
+            }
             acc.SampleTicks += 1;
             acc.SampleSeconds += deltaSeconds;
 
@@ -123,7 +140,64 @@ namespace PureDOTS.Systems.Telemetry
                 acc = TelemetryOracleAccumulator.CreateDefault();
             }
 
-            accumulator.ValueRW = acc;
+            state.EntityManager.SetComponentData(telemetryEntity, acc);
+        }
+
+        private uint ResolveOracleTick(ref SystemState state)
+        {
+            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
+            {
+                return scenarioTick.Tick;
+            }
+
+            if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
+            {
+                var tick = tickState.Tick;
+                if (SystemAPI.TryGetSingleton<TimeState>(out var timeState) && timeState.Tick > tick)
+                {
+                    tick = timeState.Tick;
+                }
+
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var elapsedTick = ResolveBatchElapsedTick(ref state);
+                    if (elapsedTick > tick)
+                    {
+                        tick = elapsedTick;
+                    }
+                }
+
+                return tick;
+            }
+
+            if (SystemAPI.TryGetSingleton<TimeState>(out var legacyTime))
+            {
+                var tick = legacyTime.Tick;
+                if (tick == 0 && Application.isBatchMode)
+                {
+                    var elapsedTick = ResolveBatchElapsedTick(ref state);
+                    if (elapsedTick > tick)
+                    {
+                        tick = elapsedTick;
+                    }
+                }
+
+                return tick;
+            }
+
+            return Application.isBatchMode ? ResolveBatchElapsedTick(ref state) : 0u;
+        }
+
+        private uint ResolveBatchElapsedTick(ref SystemState state)
+        {
+            var dt = (float)SystemAPI.Time.DeltaTime;
+            var elapsed = (float)SystemAPI.Time.ElapsedTime;
+            if (dt > 0f && elapsed > 0f)
+            {
+                return (uint)(elapsed / dt);
+            }
+
+            return 0u;
         }
 
         private void AccumulateAiMetrics(ref SystemState state, uint tick, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
@@ -338,10 +412,12 @@ namespace PureDOTS.Systems.Telemetry
 
         private void EmitOracleMetrics(ref SystemState state, ref TelemetryOracleAccumulator acc, ref DynamicBuffer<TelemetryOracleLatencySample> latencyBuffer)
         {
-            if (!SystemAPI.TryGetSingletonBuffer<TelemetryMetric>(out var metrics))
+            var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
+            if (!state.EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
             {
-                return;
+                state.EntityManager.AddBuffer<TelemetryMetric>(telemetryEntity);
             }
+            var metrics = state.EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
 
             var exportState = SystemAPI.GetSingleton<TelemetryExportState>();
             var nearMissCount = 0u;
@@ -358,6 +434,7 @@ namespace PureDOTS.Systems.Telemetry
             var latencyMean = acc.IntentSamples > 0 ? (float)acc.IntentAgeSumTicks / acc.IntentSamples : 0f;
             var latencyP95 = ResolveP95(latencyBuffer, acc.IntentAgeMaxTicks);
 
+            metrics.AddMetric("telemetry.oracle.heartbeat", 1f, TelemetryMetricUnit.Count);
             metrics.AddMetric("ai.idle_with_work_ratio", idleRatio, TelemetryMetricUnit.Ratio);
             metrics.AddMetric("ai.task_latency_ticks.mean", latencyMean, TelemetryMetricUnit.Count);
             metrics.AddMetric("ai.task_latency_ticks.p95", latencyP95, TelemetryMetricUnit.Count);

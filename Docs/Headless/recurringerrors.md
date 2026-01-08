@@ -1,0 +1,30 @@
+# recurringerrors
+
+- UTC: 2026-01-03T19:39:28Z
+  - Request: 3ead62eb-aab5-4a38-a7f2-e4a93e733290
+  - Desired build commit: origin/walktest-telemetry-oracle
+  - Error: git checkout failed for space4x (origin/walktest-telemetry-oracle) pathspec not found
+  - Mitigation: use a pin reachable in all requested repos; create matching branch refs in space4x/godgame or pin to origin/main
+- UTC: 2026-01-03T20:41:35Z
+  - Signature: telemetry bloat when PUREDOTS_TELEMETRY_LEVEL is Unspecified in headless and flags unset (events/metrics flood risk)
+  - Repro: headless batch run with telemetry enabled, no PUREDOTS_TELEMETRY_LEVEL, no PUREDOTS_TELEMETRY_FLAGS
+  - Mitigation: set PUREDOTS_TELEMETRY_LEVEL=summary (optionally PUREDOTS_TELEMETRY_FLAGS=metrics,frame)
+  - Fix: TelemetryExportBootstrapSystem defaults to Summary in batch when level is Unspecified and flags unset (commit f0e2fa8)
+  - Evidence (pre-fix): Space4x smoke summary 184,947,236 and 213,574,673 bytes on build_id 20260103_214440_1db54f9099 (cycle_telemetry_safe_20260103_222942); no telemetryTruncated marker
+- UTC: 2026-01-03T21:41:29Z
+  - Signature: ORACLE_KEYS_MISSING (oracle contract keys absent from NDJSON: telemetry.oracle.heartbeat, move.stuck_ticks, ai.idle_with_work_ratio)
+  - Repro: `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/telemetry/space4x_smoke_oracle.ndjson` + `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/godgame/telemetry/godgame_smoke_oracle.ndjson`
+  - Evidence: excerpt `/mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_oracle_fix3_20260103_233721/space4x/oracle_missing_excerpt.txt`
+  - Impact: H-T02 FAIL; cannot trust cross-project oracle KPIs
+  - Mitigation: treat H-T02 as FAIL; do not assume oracle keys exist
+  - Attempted fixes: stream-buffer write (commit 9c56043), heartbeat/self-seed (commit d88cacc), LateSimulation before export (commit d13436d)
+  - Current status: persists in build_id 20260103_233603_1db54f9099 / 20260103_233651_a518b02816
+  - Next diagnostic: export-side NDJSON debug probe (type=debug) gated by PUREDOTS_TELEMETRY_ORACLE_PROBE=1; fields: metric_buffer_len, oracle_candidate_count + sample keys, skipped_by_loop_filter_count (GetLoopLabel+ShouldWriteLoop false), export_tick vs TimeState.Tick vs ScenarioRunnerTick (if present)
+  - Verification: PASS when debug probe shows oracle candidates exported OR when keys appear in NDJSON on export ticks
+- UTC: 2026-01-03T23:23:46Z
+  - Signature: BUILD_MISMATCH_PUREDOTS (run header missing probe fields after rebuild request)
+  - Repro: Space4x build_id 20260104_011826_1db54f9099 and Godgame build_id 20260104_011914_a518b02816 from request 94169100-80e4-43b8-a099-809450ff0883
+  - Evidence: pointers `/mnt/c/dev/Tri/.tri/state/builds/current_space4x.json` and `/mnt/c/dev/Tri/.tri/state/builds/current_godgame.json`; run headers missing probeVersion/env* fields
+    - Space4x run header: `{"type":"run","runId":"e2ab783b50134efd8eaeac22f78ffce5","timestamp":"2026-01-03T23:20:20.2986810+00:00","world":"Game World","flags":3,"application":"Space4x","unityVersion":"6000.3.1f1","scenarioId":"space4x_smoke","seed":77,"scenarioKind":0,"scenarioKindLabel":"AllSystemsShowcase","bootPhase":0,"isInitialized":false,"enableGodgame":true,"enableSpace4x":true,"enableEconomy":false}`
+    - Godgame run header: `{"type":"run","runId":"a713d2c881c74e5dbb62d6231f9d3178","timestamp":"2026-01-03T23:23:04.9082170+00:00","world":"Game World","flags":3,"application":"Godgame","unityVersion":"6000.3.1f1","scenarioId":"scenario.godgame.smoke","seed":42,"scenarioKind":0,"scenarioKindLabel":"AllSystemsShowcase","bootPhase":0,"isInitialized":false,"enableGodgame":true,"enableSpace4x":true,"enableEconomy":false}`
+  - PS-reported puredots_sha: unknown (not present in build log)

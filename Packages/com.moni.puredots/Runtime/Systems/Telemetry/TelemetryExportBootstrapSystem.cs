@@ -56,6 +56,13 @@ namespace PureDOTS.Systems.Telemetry
 
             var flags = configRW.ValueRO.Flags;
             var level = ResolveLevel(levelValue);
+            if (Application.isBatchMode
+                && shouldEnable
+                && level == TelemetryExportLevel.Unspecified
+                && string.IsNullOrEmpty(flagsValue))
+            {
+                level = TelemetryExportLevel.Summary;
+            }
             if (level == TelemetryExportLevel.Summary && string.IsNullOrEmpty(flagsValue))
             {
                 flags = TelemetryExportFlags.IncludeTelemetryMetrics | TelemetryExportFlags.IncludeFrameTiming;
