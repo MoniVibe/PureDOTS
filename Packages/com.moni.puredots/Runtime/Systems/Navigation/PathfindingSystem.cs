@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Navigation;
 using Unity.Burst;
 using Unity.Collections;
@@ -72,8 +73,8 @@ namespace PureDOTS.Systems.Navigation
             }
 
             // Process WARM path requests in priority order, respecting budget
-            foreach (var (request, pathState, pathResult, entity) in
-                SystemAPI.Query<RefRO<PathRequest>, RefRW<PathState>, DynamicBuffer<PathResult>>()
+            foreach (var (request, preference, cadence, pathState, pathResult, entity) in
+                SystemAPI.Query<RefRO<PathRequest>, RefRO<NavPreference>, RefRW<UpdateCadence>, RefRW<PathState>, DynamicBuffer<PathResult>>()
                 .WithEntityAccess())
             {
                 if (request.ValueRO.IsActive == 0)
@@ -87,6 +88,11 @@ namespace PureDOTS.Systems.Navigation
                     continue;
                 }
 
+                if (!UpdateCadenceHelpers.ShouldUpdate(timeState.Tick, cadence.ValueRO))
+                {
+                    continue;
+                }
+
                 // Check budget
                 if (counters.ValueRO.LocalPathQueriesThisTick >= budget.MaxLocalPathQueriesPerTick)
                 {
@@ -94,6 +100,7 @@ namespace PureDOTS.Systems.Navigation
                 }
 
                 counters.ValueRW.LocalPathQueriesThisTick++;
+                cadence.ValueRW.LastUpdateTick = timeState.Tick;
 
                 // Find nearest nodes to start and goal
                 var startNode = FindNearestNode(ref nodes, request.ValueRO.StartPosition);
@@ -113,6 +120,7 @@ namespace PureDOTS.Systems.Navigation
                     startNode,
                     goalNode,
                     request.ValueRO.LocomotionMode,
+                    preference.ValueRO.RiskWeight,
                     Allocator.Temp,
                     out var path);
 
@@ -191,6 +199,7 @@ namespace PureDOTS.Systems.Navigation
             int startNode,
             int goalNode,
             LocomotionMode locomotionMode,
+            float riskWeight,
             Allocator allocator,
             out NativeList<int> path)
         {
@@ -295,8 +304,28 @@ namespace PureDOTS.Systems.Navigation
                         continue;
                     }
 
+                    float riskPenalty = 0f;
+                    if ((neighborNode.Flags & NavNodeFlags.Hazard) != 0)
+                    {
+                        riskPenalty += 1f;
+                    }
+
+                    if ((edge.Flags & NavEdgeFlags.Dangerous) != 0)
+                    {
+                        riskPenalty += 1f;
+                    }
+
+                    if (riskPenalty > 0f && riskWeight > 0f)
+                    {
+                        riskPenalty *= riskWeight * (edge.Cost + neighborNode.BaseCost);
+                    }
+                    else
+                    {
+                        riskPenalty = 0f;
+                    }
+
                     // Calculate tentative gScore
-                    var tentativeG = currentG + edge.Cost + neighborNode.BaseCost;
+                    var tentativeG = currentG + edge.Cost + neighborNode.BaseCost + riskPenalty;
 
                     var neighborG = gScore.ContainsKey(neighbor) ? gScore[neighbor] : float.MaxValue;
 
@@ -341,4 +370,3 @@ namespace PureDOTS.Systems.Navigation
         }
     }
 }
-
