@@ -119,7 +119,9 @@ namespace PureDOTS.Runtime.Scenarios
         private static bool TryGetScenarioInfo(EntityManager entityManager, out ScenarioInfo info)
         {
             info = default;
-            if (!IsEntityManagerReady(entityManager))
+            if (entityManager == default ||
+                entityManager.World == null || !entityManager.World.IsCreated ||
+                !entityManager.WorldUnmanaged.IsCreated)
             {
                 return false;
             }
@@ -136,7 +138,9 @@ namespace PureDOTS.Runtime.Scenarios
 
         private static string ResolveTelemetryPath(EntityManager entityManager)
         {
-            if (IsEntityManagerReady(entityManager))
+            if (entityManager != default &&
+                entityManager.World != null && entityManager.World.IsCreated &&
+                entityManager.WorldUnmanaged.IsCreated)
             {
                 using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportConfig>());
                 if (!query.IsEmptyIgnoreFilter)
@@ -316,12 +320,6 @@ namespace PureDOTS.Runtime.Scenarios
             }
 
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-        }
-
-        private static bool IsEntityManagerReady(EntityManager entityManager)
-        {
-            var world = entityManager.World;
-            return world != null && world.IsCreated;
         }
     }
 }
