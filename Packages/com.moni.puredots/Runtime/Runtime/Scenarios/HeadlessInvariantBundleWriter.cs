@@ -7,6 +7,7 @@ using PureDOTS.Runtime.Telemetry;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using SystemEnvironment = System.Environment;
 
 namespace PureDOTS.Runtime.Scenarios
 {
@@ -118,7 +119,9 @@ namespace PureDOTS.Runtime.Scenarios
         private static bool TryGetScenarioInfo(EntityManager entityManager, out ScenarioInfo info)
         {
             info = default;
-            if (!entityManager.IsCreated)
+            if (entityManager == default ||
+                entityManager.World == null || !entityManager.World.IsCreated ||
+                !entityManager.WorldUnmanaged.IsCreated)
             {
                 return false;
             }
@@ -135,7 +138,9 @@ namespace PureDOTS.Runtime.Scenarios
 
         private static string ResolveTelemetryPath(EntityManager entityManager)
         {
-            if (entityManager.IsCreated)
+            if (entityManager != default &&
+                entityManager.World != null && entityManager.World.IsCreated &&
+                entityManager.WorldUnmanaged.IsCreated)
             {
                 using var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportConfig>());
                 if (!query.IsEmptyIgnoreFilter)
@@ -148,23 +153,23 @@ namespace PureDOTS.Runtime.Scenarios
                 }
             }
 
-            return Environment.GetEnvironmentVariable(TelemetryPathEnv) ?? string.Empty;
+            return SystemEnvironment.GetEnvironmentVariable(TelemetryPathEnv) ?? string.Empty;
         }
 
         private static string ResolveScenarioPath()
         {
-            var space4x = Environment.GetEnvironmentVariable(Space4xScenarioPathEnv);
+            var space4x = SystemEnvironment.GetEnvironmentVariable(Space4xScenarioPathEnv);
             if (!string.IsNullOrWhiteSpace(space4x))
             {
                 return space4x;
             }
 
-            return Environment.GetEnvironmentVariable(GodgameScenarioPathEnv) ?? string.Empty;
+            return SystemEnvironment.GetEnvironmentVariable(GodgameScenarioPathEnv) ?? string.Empty;
         }
 
         private static string ResolveReportPath()
         {
-            return Environment.GetEnvironmentVariable(Space4xReportPathEnv) ?? string.Empty;
+            return SystemEnvironment.GetEnvironmentVariable(Space4xReportPathEnv) ?? string.Empty;
         }
 
         private static string ResolveOutputDirectory(string telemetryPath, string reportPath, string scenarioPath)
