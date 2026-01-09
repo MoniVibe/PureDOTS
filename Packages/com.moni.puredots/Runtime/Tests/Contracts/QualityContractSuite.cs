@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
 using NUnit.Framework;
+using NUnitAssert = NUnit.Framework.Assert;
 using PureDOTS.Runtime.Production.Contracts;
 using PureDOTS.Systems.Production.Contracts;
 using System;
@@ -47,12 +48,13 @@ namespace PureDOTS.Tests.Contracts
         public void Assert(EntityManager entityManager)
         {
             var result = entityManager.GetComponentData<ContractQualityResult>(_entity);
-            Assert.That(result.OutputValue, Is.InRange(0f, 1f));
+            NUnitAssert.That(result.OutputValue, Is.InRange(0f, 1f));
 
             var request = entityManager.GetComponentData<ContractQualityRequest>(_entity);
-            Assert.That(request.LastProcessedTick, Is.GreaterThan(0u));
-            Assert.That(result.LastProcessedTick, Is.EqualTo(request.LastProcessedTick));
+            NUnitAssert.That(request.LastProcessedTick, Is.GreaterThan(0u));
+            NUnitAssert.That(result.LastProcessedTick, Is.EqualTo(request.LastProcessedTick));
         }
     }
 }
 #endif
+

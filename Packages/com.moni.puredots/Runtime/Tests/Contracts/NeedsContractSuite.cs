@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
 using NUnit.Framework;
+using NUnitAssert = NUnit.Framework.Assert;
 using PureDOTS.Runtime.Needs.Contracts;
 using PureDOTS.Systems.Needs.Contracts;
 using System;
@@ -61,8 +62,9 @@ namespace PureDOTS.Tests.Contracts
         public void Assert(EntityManager entityManager)
         {
             var intent = entityManager.GetComponentData<ContractNeedOverrideIntent>(_entity);
-            Assert.That(intent.LastChangedTick, Is.GreaterThan(0u));
+            NUnitAssert.That(intent.LastChangedTick, Is.GreaterThan(0u));
         }
     }
 }
 #endif
+

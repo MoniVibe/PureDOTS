@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
 using NUnit.Framework;
+using NUnitAssert = NUnit.Framework.Assert;
 using PureDOTS.Runtime.AI.Contracts;
 using PureDOTS.Systems.AI.Contracts;
 using System;
@@ -98,16 +99,17 @@ namespace PureDOTS.Tests.Contracts
             var timeState = entityManager.CreateEntityQuery(typeof(PureDOTS.Runtime.Components.TimeState))
                 .GetSingleton<PureDOTS.Runtime.Components.TimeState>();
 
-            Assert.That(execution.LastInterruptedTick, Is.EqualTo(1u));
-            Assert.That(recovery.LastRecoveryTick, Is.GreaterThan(0u));
-            Assert.That(recovery.LastRecoveryTick - execution.LastInterruptedTick, Is.LessThanOrEqualTo(2u));
-            Assert.That(execution.Phase, Is.Not.EqualTo(AIContractExecutionPhase.Running));
+            NUnitAssert.That(execution.LastInterruptedTick, Is.EqualTo(1u));
+            NUnitAssert.That(recovery.LastRecoveryTick, Is.GreaterThan(0u));
+            NUnitAssert.That(recovery.LastRecoveryTick - execution.LastInterruptedTick, Is.LessThanOrEqualTo(2u));
+            NUnitAssert.That(execution.Phase, Is.Not.EqualTo(AIContractExecutionPhase.Running));
 
             if (execution.Phase == AIContractExecutionPhase.Running)
             {
-                Assert.LessOrEqual(timeState.Tick - execution.PhaseStartTick, 2u);
+                NUnitAssert.LessOrEqual(timeState.Tick - execution.PhaseStartTick, 2u);
             }
         }
     }
 }
 #endif
+
