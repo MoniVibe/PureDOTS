@@ -11,7 +11,6 @@ namespace PureDOTS.Editor
         public static void Run()
         {
             var args = System.Environment.GetCommandLineArgs();
-            var filter = GetArg(args, "-testFilter");
             var resultsPath = GetArg(args, "-testResults");
             if (string.IsNullOrWhiteSpace(resultsPath))
             {
@@ -27,15 +26,7 @@ namespace PureDOTS.Editor
                 runSynchronously = true
             };
 
-            if (!string.IsNullOrWhiteSpace(filter))
-            {
-                settings.filters[0].testNames = new[] { filter };
-                settings.filters[0].groupNames = new[] { filter };
-            }
-            else
-            {
-                settings.filters[0].assemblyNames = new[] { "PureDOTS.EditorTests" };
-            }
+            settings.filters[0].assemblyNames = new[] { "PureDOTS.EditorTests" };
 
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
             api.RegisterCallbacks(new CliRunCallbacks(resultsPath));
@@ -75,8 +66,7 @@ namespace PureDOTS.Editor
                     TestRunnerApi.SaveResultToFile(result, _resultsPath);
                 }
 
-                var testCount = result.PassCount + result.FailCount + result.SkipCount + result.InconclusiveCount;
-                if (testCount == 0)
+                if (result.TestCount == 0)
                 {
                     EditorApplication.Exit(2);
                     return;
