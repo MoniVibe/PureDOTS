@@ -32,6 +32,10 @@ namespace PureDOTS.Editor
                 settings.filters[0].testNames = new[] { filter };
                 settings.filters[0].groupNames = new[] { filter };
             }
+            else
+            {
+                settings.filters[0].assemblyNames = new[] { "PureDOTS.EditorTests" };
+            }
 
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
             api.RegisterCallbacks(new CliRunCallbacks(resultsPath));
@@ -69,6 +73,13 @@ namespace PureDOTS.Editor
                 if (!string.IsNullOrWhiteSpace(_resultsPath))
                 {
                     TestRunnerApi.SaveResultToFile(result, _resultsPath);
+                }
+
+                var testCount = result.PassCount + result.FailCount + result.SkipCount + result.InconclusiveCount;
+                if (testCount == 0)
+                {
+                    EditorApplication.Exit(2);
+                    return;
                 }
 
                 EditorApplication.Exit(result.FailCount > 0 ? 1 : 0);
