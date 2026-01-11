@@ -1,6 +1,5 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Interrupts;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -9,18 +8,17 @@ namespace PureDOTS.Systems.Interrupts
     /// <summary>
     /// Ensures default intent commitment components exist for entities using EntityIntent.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct IntentCommitmentBootstrapSystem : ISystem
     {
-        [BurstCompile]
+        // Keep OnCreate non-burst; burst direct-call recursion can stack overflow in headless player startup.
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
         }
 
-        [BurstCompile]
+        // Keep OnUpdate non-burst; burst direct-call recursion can stack overflow in headless player startup.
         public void OnUpdate(ref SystemState state)
         {
             var time = SystemAPI.GetSingleton<TimeState>();

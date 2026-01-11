@@ -19,17 +19,32 @@ This runbook splits headless validation into two agents with per-project banks.
 - Ops bus lives at `$TRI_STATE_DIR/ops`; requests go to `$TRI_STATE_DIR/ops/requests/*.json`. Do not write ops under `TRI_ROOT`.
 - Before running WSL headless after a Windows rebuild, confirm `/home/oni/Tri/Tools/builds/<project>/Linux_latest` matches `/mnt/c/dev/Tri/Tools/builds/<project>/Linux_latest`; if not, request a publish/sync.
 
+## Canonical state + docs (WSL polisher)
+- TRI_ROOT must be `/mnt/c/dev/Tri`.
+- TRI_STATE_DIR must be `/mnt/c/dev/Tri/.tri/state` (symlink to `/home/oni/Tri/.tri/state`).
+- Canonical docs live in: `/mnt/c/dev/Tri/puredots/Docs/Headless/headlesstasks.md`, `recurring.md`, `recurringerrors.md`.
+- Mirror docs in `/mnt/c/dev/Tri/*.md` are convenience copies only.
+- Sync rules:
+  - Cycle start: `puredots/Tools/Ops/tri_docs_sync.sh start` (canonical -> mirror)
+  - Cycle end: `puredots/Tools/Ops/tri_docs_sync.sh end` (mirror -> canonical), then commit + push from the puredots repo.
+
 ## Productivity requirement (non-negotiable)
 - Each cycle must attempt at least one headlesstask from `headlesstasks.md`.
 - If telemetry already exposes the metric, compute it and update `headlesstasks.md` (status, baseline/threshold, notes).
 - If the metric is missing, add minimal telemetry in logic repos (PureDOTS) and rebuild; if it requires `Assets/` or `.meta` edits, log the requirement and switch to another task.
 - Do not end a cycle with only bank runs; the bank is gating, not sufficient.
+- PS heartbeat stale blocks rebuild requests only; if binaries exist, still run scenarios and emit telemetry.
+- Zero-work cycles are forbidden: if no runs or requests are possible, log a blocker with attempted recovery steps in `recurringerrors.md` and `headlesstasks.md`.
 
 ## Compile-error remediation (non-negotiable)
 - If a rebuild fails with compiler errors, attempt a minimal, logic-only fix, rebuild scratch, then rerun Tier 0.
 - If the compiler errors point to `Assets/` or `.meta` and the agent is running in WSL, log the blocker and switch tasks; do not edit those files from WSL.
 - If the agent is running in a Windows/presentation context, it may fix `Assets/` or `.meta` compiler errors before retrying the rebuild.
 - Record compile-fix attempts in the cycle log and note any blockers in `headlesstasks.md`.
+
+## Rebuild request rules (pin safety)
+- Use reachable refs only: `origin/<branch>` or `origin/main` (never local-only SHAs).
+- If a rebuild result is `status=failed`, treat it as complete: record in `recurringerrors.md`, fix the pin/cause, then submit a NEW request id.
 
 ## Asset-fix escalation (Windows-only)
 - If a bank failure or headless task requires `Assets/` or `.meta` edits and a Windows/presentation context is available, switch to that mode for the fix only.
@@ -83,6 +98,11 @@ Rules:
 Telemetry defaults (use unless debugging):
 - PUREDOTS_TELEMETRY_LEVEL=summary
 - PUREDOTS_TELEMETRY_MAX_BYTES=524288000
+
+## Oracle probe mode
+- Enable: set PUREDOTS_TELEMETRY_ORACLE_PROBE=1
+- Where to look: NDJSON lines with type="debug" in the telemetry output
+- Cycle log: paste the debug line(s) plus build_id and telemetry path(s)
 
 ---
 

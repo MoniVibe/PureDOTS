@@ -10,6 +10,7 @@ using PureDOTS.Systems;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
+using SystemEnvironment = global::System.Environment;
 using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Systems.Telemetry
@@ -34,6 +35,10 @@ namespace PureDOTS.Systems.Telemetry
         private bool _capRecordWritten;
         private StringBuilder _lineBuilder;
         private StringWriter _lineWriter;
+        private bool _oracleProbeEnabled;
+        private bool _oracleProbeInitialized;
+        private string _oracleProbeLoggedRunId;
+        private const string OracleProbeVersion = "oracle_probe_v1";
 
         protected override void OnCreate()
         {
@@ -84,6 +89,7 @@ namespace PureDOTS.Systems.Telemetry
                 _outputCapReached = false;
                 _truncateOutput = true;
                 _capRecordWritten = false;
+                _oracleProbeLoggedRunId = string.Empty;
                 ResetExportState(ref exportState.ValueRW, config);
             }
             else if (!exportState.ValueRO.RunId.Equals(config.RunId) || exportState.ValueRO.MaxOutputBytes != config.MaxOutputBytes)
@@ -103,6 +109,7 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             ResolveScenarioMetadata();
+            EnsureOracleProbeState();
 
             try
             {
@@ -155,6 +162,12 @@ namespace PureDOTS.Systems.Telemetry
                     var shouldExport = cadence <= 1u || tick % cadence == 0u;
                     if (shouldExport)
                     {
+                        if (!WriteOracleProbe(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
+                        {
+                            HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
+                            return;
+                        }
+
                         if (!ExportTelemetryMetrics(writer, tick, ref bytesWritten, maxBytes, reserveBytes))
                         {
                             HandleCapReached(writer, ref bytesWritten, maxBytes, truncatedRecord, reserveBytes, ref exportState.ValueRW);
@@ -389,6 +402,166 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return 0;
+        }
+
+        private void EnsureOracleProbeState()
+        {
+            if (_oracleProbeInitialized)
+            {
+                return;
+            }
+
+            _oracleProbeEnabled = IsTruthyEnv("PUREDOTS_TELEMETRY_ORACLE_PROBE");
+            _oracleProbeInitialized = true;
+        }
+
+        private static bool IsTruthyEnv(string key)
+        {
+            var value = global::System.Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+
+            value = value.Trim();
+            return value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool WriteOracleProbe(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
+        {
+            if (!_oracleProbeEnabled)
+            {
+                return true;
+            }
+
+            var metricCount = 0;
+            var oracleCandidateCount = 0;
+            var oracleTelemetryCount = 0;
+            var oracleAiCount = 0;
+            var oracleMoveCount = 0;
+            var oraclePowerCount = 0;
+            var oracleModuleCount = 0;
+            var loopSkipCount = 0;
+
+            if (SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity) &&
+                EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
+            {
+                var buffer = EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
+                metricCount = buffer.Length;
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    var key = buffer[i].Key.ToString();
+                    if (key.StartsWith("telemetry.oracle.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        oracleTelemetryCount += 1;
+                        oracleCandidateCount += 1;
+                    }
+                    else if (key.StartsWith("ai.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        oracleAiCount += 1;
+                        oracleCandidateCount += 1;
+                    }
+                    else if (key.StartsWith("move.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        oracleMoveCount += 1;
+                        oracleCandidateCount += 1;
+                    }
+                    else if (key.StartsWith("power.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        oraclePowerCount += 1;
+                        oracleCandidateCount += 1;
+                    }
+                    else if (key.StartsWith("module.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        oracleModuleCount += 1;
+                        oracleCandidateCount += 1;
+                    }
+
+                    var loopLabel = GetLoopLabel(key);
+                    if (!ShouldWriteLoop(loopLabel))
+                    {
+                        loopSkipCount += 1;
+                    }
+                }
+            }
+
+            var timeTickPresent = 0;
+            var scenarioTickPresent = 0;
+            var tickTimePresent = 0;
+            uint timeTick = 0;
+            uint scenarioTick = 0;
+            uint tickTime = 0;
+
+            if (SystemAPI.TryGetSingleton<TimeState>(out var timeState))
+            {
+                timeTick = timeState.Tick;
+                timeTickPresent = 1;
+            }
+
+            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioState))
+            {
+                scenarioTick = scenarioState.Tick;
+                scenarioTickPresent = 1;
+            }
+
+            if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
+            {
+                tickTime = tickState.Tick;
+                tickTimePresent = 1;
+            }
+
+            if (!TryWriteRecord(writer, ref bytesWritten, maxBytes, reserveBytes, recordWriter =>
+                {
+                    recordWriter.Write("{\"type\":\"debug\",\"runId\":\"");
+                    WriteEscapedString(recordWriter, _runIdString);
+                    recordWriter.Write("\",\"scenario\":\"");
+                    WriteEscapedString(recordWriter, _scenarioIdString);
+                    recordWriter.Write("\",\"debugKind\":\"oracleProbe\",\"tick\":");
+                    recordWriter.Write(tick);
+                    recordWriter.Write(",\"metrics_total\":");
+                    recordWriter.Write(metricCount);
+                    recordWriter.Write(",\"oracle_candidates\":");
+                    recordWriter.Write(oracleCandidateCount);
+                    recordWriter.Write(",\"oracle_telemetry\":");
+                    recordWriter.Write(oracleTelemetryCount);
+                    recordWriter.Write(",\"oracle_ai\":");
+                    recordWriter.Write(oracleAiCount);
+                    recordWriter.Write(",\"oracle_move\":");
+                    recordWriter.Write(oracleMoveCount);
+                    recordWriter.Write(",\"oracle_power\":");
+                    recordWriter.Write(oraclePowerCount);
+                    recordWriter.Write(",\"oracle_module\":");
+                    recordWriter.Write(oracleModuleCount);
+                    recordWriter.Write(",\"loop_skipped\":");
+                    recordWriter.Write(loopSkipCount);
+                    recordWriter.Write(",\"tick_time\":");
+                    recordWriter.Write(timeTick);
+                    recordWriter.Write(",\"tick_time_present\":");
+                    recordWriter.Write(timeTickPresent);
+                    recordWriter.Write(",\"tick_scenario\":");
+                    recordWriter.Write(scenarioTick);
+                    recordWriter.Write(",\"tick_scenario_present\":");
+                    recordWriter.Write(scenarioTickPresent);
+                    recordWriter.Write(",\"tick_ticktime\":");
+                    recordWriter.Write(tickTime);
+                    recordWriter.Write(",\"tick_ticktime_present\":");
+                    recordWriter.Write(tickTimePresent);
+                    recordWriter.WriteLine("}");
+                }))
+            {
+                return false;
+            }
+
+            if (_oracleProbeLoggedRunId != _runIdString)
+            {
+                UnityDebug.Log($"[TelemetryExportSystem] OracleProbe runId={_runIdString} metrics_total={metricCount} oracle_candidates={oracleCandidateCount} oracle_telemetry={oracleTelemetryCount} oracle_ai={oracleAiCount} oracle_move={oracleMoveCount} oracle_power={oraclePowerCount} oracle_module={oracleModuleCount} loop_skipped={loopSkipCount} tick_export={tick} tick_time={timeTick} tick_scenario={scenarioTick} tick_ticktime={tickTime}");
+                _oracleProbeLoggedRunId = _runIdString;
+            }
+
+            return true;
         }
 
         private bool ExportTelemetryMetrics(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
@@ -801,6 +974,30 @@ namespace PureDOTS.Systems.Telemetry
             writer.Write("\",\"unityVersion\":\"");
             WriteEscapedString(writer, Application.unityVersion);
             writer.Write("\"");
+
+            var envOracleProbe = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_ORACLE_PROBE") ?? string.Empty;
+            var envTelemetryLevel = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_LEVEL") ?? string.Empty;
+            var envTelemetryFlags = SystemEnvironment.GetEnvironmentVariable("PUREDOTS_TELEMETRY_FLAGS") ?? string.Empty;
+            var hasScenarioRunnerTick = SystemAPI.HasSingleton<ScenarioRunnerTick>();
+            var hasTickTimeState = SystemAPI.HasSingleton<TickTimeState>();
+            var hasTimeState = SystemAPI.HasSingleton<TimeState>();
+
+            writer.Write(",\"probeVersion\":\"");
+            WriteEscapedString(writer, OracleProbeVersion);
+            writer.Write("\",\"envOracleProbe\":\"");
+            WriteEscapedString(writer, envOracleProbe);
+            writer.Write("\",\"envTelemetryLevel\":\"");
+            WriteEscapedString(writer, envTelemetryLevel);
+            writer.Write("\",\"envTelemetryFlags\":\"");
+            WriteEscapedString(writer, envTelemetryFlags);
+            writer.Write("\",\"cadenceTicks\":");
+            writer.Write(config.CadenceTicks);
+            writer.Write(",\"hasScenarioRunnerTick\":");
+            writer.Write(hasScenarioRunnerTick ? "true" : "false");
+            writer.Write(",\"hasTickTimeState\":");
+            writer.Write(hasTickTimeState ? "true" : "false");
+            writer.Write(",\"hasTimeState\":");
+            writer.Write(hasTimeState ? "true" : "false");
 
             writer.Write(",\"scenarioId\":\"");
             WriteEscapedString(writer, _scenarioIdString);
