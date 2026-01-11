@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
 using NUnit.Framework;
+using NUnitAssert = NUnit.Framework.Assert;
 using PureDOTS.Runtime.Construction.Contracts;
 using PureDOTS.Runtime.Logistics.Contracts;
 using PureDOTS.Systems.Construction.Contracts;
@@ -70,8 +71,9 @@ namespace PureDOTS.Tests.Contracts
         public void Assert(EntityManager entityManager)
         {
             var site = entityManager.GetComponentData<ContractConstructionSite>(_site);
-            Assert.That(site.State, Is.EqualTo(ContractConstructionState.Cancelled).Or.EqualTo(ContractConstructionState.Complete));
+            NUnitAssert.That(site.State, Is.EqualTo(ContractConstructionState.Cancelled).Or.EqualTo(ContractConstructionState.Complete));
         }
     }
 }
 #endif
+

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
 using NUnit.Framework;
+using NUnitAssert = NUnit.Framework.Assert;
 using PureDOTS.Runtime.Logistics.Contracts;
 using PureDOTS.Runtime.Production.Contracts;
 using PureDOTS.Systems.Logistics.Contracts;
@@ -168,19 +169,19 @@ namespace PureDOTS.Tests.Contracts
         public void Assert(EntityManager entityManager)
         {
             var inventory = entityManager.GetBuffer<ContractInventory>(_owner);
-            Assert.That(GetAmount(inventory, OreId), Is.GreaterThanOrEqualTo(0));
-            Assert.That(GetAmount(inventory, IngotId), Is.GreaterThanOrEqualTo(0));
+            NUnitAssert.That(GetAmount(inventory, OreId), Is.GreaterThanOrEqualTo(0));
+            NUnitAssert.That(GetAmount(inventory, IngotId), Is.GreaterThanOrEqualTo(0));
 
             var counters = entityManager.GetComponentData<ContractInvariantCounters>(_ledger);
-            Assert.That(counters.NegativeInventoryCount, Is.EqualTo(0));
-            Assert.That(counters.ReservedOverAvailableCount, Is.EqualTo(0));
-            Assert.That(counters.DoubleCommitAttemptCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(counters.DuplicateReservationIdCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(counters.IllegalStateTransitionCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(counters.CommitWithoutHoldCount, Is.GreaterThanOrEqualTo(1));
+            NUnitAssert.That(counters.NegativeInventoryCount, Is.EqualTo(0));
+            NUnitAssert.That(counters.ReservedOverAvailableCount, Is.EqualTo(0));
+            NUnitAssert.That(counters.DoubleCommitAttemptCount, Is.GreaterThanOrEqualTo(1));
+            NUnitAssert.That(counters.DuplicateReservationIdCount, Is.GreaterThanOrEqualTo(1));
+            NUnitAssert.That(counters.IllegalStateTransitionCount, Is.GreaterThanOrEqualTo(1));
+            NUnitAssert.That(counters.CommitWithoutHoldCount, Is.GreaterThanOrEqualTo(1));
 
             var result = entityManager.GetComponentData<ContractProductionResult>(_owner);
-            Assert.That(result.LastProcessedTick, Is.GreaterThan(0u));
+            NUnitAssert.That(result.LastProcessedTick, Is.GreaterThan(0u));
 
             var ledger = entityManager.GetBuffer<ContractReservationLedgerEntry>(_ledger);
             var hasReleased = false;
@@ -193,7 +194,7 @@ namespace PureDOTS.Tests.Contracts
                 }
             }
 
-            Assert.That(hasReleased, Is.True);
+            NUnitAssert.That(hasReleased, Is.True);
         }
 
         private static int GetAmount(DynamicBuffer<ContractInventory> inventory, int resourceId)
@@ -211,3 +212,4 @@ namespace PureDOTS.Tests.Contracts
     }
 }
 #endif
+
