@@ -66,7 +66,8 @@ namespace PureDOTS.Editor
                     TestRunnerApi.SaveResultToFile(result, _resultsPath);
                 }
 
-                if (result.TestCount == 0)
+                var totalTests = result.PassCount + result.FailCount + result.InconclusiveCount + result.SkipCount;
+                if (totalTests == 0)
                 {
                     EditorApplication.Exit(2);
                     return;

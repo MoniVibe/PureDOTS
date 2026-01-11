@@ -69,7 +69,8 @@ namespace PureDOTS.Authoring.Combat
                 var entry = authoring.Catalog.Entries[i];
                 var id = string.IsNullOrWhiteSpace(entry.ProjectileId) ? $"projectile.{i}" : entry.ProjectileId.Trim().ToLowerInvariant();
 
-                array[i] = new ProjectileSpec
+                ref var spec = ref array[i];
+                spec = new ProjectileSpec
                 {
                     Id = new FixedString64Bytes(id),
                     Kind = (byte)entry.Kind,
@@ -87,6 +88,7 @@ namespace PureDOTS.Authoring.Combat
                         HullMultiplier = entry.Damage.HullMultiplier
                     }
                 };
+                ProjectileSpecSanitizer.Sanitize(ref spec);
             }
 
             var blob = builder.CreateBlobAssetReference<ProjectileCatalogBlob>(Allocator.Persistent);
@@ -96,4 +98,3 @@ namespace PureDOTS.Authoring.Combat
     }
 #endif
 }
-
