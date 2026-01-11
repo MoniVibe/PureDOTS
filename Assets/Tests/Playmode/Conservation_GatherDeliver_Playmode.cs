@@ -32,6 +32,7 @@ namespace PureDOTS.Tests.Playmode
             
             var inventory = EntityManager.GetComponentData<StorehouseInventory>(storehouse);
             var items = EntityManager.GetBuffer<StorehouseInventoryItem>(storehouse);
+            var oreId = new FixedString64Bytes("ore");
             
             // Simulate gathering and consumption over multiple cycles
             float totalGathered = 0f;
@@ -42,7 +43,7 @@ namespace PureDOTS.Tests.Playmode
             totalGathered += 500f;
             totalConsumed += 50f;
             float deposit1 = totalGathered - totalConsumed - totalDeposited;
-            StorehouseApi.TryDeposit(storehouse, 1, deposit1, ref inventory, items, out var deposited1);
+            StorehouseApi.TryDeposit(storehouse, oreId, deposit1, ref inventory, items, out var deposited1);
             totalDeposited += deposited1;
             EntityManager.SetComponentData(storehouse, inventory);
             
@@ -52,7 +53,7 @@ namespace PureDOTS.Tests.Playmode
             float deposit2 = totalGathered - totalConsumed - totalDeposited;
             inventory = EntityManager.GetComponentData<StorehouseInventory>(storehouse);
             items = EntityManager.GetBuffer<StorehouseInventoryItem>(storehouse);
-            StorehouseApi.TryDeposit(storehouse, 1, deposit2, ref inventory, items, out var deposited2);
+            StorehouseApi.TryDeposit(storehouse, oreId, deposit2, ref inventory, items, out var deposited2);
             totalDeposited += deposited2;
             EntityManager.SetComponentData(storehouse, inventory);
             
@@ -74,21 +75,22 @@ namespace PureDOTS.Tests.Playmode
             float totalGathered = 1000f;
             float totalConsumed = 100f;
             float expectedStored = totalGathered - totalConsumed;
+            var oreId = new FixedString64Bytes("ore");
             
             // Distribute deposits across storehouses
             var inv1 = EntityManager.GetComponentData<StorehouseInventory>(storehouse1);
             var items1 = EntityManager.GetBuffer<StorehouseInventoryItem>(storehouse1);
-            StorehouseApi.TryDeposit(storehouse1, 1, expectedStored * 0.4f, ref inv1, items1, out _);
+            StorehouseApi.TryDeposit(storehouse1, oreId, expectedStored * 0.4f, ref inv1, items1, out _);
             EntityManager.SetComponentData(storehouse1, inv1);
             
             var inv2 = EntityManager.GetComponentData<StorehouseInventory>(storehouse2);
             var items2 = EntityManager.GetBuffer<StorehouseInventoryItem>(storehouse2);
-            StorehouseApi.TryDeposit(storehouse2, 1, expectedStored * 0.35f, ref inv2, items2, out _);
+            StorehouseApi.TryDeposit(storehouse2, oreId, expectedStored * 0.35f, ref inv2, items2, out _);
             EntityManager.SetComponentData(storehouse2, inv2);
             
             var inv3 = EntityManager.GetComponentData<StorehouseInventory>(storehouse3);
             var items3 = EntityManager.GetBuffer<StorehouseInventoryItem>(storehouse3);
-            StorehouseApi.TryDeposit(storehouse3, 1, expectedStored * 0.25f, ref inv3, items3, out _);
+            StorehouseApi.TryDeposit(storehouse3, oreId, expectedStored * 0.25f, ref inv3, items3, out _);
             EntityManager.SetComponentData(storehouse3, inv3);
             
             // Assert: Sum of all storehouses equals expected
@@ -119,4 +121,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

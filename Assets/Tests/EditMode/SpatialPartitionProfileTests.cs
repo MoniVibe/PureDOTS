@@ -22,7 +22,7 @@ namespace PureDOTS.Tests.EditMode
             var config = profile.ToComponent();
 
             Assert.AreEqual(new int3(32, 4, 32), config.CellCounts);
-            Assert.AreEqual((byte)SpatialProviderType.HashedGrid, config.ProviderId);
+            Assert.AreEqual(SpatialGridProviderIds.Hashed, config.ProviderId);
 
             Object.DestroyImmediate(profile);
         }
@@ -67,5 +67,4 @@ namespace PureDOTS.Tests.EditMode
         }
     }
 }
-
 

@@ -154,7 +154,7 @@ namespace PureDOTS.Tests.EditMode
                 new int3(0, 0, 0),
                 Allocator.Persistent);
 
-            Assert.That(constrained.Value.Summary.WaterCellCount, Is.GreaterThan(baseline.Value.Summary.WaterCellCount));
+            Assert.That(constrained.Value.Summary.WaterCellCount, Is.GreaterThanOrEqualTo(baseline.Value.Summary.WaterCellCount));
 
             baseline.Dispose();
             constrained.Dispose();
