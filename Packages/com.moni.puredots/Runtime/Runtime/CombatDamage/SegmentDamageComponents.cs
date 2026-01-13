@@ -4,8 +4,14 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace PureDOTS.Runtime.Combat
+namespace PureDOTS.Runtime.CombatDamage
 {
+    public static class SegmentDamageConstants
+    {
+        public const ushort UnassignedSegmentId = ushort.MaxValue;
+        public const ushort UnroutableSegmentId = ushort.MaxValue - 1;
+    }
+
     [InternalBufferCapacity(4)]
     public struct SegmentDamageEvent : IBufferElementData
     {
@@ -222,5 +228,20 @@ namespace PureDOTS.Runtime.Combat
         public float RepairPriority;
         public float WeaponsPriority;
         public float VentingThreshold;
+    }
+
+    public struct SegmentDamageMetrics : IComponentData
+    {
+        public uint Tick;
+        public uint NormalizedHits;
+        public uint RoutedHits;
+        public uint UnroutableHits;
+    }
+
+    [InternalBufferCapacity(16)]
+    public struct SegmentDamageHitBucket : IBufferElementData
+    {
+        public ushort SegmentId;
+        public uint Count;
     }
 }
