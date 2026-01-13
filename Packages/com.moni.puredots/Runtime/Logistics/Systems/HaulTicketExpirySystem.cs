@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Logistics.Components;
 using Unity.Burst;
 using Unity.Entities;

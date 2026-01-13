@@ -53,6 +53,8 @@ namespace PureDOTS.Systems.Groups
             }
 
             // Query groups with FormationState and GroupMember buffer
+            var formationMemberLookup = state.GetComponentLookup<FormationMember>(false);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (formationState, groupMembers, transform, groupEntity) in SystemAPI.Query<
                 RefRO<FormationState>,
                 DynamicBuffer<GroupMember>,
@@ -98,18 +100,18 @@ namespace PureDOTS.Systems.Groups
                     float3 targetPosition = anchorPos + worldOffset;
 
                     // Update FormationMember component if it exists
-                    if (state.EntityManager.HasComponent<FormationMember>(memberEntity))
+                    if (formationMemberLookup.HasComponent(memberEntity))
                     {
-                        var formationMember = state.EntityManager.GetComponentData<FormationMember>(memberEntity);
+                        var formationMember = formationMemberLookup[memberEntity];
                         formationMember.TargetPosition = targetPosition;
                         formationMember.FormationEntity = groupEntity;
                         formationMember.SlotIndex = (byte)i;
-                        state.EntityManager.SetComponentData(memberEntity, formationMember);
+                        formationMemberLookup[memberEntity] = formationMember;
                     }
                     else
                     {
                         // Create FormationMember component
-                        state.EntityManager.AddComponentData(memberEntity, new FormationMember
+                        ecb.AddComponent(memberEntity, new FormationMember
                         {
                             FormationEntity = groupEntity,
                             SlotIndex = (byte)i,
@@ -121,7 +123,9 @@ namespace PureDOTS.Systems.Groups
                     }
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }
-

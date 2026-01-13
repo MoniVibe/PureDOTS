@@ -1,4 +1,5 @@
 using PureDOTS.Runtime;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Production;
 using Unity.Burst;
 using Unity.Entities;

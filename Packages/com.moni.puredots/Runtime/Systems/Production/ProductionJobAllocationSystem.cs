@@ -145,14 +145,14 @@ namespace PureDOTS.Systems.Production
                 for (int i = 0; i < inputs.Length; i++)
                 {
                     var input = inputs[i];
-                    if (!TryResolveResourceTypeIndex(input.ResourceId, catalog, out var resourceTypeIndex))
+                    if (!TryResolveResourceTypeIndex(input.ResourceId, catalog, out var inputResourceTypeIndex))
                     {
                         reservationFailed = true;
                         break;
                     }
 
                     if (!StorehouseMutationService.TryReserveOut(
-                            resourceTypeIndex,
+                            inputResourceTypeIndex,
                             input.Amount,
                             allowPartialReservations,
                             catalog,
@@ -166,7 +166,7 @@ namespace PureDOTS.Systems.Production
                     reservations.Add(new ProductionInputReservation
                     {
                         Storage = inputStorage,
-                        ResourceTypeIndex = resourceTypeIndex,
+                        ResourceTypeIndex = inputResourceTypeIndex,
                         ReservedAmount = reservedAmount,
                         ExpiryTick = tick + expiryTicks,
                         Status = ProductionReservationStatus.Active

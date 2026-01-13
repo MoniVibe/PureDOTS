@@ -273,12 +273,13 @@ namespace PureDOTS.Systems.Combat
 
             foreach (var (events, entity) in SystemAPI.Query<DynamicBuffer<SegmentDamageEvent>>().WithEntityAccess())
             {
+                var eventBuffer = events;
                 var hasSegments = SystemAPI.HasBuffer<DamageSegmentDefinition>(entity);
                 var segmentDefs = hasSegments ? SystemAPI.GetBuffer<DamageSegmentDefinition>(entity) : default;
 
-                for (var i = 0; i < events.Length; i++)
+                for (var i = 0; i < eventBuffer.Length; i++)
                 {
-                    var evt = events[i];
+                    var evt = eventBuffer[i];
                     if (evt.SegmentId != SegmentDamageConstants.UnassignedSegmentId)
                     {
                         continue;
@@ -310,7 +311,7 @@ namespace PureDOTS.Systems.Combat
                     }
 
                     evt.SegmentId = resolved;
-                    events[i] = evt;
+                    eventBuffer[i] = evt;
 
                     if (!hasMetrics)
                     {
