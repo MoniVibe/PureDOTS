@@ -12,10 +12,13 @@ namespace PureDOTS.Systems.Power
     [UpdateInGroup(typeof(PowerSystemGroup), OrderFirst = true)]
     public partial struct PowerGenerationSystem : ISystem
     {
+        private ComponentLookup<FuelConsumerState> _fuelStateLookup;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<PowerGenerator>();
             state.RequireForUpdate<TimeState>();
+            _fuelStateLookup = state.GetComponentLookup<FuelConsumerState>(true);
         }
 
         [BurstCompile]
@@ -27,6 +30,8 @@ namespace PureDOTS.Systems.Power
                 return;
             }
 
+            _fuelStateLookup.Update(ref state);
+
             foreach (var (generator, entity) in SystemAPI.Query<RefRW<PowerGenerator>>().WithEntityAccess())
             {
                 var output = PowerCoreMath.CalculateActualOutput(
@@ -35,6 +40,13 @@ namespace PureDOTS.Systems.Power
                     generator.ValueRO.Efficiency,
                     generator.ValueRO.DegradationLevel,
                     out var wasteHeat);
+
+                if (_fuelStateLookup.HasComponent(entity))
+                {
+                    var fuelRatio = math.clamp(_fuelStateLookup[entity].FuelRatio, 0f, 1f);
+                    output *= fuelRatio;
+                    wasteHeat *= fuelRatio;
+                }
 
                 generator.ValueRW.WasteHeat = wasteHeat;
 
