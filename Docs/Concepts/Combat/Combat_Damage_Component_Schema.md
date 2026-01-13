@@ -36,15 +36,16 @@ This schema extends the above while keeping backward compatibility where practic
 
 ### Damage Event Stream (Superset of HitEvent)
 
-Use `HitEvent` as input, then normalize into a richer `DamageEvent` + payload buffer.
+Use `HitEvent` as input, then normalize into a richer `SegmentDamageEvent` + payload buffer.
 
 ```csharp
-public struct DamageEvent : IBufferElementData
+public struct SegmentDamageEvent : IBufferElementData
 {
     public uint EventId;
     public uint Tick;
     public Entity Source;
     public Entity Target;
+    public ushort SegmentId;
     public ushort SegmentHint;
     public float3 ImpactPositionLocal;
     public float3 ImpactNormalLocal;
@@ -52,13 +53,13 @@ public struct DamageEvent : IBufferElementData
     public float Impulse;
     public float Heat;
     public float SpreadRadius;
-    public DamageEventFlags Flags;
+    public SegmentDamageEventFlags Flags;
     public ushort PayloadStart;
     public ushort PayloadCount;
 }
 
 [System.Flags]
-public enum DamageEventFlags : byte
+public enum SegmentDamageEventFlags : byte
 {
     None = 0,
     IsExplosion = 1 << 0,
@@ -67,7 +68,7 @@ public enum DamageEventFlags : byte
     IgnoresFriendlyFire = 1 << 3
 }
 
-public struct DamagePayloadElement : IBufferElementData
+public struct SegmentDamagePayloadElement : IBufferElementData
 {
     public ushort DamageTypeIndex;
     public float Amount;
@@ -79,14 +80,14 @@ public struct DamagePayloadElement : IBufferElementData
 ### Damage Type Catalog
 
 ```csharp
-public struct DamageTypeDef
+public struct SegmentDamageTypeDef
 {
     public FixedString64Bytes Id;
-    public DamageTypeFlags Flags;
+    public SegmentDamageTypeFlags Flags;
 }
 
 [System.Flags]
-public enum DamageTypeFlags : byte
+public enum SegmentDamageTypeFlags : byte
 {
     None = 0,
     Thermal = 1 << 0,
@@ -97,14 +98,14 @@ public enum DamageTypeFlags : byte
     Radiation = 1 << 5
 }
 
-public struct DamageTypeCatalogBlob
+public struct SegmentDamageTypeCatalogBlob
 {
-    public BlobArray<DamageTypeDef> Types;
+    public BlobArray<SegmentDamageTypeDef> Types;
 }
 
-public struct DamageTypeIndex : IComponentData
+public struct SegmentDamageTypeIndex : IComponentData
 {
-    public BlobAssetReference<DamageTypeCatalogBlob> Catalog;
+    public BlobAssetReference<SegmentDamageTypeCatalogBlob> Catalog;
 }
 ```
 
@@ -125,23 +126,26 @@ public struct DamageSegmentDefinition : IBufferElementData
 public struct DamageSegmentState : IBufferElementData
 {
     public ushort SegmentId;
-    public float ShieldStrength;
-    public float ArmorIntegrity;
-    public float HullIntegrity;
+    public IntegrityState ShieldIntegrity;
+    public IntegrityState ArmorIntegrity;
+    public IntegrityState HullIntegrity;
     public byte Flags;
     public uint LastDamageTick;
 }
 
-public struct DamageSegmentFlags
+[System.Flags]
+public enum DamageSegmentFlags : byte
 {
-    public const byte Breached = 1 << 0;
-    public const byte Vented = 1 << 1;
-    public const byte OnFire = 1 << 2;
+    None = 0,
+    Breached = 1 << 0,
+    Vented = 1 << 1,
+    OnFire = 1 << 2
 }
 
 public struct ModuleSegmentLink : IComponentData
 {
     public ushort SegmentId;
+    public float3 LocalOffset;
 }
 ```
 
@@ -214,7 +218,7 @@ public struct ModuleIntegrity : IComponentData
     public float CriticalThreshold;
 }
 
-public struct ModuleDamageSensitivity : IComponentData
+public struct ModuleDamageSensitivity : IBufferElementData
 {
     public ushort DamageTypeIndex;
     public float Multiplier;
