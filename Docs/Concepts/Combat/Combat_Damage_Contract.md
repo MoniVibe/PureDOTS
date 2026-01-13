@@ -7,7 +7,7 @@ Owner: PureDOTS (shared contract). Do not place under C:\dev\Tri.
 Define a no-illusion, headless-provable combat damage model that is local-impact based,
 layered (shield/armor/hull/modules), and deterministic across Space4X and Godgame.
 
-See also: [Core Combat Mechanics](../Core/Combat_Mechanics_Core.md).
+See also: [Core Combat Mechanics](../Core/Combat_Mechanics_Core.md), [Combat Damage Component Schema](Combat_Damage_Component_Schema.md).
 
 ## Scope
 
