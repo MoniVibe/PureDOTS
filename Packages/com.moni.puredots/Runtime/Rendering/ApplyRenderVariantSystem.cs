@@ -28,68 +28,38 @@ namespace PureDOTS.Rendering
 
         public void OnCreate(ref SystemState state)
         {
-            _applyAllQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>(),
-                    ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>()
-                }
-            });
+            _applyAllQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithAll<MaterialMeshInfo>()
+                .WithAll<RenderBounds>());
 
-            _applyChangedQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>(),
-                    ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>()
-                }
-            });
+            _applyChangedQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithAll<MaterialMeshInfo>()
+                .WithAll<RenderBounds>());
             _applyChangedQuery.AddChangedVersionFilter(ComponentType.ReadOnly<MeshPresenter>());
 
-            _missingMaterialMeshQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<MaterialMeshInfo>() }
-            });
+            _missingMaterialMeshQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithNone<MaterialMeshInfo>());
 
-            _missingRenderBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<RenderBounds>() }
-            });
+            _missingRenderBoundsQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithNone<RenderBounds>());
 
-            _missingRenderMeshArrayQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<RenderMeshArray>() }
-            });
+            _missingRenderMeshArrayQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithNone<RenderMeshArray>());
 
-            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<MeshPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<RenderFilterSettings>() }
-            });
+            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<MeshPresenter>()
+                .WithNone<RenderFilterSettings>());
 
             state.RequireForUpdate<RenderPresentationCatalog>();
             _typeHandles = TypeHandles.Create(ref state);

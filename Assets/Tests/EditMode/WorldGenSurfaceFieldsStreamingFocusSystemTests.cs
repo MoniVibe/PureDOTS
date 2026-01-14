@@ -175,7 +175,9 @@ namespace PureDOTS.Tests.EditMode
 
             _disposeHandle.Update(_world.Unmanaged);
 
-            using var cleanupQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<SurfaceFieldsChunkCleanup>());
+            using var cleanupQuery = _entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<SurfaceFieldsChunkCleanup>(),
+                ComponentType.Exclude<SurfaceFieldsChunkComponent>());
             Assert.That(cleanupQuery.CalculateEntityCount(), Is.EqualTo(0));
         }
 
@@ -232,4 +234,3 @@ namespace PureDOTS.Tests.EditMode
         }
     }
 }
-

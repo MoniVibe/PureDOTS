@@ -159,6 +159,7 @@ namespace PureDOTS.Tests.EditMode
             builder.Allocate(ref spec.OnHit, 0);
 
             configure(ref spec);
+            ProjectileSpecSanitizer.Sanitize(ref spec);
             
             var blob = builder.CreateBlobAssetReference<ProjectileSpec>(Allocator.Temp);
             builder.Dispose();

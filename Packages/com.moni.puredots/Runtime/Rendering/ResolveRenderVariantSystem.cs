@@ -9,7 +9,6 @@ namespace PureDOTS.Rendering
     /// <summary>
     /// Resolves semantic keys into concrete variant keys using the active theme.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial class ResolveRenderVariantSystem : SystemBase
     {

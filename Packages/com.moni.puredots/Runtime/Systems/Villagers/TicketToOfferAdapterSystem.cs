@@ -59,9 +59,10 @@ namespace PureDOTS.Systems.Villagers
             
             // Remove existing offers created from tickets (to ensure idempotency)
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            var ecbWriter = ecb.AsParallelWriter();
             var removeOldOffersJob = new RemoveOldTicketOffersJob
             {
-                Ecb = ecb.AsParallelWriter()
+                Ecb = ecbWriter
             };
             state.Dependency = removeOldOffersJob.ScheduleParallel(state.Dependency);
             
@@ -72,7 +73,7 @@ namespace PureDOTS.Systems.Villagers
                 TicketLookup = _ticketLookup,
                 JobCatalog = jobBlob,
                 CurrentTick = currentTick,
-                Ecb = ecb.AsParallelWriter()
+                Ecb = ecbWriter
             };
             state.Dependency = convertJob.ScheduleParallel(state.Dependency);
             
@@ -174,4 +175,3 @@ namespace PureDOTS.Systems.Villagers
     {
     }
 }
-

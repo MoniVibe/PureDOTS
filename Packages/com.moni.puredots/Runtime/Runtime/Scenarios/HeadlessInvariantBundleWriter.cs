@@ -321,7 +321,7 @@ namespace PureDOTS.Runtime.Scenarios
         private static bool IsEntityManagerReady(EntityManager entityManager)
         {
             var world = entityManager.World;
-            return world != null && world.IsCreated;
+            return world != null && world.IsCreated && entityManager.WorldUnmanaged.IsCreated;
         }
     }
 }

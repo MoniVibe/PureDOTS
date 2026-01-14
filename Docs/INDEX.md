@@ -135,6 +135,8 @@ See also: [FoundationGuidelines.md](FoundationGuidelines.md) - Core coding stand
 
 **Position-based combat system** where firing arcs and bay management create tactical depth:
 - [Concepts/Core/Combat_Mechanics_Core.md](Concepts/Core/Combat_Mechanics_Core.md) - **Core combat mechanics** (accuracy, damage, knockback, stability)
+- [Concepts/Combat/Combat_Damage_Contract.md](Concepts/Combat/Combat_Damage_Contract.md) - **Combat damage contract** (segments, layers, module integrity)
+- [Concepts/Combat/Combat_Damage_Component_Schema.md](Concepts/Combat/Combat_Damage_Component_Schema.md) - **Combat damage schema** (components, buffers, catalogs)
 - [Concepts/Core/Bay_And_Platform_Combat.md](Concepts/Core/Bay_And_Platform_Combat.md) - **Bay and platform combat system**
 - [Concepts/Core/Mobile_Cities_And_Land_Carriers.md](Concepts/Core/Mobile_Cities_And_Land_Carriers.md) - **Mobile cities and land carriers**
 - [Concepts/Core/Tactical_Commands_And_Formations.md](Concepts/Core/Tactical_Commands_And_Formations.md) - **Tactical commands and formation system**

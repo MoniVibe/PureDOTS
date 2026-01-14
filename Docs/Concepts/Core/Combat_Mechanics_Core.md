@@ -11,6 +11,8 @@ Fundamental combat mechanics that apply across all combat contexts (bay combat, 
 - **Deterministic**: Same inputs produce same outputs
 - **Burst-optimized**: All calculations Burst-compatible
 
+Related contracts: [Combat Damage and Integrity Contract](../Combat/Combat_Damage_Contract.md).
+
 ---
 
 ## Accuracy and Disruption

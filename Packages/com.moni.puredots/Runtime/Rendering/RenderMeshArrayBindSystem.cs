@@ -21,11 +21,9 @@ namespace PureDOTS.Rendering
         {
             state.RequireForUpdate<RenderPresentationCatalog>();
             state.RequireForUpdate<RenderCatalogVersion>();
-            _missingArrayQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<MaterialMeshInfo>() },
-                None = new[] { ComponentType.ReadOnly<RenderMeshArray>() }
-            });
+            _missingArrayQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<MaterialMeshInfo>()
+                .WithNone<RenderMeshArray>());
             _allMaterialMeshInfoQuery = state.GetEntityQuery(ComponentType.ReadOnly<MaterialMeshInfo>());
         }
 

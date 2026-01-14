@@ -52,8 +52,9 @@ namespace PureDOTS.Tests.Playmode
         {
             var inventory = _entityManager.GetComponentData<StorehouseInventory>(_storehouseEntity);
             var items = _entityManager.GetBuffer<StorehouseInventoryItem>(_storehouseEntity);
+            var oreId = new FixedString64Bytes("ore");
             
-            var result = StorehouseApi.TryDeposit(_storehouseEntity, 1, 100f, ref inventory, items, out var deposited);
+            var result = StorehouseApi.TryDeposit(_storehouseEntity, oreId, 100f, ref inventory, items, out var deposited);
             
             Assert.IsTrue(result);
             Assert.AreEqual(100f, deposited);
@@ -67,11 +68,12 @@ namespace PureDOTS.Tests.Playmode
         {
             var inventory = _entityManager.GetComponentData<StorehouseInventory>(_storehouseEntity);
             var items = _entityManager.GetBuffer<StorehouseInventoryItem>(_storehouseEntity);
+            var oreId = new FixedString64Bytes("ore");
             
             inventory.TotalStored = 950f; // Near capacity
             _entityManager.SetComponentData(_storehouseEntity, inventory);
             
-            var result = StorehouseApi.TryDeposit(_storehouseEntity, 1, 100f, ref inventory, items, out var deposited);
+            var result = StorehouseApi.TryDeposit(_storehouseEntity, oreId, 100f, ref inventory, items, out var deposited);
             
             Assert.IsTrue(result);
             Assert.AreEqual(50f, deposited); // Only 50f fits
@@ -85,9 +87,10 @@ namespace PureDOTS.Tests.Playmode
         {
             var inventory = _entityManager.GetComponentData<StorehouseInventory>(_storehouseEntity);
             var items = _entityManager.GetBuffer<StorehouseInventoryItem>(_storehouseEntity);
+            var oreId = new FixedString64Bytes("ore");
             
             // First deposit
-            StorehouseApi.TryDeposit(_storehouseEntity, 1, 200f, ref inventory, items, out _);
+            StorehouseApi.TryDeposit(_storehouseEntity, oreId, 200f, ref inventory, items, out _);
             _entityManager.SetComponentData(_storehouseEntity, inventory);
             
             // Then withdraw
@@ -111,13 +114,14 @@ namespace PureDOTS.Tests.Playmode
             
             var inventory = _entityManager.GetComponentData<StorehouseInventory>(_storehouseEntity);
             var items = _entityManager.GetBuffer<StorehouseInventoryItem>(_storehouseEntity);
+            var oreId = new FixedString64Bytes("ore");
             
             float totalGathered = 500f;
             float totalConsumed = 50f;
             float expectedDeposited = totalGathered - totalConsumed;
             
             // Simulate depositing gathered resources
-            StorehouseApi.TryDeposit(_storehouseEntity, 1, expectedDeposited, ref inventory, items, out var deposited);
+            StorehouseApi.TryDeposit(_storehouseEntity, oreId, expectedDeposited, ref inventory, items, out var deposited);
             _entityManager.SetComponentData(_storehouseEntity, inventory);
             
             Assert.AreEqual(expectedDeposited, deposited);
@@ -128,4 +132,3 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
-

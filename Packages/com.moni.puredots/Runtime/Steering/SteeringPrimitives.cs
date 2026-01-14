@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Entities;
 using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Steering
@@ -26,6 +27,8 @@ namespace PureDOTS.Runtime.Steering
     [BurstCompile]
     public static class SteeringPrimitives
     {
+        private const float InvUIntMax = 1f / uint.MaxValue;
+
         [BurstCompile]
         public static void Seek(ref SteeringContext context, in float3 targetPosition, out float3 result)
         {
@@ -118,6 +121,19 @@ namespace PureDOTS.Runtime.Steering
         }
 
         [BurstCompile]
+        public static void DeterministicOffset2D(in Entity entity, out float2 result)
+        {
+            DeterministicOffset2D(in entity, 0u, out result);
+        }
+
+        [BurstCompile]
+        public static void DeterministicOffset2D(in Entity entity, uint salt, out float2 result)
+        {
+            var seed = math.hash(new uint3((uint)entity.Index, (uint)entity.Version, salt));
+            HashToSignedUnitFloat2(seed, out result);
+        }
+
+        [BurstCompile]
         public static bool LeadInterceptPoint(
             in float3 targetPosition,
             in float3 targetVelocity,
@@ -198,6 +214,13 @@ namespace PureDOTS.Runtime.Steering
             }
 
             result = math.normalize(accel) * maxAccel;
+        }
+
+        private static void HashToSignedUnitFloat2(uint seed, out float2 result)
+        {
+            var hashes = new uint2(seed, seed ^ 0x9E3779B9u);
+            var unit = new float2(hashes) * InvUIntMax;
+            result = unit * 2f - 1f;
         }
 
         private static bool SolvePositiveQuadratic(float a, float b, float c, out float t)

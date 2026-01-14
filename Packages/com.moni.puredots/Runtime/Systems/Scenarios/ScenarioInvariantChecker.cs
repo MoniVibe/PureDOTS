@@ -11,6 +11,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using HeadlessInvariantState = PureDOTS.Runtime.Components.HeadlessInvariantState;
 
 namespace PureDOTS.Systems.Scenarios
 {
