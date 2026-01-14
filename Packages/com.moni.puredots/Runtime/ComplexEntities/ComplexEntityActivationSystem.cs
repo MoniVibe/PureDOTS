@@ -49,12 +49,15 @@ namespace PureDOTS.Runtime.ComplexEntities
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
             // Enable operational state for entities with activation triggers
-            foreach (var (entity, coreAxes) in SystemAPI.Query<Entity>()
-                .WithAny<ActiveBubbleTag, FocusTargetTag, CombatReadyTag, DockingActiveTag>()
+            foreach (var (coreAxes, entity) in SystemAPI.Query<RefRW<ComplexEntityCoreAxes>>()
+                .WithAny<ActiveBubbleTag>()
+                .WithAny<FocusTargetTag>()
+                .WithAny<CombatReadyTag>()
+                .WithAny<DockingActiveTag>()
                 .WithAll<ComplexEntityIdentity>()
                 .WithEntityAccess())
             {
-                var axes = coreAxes;
+                var axes = coreAxes.ValueRW;
                 if ((axes.Flags & ComplexEntityFlags.OperationalActive) == 0)
                 {
                     // Ensure operational state component exists
@@ -65,7 +68,7 @@ namespace PureDOTS.Runtime.ComplexEntities
                             OperationalMode = 0,
                             TargetEntity = Entity.Null,
                             StateFlags = 0,
-                            LastUpdateTick = (uint)currentTick
+                            LastUpdateTick = currentTick
                         });
                     }
                     ecb.SetComponentEnabled<ComplexEntityOperationalState>(entity, true);

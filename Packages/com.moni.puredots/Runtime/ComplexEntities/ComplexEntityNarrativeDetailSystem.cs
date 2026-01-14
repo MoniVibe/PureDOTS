@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.ComplexEntities;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using Unity.Burst;
 using Unity.Entities;
@@ -27,10 +28,12 @@ namespace PureDOTS.Runtime.ComplexEntities
             var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
-            var currentTick = (uint)SystemAPI.Time.ElapsedTime;
+            var currentTick = SystemAPI.TryGetSingleton<TickTimeState>(out var tickState)
+                ? tickState.Tick
+                : (SystemAPI.TryGetSingleton<TimeState>(out var timeState) ? timeState.Tick : 0u);
 
             // Enable narrative detail for entities with inspection request
-            foreach (var (entity, coreAxes) in SystemAPI.Query<Entity>()
+            foreach (var (coreAxes, entity) in SystemAPI.Query<RefRW<ComplexEntityCoreAxes>>()
                 .WithAll<InspectionRequest>()
                 .WithNone<ComplexEntityNarrativeDetail>()
                 .WithEntityAccess())
@@ -44,13 +47,13 @@ namespace PureDOTS.Runtime.ComplexEntities
                 ecb.SetComponentEnabled<ComplexEntityNarrativeDetail>(entity, true);
 
                 // Update flags
-                var axes = coreAxes;
+                var axes = coreAxes.ValueRW;
                 axes.Flags |= ComplexEntityFlags.NarrativeActive;
                 ecb.SetComponent(entity, axes);
             }
 
             // Disable narrative detail for entities without inspection request
-            foreach (var (entity, coreAxes) in SystemAPI.Query<Entity>()
+            foreach (var (coreAxes, entity) in SystemAPI.Query<RefRW<ComplexEntityCoreAxes>>()
                 .WithAll<ComplexEntityNarrativeDetail>()
                 .WithNone<InspectionRequest>()
                 .WithEntityAccess())
@@ -58,7 +61,7 @@ namespace PureDOTS.Runtime.ComplexEntities
                 ecb.SetComponentEnabled<ComplexEntityNarrativeDetail>(entity, false);
 
                 // Update flags
-                var axes = coreAxes;
+                var axes = coreAxes.ValueRW;
                 axes.Flags &= ~ComplexEntityFlags.NarrativeActive;
                 ecb.SetComponent(entity, axes);
             }

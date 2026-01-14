@@ -22,7 +22,8 @@ namespace PureDOTS.Systems.Physics
         {
             _repairQuery = SystemAPI.QueryBuilder()
                 .WithAll<RenderSemanticKey>()
-                .WithAny<RequiresPhysics, PhysicsInteractionConfig>()
+                .WithAny<RequiresPhysics>()
+                .WithAny<PhysicsInteractionConfig>()
                 .WithNone<PhysicsCollider>()
                 .WithNone<PhysicsColliderSpec>()
                 .Build();
@@ -45,7 +46,8 @@ namespace PureDOTS.Systems.Physics
 
             foreach (var (semanticKey, entity) in SystemAPI
                          .Query<RefRO<RenderSemanticKey>>()
-                         .WithAny<RequiresPhysics, PhysicsInteractionConfig>()
+                         .WithAny<RequiresPhysics>()
+                         .WithAny<PhysicsInteractionConfig>()
                          .WithNone<PhysicsCollider>()
                          .WithNone<PhysicsColliderSpec>()
                          .WithEntityAccess())
