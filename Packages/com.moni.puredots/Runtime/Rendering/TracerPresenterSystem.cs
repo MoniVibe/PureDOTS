@@ -29,82 +29,47 @@ namespace PureDOTS.Rendering
 
         public void OnCreate(ref SystemState state)
         {
-            _applyAllQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>(),
-                    ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>(),
-                    ComponentType.ReadWrite<TracerShapeProperty>(),
-                    ComponentType.ReadWrite<TracerColorProperty>()
-                }
-            });
+            _applyAllQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithAll<MaterialMeshInfo>()
+                .WithAll<RenderBounds>()
+                .WithAll<TracerShapeProperty>()
+                .WithAll<TracerColorProperty>());
 
-            _applyChangedQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>(),
-                    ComponentType.ReadWrite<MaterialMeshInfo>(),
-                    ComponentType.ReadWrite<RenderBounds>(),
-                    ComponentType.ReadWrite<TracerShapeProperty>(),
-                    ComponentType.ReadWrite<TracerColorProperty>()
-                }
-            });
+            _applyChangedQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithAll<MaterialMeshInfo>()
+                .WithAll<RenderBounds>()
+                .WithAll<TracerShapeProperty>()
+                .WithAll<TracerColorProperty>());
             _applyChangedQuery.AddChangedVersionFilter(ComponentType.ReadOnly<TracerPresenter>());
 
-            _missingMaterialMeshQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<MaterialMeshInfo>() }
-            });
+            _missingMaterialMeshQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithNone<MaterialMeshInfo>());
 
-            _missingRenderBoundsQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<RenderBounds>() }
-            });
+            _missingRenderBoundsQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithNone<RenderBounds>());
 
-            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<RenderFilterSettings>() }
-            });
+            _missingRenderFilterQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithNone<RenderFilterSettings>());
 
-            _missingShapePropertyQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<TracerShapeProperty>() }
-            });
+            _missingShapePropertyQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithNone<TracerShapeProperty>());
 
-            _missingColorPropertyQuery = state.GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<RenderVariantKey>(),
-                    ComponentType.ReadOnly<TracerPresenter>()
-                },
-                None = new[] { ComponentType.ReadOnly<TracerColorProperty>() }
-            });
+            _missingColorPropertyQuery = state.GetEntityQuery(new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<RenderVariantKey>()
+                .WithAll<TracerPresenter>()
+                .WithNone<TracerColorProperty>());
 
             state.RequireForUpdate<RenderPresentationCatalog>();
             _typeHandles = TypeHandles.Create(ref state);
