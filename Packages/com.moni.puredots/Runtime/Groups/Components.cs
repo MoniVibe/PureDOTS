@@ -5,8 +5,9 @@ namespace PureDOTS.Runtime.Groups
 {
     /// <summary>
     /// Marker component indicating this entity is a group container (band, wing, squadron, fleet).
+    /// Enableable to allow deactivating groups without archetype changes.
     /// </summary>
-    public struct GroupTag : IComponentData
+    public struct GroupTag : IComponentData, IEnableableComponent
     {
     }
 

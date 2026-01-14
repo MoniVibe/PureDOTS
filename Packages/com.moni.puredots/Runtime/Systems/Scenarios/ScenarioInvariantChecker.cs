@@ -6,7 +6,6 @@ using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Power;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Time;
-using HeadlessInvariantState = PureDOTS.Runtime.Components.HeadlessInvariantState;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;

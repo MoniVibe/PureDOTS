@@ -42,6 +42,9 @@ namespace PureDOTS.Systems.Telemetry
         private uint _lastStructuralVersion;
         private float _rollingFrameMs;
         private bool _rollingInitialized;
+        private int _lastArchetypeCount;
+        private bool _hasArchetypeBaseline;
+        private uint _lastArchetypeWarningTick;
 
         protected override void OnCreate()
         {
@@ -127,6 +130,11 @@ namespace PureDOTS.Systems.Telemetry
             WriteMetric("chunks.total", chunkCount, "count", timeState.Tick, timestampMs);
             WriteMetric("archetypes.total", archetypeCount, "count", timeState.Tick, timestampMs);
             WriteMetric("chunks.perArchetype", chunksPerArchetype, "ratio", timeState.Tick, timestampMs);
+
+            // Archetype spike detection (dev builds only)
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            CheckArchetypeSpike(archetypeCount, timeState.Tick);
+            #endif
 
             var structuralVersion = EntityManager.GlobalSystemVersion;
             uint structuralDelta = 0;
@@ -237,6 +245,63 @@ namespace PureDOTS.Systems.Telemetry
             {
                 EntityManager.SetComponentData(timeEntity, status);
             }
+        }
+
+        /// <summary>
+        /// Checks for archetype count spikes and logs warnings in dev builds.
+        /// Rate-limited to avoid spam (max once per 60 ticks).
+        /// </summary>
+        private void CheckArchetypeSpike(int currentArchetypeCount, uint currentTick)
+        {
+            const int SpikeAbsoluteThreshold = 50; // Absolute increase threshold
+            const float SpikePercentThreshold = 0.10f; // 10% increase threshold
+            const uint WarningCooldownTicks = 60; // Rate limit: max one warning per 60 ticks
+
+            if (!_hasArchetypeBaseline)
+            {
+                _lastArchetypeCount = currentArchetypeCount;
+                _hasArchetypeBaseline = true;
+                return;
+            }
+
+            // Rate limit warnings
+            if (currentTick - _lastArchetypeWarningTick < WarningCooldownTicks)
+            {
+                return;
+            }
+
+            int delta = currentArchetypeCount - _lastArchetypeCount;
+            bool spikeDetected = false;
+            string reason = null;
+
+            // Check absolute threshold
+            if (delta >= SpikeAbsoluteThreshold)
+            {
+                spikeDetected = true;
+                reason = $"absolute increase of {delta} archetypes";
+            }
+            // Check percentage threshold (only if baseline is significant)
+            else if (_lastArchetypeCount > 0)
+            {
+                float percentIncrease = delta / (float)_lastArchetypeCount;
+                if (percentIncrease >= SpikePercentThreshold)
+                {
+                    spikeDetected = true;
+                    reason = $"{percentIncrease * 100f:F1}% increase ({delta} archetypes)";
+                }
+            }
+
+            if (spikeDetected)
+            {
+                _lastArchetypeWarningTick = currentTick;
+                UnityDebug.LogWarning(
+                    $"[PerformanceTelemetry] Archetype spike detected at tick {currentTick}: {reason}. " +
+                    $"Count: {_lastArchetypeCount} → {currentArchetypeCount}. " +
+                    $"This may indicate structural change churn (add/remove components in hot loops). " +
+                    $"See PERF_SYNCPOINT_AUDIT.md for refactoring guidance.");
+            }
+
+            _lastArchetypeCount = currentArchetypeCount;
         }
 
         private void TryOpenWriter()

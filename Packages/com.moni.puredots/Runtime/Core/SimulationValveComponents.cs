@@ -24,6 +24,10 @@ namespace PureDOTS.Runtime.Core
         public const uint FaunaSentienceEnabled = 1 << 6;
         public const uint LegacySensorSystemEnabled = 1 << 7;
         public const uint LegacyCommunicationDispatchEnabled = 1 << 8;
+        public const uint SensorCommsScalingPrototype = 1 << 9;
+        public const uint ComplexEntitiesEnabled = 1 << 10;
+        public const uint ComplexEntityOperationalExpansionEnabled = 1 << 11;
+        public const uint ComplexEntityNarrativeExpansionEnabled = 1 << 12;
 
         /// <summary>Default: all features enabled.</summary>
         public static SimulationFeatureFlags Default => new SimulationFeatureFlags

@@ -182,6 +182,9 @@ namespace PureDOTS.Systems
                 dataBuffer[byteOffset + i] = new WorldSnapshotData { Value = tempBuffer[i] };
             }
 
+            // Calculate FNV-1a checksum for snapshot integrity validation
+            uint checksum = ComputeChecksum(tempBuffer);
+
             // Create metadata entry
             // Single-player: OwnerPlayerId = 0 (global), Scope = Global
             // Multiplayer: Will set OwnerPlayerId and Scope based on snapshot configuration
@@ -193,7 +196,7 @@ namespace PureDOTS.Systems
                 ByteLength = tempBuffer.Length,
                 CompressionType = SnapshotCompressionType.None,
                 EntityCount = entityCount,
-                Checksum = 0, // TODO: Calculate checksum for integrity
+                Checksum = checksum,
                 OwnerPlayerId = 0, // Global snapshot (single-player default)
                 Scope = TimeControlScope.Global // Single-player uses global scope only
             };
@@ -338,6 +341,32 @@ namespace PureDOTS.Systems
             WriteFloat(ref buffer, value.value.y);
             WriteFloat(ref buffer, value.value.z);
             WriteFloat(ref buffer, value.value.w);
+        }
+
+        /// <summary>
+        /// Computes FNV-1a checksum over snapshot data for integrity validation.
+        /// Used by ScenarioRunRecorder and determinism validation systems.
+        /// </summary>
+        private static uint ComputeChecksum(NativeList<byte> data)
+        {
+            const uint FnvSeed = 2166136261u;
+            const uint FnvPrime = 16777619u;
+
+            uint hash = FnvSeed;
+            unsafe
+            {
+                var ptr = (byte*)data.GetUnsafePtr();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    unchecked
+                    {
+                        hash ^= ptr[i];
+                        hash *= FnvPrime;
+                    }
+                }
+            }
+
+            return hash;
         }
     }
 }
