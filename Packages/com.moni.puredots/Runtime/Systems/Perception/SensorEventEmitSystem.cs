@@ -261,7 +261,7 @@ namespace PureDOTS.Systems.Perception
                                 targetCellId = ResidencyLookup[targetEntity].CellId;
                             }
 
-                            eventList.Add(new SensorCellEvent
+                            Events.Add(new SensorCellEvent
                             {
                                 CellId = targetCellId,
                                 DetectedEntity = targetEntity,

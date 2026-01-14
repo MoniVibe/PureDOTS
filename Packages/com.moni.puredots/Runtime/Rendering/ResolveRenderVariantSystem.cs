@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace PureDOTS.Rendering
 {
@@ -21,6 +22,12 @@ namespace PureDOTS.Rendering
         private EntityQuery _renderKeyChangeQuery;
         private ushort _lastThemeId;
         private uint _lastCatalogVersion;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private NativeParallelHashMap<uint, int> _missingMappingCounts;
+        private uint _lastMissingMappingLogTick;
+        private const uint MissingMappingLogIntervalTicks = 300; // ~5 seconds at 60fps
+#endif
 
         protected override void OnCreate()
         {
@@ -90,7 +97,23 @@ namespace PureDOTS.Rendering
 
             RequireForUpdate<RenderPresentationCatalog>();
             RequireForUpdate<ActiveRenderTheme>();
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            _missingMappingCounts = new NativeParallelHashMap<uint, int>(64, Allocator.Persistent);
+            _lastMissingMappingLogTick = 0;
+#endif
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        protected override void OnDestroy()
+        {
+            if (_missingMappingCounts.IsCreated)
+            {
+                _missingMappingCounts.Dispose();
+            }
+            base.OnDestroy();
+        }
+#endif
 
         protected override void OnUpdate()
         {
@@ -127,19 +150,88 @@ namespace PureDOTS.Rendering
             var renderKeyLookup = GetComponentLookup<RenderKey>(true);
             var variantOverrideLookup = GetComponentLookup<RenderVariantOverride>(true);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using var missingEvents = new NativeQueue<MissingMappingEvent>(Allocator.TempJob);
+            var requiredKeys = default(NativeArray<ushort>);
+            if (EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderPresentationCatalogValidation.RequiredRenderSemanticKey>())
+                .TryGetSingletonBuffer(out DynamicBuffer<RenderPresentationCatalogValidation.RequiredRenderSemanticKey> requiredBuffer)
+                && requiredBuffer.Length > 0)
+            {
+                requiredKeys = new NativeArray<ushort>(requiredBuffer.Length, Allocator.TempJob);
+                for (int i = 0; i < requiredBuffer.Length; i++)
+                    requiredKeys[i] = requiredBuffer[i].Value;
+            }
+#endif
+
             var job = new ResolveRenderVariantJob
             {
                 Catalog = catalog.Blob,
                 RenderKeyLookup = renderKeyLookup,
                 RenderVariantOverrideLookup = variantOverrideLookup,
-                ActiveThemeId = theme.ThemeId
+                ActiveThemeId = theme.ThemeId,
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                MissingMappingEvents = missingEvents.AsParallelWriter(),
+                RequiredSemanticKeys = requiredKeys
+#endif
             };
 
             Dependency = job.ScheduleParallel(_resolveQuery, Dependency);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Dev-only enforcement: report missing semantic->variant mappings (which would otherwise silently fall back to variant 0).
+            Dependency.Complete();
+            DrainMissingMappingEvents(missingEvents);
+            if (requiredKeys.IsCreated)
+                requiredKeys.Dispose();
+#endif
+
             _lastThemeId = theme.ThemeId;
             _lastCatalogVersion = catalogVersion;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private void DrainMissingMappingEvents(NativeQueue<MissingMappingEvent> missingEvents)
+        {
+            if (missingEvents.Count == 0)
+                return;
+
+            while (missingEvents.TryDequeue(out var evt))
+            {
+                uint key = ((uint)evt.ThemeId << 16) | evt.Semantic;
+                if (_missingMappingCounts.TryGetValue(key, out var existing))
+                {
+                    _missingMappingCounts[key] = existing + 1;
+                }
+                else
+                {
+                    _missingMappingCounts.TryAdd(key, 1);
+                }
+            }
+
+            var tick = SystemAPI.TryGetSingleton<PureDOTS.Runtime.Components.TimeState>(out var timeState) ? timeState.Tick : 0u;
+            if (tick - _lastMissingMappingLogTick < MissingMappingLogIntervalTicks)
+                return;
+            _lastMissingMappingLogTick = tick;
+
+            using var keys = _missingMappingCounts.GetKeyArray(Allocator.Temp);
+            for (int i = 0; i < keys.Length; i++)
+            {
+                var packed = keys[i];
+                var themeId = (ushort)(packed >> 16);
+                var semantic = (ushort)(packed & 0xFFFF);
+                var count = _missingMappingCounts[packed];
+                Debug.LogError($"[PureDOTS.Rendering] Render catalog missing mapping: ThemeId={themeId} SemanticKey={semantic} -> fell back to Variant 0 for {count} entities. Fix Theme 0 (and any active themes) to map this semantic key.");
+            }
+
+            _missingMappingCounts.Clear();
+        }
+
+        private struct MissingMappingEvent
+        {
+            public ushort ThemeId;
+            public ushort Semantic;
+        }
+#endif
 
         [BurstCompile]
         private partial struct ResolveRenderVariantJob : IJobEntity
@@ -148,6 +240,11 @@ namespace PureDOTS.Rendering
             [ReadOnly] public ComponentLookup<RenderKey> RenderKeyLookup;
             [ReadOnly] public ComponentLookup<RenderVariantOverride> RenderVariantOverrideLookup;
             public ushort ActiveThemeId;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            public NativeQueue<MissingMappingEvent>.ParallelWriter MissingMappingEvents;
+            [ReadOnly] public NativeArray<ushort> RequiredSemanticKeys;
+#endif
 
             private int ResolveThemeIndex(ushort themeId)
             {
@@ -181,6 +278,7 @@ namespace PureDOTS.Rendering
 
                 var themeIndex = ResolveThemeIndex(themeId);
                 ref var themeRow = ref catalog.Themes[themeIndex];
+                var effectiveThemeId = themeRow.ThemeId;
                 var semantic = math.clamp(semanticKey.ValueRO.Value, 0, catalog.SemanticKeyCount - 1);
                 var lod = ResolveLod(entity);
                 var lodCount = math.max(1, catalog.LodCount);
@@ -188,6 +286,27 @@ namespace PureDOTS.Rendering
                 ref var variantIndices = ref themeRow.VariantIndices;
                 flatIndex = math.clamp(flatIndex, 0, variantIndices.Length - 1);
                 var resolvedVariant = variantIndices[flatIndex];
+
+                // Dev-only detection: for game-declared required semantics, a resolved variant of 0 means "fallback due to missing mapping".
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (resolvedVariant == 0 && RequiredSemanticKeys.IsCreated)
+                {
+                    // Required key sets are small (Space4X: ~9). Linear scan is fine in dev.
+                    for (int i = 0; i < RequiredSemanticKeys.Length; i++)
+                    {
+                        if (RequiredSemanticKeys[i] == (ushort)semantic)
+                        {
+                            MissingMappingEvents.Enqueue(new MissingMappingEvent
+                            {
+                                ThemeId = effectiveThemeId,
+                                Semantic = (ushort)semantic
+                            });
+                            break;
+                        }
+                    }
+                }
+#endif
+
                 resolvedVariant = math.clamp(resolvedVariant, 0, catalog.Variants.Length - 1);
 
                 if (variantKey.ValueRO.Value != resolvedVariant)

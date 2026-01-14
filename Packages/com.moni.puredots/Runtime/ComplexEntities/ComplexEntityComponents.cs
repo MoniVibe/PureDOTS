@@ -25,57 +25,67 @@ namespace PureDOTS.Runtime.ComplexEntities
     [StructLayout(LayoutKind.Sequential)]
     public struct ComplexEntityIdentity : IComponentData
     {
-        /// <summary>Stable identifier for lookups and persistence.</summary>
-        public FixedString64Bytes StableId;
-        
-        /// <summary>Entity type classification.</summary>
-        public ComplexEntityType EntityType;
-        
+        /// <summary>
+        /// Stable identifier for lookups and persistence.
+        /// Keep this purely numeric for 10M-scale memory.
+        /// </summary>
+        public ulong StableId;
+
         /// <summary>Creation tick (for age calculations).</summary>
         public uint CreationTick;
-        
+
+        /// <summary>Entity type classification.</summary>
+        public ComplexEntityType EntityType;
+
         /// <summary>Reserved for future use.</summary>
         public byte Reserved0;
-        public byte Reserved1;
-        public byte Reserved2;
+
+        /// <summary>Reserved for future use.</summary>
+        public ushort Reserved1;
     }
 
     /// <summary>
-    /// Packed core axes for hot-path reads. All hot systems read from this.
-    /// Designed to be < 128 bytes for cache efficiency.
+    /// Packed core axes for hot-path reads (the 10M entity-of-record representation).
+    ///
+    /// This is intentionally quantized / fixed-size:
+    /// - Avoids float drift for aggregates (use fixed-point ints)
+    /// - Keeps core chunks dense and cache-friendly
+    ///
+    /// Operational / narrative expansions should add additional components rather than bloating this.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct ComplexEntityCoreAxes : IComponentData
     {
-        // Spatial (12 bytes)
-        /// <summary>Current position in world space.</summary>
-        public float3 Position;
-        
-        // Motion (12 bytes)
-        /// <summary>Current velocity vector.</summary>
-        public float3 Velocity;
-        
-        // Physical (8 bytes)
-        /// <summary>Total mass (includes crew mass if applicable).</summary>
-        public float Mass;
-        
-        /// <summary>Total capacity (includes crew capacity if applicable).</summary>
-        public float Capacity;
-        
-        // State (8 bytes)
-        /// <summary>Current load/usage (resources, crew, etc.).</summary>
-        public float CurrentLoad;
-        
-        /// <summary>Current health/integrity (0-1 normalized or absolute).</summary>
-        public float Health;
-        
-        // Flags (4 bytes)
+        // Spatial (16 bytes)
+        /// <summary>Coarse spatial cell index in world space (game-defined cell size).</summary>
+        public int3 Cell;
+        /// <summary>Quantized local position within cell (0..65535 maps to cell size).</summary>
+        public ushort LocalX;
+        public ushort LocalY;
+
+        // Motion (8 bytes)
+        /// <summary>Quantized planar velocity (game-defined scale, e.g. 0.1 m/s per unit).</summary>
+        public short VelX;
+        public short VelY;
+        /// <summary>Quantized heading (0..65535 maps to 0..2π).</summary>
+        public ushort HeadingQ;
+        /// <summary>Quantized health (0..65535 maps to 0..1).</summary>
+        public ushort HealthQ;
+
+        // Aggregates / capacities (12 bytes, fixed-point)
+        /// <summary>Total mass (fixed-point, game-defined scale; includes crew mass when collapsed).</summary>
+        public uint MassQ;
+        /// <summary>Total capacity (fixed-point, game-defined scale; includes crew capacity when collapsed).</summary>
+        public uint CapacityQ;
+        /// <summary>Current load (fixed-point, game-defined scale).</summary>
+        public uint LoadQ;
+
+        // Flags & small aggregates (8 bytes)
         /// <summary>Bitfield flags: operational active, narrative active, etc.</summary>
         public uint Flags;
-        
-        // Reserved for future expansion (8 bytes)
-        public float Reserved0;
-        public float Reserved1;
+        /// <summary>Crew count aggregate for cold state (optional; narrative roster is externalized).</summary>
+        public ushort CrewCount;
+        public ushort Reserved0;
     }
 
     /// <summary>
@@ -93,7 +103,7 @@ namespace PureDOTS.Runtime.ComplexEntities
     /// Sparse axes buffer for rare/optional axes that don't fit in core.
     /// Only populated for operational entities.
     /// </summary>
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(2)]
     public struct ComplexEntitySparseAxesBuffer : IBufferElementData
     {
         /// <summary>Axis identifier (hash or enum).</summary>
@@ -180,6 +190,9 @@ namespace PureDOTS.Runtime.ComplexEntities
     [StructLayout(LayoutKind.Sequential)]
     public struct ComplexEntityCrewHandle : IComponentData
     {
+        /// <summary>Stable ID of the owning entity (used as pool key).</summary>
+        public ulong OwnerStableId;
+
         /// <summary>Reference to crew roster blob asset.</summary>
         public BlobAssetReference<CrewRosterBlob> Roster;
         

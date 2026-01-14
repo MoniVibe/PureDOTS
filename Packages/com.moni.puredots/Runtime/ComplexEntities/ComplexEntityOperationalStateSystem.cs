@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.ComplexEntities;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using Unity.Burst;
 using Unity.Entities;
@@ -15,6 +16,13 @@ namespace PureDOTS.Runtime.ComplexEntities
     public partial struct ComplexEntityOperationalStateSystem : ISystem
     {
         [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<SimulationFeatureFlags>();
+            state.RequireForUpdate<TickTimeState>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Check feature flag
@@ -25,7 +33,9 @@ namespace PureDOTS.Runtime.ComplexEntities
             if ((featureFlags.Flags & SimulationFeatureFlags.ComplexEntityOperationalExpansionEnabled) == 0)
                 return;
 
-            var currentTick = (uint)SystemAPI.Time.ElapsedTime;
+            if (!SystemAPI.TryGetSingleton<TickTimeState>(out var tickTime))
+                return;
+            var currentTick = tickTime.Tick;
 
             // Process operational entities
             foreach (var (operationalState, coreAxes, entity) in SystemAPI.Query<

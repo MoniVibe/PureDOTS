@@ -215,6 +215,9 @@ namespace PureDOTS.Rendering
                 var variantIndices = builder.Allocate(ref themeRows[themeIndex].VariantIndices, semanticCount * lodCount);
                 for (int i = 0; i < variantIndices.Length; i++)
                 {
+                    // Default to fallback variant 0 for unmapped semantics.
+                    // Completeness enforcement is performed against an explicit "required semantic key universe" (per game),
+                    // not against the full dense 0..maxSemanticKey range.
                     variantIndices[i] = 0;
                 }
 

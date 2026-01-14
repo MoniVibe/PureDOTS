@@ -24,6 +24,9 @@ namespace PureDOTS.Runtime.ComplexEntities
         public void OnCreate(ref SystemState state)
         {
             _lastUpdateTick = 0;
+            state.RequireForUpdate<SimulationFeatureFlags>();
+            state.RequireForUpdate<TickTimeState>();
+            state.RequireForUpdate<BeginSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         [BurstCompile]
@@ -37,9 +40,9 @@ namespace PureDOTS.Runtime.ComplexEntities
             if ((featureFlags.Flags & SimulationFeatureFlags.ComplexEntityOperationalExpansionEnabled) == 0)
                 return;
 
-            var currentTick = SystemAPI.TryGetSingleton<TickTimeState>(out var tickState)
-                ? tickState.Tick
-                : (SystemAPI.TryGetSingleton<TimeState>(out var timeState) ? timeState.Tick : 0u);
+            if (!SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
+                return;
+            var currentTick = tickState.Tick;
             if (currentTick - _lastUpdateTick < UpdateCadence)
                 return;
 
@@ -58,10 +61,12 @@ namespace PureDOTS.Runtime.ComplexEntities
                 .WithEntityAccess())
             {
                 var axes = coreAxes.ValueRW;
-                if ((axes.Flags & ComplexEntityFlags.OperationalActive) == 0)
+                var hasOp = SystemAPI.HasComponent<ComplexEntityOperationalState>(entity);
+                var opEnabled = hasOp && SystemAPI.IsComponentEnabled<ComplexEntityOperationalState>(entity);
+                if ((axes.Flags & ComplexEntityFlags.OperationalActive) == 0 || !opEnabled)
                 {
                     // Ensure operational state component exists
-                    if (!SystemAPI.HasComponent<ComplexEntityOperationalState>(entity))
+                    if (!hasOp)
                     {
                         ecb.AddComponent(entity, new ComplexEntityOperationalState
                         {
@@ -72,23 +77,40 @@ namespace PureDOTS.Runtime.ComplexEntities
                         });
                     }
                     ecb.SetComponentEnabled<ComplexEntityOperationalState>(entity, true);
+
+                    // Ensure sparse axes buffer exists for operational entities (rare, small internal capacity)
+                    if (!SystemAPI.HasBuffer<ComplexEntitySparseAxesBuffer>(entity))
+                    {
+                        ecb.AddBuffer<ComplexEntitySparseAxesBuffer>(entity);
+                    }
                     axes.Flags |= ComplexEntityFlags.OperationalActive;
                     ecb.SetComponent(entity, axes);
                 }
             }
 
             // Disable operational state for entities without activation triggers
-            foreach (var (entity, coreAxes) in SystemAPI.Query<Entity>()
-                .WithNone<ActiveBubbleTag, FocusTargetTag, CombatReadyTag, DockingActiveTag>()
+            foreach (var (coreAxes, entity) in SystemAPI.Query<RefRW<ComplexEntityCoreAxes>>()
+                .WithNone<ActiveBubbleTag>()
+                .WithNone<FocusTargetTag>()
+                .WithNone<CombatReadyTag>()
+                .WithNone<DockingActiveTag>()
                 .WithAll<ComplexEntityIdentity>()
                 .WithEntityAccess())
             {
-                var axes = coreAxes;
-                if ((axes.Flags & ComplexEntityFlags.OperationalActive) != 0)
+                var axes = coreAxes.ValueRW;
+                var hasOp = SystemAPI.HasComponent<ComplexEntityOperationalState>(entity);
+                var opEnabled = hasOp && SystemAPI.IsComponentEnabled<ComplexEntityOperationalState>(entity);
+                if ((axes.Flags & ComplexEntityFlags.OperationalActive) != 0 || opEnabled)
                 {
-                    if (SystemAPI.HasComponent<ComplexEntityOperationalState>(entity))
+                    if (hasOp)
                     {
                         ecb.SetComponentEnabled<ComplexEntityOperationalState>(entity, false);
+                    }
+
+                    // Remove sparse axes buffer when leaving operational (saves memory; small hot population only)
+                    if (SystemAPI.HasBuffer<ComplexEntitySparseAxesBuffer>(entity))
+                    {
+                        ecb.RemoveComponent<ComplexEntitySparseAxesBuffer>(entity);
                     }
                     axes.Flags &= ~ComplexEntityFlags.OperationalActive;
                     ecb.SetComponent(entity, axes);

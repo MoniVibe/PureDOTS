@@ -47,15 +47,15 @@ namespace PureDOTS.Systems.Telemetry
 
         private static uint ResolveTick(ref SystemState state)
         {
-            if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
+            if (TryGetSingleton(ref state, out ScenarioRunnerTick scenarioTick) && scenarioTick.Tick > 0)
             {
                 return scenarioTick.Tick;
             }
 
-            if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
+            if (TryGetSingleton(ref state, out TickTimeState tickState))
             {
                 var tick = tickState.Tick;
-                if (SystemAPI.TryGetSingleton<TimeState>(out var timeState) && timeState.Tick > tick)
+                if (TryGetSingleton(ref state, out TimeState timeState) && timeState.Tick > tick)
                 {
                     tick = timeState.Tick;
                 }
@@ -72,7 +72,7 @@ namespace PureDOTS.Systems.Telemetry
                 return tick;
             }
 
-            if (SystemAPI.TryGetSingleton<TimeState>(out var legacyTime))
+            if (TryGetSingleton(ref state, out TimeState legacyTime))
             {
                 var tick = legacyTime.Tick;
                 if (tick == 0 && Application.isBatchMode)
@@ -104,7 +104,7 @@ namespace PureDOTS.Systems.Telemetry
 
         private static Entity EnsureProfilerEntity(ref SystemState state)
         {
-            if (state.EntityManager.TryGetSingletonEntity<SimPhaseProfilerState>(out var entity))
+            if (TryGetSingletonEntity<SimPhaseProfilerState>(ref state, out var entity))
             {
                 return entity;
             }
@@ -115,6 +115,20 @@ namespace PureDOTS.Systems.Telemetry
             state.EntityManager.SetComponentData(entity, telemetryState);
             state.EntityManager.SetComponentData(entity, phaseStarts);
             return entity;
+        }
+
+        private static bool TryGetSingleton<T>(ref SystemState state, out T value)
+            where T : unmanaged, IComponentData
+        {
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<T>());
+            return query.TryGetSingleton(out value);
+        }
+
+        private static bool TryGetSingletonEntity<T>(ref SystemState state, out Entity entity)
+            where T : unmanaged, IComponentData
+        {
+            var query = state.GetEntityQuery(ComponentType.ReadOnly<T>());
+            return query.TryGetSingletonEntity<T>(out entity);
         }
     }
 

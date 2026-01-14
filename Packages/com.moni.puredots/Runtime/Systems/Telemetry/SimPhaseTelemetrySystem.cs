@@ -7,6 +7,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Perception;
 using PureDOTS.Runtime.Ships;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Villager;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
@@ -159,7 +160,7 @@ namespace PureDOTS.Systems.Telemetry
             }
         }
 
-        private static QueueStats CollectQueueStats(ref SystemState state)
+        private QueueStats CollectQueueStats(ref SystemState state)
         {
             var stats = new QueueStats();
 
@@ -197,7 +198,7 @@ namespace PureDOTS.Systems.Telemetry
             return stats;
         }
 
-        private static ShipCounts CollectShipCounts(ref SystemState state)
+        private ShipCounts CollectShipCounts(ref SystemState state)
         {
             var counts = new ShipCounts();
 
@@ -230,15 +231,17 @@ namespace PureDOTS.Systems.Telemetry
             stats.EntityCount = state.EntityManager.UniversalQuery.CalculateEntityCount();
             stats.ChunkCount = state.EntityManager.UniversalQuery.CalculateChunkCountWithoutFiltering();
 
-            using var archetypes = state.EntityManager.GetAllArchetypes(Allocator.Temp);
+            var archetypes = new NativeList<EntityArchetype>(Allocator.Temp);
+            state.EntityManager.GetAllArchetypes(archetypes);
             stats.ArchetypeCount = archetypes.Length;
+            archetypes.Dispose();
             stats.ChunksPerArchetype = stats.ArchetypeCount > 0
                 ? (double)stats.ChunkCount / stats.ArchetypeCount
                 : 0d;
             return stats;
         }
 
-        private static uint ResolveTick()
+        private uint ResolveTick()
         {
             if (SystemAPI.TryGetSingleton<ScenarioRunnerTick>(out var scenarioTick) && scenarioTick.Tick > 0)
             {
@@ -272,7 +275,7 @@ namespace PureDOTS.Systems.Telemetry
                 return;
             }
 
-            var drawers = Resources.FindObjectsOfTypeAll(drawerType);
+            var drawers = UnityEngine.Resources.FindObjectsOfTypeAll(drawerType);
             if (drawers == null || drawers.Length == 0)
             {
                 return;
