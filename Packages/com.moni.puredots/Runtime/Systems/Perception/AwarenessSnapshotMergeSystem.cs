@@ -146,23 +146,16 @@ namespace PureDOTS.Systems.Perception
 
             sortedWork.Dispose();
 
-            // Update telemetry
-            if (!SystemAPI.HasSingleton<SensorCommsScalingTelemetry>())
+            if (!SystemAPI.TryGetSingletonRW<SensorCommsScalingTelemetry>(out var telemetry))
             {
-                state.EntityManager.CreateEntity(typeof(SensorCommsScalingTelemetry));
+                var telemetryEntity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponent<SensorCommsScalingTelemetry>(telemetryEntity);
+                telemetry = SystemAPI.GetSingletonRW<SensorCommsScalingTelemetry>();
             }
 
-            // Update telemetry if singleton exists
-            var telemetryQuery = SystemAPI.QueryBuilder().WithAll<SensorCommsScalingTelemetry>().Build();
-            if (!telemetryQuery.IsEmpty)
-            {
-                var telemetryEntity = telemetryQuery.GetSingletonEntity();
-                var telemetry = SystemAPI.GetComponentRW<SensorCommsScalingTelemetry>(telemetryEntity);
-                telemetry.ValueRW.CellsProcessedThisTick = awarenessSnapshots.Length;
-                telemetry.ValueRW.EventsAggregatedThisTick = workBuffer.Length;
-                telemetry.ValueRW.LastResetTick = timeState.Tick;
-            }
-            telemetryQuery.Dispose();
+            telemetry.ValueRW.CellsProcessedThisTick = awarenessSnapshots.Length;
+            telemetry.ValueRW.EventsAggregatedThisTick = workBuffer.Length;
+            telemetry.ValueRW.LastResetTick = timeState.Tick;
         }
 
         private struct CellIdComparer : System.Collections.Generic.IComparer<AwarenessWorkEntry>

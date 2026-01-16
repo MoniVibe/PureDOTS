@@ -151,7 +151,8 @@ namespace PureDOTS.Systems.Perception
             // Use a singleton component to hold the work map temporarily
             if (!SystemAPI.HasSingleton<AwarenessWorkStorage>())
             {
-                state.EntityManager.CreateEntity(typeof(AwarenessWorkStorage));
+                var storageEntity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponent<AwarenessWorkStorage>(storageEntity);
             }
 
             var workStorageEntity = SystemAPI.GetSingletonEntity<AwarenessWorkStorage>();
