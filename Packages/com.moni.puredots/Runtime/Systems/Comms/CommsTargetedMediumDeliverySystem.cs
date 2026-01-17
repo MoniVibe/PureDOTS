@@ -76,6 +76,10 @@ namespace PureDOTS.Systems.Comms
             var countersRW = SystemAPI.HasSingleton<UniversalPerformanceCounters>()
                 ? SystemAPI.GetSingletonRW<UniversalPerformanceCounters>()
                 : default;
+            var diagnosticsRW = SystemAPI.HasSingleton<CommsDeliveryDiagnostics>()
+                ? SystemAPI.GetSingletonRW<CommsDeliveryDiagnostics>()
+                : default;
+            var hasDiagnostics = diagnosticsRW.IsValid;
 
             _receiverLookup.Update(ref state);
             _signalLookup.Update(ref state);
@@ -91,11 +95,19 @@ namespace PureDOTS.Systems.Comms
                 var message = comms[mi];
                 if (time.Tick < message.EmittedTick || time.Tick > message.ExpirationTick)
                 {
+                    if (hasDiagnostics && message.IntendedReceiver != Entity.Null)
+                    {
+                        diagnosticsRW.ValueRW.TargetedExpired++;
+                    }
                     continue;
                 }
 
                 if (message.TransportUsed != PerceptionChannel.Hearing && message.TransportUsed != PerceptionChannel.EM)
                 {
+                    if (hasDiagnostics)
+                    {
+                        diagnosticsRW.ValueRW.TargetedWrongTransport++;
+                    }
                     continue;
                 }
 
@@ -105,20 +117,46 @@ namespace PureDOTS.Systems.Comms
                     continue;
                 }
 
-                var receiverEntity = message.IntendedReceiver;
-                if (!_receiverLookup.HasComponent(receiverEntity) || !_interruptLookup.HasBuffer(receiverEntity))
+                if (hasDiagnostics)
                 {
+                    diagnosticsRW.ValueRW.TargetedConsidered++;
+                }
+
+                var receiverEntity = message.IntendedReceiver;
+                if (!_receiverLookup.HasComponent(receiverEntity))
+                {
+                    if (hasDiagnostics)
+                    {
+                        diagnosticsRW.ValueRW.TargetedMissingReceiverConfig++;
+                    }
+                    continue;
+                }
+
+                if (!_interruptLookup.HasBuffer(receiverEntity))
+                {
+                    if (hasDiagnostics)
+                    {
+                        diagnosticsRW.ValueRW.TargetedMissingInterrupt++;
+                    }
                     continue;
                 }
 
                 var receiver = _receiverLookup[receiverEntity];
                 if (receiver.Enabled == 0 || (receiver.TransportMask & message.TransportUsed) == 0)
                 {
+                    if (hasDiagnostics)
+                    {
+                        diagnosticsRW.ValueRW.TargetedReceiverDisabled++;
+                    }
                     continue;
                 }
 
                 if (!_signalLookup.HasComponent(receiverEntity))
                 {
+                    if (hasDiagnostics)
+                    {
+                        diagnosticsRW.ValueRW.TargetedMissingSignal++;
+                    }
                     continue;
                 }
 
@@ -142,6 +180,10 @@ namespace PureDOTS.Systems.Comms
                     {
                         if (inbox[ii].Token == message.Token && inbox[ii].SourceEmittedTick == message.EmittedTick)
                         {
+                            if (hasDiagnostics)
+                            {
+                                diagnosticsRW.ValueRW.TargetedDuplicateEmission++;
+                            }
                             goto NextMessage; // already processed this emission
                         }
 
@@ -292,6 +334,11 @@ namespace PureDOTS.Systems.Comms
                     });
                 }
 
+                if (hasDiagnostics)
+                {
+                    diagnosticsRW.ValueRW.TargetedDelivered++;
+                }
+
                 remaining--;
                 if (countersRW.IsValid)
                 {
@@ -313,8 +360,6 @@ namespace PureDOTS.Systems.Comms
         }
     }
 }
-
-
 
 
 

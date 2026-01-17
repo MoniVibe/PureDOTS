@@ -27,11 +27,16 @@ namespace PureDOTS.Systems.Comms
                 state.EntityManager.AddComponent<CommsMessageStreamTag>(entity);
                 state.EntityManager.AddBuffer<CommsMessage>(entity);
             }
+
+            if (!SystemAPI.HasSingleton<CommsDeliveryDiagnostics>())
+            {
+                var entity = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(entity, new CommsDeliveryDiagnostics());
+            }
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) { }
     }
 }
-
 

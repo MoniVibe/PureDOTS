@@ -137,6 +137,19 @@ namespace PureDOTS.Runtime.Comms
 
     public struct CommsMessageStreamTag : IComponentData { }
 
+    public struct CommsDeliveryDiagnostics : IComponentData
+    {
+        public uint TargetedConsidered;
+        public uint TargetedExpired;
+        public uint TargetedWrongTransport;
+        public uint TargetedMissingReceiverConfig;
+        public uint TargetedReceiverDisabled;
+        public uint TargetedMissingInterrupt;
+        public uint TargetedMissingSignal;
+        public uint TargetedDuplicateEmission;
+        public uint TargetedDelivered;
+    }
+
     [InternalBufferCapacity(64)]
     public struct CommsMessage : IBufferElementData
     {
@@ -205,5 +218,4 @@ namespace PureDOTS.Runtime.Comms
         }
     }
 }
-
 
