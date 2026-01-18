@@ -113,7 +113,7 @@ namespace PureDOTS.Runtime.Scenarios
 
             DefaultWorldInitializationInitializationHook(world);
             InjectScenarioMetadata(world.EntityManager, in scenario);
-            EnsureScenarioState(world.EntityManager);
+            EnsureScenarioState(world.EntityManager, scenario);
             var scenarioTickEntity = EnsureScenarioTick(world.EntityManager);
 
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
@@ -776,6 +776,26 @@ namespace PureDOTS.Runtime.Scenarios
                 });
             }
 
+            if (scenario.HasHeadlessQuestions && scenario.HeadlessQuestions.IsCreated && scenario.HeadlessQuestions.Length > 0)
+            {
+                entityManager.AddComponent<ScenarioHeadlessQuestionPackTag>(entity);
+                var packBuffer = entityManager.AddBuffer<ScenarioHeadlessQuestionPackItem>(entity);
+                for (int i = 0; i < scenario.HeadlessQuestions.Length; i++)
+                {
+                    var entry = scenario.HeadlessQuestions[i];
+                    if (entry.Id.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    packBuffer.Add(new ScenarioHeadlessQuestionPackItem
+                    {
+                        Id = entry.Id,
+                        Required = entry.Required
+                    });
+                }
+            }
+
             if (scenario.HasBehaviorOverride)
             {
                 var overrideEntity = entityManager.CreateEntity(typeof(BehaviorScenarioOverrideComponent));
@@ -795,7 +815,7 @@ namespace PureDOTS.Runtime.Scenarios
             }
         }
 
-        private static void EnsureScenarioState(EntityManager entityManager)
+        private static void EnsureScenarioState(EntityManager entityManager, in ResolvedScenario scenario)
         {
             var query = entityManager.CreateEntityQuery(ComponentType.ReadOnly<ScenarioState>());
             if (query.IsEmptyIgnoreFilter)
@@ -808,7 +828,7 @@ namespace PureDOTS.Runtime.Scenarios
                     BootPhase = ScenarioBootPhase.Done,
                     EnableGodgame = true,
                     EnableSpace4x = true,
-                    EnableEconomy = false
+                    EnableEconomy = scenario.EnableEconomy
                 });
             }
             else
@@ -817,6 +837,7 @@ namespace PureDOTS.Runtime.Scenarios
                 var state = entityManager.GetComponentData<ScenarioState>(entity);
                 state.IsInitialized = true;
                 state.BootPhase = ScenarioBootPhase.Done;
+                state.EnableEconomy = scenario.EnableEconomy;
                 entityManager.SetComponentData(entity, state);
             }
         }

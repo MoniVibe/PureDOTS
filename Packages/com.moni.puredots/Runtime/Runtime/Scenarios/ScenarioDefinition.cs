@@ -18,9 +18,11 @@ namespace PureDOTS.Runtime.Scenarios
         public string scenarioId = "scenario.default";
         public uint seed = 1;
         public int runTicks = 600;
+        public bool enableEconomy = false;
         public ScenarioEntityCountData[] entityCounts = Array.Empty<ScenarioEntityCountData>();
         public ScenarioInputCommandData[] inputCommands = Array.Empty<ScenarioInputCommandData>();
         public ScenarioAssertionData[] assertions = Array.Empty<ScenarioAssertionData>();
+        public ScenarioHeadlessQuestionData[] headlessQuestions = Array.Empty<ScenarioHeadlessQuestionData>();
         public BehaviorScenarioOverrideData behavior = null;
         public TelemetryScenarioOverrideData telemetry = null;
     }
@@ -38,6 +40,13 @@ namespace PureDOTS.Runtime.Scenarios
         public int tick = 0;
         public string commandId = string.Empty;
         public string payload = string.Empty;
+    }
+
+    [Serializable]
+    public class ScenarioHeadlessQuestionData
+    {
+        public string id = string.Empty;
+        public bool required = false;
     }
 
     [Serializable]
@@ -127,9 +136,12 @@ namespace PureDOTS.Runtime.Scenarios
         public FixedString64Bytes ScenarioId;
         public uint Seed;
         public int RunTicks;
+        public bool EnableEconomy;
         public NativeList<ScenarioEntityCount> EntityCounts;
         public NativeList<ScenarioInputCommand> InputCommands;
         public NativeList<ScenarioAssertion> Assertions;
+        public bool HasHeadlessQuestions;
+        public NativeList<ScenarioHeadlessQuestion> HeadlessQuestions;
         public bool HasBehaviorOverride;
         public BehaviorScenarioOverride BehaviorOverride;
         public bool HasTelemetryOverride;
@@ -151,6 +163,11 @@ namespace PureDOTS.Runtime.Scenarios
             {
                 Assertions.Dispose();
             }
+
+            if (HeadlessQuestions.IsCreated)
+            {
+                HeadlessQuestions.Dispose();
+            }
         }
     }
 
@@ -165,6 +182,12 @@ namespace PureDOTS.Runtime.Scenarios
         public int Tick;
         public FixedString64Bytes CommandId;
         public FixedString64Bytes Payload;
+    }
+
+    public struct ScenarioHeadlessQuestion
+    {
+        public FixedString64Bytes Id;
+        public byte Required;
     }
 
     public static class ScenarioRunner
@@ -227,9 +250,12 @@ namespace PureDOTS.Runtime.Scenarios
                 ScenarioId = new FixedString64Bytes(data.scenarioId ?? "scenario.unnamed"),
                 Seed = data.seed,
                 RunTicks = math.max(1, data.runTicks),
+                EnableEconomy = data.enableEconomy,
                 EntityCounts = new NativeList<ScenarioEntityCount>(allocator),
                 InputCommands = new NativeList<ScenarioInputCommand>(allocator),
                 Assertions = new NativeList<ScenarioAssertion>(allocator),
+                HasHeadlessQuestions = data.headlessQuestions != null && data.headlessQuestions.Length > 0,
+                HeadlessQuestions = new NativeList<ScenarioHeadlessQuestion>(allocator),
                 HasBehaviorOverride = data.behavior != null,
                 BehaviorOverride = data.behavior != null
                     ? ConvertBehaviorOverride(data.behavior)
@@ -290,6 +316,23 @@ namespace PureDOTS.Runtime.Scenarios
                         Operator = assertionData.op,
                         ExpectedValue = assertionData.expectedValue,
                         Description = new FixedString128Bytes(assertionData.description ?? string.Empty)
+                    });
+                }
+            }
+
+            if (data.headlessQuestions != null)
+            {
+                foreach (var question in data.headlessQuestions)
+                {
+                    if (string.IsNullOrWhiteSpace(question.id))
+                    {
+                        continue;
+                    }
+
+                    scenario.HeadlessQuestions.Add(new ScenarioHeadlessQuestion
+                    {
+                        Id = new FixedString64Bytes(question.id),
+                        Required = question.required ? (byte)1 : (byte)0
                     });
                 }
             }

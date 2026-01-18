@@ -32,4 +32,22 @@ namespace PureDOTS.Runtime.Scenarios
     {
         public Entity Value;
     }
+
+    /// <summary>
+    /// Optional headless question pack authored in scenario JSON.
+    /// Allows scenario runner clients to specify which questions to answer.
+    /// </summary>
+    public struct ScenarioHeadlessQuestionPackTag : IComponentData
+    {
+    }
+
+    /// <summary>
+    /// Headless question pack item (id + required flag).
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct ScenarioHeadlessQuestionPackItem : IBufferElementData
+    {
+        public FixedString64Bytes Id;
+        public byte Required;
+    }
 }
