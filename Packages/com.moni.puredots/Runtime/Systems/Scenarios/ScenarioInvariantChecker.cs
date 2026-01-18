@@ -33,6 +33,7 @@ namespace PureDOTS.Systems.Scenarios
         private float _lastWorldSeconds;
         private byte _hasLastTick;
         private byte _reportedFailure;
+        private byte _checkTimeProof;
         private EntityQuery _villagerInvariantQuery;
         private EntityQuery _movementInvariantQuery;
 
@@ -46,6 +47,7 @@ namespace PureDOTS.Systems.Scenarios
                 return;
             }
 
+            _checkTimeProof = IsProofEnabled("PUREDOTS_HEADLESS_TIME_PROOF") ? (byte)1 : (byte)0;
             _villagerInvariantQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<LocalTransform>(),
                 ComponentType.ReadOnly<VillagerMovement>(),
@@ -71,7 +73,7 @@ namespace PureDOTS.Systems.Scenarios
 
             EnsureInvariantState(ref state);
 
-            if (!CheckMonotonicTime(ref state, tick, worldSeconds))
+            if (_checkTimeProof != 0 && !CheckMonotonicTime(ref state, tick, worldSeconds))
             {
                 return;
             }
@@ -544,6 +546,18 @@ namespace PureDOTS.Systems.Scenarios
         private static bool HasNaNOrInf(float4 value)
         {
             return math.any(math.isnan(value)) || math.any(math.isinf(value));
+        }
+
+        private static bool IsProofEnabled(string envKey)
+        {
+            var value = System.Environment.GetEnvironmentVariable(envKey);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
+
+            return !string.Equals(value, "0", System.StringComparison.OrdinalIgnoreCase) &&
+                   !string.Equals(value, "false", System.StringComparison.OrdinalIgnoreCase);
         }
     }
 }
