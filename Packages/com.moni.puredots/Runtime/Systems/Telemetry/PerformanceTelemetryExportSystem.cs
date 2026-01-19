@@ -7,6 +7,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Performance;
 using PureDOTS.Runtime.Pooling;
 using PureDOTS.Runtime.Presentation;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -25,6 +26,7 @@ namespace PureDOTS.Systems.Telemetry
     {
         private const string ExportEnvVar = "PUREDOTS_PERF_TELEMETRY_PATH";
         private const uint BudgetWarmupTicks = 5;
+        private const uint FlushCadenceTicks = 60;
         private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
         private EntityQuery _frameTimingQuery;
@@ -45,6 +47,9 @@ namespace PureDOTS.Systems.Telemetry
         private int _lastArchetypeCount;
         private bool _hasArchetypeBaseline;
         private uint _lastArchetypeWarningTick;
+        private bool _headerWritten;
+        private bool _flushInitialized;
+        private uint _nextFlushTick;
 
         protected override void OnCreate()
         {
@@ -68,6 +73,7 @@ namespace PureDOTS.Systems.Telemetry
 
             _exportPath = global::System.Environment.GetEnvironmentVariable(ExportEnvVar);
             _exportEnabled = !string.IsNullOrWhiteSpace(_exportPath);
+            EnsureWriterStarted();
         }
 
         protected override void OnDestroy()
@@ -91,7 +97,7 @@ namespace PureDOTS.Systems.Telemetry
 
             if (_exportEnabled && _writer == null)
             {
-                TryOpenWriter();
+                EnsureWriterStarted();
             }
 
             var samples = EntityManager.GetBuffer<FrameTimingSample>(frameEntity);
@@ -245,6 +251,8 @@ namespace PureDOTS.Systems.Telemetry
             {
                 EntityManager.SetComponentData(timeEntity, status);
             }
+
+            FlushIfNeeded(timeState.Tick);
         }
 
         /// <summary>
@@ -325,6 +333,8 @@ namespace PureDOTS.Systems.Telemetry
                     UnityDebug.Log($"[PerformanceTelemetry] Exporting metrics to '{_exportPath}'.");
                     _exportPathLogged = true;
                 }
+
+                _flushInitialized = false;
             }
             catch (Exception ex)
             {
@@ -332,6 +342,49 @@ namespace PureDOTS.Systems.Telemetry
                 _writer = null;
                 _exportEnabled = false;
             }
+        }
+
+        private void EnsureWriterStarted()
+        {
+            if (!_exportEnabled)
+            {
+                return;
+            }
+
+            if (_writer == null)
+            {
+                TryOpenWriter();
+            }
+
+            WriteHeaderRecord();
+        }
+
+        private void WriteHeaderRecord()
+        {
+            if (_writer == null || _headerWritten)
+            {
+                return;
+            }
+
+            _jsonBuilder.Clear();
+            _jsonBuilder.Append("{\"type\":\"header\"");
+            _jsonBuilder.Append(",\"timestamp\":").Append(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            if (GitMetadataUtility.TryReadMetadata(out var metadata))
+            {
+                if (!string.IsNullOrWhiteSpace(metadata.Commit))
+                {
+                    _jsonBuilder.Append(",\"commit\":\"").Append(metadata.Commit).Append('\"');
+                }
+
+                if (!string.IsNullOrWhiteSpace(metadata.Branch))
+                {
+                    _jsonBuilder.Append(",\"branch\":\"").Append(metadata.Branch).Append('\"');
+                }
+            }
+            _jsonBuilder.Append('}');
+            _writer.WriteLine(_jsonBuilder.ToString());
+            _writer.Flush();
+            _headerWritten = true;
         }
 
         private void WriteTimingMetric(in FrameTimingSample sample, uint tick, long timestampMs)
@@ -438,6 +491,27 @@ namespace PureDOTS.Systems.Telemetry
             _jsonBuilder.Append(",\"budget\":").Append(budget.ToString("G17", InvariantCulture));
             _jsonBuilder.Append('}');
             _writer?.WriteLine(_jsonBuilder.ToString());
+        }
+
+        private void FlushIfNeeded(uint tick)
+        {
+            if (!_exportEnabled || _writer == null)
+            {
+                return;
+            }
+
+            if (!_flushInitialized)
+            {
+                _nextFlushTick = tick + FlushCadenceTicks;
+                _flushInitialized = true;
+                return;
+            }
+
+            if (tick >= _nextFlushTick)
+            {
+                _writer.Flush();
+                _nextFlushTick = tick + FlushCadenceTicks;
+            }
         }
 
         private struct TagBuilder : IDisposable
