@@ -533,7 +533,10 @@ namespace PureDOTS.Systems.Scenarios
                 hasVelocity,
                 rotation,
                 hasRotation);
-            HeadlessExitUtility.Request(state.EntityManager, tick, 2);
+            if (ScenarioExitUtility.ResolveExitPolicy() != ExitPolicy.NeverNonZero)
+            {
+                HeadlessExitUtility.Request(state.EntityManager, tick, 2);
+            }
         }
 
         private static bool HasNaNOrInf(float3 value)
