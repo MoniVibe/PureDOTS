@@ -4,16 +4,16 @@ using System.IO;
 
 namespace PureDOTS.Runtime.Scenarios
 {
-    internal static class GitMetadataUtility
+    public static class GitMetadataUtility
     {
-        internal struct GitMetadata
+        public struct GitMetadata
         {
             public string Commit;
             public string Branch;
             public bool IsDirty;
         }
 
-        internal static bool TryReadMetadata(out GitMetadata metadata)
+        public static bool TryReadMetadata(out GitMetadata metadata)
         {
             metadata = default;
             try
