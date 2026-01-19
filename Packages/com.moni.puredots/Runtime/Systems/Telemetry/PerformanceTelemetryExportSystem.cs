@@ -24,6 +24,8 @@ namespace PureDOTS.Systems.Telemetry
     public sealed partial class PerformanceTelemetryExportSystem : SystemBase
     {
         private const string ExportEnvVar = "PUREDOTS_PERF_TELEMETRY_PATH";
+        private const string WarmupEnvVar = "PUREDOTS_PERF_TELEMETRY_WARMUP_TICKS";
+        private const string MeasureEnvVar = "PUREDOTS_PERF_TELEMETRY_MEASURE_TICKS";
         private const uint BudgetWarmupTicks = 5;
         private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
@@ -31,6 +33,7 @@ namespace PureDOTS.Systems.Telemetry
         private EntityQuery _companionQuery;
         private EntityQuery _universalQuery;
 
+        private NativeList<EntityArchetype> _archetypeScratch;
         private StreamWriter _writer;
         private string _exportPath;
         private bool _exportEnabled;
@@ -45,12 +48,22 @@ namespace PureDOTS.Systems.Telemetry
         private int _lastArchetypeCount;
         private bool _hasArchetypeBaseline;
         private uint _lastArchetypeWarningTick;
+        private bool _hasBaselineTick;
+        private uint _baselineTick;
+        private uint _warmupTicks;
+        private uint _measureTicks;
+        private bool _allowEmitThisTick;
+        private bool _hasEnvWarmupOverride;
+        private bool _hasEnvMeasureOverride;
+        private uint _envWarmupTicks;
+        private uint _envMeasureTicks;
 
         protected override void OnCreate()
         {
             RequireForUpdate<FrameTimingStream>();
             RequireForUpdate<TimeState>();
             RequireForUpdate<PerformanceBudgetSettings>();
+            RequireForUpdate<PerformanceTelemetrySettings>();
 
             _frameTimingQuery = GetEntityQuery(
                 ComponentType.ReadOnly<FrameTimingStream>(),
@@ -59,6 +72,7 @@ namespace PureDOTS.Systems.Telemetry
 
             _companionQuery = GetEntityQuery(ComponentType.ReadOnly<CompanionPresentation>());
             _universalQuery = EntityManager.UniversalQuery;
+            _archetypeScratch = new NativeList<EntityArchetype>(Allocator.Persistent);
 
             if (SystemAPI.TryGetSingletonEntity<TimeState>(out var timeEntity)
                 && !EntityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
@@ -68,12 +82,17 @@ namespace PureDOTS.Systems.Telemetry
 
             _exportPath = global::System.Environment.GetEnvironmentVariable(ExportEnvVar);
             _exportEnabled = !string.IsNullOrWhiteSpace(_exportPath);
+            ResolveEnvOverrides();
         }
 
         protected override void OnDestroy()
         {
             _writer?.Dispose();
             _writer = null;
+            if (_archetypeScratch.IsCreated)
+            {
+                _archetypeScratch.Dispose();
+            }
         }
 
         protected override void OnUpdate()
@@ -87,12 +106,16 @@ namespace PureDOTS.Systems.Telemetry
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var budgets = SystemAPI.GetSingleton<PerformanceBudgetSettings>();
             var universalBudgets = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
+            var perfSettings = SystemAPI.GetSingleton<PerformanceTelemetrySettings>();
             var timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             if (_exportEnabled && _writer == null)
             {
                 TryOpenWriter();
             }
+
+            UpdateMeasurementWindow(perfSettings, timeState.Tick);
+            _allowEmitThisTick = _exportEnabled && _writer != null && IsTickWithinMeasurement(timeState.Tick);
 
             var samples = EntityManager.GetBuffer<FrameTimingSample>(frameEntity);
             var allocation = EntityManager.GetComponentData<AllocationDiagnostics>(frameEntity);
@@ -115,16 +138,15 @@ namespace PureDOTS.Systems.Telemetry
                 _rollingFrameMs = math.lerp(_rollingFrameMs, (float)totalFrameMs, 0.1f);
             }
 
-            WriteMetric("timing.total", totalFrameMs, "ms", timeState.Tick, timestampMs);
-            WriteMetric("timing.frameEma", _rollingFrameMs, "ms", timeState.Tick, timestampMs);
+            WriteMetric("timing.total_ms", totalFrameMs, "ms", timeState.Tick, timestampMs);
+            WriteMetric("timing.frame_ema_ms", _rollingFrameMs, "ms", timeState.Tick, timestampMs);
 
             var entityCount = _universalQuery.CalculateEntityCount();
             var chunkCount = _universalQuery.CalculateChunkCountWithoutFiltering();
-            var archetypes = new NativeList<EntityArchetype>(Allocator.Temp);
-            EntityManager.GetAllArchetypes(archetypes);
-            var archetypeCount = archetypes.Length;
+            _archetypeScratch.Clear();
+            EntityManager.GetAllArchetypes(_archetypeScratch);
+            var archetypeCount = _archetypeScratch.Length;
             var chunksPerArchetype = archetypeCount > 0 ? (double)chunkCount / archetypeCount : 0d;
-            archetypes.Dispose();
 
             WriteMetric("entities.total", entityCount, "count", timeState.Tick, timestampMs);
             WriteMetric("chunks.total", chunkCount, "count", timeState.Tick, timestampMs);
@@ -148,13 +170,13 @@ namespace PureDOTS.Systems.Telemetry
             }
             _lastStructuralVersion = structuralVersion;
 
-            WriteMetric("structural.changeDelta", structuralDelta, "count", timeState.Tick, timestampMs);
+            WriteMetric("structural.change_delta", structuralDelta, "count", timeState.Tick, timestampMs);
 
             var managedBytes = GC.GetTotalMemory(false);
-            WriteMetric("memory.managed.bytes", managedBytes, "bytes", timeState.Tick, timestampMs);
-            WriteMetric("memory.allocated.bytes", allocation.TotalAllocatedBytes, "bytes", timeState.Tick, timestampMs);
-            WriteMetric("memory.reserved.bytes", allocation.TotalReservedBytes, "bytes", timeState.Tick, timestampMs);
-            WriteMetric("memory.unusedReserved.bytes", allocation.TotalUnusedReservedBytes, "bytes", timeState.Tick, timestampMs);
+            WriteMetric("memory.managed_bytes", managedBytes, "bytes", timeState.Tick, timestampMs);
+            WriteMetric("memory.allocated_bytes", allocation.TotalAllocatedBytes, "bytes", timeState.Tick, timestampMs);
+            WriteMetric("memory.reserved_bytes", allocation.TotalReservedBytes, "bytes", timeState.Tick, timestampMs);
+            WriteMetric("memory.unused_reserved_bytes", allocation.TotalUnusedReservedBytes, "bytes", timeState.Tick, timestampMs);
             WriteMetric("gc.collections.gen0", allocation.GcCollectionsGeneration0, "count", timeState.Tick, timestampMs);
             WriteMetric("gc.collections.gen1", allocation.GcCollectionsGeneration1, "count", timeState.Tick, timestampMs);
             WriteMetric("gc.collections.gen2", allocation.GcCollectionsGeneration2, "count", timeState.Tick, timestampMs);
@@ -235,10 +257,10 @@ namespace PureDOTS.Systems.Telemetry
             var allowBudgetChecks = timeState.Tick >= BudgetWarmupTicks;
             if (allowBudgetChecks)
             {
-                statusChanged |= CheckBudget("timing.fixedTick", totalFrameMs, budgets.FixedTickBudgetMs, timeState.Tick, timestampMs, ref status);
-                statusChanged |= CheckBudget("telemetry.snapshot.capacityBytes", snapshotBytes, budgets.SnapshotRingBudgetBytes, timeState.Tick, timestampMs, ref status);
-                statusChanged |= CheckBudget("telemetry.command.capacityBytes", commandBytes, budgets.CommandRingBudgetBytes, timeState.Tick, timestampMs, ref status);
-                statusChanged |= CheckBudget("presentation.companions.active", companionCount, budgets.CompanionBudget, timeState.Tick, timestampMs, ref status);
+                statusChanged |= CheckBudget("timing.fixedTick", totalFrameMs, budgets.FixedTickBudgetMs, timeState.Tick, timestampMs, _allowEmitThisTick, ref status);
+                statusChanged |= CheckBudget("telemetry.snapshot.capacityBytes", snapshotBytes, budgets.SnapshotRingBudgetBytes, timeState.Tick, timestampMs, _allowEmitThisTick, ref status);
+                statusChanged |= CheckBudget("telemetry.command.capacityBytes", commandBytes, budgets.CommandRingBudgetBytes, timeState.Tick, timestampMs, _allowEmitThisTick, ref status);
+                statusChanged |= CheckBudget("presentation.companions.active", companionCount, budgets.CompanionBudget, timeState.Tick, timestampMs, _allowEmitThisTick, ref status);
             }
 
             if (statusChanged)
@@ -336,40 +358,44 @@ namespace PureDOTS.Systems.Telemetry
 
         private void WriteTimingMetric(in FrameTimingSample sample, uint tick, long timestampMs)
         {
-            var group = sample.Group;
-            var metricKey = FrameTimingUtility.GetMetricKey(group).ToString();
-            var groupLabel = FrameTimingUtility.GetGroupLabel(group).ToString();
-            var systemCount = sample.SystemCount;
-            var budgetMs = sample.BudgetMs;
-            var flags = sample.Flags;
-
-            WriteMetric(metricKey, sample.DurationMs, "ms", tick, timestampMs, builder =>
+            if (!_allowEmitThisTick || !_exportEnabled || _writer == null)
             {
-                builder.Add("group", groupLabel);
-                builder.Add("systemCount", systemCount);
-                if (budgetMs > 0f)
+                return;
+            }
+
+            var metricKey = GetTimingMetricKey(sample.Group);
+            var groupLabel = GetTimingGroupLabel(sample.Group);
+            AppendMetricHeader(metricKey, sample.DurationMs, "ms", tick, timestampMs);
+            using (var tags = new TagBuilder(_jsonBuilder))
+            {
+                tags.Add("group", groupLabel);
+                tags.Add("systemCount", sample.SystemCount);
+                if (sample.BudgetMs > 0f)
                 {
-                    builder.Add("budgetMs", budgetMs);
-                    builder.Add("budgetExceeded", (flags & FrameTimingFlags.BudgetExceeded) != 0);
+                    tags.Add("budgetMs", sample.BudgetMs);
+                    tags.Add("budgetExceeded", (sample.Flags & FrameTimingFlags.BudgetExceeded) != 0);
                 }
 
-                builder.Add("catchUp", (flags & FrameTimingFlags.CatchUp) != 0);
-            });
+                tags.Add("catchUp", (sample.Flags & FrameTimingFlags.CatchUp) != 0);
+            }
+
+            _jsonBuilder.Append('}');
+            _writer.WriteLine(_jsonBuilder.ToString());
         }
 
-        private bool CheckBudget(string metric, double value, double budget, uint tick, long timestampMs, ref PerformanceBudgetStatus status)
+        private bool CheckBudget(string metric, double value, double budget, uint tick, long timestampMs, bool allowEmit, ref PerformanceBudgetStatus status)
         {
             if (budget <= 0d || value <= budget)
             {
                 return false;
             }
 
-            if (_exportEnabled && _writer != null && _failuresWritten.Add(metric))
+            if (allowEmit && _exportEnabled && _writer != null && _failuresWritten.Add(metric))
             {
                 WriteFailRecord(metric, value, budget, tick, timestampMs);
                 _writer.Flush();
             }
-            else if (!_exportEnabled && !_missingExportWarningLogged)
+            else if (allowEmit && !_exportEnabled && !_missingExportWarningLogged)
             {
                 if (!Application.isBatchMode)
                 {
@@ -395,7 +421,7 @@ namespace PureDOTS.Systems.Telemetry
 
         private void WriteMetric(string metric, double value, string unit, uint tick, long timestampMs, Action<TagBuilder> tagWriter = null)
         {
-            if (!_exportEnabled || _writer == null)
+            if (!_allowEmitThisTick || !_exportEnabled || _writer == null)
             {
                 return;
             }
@@ -429,6 +455,11 @@ namespace PureDOTS.Systems.Telemetry
 
         private void WriteFailRecord(string metric, double value, double budget, uint tick, long timestampMs)
         {
+            if (!_allowEmitThisTick || !_exportEnabled || _writer == null)
+            {
+                return;
+            }
+
             _jsonBuilder.Clear();
             _jsonBuilder.Append("{\"type\":\"fail\"");
             _jsonBuilder.Append(",\"timestamp\":").Append(timestampMs);
@@ -437,7 +468,103 @@ namespace PureDOTS.Systems.Telemetry
             _jsonBuilder.Append(",\"value\":").Append(value.ToString("G17", InvariantCulture));
             _jsonBuilder.Append(",\"budget\":").Append(budget.ToString("G17", InvariantCulture));
             _jsonBuilder.Append('}');
-            _writer?.WriteLine(_jsonBuilder.ToString());
+            _writer.WriteLine(_jsonBuilder.ToString());
+        }
+
+        private void ResolveEnvOverrides()
+        {
+            _hasEnvWarmupOverride = TryReadEnvUint(WarmupEnvVar, out _envWarmupTicks);
+            _hasEnvMeasureOverride = TryReadEnvUint(MeasureEnvVar, out _envMeasureTicks);
+        }
+
+        private void UpdateMeasurementWindow(in PerformanceTelemetrySettings settings, uint currentTick)
+        {
+            if (!_hasBaselineTick || currentTick < _baselineTick)
+            {
+                _baselineTick = currentTick;
+                _hasBaselineTick = true;
+            }
+
+            _warmupTicks = _hasEnvWarmupOverride ? _envWarmupTicks : settings.WarmupTicks;
+            _measureTicks = _hasEnvMeasureOverride ? _envMeasureTicks : settings.MeasureTicks;
+        }
+
+        private bool IsTickWithinMeasurement(uint currentTick)
+        {
+            if (!_hasBaselineTick)
+            {
+                return true;
+            }
+
+            var relativeTick = currentTick >= _baselineTick ? currentTick - _baselineTick : 0u;
+            if (relativeTick < _warmupTicks)
+            {
+                return false;
+            }
+
+            if (_measureTicks == 0)
+            {
+                return true;
+            }
+
+            var endTickExclusive = (ulong)_warmupTicks + _measureTicks;
+            return relativeTick < endTickExclusive;
+        }
+
+        private static bool TryReadEnvUint(string envVar, out uint value)
+        {
+            value = 0;
+            var raw = global::System.Environment.GetEnvironmentVariable(envVar);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            return uint.TryParse(raw, NumberStyles.Integer, InvariantCulture, out value);
+        }
+
+        private static string GetTimingMetricKey(FrameTimingGroup group)
+        {
+            return group switch
+            {
+                FrameTimingGroup.Camera => "timing.camera",
+                FrameTimingGroup.Time => "timing.time",
+                FrameTimingGroup.Environment => "timing.environment",
+                FrameTimingGroup.Spatial => "timing.spatial",
+                FrameTimingGroup.AI => "timing.ai",
+                FrameTimingGroup.Villager => "timing.villager",
+                FrameTimingGroup.Resource => "timing.resource",
+                FrameTimingGroup.Miracle => "timing.miracle",
+                FrameTimingGroup.Gameplay => "timing.gameplay",
+                FrameTimingGroup.Transport => "timing.transport",
+                FrameTimingGroup.History => "timing.history",
+                FrameTimingGroup.Presentation => "timing.presentation",
+                FrameTimingGroup.Hand => "timing.hand",
+                FrameTimingGroup.Custom => "timing.custom",
+                _ => "timing.unknown"
+            };
+        }
+
+        private static string GetTimingGroupLabel(FrameTimingGroup group)
+        {
+            return group switch
+            {
+                FrameTimingGroup.Camera => "Camera",
+                FrameTimingGroup.Time => "Time",
+                FrameTimingGroup.Environment => "Environment",
+                FrameTimingGroup.Spatial => "Spatial",
+                FrameTimingGroup.AI => "AI",
+                FrameTimingGroup.Villager => "Villager",
+                FrameTimingGroup.Resource => "Resource",
+                FrameTimingGroup.Miracle => "Miracle",
+                FrameTimingGroup.Gameplay => "Gameplay",
+                FrameTimingGroup.Transport => "Transport",
+                FrameTimingGroup.History => "History",
+                FrameTimingGroup.Presentation => "Presentation",
+                FrameTimingGroup.Hand => "Hand",
+                FrameTimingGroup.Custom => "Custom",
+                _ => "Unknown"
+            };
         }
 
         private struct TagBuilder : IDisposable

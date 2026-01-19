@@ -209,6 +209,11 @@ namespace PureDOTS.Systems
                 entityManager.AddComponentData(timeEntity, PerformanceBudgetDefaults.CreateDefault());
             }
 
+            if (!entityManager.HasComponent<PerformanceTelemetrySettings>(timeEntity))
+            {
+                entityManager.AddComponentData(timeEntity, PerformanceTelemetryDefaults.CreateDefault());
+            }
+
             if (!entityManager.HasComponent<InputCommandLogState>(timeEntity))
             {
                 entityManager.AddComponentData(timeEntity, new InputCommandLogState

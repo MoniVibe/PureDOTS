@@ -99,6 +99,11 @@ Telemetry defaults (use unless debugging):
 - PUREDOTS_TELEMETRY_LEVEL=summary
 - PUREDOTS_TELEMETRY_MAX_BYTES=524288000
 
+## Perf telemetry (headless)
+- Enable by setting `PUREDOTS_PERF_TELEMETRY_PATH`; in the pipeline use `out/perf_telemetry.ndjson` so the artifact lands at `out/perf_telemetry.ndjson`.
+- Optional windowing: `PUREDOTS_PERF_TELEMETRY_WARMUP_TICKS` and `PUREDOTS_PERF_TELEMETRY_MEASURE_TICKS` (0 = unlimited); scenario JSON can set `telemetry.warmupTicks` and `telemetry.measureTicks`.
+- Stable fields (metrics): `type`, `timestamp`, `tick`, `metric`, `value`, `unit`; stable metric keys include `timing.total_ms`, `memory.reserved_bytes`, `memory.allocated_bytes`, `structural.change_delta`.
+
 ## Oracle probe mode
 - Enable: set PUREDOTS_TELEMETRY_ORACLE_PROBE=1
 - Where to look: NDJSON lines with type="debug" in the telemetry output

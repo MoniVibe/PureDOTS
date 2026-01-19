@@ -106,6 +106,8 @@ namespace PureDOTS.Runtime.Telemetry
         public TelemetryLoopFlags Loops;
         public ushort MaxEventsPerTick;
         public ulong MaxOutputBytes;
+        public int WarmupTicks;
+        public int MeasureTicks;
 
         public static TelemetryScenarioOverride CreateSentinel()
         {
@@ -119,7 +121,9 @@ namespace PureDOTS.Runtime.Telemetry
                 LodOverride = -1,
                 Loops = TelemetryLoopFlags.None,
                 MaxEventsPerTick = 0,
-                MaxOutputBytes = 0
+                MaxOutputBytes = 0,
+                WarmupTicks = -1,
+                MeasureTicks = -1
             };
         }
     }

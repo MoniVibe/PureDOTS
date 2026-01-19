@@ -13,12 +13,14 @@ namespace PureDOTS.Systems.Telemetry
     public partial struct TelemetryScenarioOverrideSystem : ISystem
     {
         private EntityQuery _overrideQuery;
+        private EntityQuery _performanceSettingsQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TelemetryExportConfig>();
             _overrideQuery = state.GetEntityQuery(ComponentType.ReadOnly<TelemetryScenarioOverrideComponent>());
+            _performanceSettingsQuery = state.GetEntityQuery(ComponentType.ReadWrite<PerformanceTelemetrySettings>());
         }
 
         [BurstCompile]
@@ -40,6 +42,8 @@ namespace PureDOTS.Systems.Telemetry
                 config.Version++;
                 configRW.ValueRW = config;
             }
+
+            ApplyPerformanceOverrides(ref state, overrides);
 
             state.EntityManager.DestroyEntity(overrideEntity);
             state.Enabled = false;
@@ -107,6 +111,40 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return changed;
+        }
+
+        private void ApplyPerformanceOverrides(ref SystemState state, in TelemetryScenarioOverride overrides)
+        {
+            if (_performanceSettingsQuery.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            if (overrides.WarmupTicks < 0 && overrides.MeasureTicks < 0)
+            {
+                return;
+            }
+
+            var settingsEntity = _performanceSettingsQuery.GetSingletonEntity();
+            var settings = state.EntityManager.GetComponentData<PerformanceTelemetrySettings>(settingsEntity);
+            bool changed = false;
+
+            if (overrides.WarmupTicks >= 0)
+            {
+                settings.WarmupTicks = (uint)overrides.WarmupTicks;
+                changed = true;
+            }
+
+            if (overrides.MeasureTicks >= 0)
+            {
+                settings.MeasureTicks = (uint)overrides.MeasureTicks;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                state.EntityManager.SetComponentData(settingsEntity, settings);
+            }
         }
     }
 }

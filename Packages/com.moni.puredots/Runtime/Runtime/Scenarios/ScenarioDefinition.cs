@@ -125,6 +125,8 @@ namespace PureDOTS.Runtime.Scenarios
         public string lod = null;
         public string[] loops = null;
         public int maxEventsPerTick = -1;
+        public int warmupTicks = -1;
+        public int measureTicks = -1;
     }
 
     /// <summary>
@@ -464,6 +466,16 @@ namespace PureDOTS.Runtime.Scenarios
             if (data.maxEventsPerTick > 0)
             {
                 result.MaxEventsPerTick = (ushort)math.min(data.maxEventsPerTick, ushort.MaxValue);
+            }
+
+            if (data.warmupTicks >= 0)
+            {
+                result.WarmupTicks = data.warmupTicks;
+            }
+
+            if (data.measureTicks >= 0)
+            {
+                result.MeasureTicks = data.measureTicks;
             }
 
             return result;
