@@ -10,6 +10,9 @@ namespace PureDOTS.Runtime.Debugging
 
         public static void EnsureConsole()
         {
+            if (!Application.isPlaying)
+                return;
+
             if (s_console != null)
                 return;
 
@@ -32,6 +35,9 @@ namespace PureDOTS.Runtime.Debugging
 
         public static void EnsureOverlay()
         {
+            if (!Application.isPlaying)
+                return;
+
             if (s_overlay != null)
                 return;
 
@@ -48,6 +54,5 @@ namespace PureDOTS.Runtime.Debugging
         }
     }
 }
-
 
 
