@@ -55,7 +55,7 @@ namespace PureDOTS.Systems.Profile
                 for (int i = 0; i < entities.Length; i++)
                 {
                     var entity = entities[i];
-                    var resolved = ResolveProfile(entity);
+                    var resolved = ResolveProfile(ref state, entity);
                     ecb.AddComponent(entity, resolved);
                 }
                 ecb.Playback(state.EntityManager);
@@ -80,7 +80,7 @@ namespace PureDOTS.Systems.Profile
                          .WithChangeFilter<PersonalityAxes>()
                          .WithEntityAccess())
             {
-                resolved.ValueRW = ResolveProfile(entity);
+                resolved.ValueRW = ResolveProfile(ref state, entity);
             }
 
             foreach (var (_, resolved, entity) in SystemAPI
@@ -88,7 +88,7 @@ namespace PureDOTS.Systems.Profile
                          .WithChangeFilter<BehaviorTuning>()
                          .WithEntityAccess())
             {
-                resolved.ValueRW = ResolveProfile(entity);
+                resolved.ValueRW = ResolveProfile(ref state, entity);
             }
 
             foreach (var (_, resolved, entity) in SystemAPI
@@ -96,15 +96,16 @@ namespace PureDOTS.Systems.Profile
                          .WithChangeFilter<BehaviorDisposition>()
                          .WithEntityAccess())
             {
-                resolved.ValueRW = ResolveProfile(entity);
+                resolved.ValueRW = ResolveProfile(ref state, entity);
             }
         }
 
-        private ResolvedBehaviorProfile ResolveProfile(Entity entity)
+        private ResolvedBehaviorProfile ResolveProfile(ref SystemState state, Entity entity)
         {
-            if (_traitAxisLookup.HasBuffer(entity))
+            if (state.EntityManager.HasBuffer<TraitAxisValue>(entity))
             {
-                return ResolveProfile(entity, _traitAxisLookup[entity]);
+                var traitBuffer = state.EntityManager.GetBuffer<TraitAxisValue>(entity, true);
+                return ResolveProfile(entity, traitBuffer);
             }
 
             return ResolveProfile(entity, default);
