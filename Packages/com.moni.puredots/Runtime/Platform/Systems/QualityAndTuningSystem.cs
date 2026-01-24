@@ -109,7 +109,13 @@ namespace PureDOTS.Systems.Platform
                 var crewEntity = crewMembers[i].CrewEntity;
                 if (entityManager.Exists(crewEntity))
                 {
-                    totalSkill += 50f;
+                    var skill = 50f;
+                    if (entityManager.HasComponent<CrewSkill>(crewEntity))
+                    {
+                        skill = entityManager.GetComponentData<CrewSkill>(crewEntity).Value;
+                    }
+
+                    totalSkill += math.clamp(skill, 0f, 100f);
                     count++;
                 }
             }
@@ -124,4 +130,3 @@ namespace PureDOTS.Systems.Platform
         }
     }
 }
-

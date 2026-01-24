@@ -140,6 +140,14 @@ namespace PureDOTS.Runtime.Platform
     }
 
     /// <summary>
+    /// Aggregate skill scalar for crew members (0-100).
+    /// </summary>
+    public struct CrewSkill : IComponentData
+    {
+        public float Value;
+    }
+
+    /// <summary>
     /// Manufacturer information affecting base quality.
     /// </summary>
     public struct PlatformManufacturer : IComponentData
@@ -270,4 +278,3 @@ namespace PureDOTS.Runtime.Platform
         public float ProcessedMaterials;
     }
 }
-
