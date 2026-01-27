@@ -76,7 +76,11 @@ namespace PureDOTS.Systems
     /// </summary>
     /// <remarks>See Docs/TruthSources/RuntimeLifecycle_TruthSource.md for canonical ordering expectations.</remarks>
     [UpdateInGroup(typeof(HistoryPhaseGroup))]
-    public partial class HistorySystemGroup : InstrumentedComponentSystemGroup { }
+    public partial class HistorySystemGroup : InstrumentedComponentSystemGroup
+    {
+        protected override bool EmitSystemTimings => true;
+        protected override string SystemTimingMetricPrefix => "timing.history.system.";
+    }
 
     /// <summary>
     /// Fixed-step job systems for villagers. Runs inside FixedStepSimulation before high-level AI.
