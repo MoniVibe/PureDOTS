@@ -1,4 +1,5 @@
-// [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
+// [TRI-STUB] Ahead-of-time stub. Compile only when PUREDOTS_STUBS is defined.
+#if PUREDOTS_STUBS
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.AI
@@ -38,3 +39,4 @@ namespace PureDOTS.Runtime.AI
         public uint Timestamp;
     }
 }
+#endif
