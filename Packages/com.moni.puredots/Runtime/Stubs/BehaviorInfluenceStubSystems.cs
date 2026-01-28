@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;

@@ -39,4 +39,3 @@ namespace PureDOTS.Runtime.AI
         public uint Timestamp;
     }
 }
-#endif

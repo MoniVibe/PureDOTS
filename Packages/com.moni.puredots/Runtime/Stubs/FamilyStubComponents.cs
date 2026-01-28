@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Components moved to Runtime/Runtime/Family/FamilyComponents.cs
 // This file kept for reference but types are now defined in the implementation.

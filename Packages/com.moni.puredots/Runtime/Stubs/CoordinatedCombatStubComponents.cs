@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for coordinated combat
 using Unity.Entities;
 using Unity.Collections;

@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Behavior

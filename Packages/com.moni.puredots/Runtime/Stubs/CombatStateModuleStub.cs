@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub module operational states extension
 using Unity.Entities;
 

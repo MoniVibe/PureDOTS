@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for mutual care system
 using Unity.Entities;
 using Unity.Collections;

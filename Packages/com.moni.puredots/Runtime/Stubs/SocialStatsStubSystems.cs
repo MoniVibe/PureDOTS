@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for social stats
 using Unity.Burst;
 using Unity.Entities;

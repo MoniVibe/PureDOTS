@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Service moved to Runtime/Runtime/Dynasty/DynastyService.cs
 // This file kept for reference but implementation is now in DynastyService.

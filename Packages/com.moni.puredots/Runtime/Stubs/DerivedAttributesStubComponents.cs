@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for derived attributes system
 using Unity.Entities;
 

@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for extended personality axes
 using Unity.Burst;
 using Unity.Entities;

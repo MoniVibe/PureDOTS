@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for mutual care
 using Unity.Burst;
 using Unity.Entities;

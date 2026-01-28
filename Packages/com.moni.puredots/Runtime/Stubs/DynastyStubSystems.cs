@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Systems moved to Runtime/Systems/Dynasty/DynastySystems.cs
 // This file kept for reference but systems are now implemented.

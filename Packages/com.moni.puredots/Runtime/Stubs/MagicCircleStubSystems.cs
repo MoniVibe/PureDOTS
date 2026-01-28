@@ -1,4 +1,3 @@
-#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for magic circle cooperation
 using Unity.Burst;
 using Unity.Entities;
