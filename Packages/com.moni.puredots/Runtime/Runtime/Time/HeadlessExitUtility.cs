@@ -1,4 +1,3 @@
-using System;
 using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
@@ -13,7 +12,7 @@ namespace PureDOTS.Runtime.Time
             {
                 Debug.LogError(
                     $"[HeadlessExitUtility] Request exit_code={exitCode} tick={tick}\n" +
-                    Environment.StackTrace);
+                    System.Environment.StackTrace);
             }
 
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<HeadlessExitRequest>());
