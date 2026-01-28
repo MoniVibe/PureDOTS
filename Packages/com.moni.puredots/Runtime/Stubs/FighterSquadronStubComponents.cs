@@ -1,4 +1,5 @@
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
+#if PUREDOTS_VEHICLE_STUBS
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Vehicles
@@ -39,4 +40,5 @@ namespace PureDOTS.Runtime.Vehicles
         public float Progress;
     }
 }
+#endif
 
