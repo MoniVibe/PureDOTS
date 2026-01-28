@@ -13,3 +13,4 @@ namespace PureDOTS.Systems.Dynasty
     // This stub file can be removed after verification.
 }
 
+#endif

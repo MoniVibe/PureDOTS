@@ -13,3 +13,4 @@ namespace PureDOTS.Systems.Family
     // This stub file can be removed after verification.
 }
 
+#endif

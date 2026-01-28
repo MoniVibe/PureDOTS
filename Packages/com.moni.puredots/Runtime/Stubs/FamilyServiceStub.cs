@@ -12,3 +12,4 @@ namespace PureDOTS.Runtime.Family
     // This stub file can be removed after verification.
 }
 
+#endif
