@@ -45,5 +45,4 @@ namespace PureDOTS.Runtime.Aggregates
         public int GuildId;
     }
 }
-#endif
 

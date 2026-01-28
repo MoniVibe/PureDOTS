@@ -64,5 +64,4 @@ namespace PureDOTS.Runtime.Cooperation
         Failure = 5
     }
 }
-#endif
 

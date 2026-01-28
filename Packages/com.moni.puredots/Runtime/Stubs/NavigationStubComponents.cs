@@ -29,5 +29,4 @@ namespace PureDOTS.Runtime.Navigation
         public uint CompletedTick;
     }
 }
-#endif
 

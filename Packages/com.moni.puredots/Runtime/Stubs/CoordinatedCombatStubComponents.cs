@@ -32,5 +32,4 @@ namespace PureDOTS.Runtime.Cooperation
         public float ReloadTime;
     }
 }
-#endif
 

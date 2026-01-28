@@ -13,5 +13,4 @@ namespace PureDOTS.Runtime.Cooperation
         public static void DiffuseKnowledge(in Entity sourceGroup, in Entity targetGroup, FixedString64Bytes knowledgeId) { }
     }
 }
-#endif
 

@@ -22,5 +22,4 @@ namespace PureDOTS.Runtime.Relations
         public uint LastInteractionTick;
     }
 }
-#endif
 

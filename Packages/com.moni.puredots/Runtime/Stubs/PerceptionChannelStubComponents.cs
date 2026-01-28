@@ -79,5 +79,4 @@ namespace PureDOTS.Runtime.Perception
         public PerceivedRelationFlags RelationFlags;
     }
 }
-#endif
 

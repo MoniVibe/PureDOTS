@@ -10,5 +10,4 @@ namespace PureDOTS.Runtime.Diplomacy
         public static float GetRelation(in Entity a, in Entity b) => 0f;
     }
 }
-#endif
 

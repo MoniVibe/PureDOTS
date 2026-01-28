@@ -51,5 +51,4 @@ namespace PureDOTS.Runtime.Economy
         public float TotalValue;
     }
 }
-#endif
 

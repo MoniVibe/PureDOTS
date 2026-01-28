@@ -39,5 +39,4 @@ namespace PureDOTS.Runtime.Vehicles
         public float Progress;
     }
 }
-#endif
 

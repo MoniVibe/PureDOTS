@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Sensors
         [BurstCompile] public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

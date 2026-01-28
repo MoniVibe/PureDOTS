@@ -39,5 +39,4 @@ namespace PureDOTS.Runtime.Morphing
         }
     }
 }
-#endif
 

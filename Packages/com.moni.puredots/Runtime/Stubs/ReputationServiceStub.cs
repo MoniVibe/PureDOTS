@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Reputation
         public static float GetReputationScore(in Entity entity, in Entity observer, ReputationDomain domain) => 0f;
     }
 }
-#endif
 

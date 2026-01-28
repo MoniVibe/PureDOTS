@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Stats
         public static void SetWarlikePeaceful(in Entity entity, float value) { }
     }
 }
-#endif
 

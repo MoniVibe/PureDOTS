@@ -24,5 +24,4 @@ namespace PureDOTS.Runtime.Interception
         public float ETA;
     }
 }
-#endif
 

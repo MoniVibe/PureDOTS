@@ -27,5 +27,4 @@ namespace PureDOTS.Runtime.Communication
         }
     }
 }
-#endif
 

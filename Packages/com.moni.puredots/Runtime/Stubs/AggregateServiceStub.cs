@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Aggregates
         public static void RemoveMember(AggregateHandle aggregate, in Entity member) { }
     }
 }
-#endif
 

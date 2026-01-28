@@ -35,5 +35,4 @@ namespace PureDOTS.Runtime.Trade
         }
     }
 }
-#endif
 

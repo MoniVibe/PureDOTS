@@ -11,6 +11,4 @@ namespace PureDOTS.Runtime.Family
     // Use FamilyService instead of FamilyServiceStub.
     // This stub file can be removed after verification.
 }
-#endif
-#endif
 

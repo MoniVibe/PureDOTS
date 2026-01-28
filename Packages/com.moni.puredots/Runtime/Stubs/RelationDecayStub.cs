@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Relations
         public static void UpdateInteractionTimestamp(in Entity source, in Entity target) { }
     }
 }
-#endif
 

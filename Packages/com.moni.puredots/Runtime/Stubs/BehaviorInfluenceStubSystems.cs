@@ -95,5 +95,4 @@ namespace PureDOTS.Runtime.Behavior
         }
     }
 }
-#endif
 

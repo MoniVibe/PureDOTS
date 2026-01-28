@@ -15,5 +15,4 @@ namespace PureDOTS.Runtime.Perception
         public static void DecaySignalField(float deltaTime) { }
     }
 }
-#endif
 

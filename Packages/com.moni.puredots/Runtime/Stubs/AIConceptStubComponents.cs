@@ -1,5 +1,4 @@
 // [TRI-STUB] Ahead-of-time stub. Compile only when PUREDOTS_STUBS is defined.
-#if PUREDOTS_STUBS
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.AI

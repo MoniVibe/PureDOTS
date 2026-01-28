@@ -31,5 +31,4 @@ namespace PureDOTS.Runtime.Communication
         public byte Status; // 0=pending,1=sent,2=failed
     }
 }
-#endif
 

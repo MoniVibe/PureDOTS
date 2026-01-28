@@ -39,5 +39,4 @@ namespace PureDOTS.Runtime.Relations
         public float TensionLevel;
     }
 }
-#endif
 

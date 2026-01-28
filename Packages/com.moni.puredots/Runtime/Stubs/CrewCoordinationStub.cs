@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Cooperation
         public static float GetOperationalEfficiency(in Entity hangarBay) => 0f;
     }
 }
-#endif
 

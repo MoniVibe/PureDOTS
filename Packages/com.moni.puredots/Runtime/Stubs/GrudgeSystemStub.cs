@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Relations
         public static void ResolveGrudge(in Entity source, in Entity target) { }
     }
 }
-#endif
 

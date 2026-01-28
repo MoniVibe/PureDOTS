@@ -94,5 +94,4 @@ namespace PureDOTS.Runtime.Cooperation
         public float PerformanceBonus;
     }
 }
-#endif
 

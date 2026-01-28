@@ -15,5 +15,4 @@ namespace PureDOTS.Runtime.Cooperation
         public static void FireVolley(in Entity volley) { }
     }
 }
-#endif
 

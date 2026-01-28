@@ -23,5 +23,4 @@ namespace PureDOTS.Runtime.Operations
         public uint Timestamp;
     }
 }
-#endif
 

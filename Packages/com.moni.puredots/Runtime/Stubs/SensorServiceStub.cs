@@ -10,5 +10,4 @@ namespace PureDOTS.Runtime.Sensors
         public static void SubmitInterrupt(in Entity entity, byte category) { }
     }
 }
-#endif
 

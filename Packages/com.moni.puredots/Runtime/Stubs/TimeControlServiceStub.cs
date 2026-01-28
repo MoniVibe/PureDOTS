@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.TimeControl
         public static void RegisterBookmark(int bookmarkId, uint tick) { }
     }
 }
-#endif
 

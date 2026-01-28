@@ -28,5 +28,4 @@ namespace PureDOTS.Runtime.Sensors
         public byte Severity;
     }
 }
-#endif
 

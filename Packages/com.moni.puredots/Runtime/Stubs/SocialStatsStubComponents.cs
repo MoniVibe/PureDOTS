@@ -47,5 +47,4 @@ namespace PureDOTS.Runtime.Stats
         }
     }
 }
-#endif
 

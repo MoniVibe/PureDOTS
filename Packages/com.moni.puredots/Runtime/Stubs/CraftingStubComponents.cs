@@ -34,5 +34,4 @@ namespace PureDOTS.Runtime.Crafting
         public float QualityScore;
     }
 }
-#endif
 

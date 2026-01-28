@@ -96,5 +96,4 @@ namespace PureDOTS.Runtime.Cooperation
         public byte IsOnDuty;
     }
 }
-#endif
 

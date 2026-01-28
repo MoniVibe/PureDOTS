@@ -26,5 +26,4 @@ namespace PureDOTS.Runtime.Stats
         public static void DecayXP(in Entity entity, float deltaTime) { }
     }
 }
-#endif
 

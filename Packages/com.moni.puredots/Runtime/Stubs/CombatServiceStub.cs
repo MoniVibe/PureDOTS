@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Combat
         public static float GetThreatRating(in Entity entity) => 0f;
     }
 }
-#endif
 

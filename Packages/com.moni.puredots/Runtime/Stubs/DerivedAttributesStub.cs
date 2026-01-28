@@ -18,5 +18,4 @@ namespace PureDOTS.Runtime.Stats
         public static void RecalculateAllDerivedAttributes() { }
     }
 }
-#endif
 

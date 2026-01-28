@@ -15,5 +15,4 @@ namespace PureDOTS.Runtime.Combat
         ModuleRepairing = 103
     }
 }
-#endif
 

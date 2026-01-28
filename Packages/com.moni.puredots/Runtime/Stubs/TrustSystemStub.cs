@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Relations
         public static void UpdateTrustFromReliability(in Entity source, in Entity target, float reliabilityScore) { }
     }
 }
-#endif
 

@@ -13,5 +13,4 @@ namespace PureDOTS.Systems.Cooperation
         public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

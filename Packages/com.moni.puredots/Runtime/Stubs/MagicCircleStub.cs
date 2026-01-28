@@ -17,5 +17,4 @@ namespace PureDOTS.Runtime.Cooperation
         public static void StartRitual(in Entity circle, FixedString64Bytes ritualName) { }
     }
 }
-#endif
 

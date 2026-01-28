@@ -13,5 +13,4 @@ namespace PureDOTS.Systems.Perception
         public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

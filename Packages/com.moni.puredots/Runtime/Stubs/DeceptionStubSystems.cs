@@ -31,5 +31,4 @@ namespace PureDOTS.Systems.Deception
         public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

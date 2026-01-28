@@ -38,5 +38,4 @@ namespace PureDOTS.Runtime.Stats
         public static bool IsLegendary(in Entity entity) => false;
     }
 }
-#endif
 

@@ -139,5 +139,4 @@ namespace PureDOTS.Runtime.Motivation
         }
     }
 }
-#endif
 

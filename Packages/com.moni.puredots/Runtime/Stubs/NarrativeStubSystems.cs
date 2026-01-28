@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Narrative
         [BurstCompile] public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

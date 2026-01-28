@@ -52,5 +52,4 @@ namespace PureDOTS.Runtime.Relations
         GrudgeIntensified = 3
     }
 }
-#endif
 

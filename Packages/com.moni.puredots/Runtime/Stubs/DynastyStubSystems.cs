@@ -12,6 +12,4 @@ namespace PureDOTS.Systems.Dynasty
     // Systems: DynastySuccessionSystem, DynastyLineageTrackingSystem, DynastyReputationSystem, DynastyWealthAggregationSystem
     // This stub file can be removed after verification.
 }
-#endif
-#endif
 

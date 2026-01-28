@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Perception
         public static float GetEffectiveRange(in Entity entity, SenseOrganType organType, float baseRange) => baseRange;
     }
 }
-#endif
 

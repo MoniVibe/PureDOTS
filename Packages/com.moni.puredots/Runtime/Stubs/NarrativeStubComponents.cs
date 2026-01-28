@@ -21,5 +21,4 @@ namespace PureDOTS.Runtime.Narrative
         public byte Outcome;
     }
 }
-#endif
 

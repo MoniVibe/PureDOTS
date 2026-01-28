@@ -21,5 +21,4 @@ namespace PureDOTS.Runtime.Movement
         public uint LastUpdatedTick;
     }
 }
-#endif
 

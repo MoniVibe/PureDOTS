@@ -31,5 +31,4 @@ namespace PureDOTS.Systems.Reputation
         public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

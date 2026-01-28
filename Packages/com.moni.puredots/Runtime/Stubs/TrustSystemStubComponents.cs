@@ -40,5 +40,4 @@ namespace PureDOTS.Runtime.Relations
         UnreliableAction = 4
     }
 }
-#endif
 

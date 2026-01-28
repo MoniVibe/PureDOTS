@@ -13,5 +13,4 @@ namespace PureDOTS.Systems.Stats
         public void OnUpdate(ref SystemState state) { }
     }
 }
-#endif
 

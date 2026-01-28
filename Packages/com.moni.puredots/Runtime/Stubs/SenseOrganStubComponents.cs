@@ -32,5 +32,4 @@ namespace PureDOTS.Runtime.Perception
         ParanormalOrgan = 6
     }
 }
-#endif
 

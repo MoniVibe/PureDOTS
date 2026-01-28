@@ -21,5 +21,4 @@ namespace PureDOTS.Runtime.Navigation
         }
     }
 }
-#endif
 

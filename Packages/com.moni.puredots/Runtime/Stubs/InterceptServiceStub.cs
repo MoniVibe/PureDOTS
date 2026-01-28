@@ -49,5 +49,4 @@ namespace PureDOTS.Runtime.Interception
         }
     }
 }
-#endif
 

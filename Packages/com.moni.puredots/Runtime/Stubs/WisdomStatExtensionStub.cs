@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Stats
         public static float GetWisdomGainModifier(in Entity entity) => 1f;
     }
 }
-#endif
 

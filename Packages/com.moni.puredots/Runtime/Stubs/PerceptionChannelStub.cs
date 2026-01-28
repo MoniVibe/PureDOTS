@@ -12,5 +12,4 @@ namespace PureDOTS.Runtime.Perception
         public static PerceptionChannel GetDetectedChannels(in Entity detector, in Entity target) => PerceptionChannel.None;
     }
 }
-#endif
 

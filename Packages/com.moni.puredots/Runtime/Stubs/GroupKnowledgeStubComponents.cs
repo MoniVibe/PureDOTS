@@ -41,5 +41,4 @@ namespace PureDOTS.Runtime.Cooperation
         public float DiffusionRate;
     }
 }
-#endif
 

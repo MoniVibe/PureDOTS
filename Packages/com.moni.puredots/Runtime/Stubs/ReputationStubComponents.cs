@@ -56,5 +56,4 @@ namespace PureDOTS.Runtime.Reputation
         public uint EventTick;
     }
 }
-#endif
 

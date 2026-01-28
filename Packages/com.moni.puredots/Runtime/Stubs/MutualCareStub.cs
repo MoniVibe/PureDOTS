@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Cooperation
         public static float GetBondStrength(in Entity entityA, in Entity entityB) => 0f;
     }
 }
-#endif
 

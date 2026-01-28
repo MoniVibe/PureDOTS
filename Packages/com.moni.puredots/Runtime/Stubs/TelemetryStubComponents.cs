@@ -15,5 +15,4 @@ namespace PureDOTS.Runtime.Telemetry
         public float Value;
     }
 }
-#endif
 

@@ -11,6 +11,4 @@ namespace PureDOTS.Runtime.Dynasty
     // Runtime/Runtime/Dynasty/DynastyComponents.cs
     // This stub file can be removed after verification.
 }
-#endif
-#endif
 

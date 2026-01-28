@@ -64,5 +64,4 @@ namespace PureDOTS.Runtime.Deception
         public uint EventTick;
     }
 }
-#endif
 

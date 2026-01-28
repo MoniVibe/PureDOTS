@@ -67,5 +67,4 @@ namespace PureDOTS.Runtime.Stats
         Wisdom = 3
     }
 }
-#endif
 

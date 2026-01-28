@@ -53,5 +53,4 @@ namespace PureDOTS.Runtime.Behavior
         public float Urgency;
     }
 }
-#endif
 

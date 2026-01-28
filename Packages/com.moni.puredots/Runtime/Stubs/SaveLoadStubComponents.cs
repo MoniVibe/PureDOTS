@@ -15,5 +15,4 @@ namespace PureDOTS.Runtime.Persistence
         public int TicketId;
     }
 }
-#endif
 

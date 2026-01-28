@@ -11,6 +11,4 @@ namespace PureDOTS.Runtime.Family
     // Runtime/Runtime/Family/FamilyComponents.cs
     // This stub file can be removed after verification.
 }
-#endif
-#endif
 

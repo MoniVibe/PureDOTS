@@ -14,5 +14,4 @@ namespace PureDOTS.Runtime.Relations
         public static void FormAlliance(in Entity factionA, in Entity factionB) { }
     }
 }
-#endif
 

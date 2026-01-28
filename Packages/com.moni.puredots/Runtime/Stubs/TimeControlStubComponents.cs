@@ -20,5 +20,4 @@ namespace PureDOTS.Runtime.TimeControl
         public uint CurrentTick;
     }
 }
-#endif
 
