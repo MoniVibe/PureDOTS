@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for perception channel integration
 using Unity.Entities;
 using Unity.Collections;
@@ -79,4 +80,5 @@ namespace PureDOTS.Runtime.Perception
         public PerceivedRelationFlags RelationFlags;
     }
 }
+#endif
 

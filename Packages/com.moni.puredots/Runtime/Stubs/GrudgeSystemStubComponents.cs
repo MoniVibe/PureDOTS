@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for grudge system
 using Unity.Entities;
 using Unity.Collections;
@@ -52,4 +53,5 @@ namespace PureDOTS.Runtime.Relations
         GrudgeIntensified = 3
     }
 }
+#endif
 

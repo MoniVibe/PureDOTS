@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Entities;
 using Unity.Mathematics;
@@ -15,4 +16,5 @@ namespace PureDOTS.Runtime.Cooperation
         public static void FireVolley(in Entity volley) { }
     }
 }
+#endif
 

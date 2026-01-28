@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 namespace PureDOTS.Runtime.Narrative
 {
@@ -8,3 +9,5 @@ namespace PureDOTS.Runtime.Narrative
         public static void SelectChoice(int eventId, int choiceIndex) { }
     }
 }
+#endif
+

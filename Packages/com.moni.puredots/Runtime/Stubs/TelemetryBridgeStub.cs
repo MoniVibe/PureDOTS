@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Collections;
 
@@ -10,3 +11,5 @@ namespace PureDOTS.Runtime.Telemetry
         public static void RecordEvent(FixedString64Bytes eventId) { }
     }
 }
+#endif
+

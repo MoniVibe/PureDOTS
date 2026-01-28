@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for reputation
 using Unity.Burst;
 using Unity.Entities;
@@ -31,4 +32,5 @@ namespace PureDOTS.Systems.Reputation
         public void OnUpdate(ref SystemState state) { }
     }
 }
+#endif
 

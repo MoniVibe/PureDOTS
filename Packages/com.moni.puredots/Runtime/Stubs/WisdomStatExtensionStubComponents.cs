@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub component for Wisdom stat extension
 using Unity.Entities;
 
@@ -43,4 +44,5 @@ namespace PureDOTS.Runtime.Stats
         }
     }
 }
+#endif
 

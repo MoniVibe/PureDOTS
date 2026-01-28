@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 using Unity.Collections;
 using Unity.Entities;
 
@@ -123,3 +124,5 @@ namespace PureDOTS.Runtime.Perception
         Proximity = 1 << 7
     }
 }
+#endif
+

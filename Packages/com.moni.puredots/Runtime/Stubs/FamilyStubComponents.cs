@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Components moved to Runtime/Runtime/Family/FamilyComponents.cs
 // This file kept for reference but types are now defined in the implementation.
@@ -11,5 +12,6 @@ namespace PureDOTS.Runtime.Family
     // Runtime/Runtime/Family/FamilyComponents.cs
     // This stub file can be removed after verification.
 }
+#endif
 #endif
 

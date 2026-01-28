@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for trust system
 using Unity.Entities;
 using Unity.Collections;
@@ -40,4 +41,5 @@ namespace PureDOTS.Runtime.Relations
         UnreliableAction = 4
     }
 }
+#endif
 

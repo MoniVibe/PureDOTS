@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for relation decay
 using Unity.Burst;
 using Unity.Entities;
@@ -13,4 +14,5 @@ namespace PureDOTS.Systems.Relations
         public void OnUpdate(ref SystemState state) { }
     }
 }
+#endif
 

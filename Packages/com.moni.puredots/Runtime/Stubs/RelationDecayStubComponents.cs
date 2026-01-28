@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for relation decay system
 using Unity.Entities;
 
@@ -22,4 +23,5 @@ namespace PureDOTS.Runtime.Relations
         public uint LastInteractionTick;
     }
 }
+#endif
 

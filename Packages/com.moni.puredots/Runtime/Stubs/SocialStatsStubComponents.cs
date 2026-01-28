@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for social stats system
 using Unity.Entities;
 
@@ -47,4 +48,5 @@ namespace PureDOTS.Runtime.Stats
         }
     }
 }
+#endif
 

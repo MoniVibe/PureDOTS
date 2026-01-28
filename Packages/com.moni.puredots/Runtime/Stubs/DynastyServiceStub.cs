@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Service moved to Runtime/Runtime/Dynasty/DynastyService.cs
 // This file kept for reference but implementation is now in DynastyService.
@@ -11,5 +12,6 @@ namespace PureDOTS.Runtime.Dynasty
     // Use DynastyService instead of DynastyServiceStub.
     // This stub file can be removed after verification.
 }
+#endif
 #endif
 

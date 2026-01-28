@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Entities;
 
@@ -14,4 +15,5 @@ namespace PureDOTS.Runtime.Reputation
         public static float GetReputationScore(in Entity entity, in Entity observer, ReputationDomain domain) => 0f;
     }
 }
+#endif
 

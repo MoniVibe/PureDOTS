@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Behavior
@@ -53,3 +54,5 @@ namespace PureDOTS.Runtime.Behavior
         public float Urgency;
     }
 }
+#endif
+

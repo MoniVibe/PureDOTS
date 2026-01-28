@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for deception
 using Unity.Burst;
 using Unity.Entities;
@@ -31,4 +32,5 @@ namespace PureDOTS.Systems.Deception
         public void OnUpdate(ref SystemState state) { }
     }
 }
+#endif
 

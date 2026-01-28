@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Systems moved to Runtime/Systems/Family/FamilySystems.cs
 // This file kept for reference but systems are now implemented.
@@ -12,5 +13,6 @@ namespace PureDOTS.Systems.Family
     // Systems: FamilyRelationshipCalculationSystem, InheritanceTrackingSystem, FamilyTreeUpdateSystem, FamilyWealthAggregationSystem
     // This stub file can be removed after verification.
 }
+#endif
 #endif
 

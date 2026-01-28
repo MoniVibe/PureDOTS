@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 #if false
 // [TRI-STUB] IMPLEMENTED - Service moved to Runtime/Runtime/Family/FamilyService.cs
 // This file kept for reference but implementation is now in FamilyService.
@@ -11,5 +12,6 @@ namespace PureDOTS.Runtime.Family
     // Use FamilyService instead of FamilyServiceStub.
     // This stub file can be removed after verification.
 }
+#endif
 #endif
 

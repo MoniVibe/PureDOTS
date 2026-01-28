@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for XP pools system
 using Unity.Entities;
 
@@ -67,4 +68,5 @@ namespace PureDOTS.Runtime.Stats
         Wisdom = 3
     }
 }
+#endif
 

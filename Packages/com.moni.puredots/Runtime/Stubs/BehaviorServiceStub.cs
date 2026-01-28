@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -66,3 +67,5 @@ namespace PureDOTS.Runtime.Behavior
         }
     }
 }
+#endif
+

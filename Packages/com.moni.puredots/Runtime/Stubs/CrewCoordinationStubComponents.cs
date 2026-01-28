@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for crew coordination
 using Unity.Entities;
 using Unity.Collections;
@@ -96,4 +97,5 @@ namespace PureDOTS.Runtime.Cooperation
         public byte IsOnDuty;
     }
 }
+#endif
 

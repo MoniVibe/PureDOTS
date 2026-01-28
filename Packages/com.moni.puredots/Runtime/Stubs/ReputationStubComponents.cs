@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for reputation system
 using Unity.Entities;
 using Unity.Collections;
@@ -56,4 +57,5 @@ namespace PureDOTS.Runtime.Reputation
         public uint EventTick;
     }
 }
+#endif
 

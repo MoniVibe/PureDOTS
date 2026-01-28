@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Entities;
 
@@ -26,4 +27,5 @@ namespace PureDOTS.Runtime.Stats
         public static void DecayXP(in Entity entity, float deltaTime) { }
     }
 }
+#endif
 

@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for group knowledge sharing
 using Unity.Entities;
 using Unity.Collections;
@@ -41,4 +42,5 @@ namespace PureDOTS.Runtime.Cooperation
         public float DiffusionRate;
     }
 }
+#endif
 

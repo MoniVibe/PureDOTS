@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for extended personality axes
 using Unity.Entities;
 
@@ -34,4 +35,5 @@ namespace PureDOTS.Runtime.Stats
         }
     }
 }
+#endif
 

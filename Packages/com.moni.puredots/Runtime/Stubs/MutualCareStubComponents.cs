@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for mutual care system
 using Unity.Entities;
 using Unity.Collections;
@@ -94,4 +95,5 @@ namespace PureDOTS.Runtime.Cooperation
         public float PerformanceBonus;
     }
 }
+#endif
 

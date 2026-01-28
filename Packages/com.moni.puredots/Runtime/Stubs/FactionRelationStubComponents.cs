@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for faction relations
 using Unity.Entities;
 
@@ -39,4 +40,5 @@ namespace PureDOTS.Runtime.Relations
         public float TensionLevel;
     }
 }
+#endif
 

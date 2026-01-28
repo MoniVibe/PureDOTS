@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for coordinated combat
 using Unity.Entities;
 using Unity.Collections;
@@ -32,4 +33,5 @@ namespace PureDOTS.Runtime.Cooperation
         public float ReloadTime;
     }
 }
+#endif
 

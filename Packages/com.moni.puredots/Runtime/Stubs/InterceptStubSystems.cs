@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Burst;
 using Unity.Entities;
@@ -31,3 +32,5 @@ namespace PureDOTS.Runtime.Interception
         }
     }
 }
+#endif
+

@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub system for extended personality axes
 using Unity.Burst;
 using Unity.Entities;
@@ -13,4 +14,5 @@ namespace PureDOTS.Systems.Stats
         public void OnUpdate(ref SystemState state) { }
     }
 }
+#endif
 

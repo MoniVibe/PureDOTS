@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Collections;
 using Unity.Entities;
@@ -13,4 +14,5 @@ namespace PureDOTS.Runtime.Cooperation
         public static void DiffuseKnowledge(in Entity sourceGroup, in Entity targetGroup, FixedString64Bytes knowledgeId) { }
     }
 }
+#endif
 

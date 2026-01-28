@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] This is an ahead-of-time stub. Safe to compile, does nothing at runtime.
 using Unity.Entities;
 
@@ -12,3 +13,5 @@ namespace PureDOTS.Runtime.Crafting
         public static float EvaluateQuality(in CraftingFormulaParams formula, float skill, float materialQuality) => 0f;
     }
 }
+#endif
+

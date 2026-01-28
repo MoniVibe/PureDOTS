@@ -1,3 +1,4 @@
+#if PUREDOTS_STUBS
 // [TRI-STUB] Stub components for deception system
 using Unity.Entities;
 using Unity.Collections;
@@ -64,4 +65,5 @@ namespace PureDOTS.Runtime.Deception
         public uint EventTick;
     }
 }
+#endif
 
