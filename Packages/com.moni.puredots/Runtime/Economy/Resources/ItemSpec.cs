@@ -37,7 +37,8 @@ namespace PureDOTS.Runtime.Economy.Resources
         Rare = 1 << 7,
         BulkOnly = 1 << 8,
         Perishable = 1 << 9,
-        Durable = 1 << 10
+        Durable = 1 << 10,
+        Fuel = 1 << 11
     }
 
     /// <summary>
@@ -78,4 +79,3 @@ namespace PureDOTS.Runtime.Economy.Resources
         public BlobAssetReference<ItemSpecCatalogBlob> Catalog;
     }
 }
-
