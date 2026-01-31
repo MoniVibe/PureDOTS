@@ -115,7 +115,8 @@ namespace PureDOTS.Systems
             var telemetryEntity = SystemAPI.GetSingletonEntity<TelemetryStream>();
             if (!EntityManager.HasBuffer<TelemetryMetric>(telemetryEntity))
             {
-                EntityManager.AddBuffer<TelemetryMetric>(telemetryEntity);
+                // Avoid structural changes during the group update; skip timing metrics if missing.
+                return false;
             }
 
             metrics = EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
