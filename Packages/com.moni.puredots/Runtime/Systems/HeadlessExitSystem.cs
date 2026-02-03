@@ -42,8 +42,8 @@ namespace PureDOTS.Systems
             {
                 state.Dependency.Complete();
                 state.EntityManager.CompleteAllTrackedJobs();
-                HeadlessExitFallback.ScheduleKill(2000);
-                Quit(request.ExitCode);
+                // Avoid Unity shutdown crashes by exiting directly in headless batch runs.
+                System.Environment.Exit(request.ExitCode);
                 return;
             }
 
