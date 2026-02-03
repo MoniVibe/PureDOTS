@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Dynasty;
 using PureDOTS.Runtime.Modularity;
 using PureDOTS.Runtime.Organization;
+using OrganizationComponent = PureDOTS.Runtime.Organization.Organization;
 using PureDOTS.Runtime.Aggregates;
 using PureDOTS.Runtime.Guild;
 using Unity.Burst;
@@ -30,7 +31,7 @@ namespace PureDOTS.Runtime.Systems.Aggregates
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<FactionId>().Build());
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<CultureState>().Build());
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<DynastyIdentity>().Build());
-            AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<Organization>().Build());
+            AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<OrganizationComponent>().Build());
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<AggregateFaction>().Build());
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<Guild>().Build());
             AddTagsForQuery(ref state, ecb, SystemAPI.QueryBuilder().WithAll<GuildId>().Build());
