@@ -68,7 +68,7 @@ namespace PureDOTS.Systems.Anatomy
                         continue;
                     }
 
-                    var partIndex = FindPartIndex(partsBuffer, damageEvent.PartId);
+                var partIndex = FindPartIndex(ref partsBuffer, damageEvent.PartId);
                     if (partIndex < 0)
                     {
                         if (hasHealth)
@@ -122,7 +122,7 @@ namespace PureDOTS.Systems.Anatomy
         }
 
         [BurstCompile]
-        private static int FindPartIndex(DynamicBuffer<BodyPartState> parts, FixedString64Bytes partId)
+        private static int FindPartIndex(ref DynamicBuffer<BodyPartState> parts, FixedString64Bytes partId)
         {
             for (int i = 0; i < parts.Length; i++)
             {
