@@ -40,8 +40,11 @@ namespace PureDOTS.Systems
             UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
             if (RuntimeMode.IsHeadless && Application.isBatchMode)
             {
+                state.Dependency.Complete();
+                state.EntityManager.CompleteAllTrackedJobs();
                 HeadlessExitFallback.ScheduleKill(2000);
-                System.Environment.Exit(request.ExitCode);
+                Quit(request.ExitCode);
+                return;
             }
 
             state.Dependency.Complete();
