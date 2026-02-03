@@ -34,6 +34,8 @@ namespace PureDOTS.Systems
 
             var request = state.EntityManager.GetComponentData<HeadlessExitRequest>(requestEntity);
             UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
+            state.Dependency.Complete();
+            state.EntityManager.CompleteAllTrackedJobs();
             Quit(request.ExitCode);
         }
 
@@ -46,11 +48,6 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
-            if (Application.isBatchMode)
-            {
-                System.Environment.Exit(exitCode);
-                return;
-            }
             Application.Quit(exitCode);
         }
     }
