@@ -51,22 +51,24 @@ namespace PureDOTS.Systems.Anatomy
                          .Query<DynamicBuffer<BodyPartDamageEvent>, DynamicBuffer<BodyPartState>>()
                          .WithEntityAccess())
             {
-                if (damageEvents.Length == 0)
+                var damageBuffer = damageEvents;
+                var partsBuffer = parts;
+                if (damageBuffer.Length == 0)
                 {
                     continue;
                 }
 
                 var hasHealth = _healthLookup.HasComponent(entity);
 
-                for (int i = 0; i < damageEvents.Length; i++)
+                for (int i = 0; i < damageBuffer.Length; i++)
                 {
-                    var damageEvent = damageEvents[i];
+                    var damageEvent = damageBuffer[i];
                     if (damageEvent.Damage <= 0f)
                     {
                         continue;
                     }
 
-                    var partIndex = FindPartIndex(parts, damageEvent.PartId);
+                    var partIndex = FindPartIndex(partsBuffer, damageEvent.PartId);
                     if (partIndex < 0)
                     {
                         if (hasHealth)
@@ -79,11 +81,11 @@ namespace PureDOTS.Systems.Anatomy
                         continue;
                     }
 
-                    var part = parts[partIndex];
+                    var part = partsBuffer[partIndex];
                     var multiplier = part.DamageMultiplier <= 0f ? 1f : part.DamageMultiplier;
                     var appliedDamage = damageEvent.Damage * multiplier;
                     part.CurrentHealth = math.max(0f, part.CurrentHealth - appliedDamage);
-                    parts[partIndex] = part;
+                    partsBuffer[partIndex] = part;
 
                     if (part.CurrentHealth <= 0f && (part.Flags & BodyPartFlags.Vital) != 0)
                     {
@@ -113,7 +115,7 @@ namespace PureDOTS.Systems.Anatomy
                     }
                 }
 
-                damageEvents.Clear();
+                damageBuffer.Clear();
             }
 
             ecb.Playback(state.EntityManager);
