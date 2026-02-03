@@ -39,9 +39,7 @@ namespace PureDOTS.Systems
             UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
             if (RuntimeMode.IsHeadless && Application.isBatchMode)
             {
-                state.Dependency.Complete();
-                state.EntityManager.CompleteAllTrackedJobs();
-                HeadlessExitFallback.Immediate(request.ExitCode);
+                HeadlessExitFallback.Schedule(request.ExitCode, 200);
                 return;
             }
 
@@ -73,7 +71,7 @@ namespace PureDOTS.Systems
                     return;
                 }
 
-                Task.Run(() =>
+                var thread = new Thread(() =>
                 {
                     Thread.Sleep(delayMs);
                     try
@@ -85,16 +83,8 @@ namespace PureDOTS.Systems
                     }
                     System.Environment.Exit(exitCode);
                 });
-            }
-
-            public static void Immediate(int exitCode)
-            {
-                if (Interlocked.Exchange(ref _scheduled, 1) != 0)
-                {
-                    return;
-                }
-
-                System.Environment.Exit(exitCode);
+                thread.IsBackground = true;
+                thread.Start();
             }
         }
     }
