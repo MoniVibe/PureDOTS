@@ -3,6 +3,10 @@
 **Category**: Core / Identity / Progression  
 **Applies To**: Godgame, Space4X, shared PureDOTS  
 
+**Terminology note**: This document uses "archetype" in the **profile bundle** sense (data-authored biases/caps).
+For the locked definition of **StatArchetype** (Physique/Finesse/Will/Wisdom), see
+`Docs/Concepts/Core/Entity_Profile_Glossary.md`.
+
 ---
 
 ## 0) Goals
@@ -421,5 +425,4 @@ See: `Concepts/Core/Capabilities_And_Affordances_System.md`.
 - Profile/archetype facet framing: `puredots/Docs/Concepts/Core/Entity_Profile_Schema.md`
 - Godgame stat schema: `godgame/Docs/Individual_Template_Stats.md`, `godgame/Docs/Individual_Stats_Requirements.md`
 - Space4X officer/archetype framing: `space4x/Docs/Conceptualization/Mechanics/AceOfficerProgression.md`, `space4x/Docs/PureDOTS_Request_Space4xStats.md`
-
 

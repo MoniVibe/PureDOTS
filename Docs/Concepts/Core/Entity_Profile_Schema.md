@@ -4,6 +4,8 @@
 **Category**: Core / AI / Social  
 **Applies To**: Godgame, Space4X, shared PureDOTS
 
+**Glossary (locked terms)**: `Docs/Concepts/Core/Entity_Profile_Glossary.md`
+
 ---
 
 ## Purpose
@@ -26,7 +28,8 @@ Blank-by-default rule:
 
 - **Profile**: relatively stable traits and identity (alignment, ideology axes, personality/behavior, culture/race, nature/archetype).
 - **Policy**: derived biases/thresholds used directly by gameplay systems (obedience, risk tolerance, aggression, consensus appetite, mutiny thresholds, delegation rules).
-- **Stance**: a *situational* orientation toward a specific authority/relationship (loyalist vs mutinous vs opportunist). Stance is not ideology.
+- **Stance**: a *situational* posture toward a specific authority/relationship (loyalist vs mutinous vs opportunist) and/or
+  an operational alert regimen (patrol vs alert vs combat posture). Stance is not ideology.
 
 ---
 
@@ -99,7 +102,7 @@ These move frequently and should not be confused with “profile”:
 
 Existing in Space4X:
 - `AffiliationTag` (membership + loyalty)
-- `OutlookEntry` / `TopOutlook` (currently used like “stance tags”)
+- `StanceEntry` / `TopStance` (Space4X stance buffers)
 
 ### Profile action accounting (mutation inputs)
 Profile mutation is event-driven and uses bounded buffers (no per-tick scans).
@@ -129,7 +132,7 @@ Space4X `EthicAxisId.War` is treated as the canonical **Military** axis (militar
 If we later unify axis enums across games, prefer the canonical names in this doc and map game enums at boundaries.
 
 ### Stance vs ideology
-Space4X `OutlookId { Loyalist, Opportunist, Fanatic, Mutinous }` is **stance**, not ideology.
+Space4X `StanceId { Loyalist, Opportunist, Fanatic, Mutinous }` is **stance**, not ideology.
 Keep stance per-affiliation (membership context) and avoid conflating it with ideology axes (Authority/Military/etc.).
 
 ---

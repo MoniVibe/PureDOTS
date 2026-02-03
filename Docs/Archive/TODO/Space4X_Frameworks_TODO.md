@@ -16,7 +16,7 @@ Agent routing (single source of truth): when told to "proceed work", start here.
 
 ## Core Mechanics & Compliance
 - Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
-- Wire alignment data on crew prefabs: `AlignmentTriplet`, `RaceId`, `CultureId`, `DynamicBuffer<EthicAxisValue>`, `DynamicBuffer<OutlookEntry>`, crew aggregates with `DynamicBuffer<TopOutlook>`, `RacePresence`, `CulturePresence`.
+- Wire alignment data on crew prefabs: `AlignmentTriplet`, `RaceId`, `CultureId`, `DynamicBuffer<EthicAxisValue>`, `DynamicBuffer<StanceEntry>`, crew aggregates with `DynamicBuffer<TopStance>`, `RacePresence`, `CulturePresence`.
 - Populate `DynamicBuffer<AffiliationTag>` for crews, fleets, colonies, factions; derive loyalty from morale/contract on spawn.
 - Add `DoctrineAuthoring` baker mapping to `DoctrineProfile`, `DynamicBuffer<DoctrineAxisExpectation>`, `DynamicBuffer<DoctrineOutlookExpectation>`.
 - Implement `CrewAggregationSystem` (recompute weighted alignments/outlooks) feeding compliance buffers.
@@ -67,7 +67,7 @@ Agent routing (single source of truth): when told to "proceed work", start here.
 
 ## Authoring & Tooling
 - Status: Planned | Owner: TBD | LastUpdated: 2025-02-06
-- Enum registry generation: `EthicAxisId`, `OutlookId`, `AffiliationType` shared across authoring/narrative/DOTS.
+- Enum registry generation: `EthicAxisId`, `StanceId`, `AffiliationType` shared across authoring/narrative/DOTS.
 - Inspector helpers/validation: doctrine min/max ranges, fanatic conviction caps; baker validation for crews.
 - Sample micro scene: captain + crew + faction doctrine to validate mutiny/desertion flows.
 

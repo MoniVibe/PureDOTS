@@ -69,9 +69,9 @@ namespace Space4X.Registry
     /// Individual outlook weight. Multiple entries may exist, but only the top three are surfaced for crews.
     /// </summary>
     [InternalBufferCapacity(3)]
-    public struct OutlookEntry : IBufferElementData
+    public struct StanceEntry : IBufferElementData
     {
-        public ushort OutlookId;
+        public ushort StanceId;
         public half Weight;
     }
 
@@ -99,9 +99,9 @@ namespace Space4X.Registry
     /// Aggregated outlook values (already filtered to top three).
     /// </summary>
     [InternalBufferCapacity(3)]
-    public struct TopOutlook : IBufferElementData
+    public struct TopStance : IBufferElementData
     {
-        public ushort OutlookId;
+        public ushort StanceId;
         public half Weight;
     }
 
@@ -238,7 +238,7 @@ namespace Space4X.Registry
     [InternalBufferCapacity(3)]
     public struct DoctrineOutlookExpectation : IBufferElementData
     {
-        public ushort OutlookId;
+        public ushort StanceId;
         public half MinimumWeight;
     }
 
@@ -284,3 +284,4 @@ namespace Space4X.Registry
         }
     }
 }
+
