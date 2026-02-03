@@ -46,6 +46,11 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
+            if (Application.isBatchMode)
+            {
+                System.Environment.Exit(exitCode);
+                return;
+            }
             Application.Quit(exitCode);
         }
     }
