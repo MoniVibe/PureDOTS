@@ -108,8 +108,7 @@ or clarified in that context.
 - **Alignment**: `Space4X.Registry.AlignmentTriplet`
 - **Outlook (ideology axes)**: `Space4X.Registry.EthicAxisValue`
 - **Stance (Space4X)**: `Space4X.Registry.StanceId`, `StanceEntry`, `TopStance`
-- **Stance (PureDOTS legacy naming)**: `PureDOTS.Runtime.Alignment.Outlook` / `OutlookEntry` / `TopOutlook`  
-  (these are *stance* despite the legacy name; do not confuse with ideology/outlook axes)
+- **Stance (PureDOTS)**: `PureDOTS.Runtime.Alignment.Stance` / `StanceEntry` / `TopStance`
 
 ---
 

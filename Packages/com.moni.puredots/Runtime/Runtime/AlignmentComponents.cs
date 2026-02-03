@@ -2,6 +2,8 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine.Scripting.APIUpdating;
+using UnityEngine.Serialization;
 
 namespace PureDOTS.Runtime.Alignment
 {
@@ -33,7 +35,8 @@ namespace PureDOTS.Runtime.Alignment
         public half Value;
     }
 
-    public enum Outlook : byte
+    [MovedFrom(true, "PureDOTS.Runtime.Alignment", null, "Outlook")]
+    public enum Stance : byte
     {
         Neutral = 0,
         Loyalist = 1,
@@ -43,22 +46,26 @@ namespace PureDOTS.Runtime.Alignment
     }
 
     /// <summary>
-    /// Individual outlook weight entries. Multiple may exist per entity.
+    /// Individual stance weight entries. Multiple may exist per entity.
     /// </summary>
     [InternalBufferCapacity(3)]
-    public struct OutlookEntry : IBufferElementData
+    [MovedFrom(true, "PureDOTS.Runtime.Alignment", null, "OutlookEntry")]
+    public struct StanceEntry : IBufferElementData
     {
-        public Outlook OutlookId;
+        [FormerlySerializedAs("OutlookId")]
+        public Stance StanceId;
         public half Weight;
     }
 
     /// <summary>
-    /// Aggregated outlook values (typically the top three).
+    /// Aggregated stance values (typically the top three).
     /// </summary>
     [InternalBufferCapacity(3)]
-    public struct TopOutlook : IBufferElementData
+    [MovedFrom(true, "PureDOTS.Runtime.Alignment", null, "TopOutlook")]
+    public struct TopStance : IBufferElementData
     {
-        public Outlook OutlookId;
+        [FormerlySerializedAs("OutlookId")]
+        public Stance StanceId;
         public half Weight;
     }
 
@@ -123,7 +130,8 @@ namespace PureDOTS.Runtime.Alignment
         public float Suspicion;
         public float Obedience;
         public float Fanaticism;
-        public Outlook Outlook;
+        [FormerlySerializedAs("Outlook")]
+        public Stance Stance;
     }
 
     public enum ComplianceStatus : byte

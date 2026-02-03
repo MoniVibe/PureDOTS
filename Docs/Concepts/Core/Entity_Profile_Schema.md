@@ -110,7 +110,7 @@ Profile mutation is event-driven and uses bounded buffers (no per-tick scans).
 - Orders are tracked separately from execution: `OrderIssued` vs `ObeyOrder`/`DisobeyOrder`.
 - Events carry intent/justification/outcome flags, magnitude, and authority-seat context.
 - `ProfileMutationSystem` accumulates deltas in `ProfileActionAccumulator` and applies them on a cadence with decay.
-- Games supply the action catalog (token → alignment/outlook deltas); PureDOTS owns the mutation logic.
+- Games supply the action catalog (token → alignment/stance deltas); PureDOTS owns the mutation logic.
 
 ---
 
