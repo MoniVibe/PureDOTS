@@ -65,8 +65,9 @@ namespace PureDOTS.Systems.Memory
 
             foreach (var memories in SystemAPI.Query<DynamicBuffer<MemoryEntry>>())
             {
-                DecayMemories(ref memories, currentTick, config.MinMagnitude);
-                PruneMemories(ref memories, config.MaxMemories);
+                var buffer = memories;
+                DecayMemories(ref buffer, currentTick, config.MinMagnitude);
+                PruneMemories(ref buffer, config.MaxMemories);
             }
         }
 
