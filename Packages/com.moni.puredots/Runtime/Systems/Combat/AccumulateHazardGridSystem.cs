@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -22,6 +23,12 @@ namespace PureDOTS.Systems.Combat
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            if (BugHuntGate.IsDisabled("hazard_grid"))
+            {
+                state.Enabled = false;
+                return;
+            }
+
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<HazardGridSingleton>();

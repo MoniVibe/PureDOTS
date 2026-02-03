@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Core;
 using Unity.Burst;
 using Unity.Entities;
 
@@ -15,6 +16,12 @@ namespace PureDOTS.Systems.Combat
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            if (BugHuntGate.IsDisabled("hazard_grid"))
+            {
+                state.Enabled = false;
+                return;
+            }
+
             var em = state.EntityManager;
 
             if (SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out _))
@@ -36,5 +43,4 @@ namespace PureDOTS.Systems.Combat
         [BurstCompile] public void OnDestroy(ref SystemState state) { }
     }
 }
-
 

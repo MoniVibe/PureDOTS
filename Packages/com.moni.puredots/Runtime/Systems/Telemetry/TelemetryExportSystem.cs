@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using PureDOTS.Runtime;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
@@ -42,6 +43,12 @@ namespace PureDOTS.Systems.Telemetry
 
         protected override void OnCreate()
         {
+            if (BugHuntGate.IsDisabled("telemetry"))
+            {
+                Enabled = false;
+                return;
+            }
+
             RequireForUpdate<TelemetryExportConfig>();
             _activePath = string.Empty;
             _scenarioIdString = string.Empty;
