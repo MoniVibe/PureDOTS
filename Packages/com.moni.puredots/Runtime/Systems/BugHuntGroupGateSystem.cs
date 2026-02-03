@@ -1,6 +1,6 @@
 using PureDOTS.Runtime.Core;
 using Unity.Entities;
-using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Systems
 {
@@ -41,7 +41,7 @@ namespace PureDOTS.Systems
             }
 
             group.Enabled = false;
-            Debug.Log($"[BugHuntGate] Disabled group {typeof(T).Name} (token={token}).");
+            UnityDebug.Log($"[BugHuntGate] Disabled group {typeof(T).Name} (token={token}).");
         }
     }
 }
