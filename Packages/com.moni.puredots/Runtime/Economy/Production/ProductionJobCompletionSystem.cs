@@ -134,7 +134,8 @@ namespace PureDOTS.Runtime.Economy.Production
             for (int i = 0; i < recipe.Outputs.Length; i++)
             {
                 ref var output = ref recipe.Outputs[i];
-                AddItem(ref items, output.ItemId, output.Quantity, 50f, 1.0f, tick); // Default quality, will be updated by quality system
+                var outputQuality = ResolveOutputQuality(recipe, items);
+                AddItem(ref items, output.ItemId, output.Quantity, outputQuality, 1.0f, tick);
             }
 
             // Pay wages (Chunk 1)
@@ -229,6 +230,51 @@ namespace PureDOTS.Runtime.Economy.Production
                 CreatedTick = tick
             });
         }
+
+        [BurstCompile]
+        private static float ResolveOutputQuality(in ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items)
+        {
+            var minQuality = 0.1f;
+            var weightedSum = 0f;
+            var totalWeight = 0f;
+
+            for (int i = 0; i < recipe.Inputs.Length; i++)
+            {
+                ref var input = ref recipe.Inputs[i];
+                minQuality = math.max(minQuality, math.max(0.01f, input.MinQuality));
+                var inputQuality = GetWeightedInputQuality(items, input.ItemId);
+                weightedSum += inputQuality * math.max(0.01f, input.Quantity);
+                totalWeight += math.max(0.01f, input.Quantity);
+            }
+
+            var averageQuality = totalWeight > 0f ? weightedSum / totalWeight : 0.5f;
+            return math.clamp(averageQuality, minQuality, 1f);
+        }
+
+        [BurstCompile]
+        private static float GetWeightedInputQuality(DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId)
+        {
+            var weighted = 0f;
+            var total = 0f;
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (!items[i].ItemId.Equals(itemId))
+                {
+                    continue;
+                }
+
+                var qty = math.max(0f, items[i].Quantity);
+                if (qty <= 0f)
+                {
+                    continue;
+                }
+
+                weighted += math.saturate(items[i].Quality) * qty;
+                total += qty;
+            }
+
+            return total > 0f ? weighted / total : 0.5f;
+        }
     }
 }
-
