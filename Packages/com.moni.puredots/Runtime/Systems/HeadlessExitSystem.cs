@@ -40,8 +40,6 @@ namespace PureDOTS.Systems
             UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
             if (RuntimeMode.IsHeadless && Application.isBatchMode)
             {
-                state.Dependency.Complete();
-                state.EntityManager.CompleteAllTrackedJobs();
                 // Avoid Unity shutdown crashes by exiting directly in headless batch runs.
                 System.Environment.Exit(request.ExitCode);
                 return;
