@@ -65,8 +65,9 @@ namespace PureDOTS.Systems.Knowledge
 
             foreach (var facts in SystemAPI.Query<DynamicBuffer<KnowledgeFact>>())
             {
-                DecayFacts(ref facts, currentTick, config.MinConfidence);
-                PruneFacts(ref facts, config.MaxFacts);
+                var buffer = facts;
+                DecayFacts(ref buffer, currentTick, config.MinConfidence);
+                PruneFacts(ref buffer, config.MaxFacts);
             }
         }
 
