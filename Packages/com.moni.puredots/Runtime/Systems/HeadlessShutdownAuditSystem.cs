@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Time;
 using Unity.Entities;
 using UnityEngine;
