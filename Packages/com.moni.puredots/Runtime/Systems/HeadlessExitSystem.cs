@@ -1,6 +1,8 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Systems.Telemetry;
+using System.Threading;
+using System.Threading.Tasks;
 using Unity.Entities;
 using UnityEngine;
 using UnityDebug = UnityEngine.Debug;
@@ -35,6 +37,13 @@ namespace PureDOTS.Systems
             var request = state.EntityManager.GetComponentData<HeadlessExitRequest>(requestEntity);
             UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
             UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
+            if (RuntimeMode.IsHeadless && Application.isBatchMode)
+            {
+                HeadlessExitFallback.Schedule(request.ExitCode, 2000);
+            }
+
+            state.Dependency.Complete();
+            state.EntityManager.CompleteAllTrackedJobs();
             Quit(request.ExitCode);
         }
 
@@ -47,13 +56,33 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
-            if (RuntimeMode.IsHeadless && Application.isBatchMode)
-            {
-                System.Console.Error.WriteLine("[HeadlessExitSystem] Environment.Exit");
-                System.Environment.Exit(exitCode);
-                return;
-            }
             Application.Quit(exitCode);
+        }
+
+        private static class HeadlessExitFallback
+        {
+            private static int _scheduled;
+
+            public static void Schedule(int exitCode, int delayMs)
+            {
+                if (Interlocked.Exchange(ref _scheduled, 1) != 0)
+                {
+                    return;
+                }
+
+                Task.Run(() =>
+                {
+                    Thread.Sleep(delayMs);
+                    try
+                    {
+                        System.Console.Error.WriteLine("[HeadlessExitSystem] forced exit fallback");
+                    }
+                    catch
+                    {
+                    }
+                    System.Environment.Exit(exitCode);
+                });
+            }
         }
     }
 }
