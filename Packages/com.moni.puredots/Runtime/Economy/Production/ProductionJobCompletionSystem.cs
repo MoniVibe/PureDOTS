@@ -140,7 +140,7 @@ namespace PureDOTS.Runtime.Economy.Production
             for (int i = 0; i < recipe.Outputs.Length; i++)
             {
                 ref var output = ref recipe.Outputs[i];
-                var outputQuality = ResolveOutputQuality(recipe, items, policy);
+                var outputQuality = ResolveOutputQuality(ref recipe, items, policy);
                 AddItem(ref items, output.ItemId, output.Quantity, outputQuality, 1.0f, tick);
             }
 
@@ -238,7 +238,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static float ResolveOutputQuality(in ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items, in ProductionSupervisorPolicy policy)
+        private static float ResolveOutputQuality(ref ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items, in ProductionSupervisorPolicy policy)
         {
             var minQuality = 0.1f;
             var weightedSum = 0f;
