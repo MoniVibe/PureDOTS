@@ -4,6 +4,7 @@ using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Time;
 using Unity.Entities;
 using UnityEngine;
+using UnityDebug = UnityEngine.Debug;
 
 namespace PureDOTS.Systems
 {
@@ -40,8 +41,8 @@ namespace PureDOTS.Systems
             var tick = SystemAPI.TryGetSingleton<TimeState>(out var timeState) ? timeState.Tick : 0u;
             var scenarioId = SystemAPI.TryGetSingleton<ScenarioInfo>(out var info) ? info.ScenarioId.ToString() : "unknown";
 
-            Debug.Log($"[ShutdownAudit] tick={tick} scenario={scenarioId} entities={totalEntities} bughunt_disabled={BugHuntGate.DisabledRaw}");
-            Debug.Log($"[ShutdownAudit] worlds={World.All.Count} job_component_count={Count<HeadlessExitRequest>(em)}");
+            UnityDebug.Log($"[ShutdownAudit] tick={tick} scenario={scenarioId} entities={totalEntities} bughunt_disabled={BugHuntGate.DisabledRaw}");
+            UnityDebug.Log($"[ShutdownAudit] worlds={World.All.Count} job_component_count={Count<HeadlessExitRequest>(em)}");
         }
 
         private static int Count<T>(EntityManager em) where T : unmanaged, IComponentData
