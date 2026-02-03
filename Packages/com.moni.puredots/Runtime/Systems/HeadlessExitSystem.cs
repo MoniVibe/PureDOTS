@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Systems.Telemetry;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Entities;
@@ -39,8 +40,8 @@ namespace PureDOTS.Systems
             UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
             if (RuntimeMode.IsHeadless && Application.isBatchMode)
             {
-                HeadlessExitFallback.Schedule(request.ExitCode, 200);
-                return;
+                HeadlessExitFallback.ScheduleKill(2000);
+                System.Environment.Exit(request.ExitCode);
             }
 
             state.Dependency.Complete();
@@ -64,7 +65,7 @@ namespace PureDOTS.Systems
         {
             private static int _scheduled;
 
-            public static void Schedule(int exitCode, int delayMs)
+            public static void ScheduleKill(int delayMs)
             {
                 if (Interlocked.Exchange(ref _scheduled, 1) != 0)
                 {
@@ -76,12 +77,18 @@ namespace PureDOTS.Systems
                     Thread.Sleep(delayMs);
                     try
                     {
-                        System.Console.Error.WriteLine("[HeadlessExitSystem] forced exit fallback");
+                        System.Console.Error.WriteLine("[HeadlessExitSystem] forced kill fallback");
                     }
                     catch
                     {
                     }
-                    System.Environment.Exit(exitCode);
+                    try
+                    {
+                        Process.GetCurrentProcess().Kill();
+                    }
+                    catch
+                    {
+                    }
                 });
                 thread.IsBackground = true;
                 thread.Start();
