@@ -49,4 +49,12 @@ namespace PureDOTS.Runtime.Modularity
     public struct GroupKnowledgeModuleTag : IComponentData
     {
     }
+
+    /// <summary>
+    /// Opt-in tag for attaching the collective memory module to an entity.
+    /// Entities with this tag will be bootstrapped with memory buffers.
+    /// </summary>
+    public struct GroupMemoryModuleTag : IComponentData
+    {
+    }
 }

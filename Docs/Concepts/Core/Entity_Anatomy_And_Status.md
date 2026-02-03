@@ -53,9 +53,23 @@ domain-specific knowledge systems (lessons, diffusion, morale memory, etc.).
 
 ---
 
+## Collective memory + knowledge (aggregates)
+
+Aggregate entities (cultures, dynasties, factions, organizations, guilds) opt into:
+- **Collective memory** via `GroupMemoryModuleTag` → `MemoryEntry` + `MemoryAddRequest`
+- **Group knowledge cache** via `GroupKnowledgeModuleTag` → `GroupKnowledgeEntry` buffers
+- **Knowledge facts** via `GroupKnowledgeModuleTag` → `KnowledgeFact` + `KnowledgeFactRequest`
+
+This enables group-level remembrance of transgressions or kindness:
+- Example `MemoryId`: `transgression.slavery`, `kindness.liberation`, `betrayal.treaty`
+- Use `RelatedEntity` to point at the offending/helping group.
+
+Relations systems can later translate memory magnitudes into diplomatic offsets.
+
+---
+
 ## Flexibility Rules
 
 - **Anatomy is data**: No hardcoded limb counts. Use catalogs per race/species/variant.
 - **Memory & knowledge are optional**: Entities only carry buffers when needed.
 - **Status effects are unified**: Buffs/debuffs are the canonical representation.
-
