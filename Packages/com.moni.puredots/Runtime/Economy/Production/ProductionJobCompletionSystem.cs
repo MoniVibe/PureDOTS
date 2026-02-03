@@ -23,6 +23,7 @@ namespace PureDOTS.Runtime.Economy.Production
         private ComponentLookup<BusinessInventory> _businessInventoryLookup;
         private ComponentLookup<BusinessBalance> _businessBalanceLookup;
         private ComponentLookup<VillagerWealth> _villagerWealthLookup;
+        private ComponentLookup<ProductionSupervisorPolicy> _policyLookup;
         private BufferLookup<ProductionJob> _jobBufferLookup;
         private ComponentLookup<Inventory> _inventoryLookup;
         private BufferLookup<InventoryItem> _itemBufferLookup;
@@ -35,6 +36,7 @@ namespace PureDOTS.Runtime.Economy.Production
             _businessInventoryLookup = state.GetComponentLookup<BusinessInventory>(false);
             _businessBalanceLookup = state.GetComponentLookup<BusinessBalance>(false);
             _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(false);
+            _policyLookup = state.GetComponentLookup<ProductionSupervisorPolicy>(true);
             _jobBufferLookup = state.GetBufferLookup<ProductionJob>(false);
             _inventoryLookup = state.GetComponentLookup<Inventory>(false);
             _itemBufferLookup = state.GetBufferLookup<InventoryItem>(false);
@@ -70,6 +72,7 @@ namespace PureDOTS.Runtime.Economy.Production
             _businessInventoryLookup.Update(ref state);
             _businessBalanceLookup.Update(ref state);
             _villagerWealthLookup.Update(ref state);
+            _policyLookup.Update(ref state);
             _jobBufferLookup.Update(ref state);
             _inventoryLookup.Update(ref state);
             _itemBufferLookup.Update(ref state);
@@ -131,10 +134,13 @@ namespace PureDOTS.Runtime.Economy.Production
             }
 
             // Produce outputs (quality calculation will be done by ProductionQualitySystem)
+            var policy = _policyLookup.HasComponent(businessEntity)
+                ? _policyLookup[businessEntity]
+                : ProductionSupervisorPolicy.Neutral;
             for (int i = 0; i < recipe.Outputs.Length; i++)
             {
                 ref var output = ref recipe.Outputs[i];
-                var outputQuality = ResolveOutputQuality(recipe, items);
+                var outputQuality = ResolveOutputQuality(recipe, items, policy);
                 AddItem(ref items, output.ItemId, output.Quantity, outputQuality, 1.0f, tick);
             }
 
@@ -232,7 +238,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static float ResolveOutputQuality(in ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items)
+        private static float ResolveOutputQuality(in ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items, in ProductionSupervisorPolicy policy)
         {
             var minQuality = 0.1f;
             var weightedSum = 0f;
@@ -248,7 +254,12 @@ namespace PureDOTS.Runtime.Economy.Production
             }
 
             var averageQuality = totalWeight > 0f ? weightedSum / totalWeight : 0.5f;
-            return math.clamp(averageQuality, minQuality, 1f);
+            var qualityBias = math.clamp(policy.QualityBias01, 0f, 1f);
+            var throughputBias = math.clamp(policy.ThroughputBias01, 0f, 1f);
+            var shift = (qualityBias - 0.5f) * 0.2f;
+            shift -= (throughputBias - 0.5f) * 0.1f;
+            var adjusted = averageQuality + shift;
+            return math.clamp(adjusted, minQuality, 1f);
         }
 
         [BurstCompile]
