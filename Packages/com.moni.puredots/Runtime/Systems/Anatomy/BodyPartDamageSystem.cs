@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Anatomy;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Systems.Combat;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
