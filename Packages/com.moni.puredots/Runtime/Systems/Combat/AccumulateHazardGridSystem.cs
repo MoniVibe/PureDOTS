@@ -15,12 +15,10 @@ namespace PureDOTS.Systems.Combat
     /// Accumulates hazard slices into a 3D risk grid.
     /// Clears grid and rasterizes each HazardSlice into cells via AABB intersection.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
     [UpdateAfter(typeof(BuildHazardSlicesSystem))]
     public partial struct AccumulateHazardGridSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             if (BugHuntGate.IsDisabled("hazard_grid"))

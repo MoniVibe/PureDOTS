@@ -8,12 +8,10 @@ namespace PureDOTS.Systems.Combat
     /// <summary>
     /// Ensures exactly one HazardGridSingleton exists per world.
     /// </summary>
-    [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     public partial struct HazardGridBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             if (BugHuntGate.IsDisabled("hazard_grid"))
@@ -39,8 +37,7 @@ namespace PureDOTS.Systems.Combat
             state.Enabled = false;
         }
 
-        [BurstCompile] public void OnUpdate(ref SystemState state) { }
-        [BurstCompile] public void OnDestroy(ref SystemState state) { }
+        public void OnUpdate(ref SystemState state) { }
+        public void OnDestroy(ref SystemState state) { }
     }
 }
-

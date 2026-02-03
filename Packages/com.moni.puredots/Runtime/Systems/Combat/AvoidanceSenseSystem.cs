@@ -16,12 +16,10 @@ namespace PureDOTS.Systems.Combat
     /// Applies ReactionSec delay via ring buffer of sampled risks.
     /// Games configure reaction time via AvoidanceProfile.ReactionSec.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
     [UpdateAfter(typeof(AccumulateHazardGridSystem))]
     public partial struct AvoidanceSenseSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             if (BugHuntGate.IsDisabled("hazard_grid"))
