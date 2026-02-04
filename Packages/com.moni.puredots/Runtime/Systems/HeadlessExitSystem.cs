@@ -43,7 +43,7 @@ namespace PureDOTS.Systems
             if (_exitStage == 0)
             {
                 _exitStage = 1;
-                _exitStartTime = Time.realtimeSinceStartupAsDouble;
+                _exitStartTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
                 _exitCode = request.ExitCode;
                 UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
                 UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
@@ -60,7 +60,7 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var elapsed = Time.realtimeSinceStartupAsDouble - _exitStartTime;
+            var elapsed = UnityEngine.Time.realtimeSinceStartupAsDouble - _exitStartTime;
             if (_exitStage == 1 && elapsed >= 2.0)
             {
                 _exitStage = 2;
