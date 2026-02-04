@@ -112,7 +112,7 @@ namespace PureDOTS.Runtime.Economy.Production
                         // Complete job
                         if (TryFindRecipe(job.RecipeId, ref catalogBlob, out int recipeIndex))
                         {
-                            CompleteJob(ref state, entity, job, ref catalogBlob, recipeIndex, items, inventoryEntity, tick);
+                            CompleteJob(ref state, entity, job, ref catalogBlob, recipeIndex, ref items, inventoryEntity, tick);
                         }
 
                         jobs.RemoveAt(i);
@@ -122,7 +122,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private void CompleteJob(ref SystemState state, Entity businessEntity, ProductionJob job, ref ProductionRecipeCatalogBlob catalog, int recipeIndex, DynamicBuffer<InventoryItem> items, Entity inventoryEntity, uint tick)
+        private void CompleteJob(ref SystemState state, Entity businessEntity, ProductionJob job, ref ProductionRecipeCatalogBlob catalog, int recipeIndex, ref DynamicBuffer<InventoryItem> items, Entity inventoryEntity, uint tick)
         {
             ref var recipe = ref catalog.Recipes[recipeIndex];
             
@@ -140,7 +140,7 @@ namespace PureDOTS.Runtime.Economy.Production
             for (int i = 0; i < recipe.Outputs.Length; i++)
             {
                 ref var output = ref recipe.Outputs[i];
-                var outputQuality = ResolveOutputQuality(ref recipe, items, policy);
+                var outputQuality = ResolveOutputQuality(ref recipe, ref items, policy);
                 AddItem(ref items, output.ItemId, output.Quantity, outputQuality, 1.0f, tick);
             }
 
@@ -238,7 +238,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static float ResolveOutputQuality(ref ProductionRecipeBlob recipe, DynamicBuffer<InventoryItem> items, in ProductionSupervisorPolicy policy)
+        private static float ResolveOutputQuality(ref ProductionRecipeBlob recipe, ref DynamicBuffer<InventoryItem> items, in ProductionSupervisorPolicy policy)
         {
             var minQuality = 0.1f;
             var weightedSum = 0f;
@@ -248,7 +248,7 @@ namespace PureDOTS.Runtime.Economy.Production
             {
                 ref var input = ref recipe.Inputs[i];
                 minQuality = math.max(minQuality, math.max(0.01f, input.MinQuality));
-                var inputQuality = GetWeightedInputQuality(items, input.ItemId);
+                var inputQuality = GetWeightedInputQuality(ref items, input.ItemId);
                 weightedSum += inputQuality * math.max(0.01f, input.Quantity);
                 totalWeight += math.max(0.01f, input.Quantity);
             }
@@ -263,7 +263,7 @@ namespace PureDOTS.Runtime.Economy.Production
         }
 
         [BurstCompile]
-        private static float GetWeightedInputQuality(DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId)
+        private static float GetWeightedInputQuality(ref DynamicBuffer<InventoryItem> items, in FixedString64Bytes itemId)
         {
             var weighted = 0f;
             var total = 0f;
