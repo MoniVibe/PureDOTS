@@ -86,6 +86,14 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
+            if (RuntimeMode.IsHeadless && Application.isBatchMode)
+            {
+                // Avoid Unity shutdown crashes in headless by terminating immediately.
+                HeadlessExitFallback.ScheduleKill(5000);
+                System.Environment.Exit(exitCode);
+                return;
+            }
+
             Application.Quit(exitCode);
         }
 
