@@ -28,11 +28,14 @@ namespace PureDOTS.Systems.Scenarios
         private const uint ProgressTimeoutTicks = 600;
         private const float MaxAngularSpeedRad = math.PI * 4f;
         private const float MaxAngularAccelRad = math.PI * 8f;
+        private const string Space4xTurnrateScenarioId = "space4x_turnrate_micro";
 
         private uint _lastTick;
         private float _lastWorldSeconds;
         private byte _hasLastTick;
         private byte _reportedFailure;
+        private byte _scenarioResolved;
+        private byte _ignoreTurnInvariants;
         private EntityQuery _villagerInvariantQuery;
         private EntityQuery _movementInvariantQuery;
 
@@ -62,6 +65,11 @@ namespace PureDOTS.Systems.Scenarios
             if (_reportedFailure != 0)
             {
                 return;
+            }
+
+            if (_scenarioResolved == 0)
+            {
+                ResolveScenarioFlags(ref state);
             }
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
@@ -186,7 +194,7 @@ namespace PureDOTS.Systems.Scenarios
                 var wantsMove = movement.ValueRO.IsMoving != 0 ||
                                 math.lengthsq(movement.ValueRO.DesiredVelocity) > DesiredVelocitySq;
                 if (!UpdateProgressAndRotation(ref state, tick, worldSeconds, deltaTime, entity, transform.ValueRO,
-                        movement.ValueRO.DesiredVelocity, wantsMove, ref invariant.ValueRW))
+                        movement.ValueRO.DesiredVelocity, wantsMove, _ignoreTurnInvariants != 0, ref invariant.ValueRW))
                 {
                     return false;
                 }
@@ -199,7 +207,7 @@ namespace PureDOTS.Systems.Scenarios
                 var wantsMove = math.lengthsq(movement.ValueRO.Desired) > DesiredVelocitySq ||
                                 math.lengthsq(movement.ValueRO.Vel) > DesiredVelocitySq;
                 if (!UpdateProgressAndRotation(ref state, tick, worldSeconds, deltaTime, entity, transform.ValueRO,
-                        movement.ValueRO.Desired, wantsMove, ref invariant.ValueRW))
+                        movement.ValueRO.Desired, wantsMove, _ignoreTurnInvariants != 0, ref invariant.ValueRW))
                 {
                     return false;
                 }
@@ -409,6 +417,7 @@ namespace PureDOTS.Systems.Scenarios
             in LocalTransform transform,
             float3 desiredVelocity,
             bool wantsMove,
+            bool ignoreTurnInvariants,
             ref HeadlessInvariantState invariant)
         {
             if (invariant.Initialized == 0)
@@ -443,7 +452,7 @@ namespace PureDOTS.Systems.Scenarios
                 var angularSpeed = angle / deltaTime;
                 var angularAccel = math.abs(angularSpeed - invariant.LastAngularSpeed) / deltaTime;
 
-                if (angularSpeed > MaxAngularSpeedRad)
+                if (!ignoreTurnInvariants && angularSpeed > MaxAngularSpeedRad)
                 {
                     ReportInvariant(ref state, tick, worldSeconds, "Invariant/TurnRate",
                         $"Turn rate {angularSpeed:F2} rad/s exceeds limit at entity={entity.Index}",
@@ -451,7 +460,7 @@ namespace PureDOTS.Systems.Scenarios
                     return false;
                 }
 
-                if (angularAccel > MaxAngularAccelRad)
+                if (!ignoreTurnInvariants && angularAccel > MaxAngularAccelRad)
                 {
                     ReportInvariant(ref state, tick, worldSeconds, "Invariant/TurnAccel",
                         $"Turn accel {angularAccel:F2} rad/s^2 exceeds limit at entity={entity.Index}",
@@ -464,6 +473,21 @@ namespace PureDOTS.Systems.Scenarios
             }
 
             return true;
+        }
+
+        private void ResolveScenarioFlags(ref SystemState state)
+        {
+            _scenarioResolved = 1;
+            if (!SystemAPI.TryGetSingleton<ScenarioInfo>(out var scenarioInfo))
+            {
+                return;
+            }
+
+            var scenarioId = scenarioInfo.ScenarioId.ToString();
+            if (string.Equals(scenarioId, Space4xTurnrateScenarioId, System.StringComparison.OrdinalIgnoreCase))
+            {
+                _ignoreTurnInvariants = 1;
+            }
         }
 
         private void CheckRequiredSingletons(ref SystemState state, uint currentTick)
