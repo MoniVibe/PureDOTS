@@ -17,6 +17,10 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(TelemetryExportSystem))]
     public partial struct HeadlessExitSystem : ISystem
     {
+        private byte _exitStage;
+        private double _exitStartTime;
+        private int _exitCode;
+
         public void OnCreate(ref SystemState state)
         {
             if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
@@ -36,19 +40,41 @@ namespace PureDOTS.Systems
             }
 
             var request = state.EntityManager.GetComponentData<HeadlessExitRequest>(requestEntity);
-            UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
-            UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
-            if (RuntimeMode.IsHeadless && Application.isBatchMode)
+            if (_exitStage == 0)
             {
-                // Avoid Unity shutdown crashes by exiting directly in headless batch runs.
-                HeadlessExitFallback.ScheduleKill(5000);
-                System.Environment.Exit(request.ExitCode);
+                _exitStage = 1;
+                _exitStartTime = Time.realtimeSinceStartupAsDouble;
+                _exitCode = request.ExitCode;
+                UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
+                UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
+
+                state.Dependency.Complete();
+                state.EntityManager.CompleteAllTrackedJobs();
+
+                Quit(request.ExitCode);
                 return;
             }
 
-            state.Dependency.Complete();
-            state.EntityManager.CompleteAllTrackedJobs();
-            Quit(request.ExitCode);
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
+            {
+                return;
+            }
+
+            var elapsed = Time.realtimeSinceStartupAsDouble - _exitStartTime;
+            if (_exitStage == 1 && elapsed >= 2.0)
+            {
+                _exitStage = 2;
+                UnityDebug.LogWarning("[HeadlessExitSystem] Quit still pending; escalating to Environment.Exit.");
+                HeadlessExitFallback.ScheduleKill(5000);
+                System.Environment.Exit(_exitCode);
+                return;
+            }
+
+            if (_exitStage == 2 && elapsed >= 7.0)
+            {
+                UnityDebug.LogError("[HeadlessExitSystem] Environment.Exit did not terminate; forcing process kill.");
+                HeadlessExitFallback.KillImmediate();
+            }
         }
 
         private static void Quit(int exitCode)
@@ -79,7 +105,7 @@ namespace PureDOTS.Systems
                     Thread.Sleep(delayMs);
                     try
                     {
-                        System.Console.Error.WriteLine("[HeadlessExitSystem] forced kill fallback");
+                        UnityDebug.LogWarning("[HeadlessExitSystem] forced kill fallback");
                     }
                     catch
                     {
@@ -94,6 +120,17 @@ namespace PureDOTS.Systems
                 });
                 thread.IsBackground = true;
                 thread.Start();
+            }
+
+            public static void KillImmediate()
+            {
+                try
+                {
+                    Process.GetCurrentProcess().Kill();
+                }
+                catch
+                {
+                }
             }
         }
     }
