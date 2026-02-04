@@ -51,6 +51,12 @@ namespace PureDOTS.Systems
                 state.Dependency.Complete();
                 state.EntityManager.CompleteAllTrackedJobs();
 
+                if (RuntimeMode.IsHeadless && Application.isBatchMode)
+                {
+                    HeadlessExitFallback.ScheduleExit(_exitCode, 2000);
+                    HeadlessExitFallback.ScheduleKill(7000);
+                }
+
                 Quit(request.ExitCode);
                 return;
             }
@@ -86,20 +92,13 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
-            if (RuntimeMode.IsHeadless && Application.isBatchMode)
-            {
-                // Avoid Unity shutdown crashes in headless by terminating immediately.
-                HeadlessExitFallback.ScheduleKill(5000);
-                System.Environment.Exit(exitCode);
-                return;
-            }
-
             Application.Quit(exitCode);
         }
 
         private static class HeadlessExitFallback
         {
             private static int _scheduled;
+            private static int _exitScheduled;
 
             public static void ScheduleKill(int delayMs)
             {
@@ -121,6 +120,35 @@ namespace PureDOTS.Systems
                     try
                     {
                         Process.GetCurrentProcess().Kill();
+                    }
+                    catch
+                    {
+                    }
+                });
+                thread.IsBackground = true;
+                thread.Start();
+            }
+
+            public static void ScheduleExit(int exitCode, int delayMs)
+            {
+                if (Interlocked.Exchange(ref _exitScheduled, 1) != 0)
+                {
+                    return;
+                }
+
+                var thread = new Thread(() =>
+                {
+                    Thread.Sleep(delayMs);
+                    try
+                    {
+                        UnityDebug.LogWarning("[HeadlessExitSystem] forced Environment.Exit fallback");
+                    }
+                    catch
+                    {
+                    }
+                    try
+                    {
+                        System.Environment.Exit(exitCode);
                     }
                     catch
                     {
