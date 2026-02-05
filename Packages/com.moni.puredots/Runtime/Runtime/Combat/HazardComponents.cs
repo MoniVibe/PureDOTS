@@ -1,4 +1,3 @@
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -42,11 +41,11 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
-    /// Blob asset root storing risk samples for the hazard grid.
+    /// Buffer element storing per-cell hazard risk values.
     /// </summary>
-    public struct HazardRiskBlob
+    public struct HazardRiskCell : IBufferElementData
     {
-        public BlobArray<float> Risk;
+        public float Value;
     }
 
     /// <summary>
@@ -58,7 +57,6 @@ namespace PureDOTS.Runtime.Combat
         public int3 Size; // Grid dimensions in cells (z=1 for 2D)
         public float Cell; // Meters per cell (uniform)
         public float3 Origin; // World origin of grid
-        public BlobAssetReference<HazardRiskBlob> Risk; // Flattened risk array [z][y][x]
     }
 
     /// <summary>
@@ -69,4 +67,3 @@ namespace PureDOTS.Runtime.Combat
         public Entity GridEntity;
     }
 }
-

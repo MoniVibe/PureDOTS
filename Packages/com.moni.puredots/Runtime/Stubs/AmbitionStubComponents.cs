@@ -30,3 +30,4 @@ namespace PureDOTS.Runtime.Motivation
         public byte Status;
     }
 }
+

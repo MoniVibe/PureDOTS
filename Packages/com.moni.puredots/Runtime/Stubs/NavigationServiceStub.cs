@@ -14,3 +14,4 @@ namespace PureDOTS.Runtime.Navigation
         public static void CancelPath(in Entity ticket) { }
     }
 }
+

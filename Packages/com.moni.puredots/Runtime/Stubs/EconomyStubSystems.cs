@@ -28,3 +28,4 @@ namespace PureDOTS.Runtime.Economy
         [BurstCompile] public void OnUpdate(ref SystemState state) { }
     }
 }
+

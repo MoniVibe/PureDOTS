@@ -12,3 +12,4 @@ namespace PureDOTS.Runtime.Economy
         public static InventorySummary GetInventorySummary(in Entity entity) => default;
     }
 }
+

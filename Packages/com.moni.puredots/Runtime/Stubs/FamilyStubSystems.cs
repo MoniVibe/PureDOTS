@@ -12,5 +12,5 @@ namespace PureDOTS.Systems.Family
     // Systems: FamilyRelationshipCalculationSystem, InheritanceTrackingSystem, FamilyTreeUpdateSystem, FamilyWealthAggregationSystem
     // This stub file can be removed after verification.
 }
-#endif
 
+#endif

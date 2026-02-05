@@ -30,3 +30,4 @@ namespace PureDOTS.Runtime.Trade
         public float UnitPrice;
     }
 }
+

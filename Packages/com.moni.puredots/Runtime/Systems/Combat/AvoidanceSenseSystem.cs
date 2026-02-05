@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -15,14 +16,18 @@ namespace PureDOTS.Systems.Combat
     /// Applies ReactionSec delay via ring buffer of sampled risks.
     /// Games configure reaction time via AvoidanceProfile.ReactionSec.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
     [UpdateAfter(typeof(AccumulateHazardGridSystem))]
     public partial struct AvoidanceSenseSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            if (BugHuntGate.IsDisabled("hazard_grid"))
+            {
+                state.Enabled = false;
+                return;
+            }
+
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<HazardGridSingleton>();
@@ -44,7 +49,13 @@ namespace PureDOTS.Systems.Combat
             }
 
             var grid = SystemAPI.GetComponent<HazardGrid>(gridSingleton.GridEntity);
-            if (!grid.Risk.IsCreated)
+            if (!SystemAPI.HasBuffer<HazardRiskCell>(gridSingleton.GridEntity))
+            {
+                return;
+            }
+
+            var riskBuffer = SystemAPI.GetBuffer<HazardRiskCell>(gridSingleton.GridEntity);
+            if (riskBuffer.Length == 0)
             {
                 return;
             }
@@ -56,7 +67,7 @@ namespace PureDOTS.Systems.Combat
             state.Dependency = new AvoidanceSenseJob
             {
                 Grid = grid,
-                RiskData = grid.Risk.Value.Risk,
+                RiskData = riskBuffer.AsNativeArray(),
                 CurrentTick = currentTick,
                 DeltaTime = deltaTime
             }.ScheduleParallel(state.Dependency);
@@ -66,7 +77,7 @@ namespace PureDOTS.Systems.Combat
         public partial struct AvoidanceSenseJob : IJobEntity
         {
             [ReadOnly] public HazardGrid Grid;
-            [ReadOnly] public BlobArray<float> RiskData;
+            [ReadOnly] public NativeArray<HazardRiskCell> RiskData;
             public uint CurrentTick;
             public float DeltaTime;
 
@@ -187,7 +198,7 @@ namespace PureDOTS.Systems.Combat
                 int index = Flatten(cell, Grid);
                 if (index >= 0 && index < RiskData.Length)
                 {
-                    return RiskData[index];
+                    return RiskData[index].Value;
                 }
 
                 return 0f;
@@ -206,4 +217,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

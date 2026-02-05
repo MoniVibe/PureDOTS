@@ -40,8 +40,7 @@ namespace PureDOTS.Tests.EditMode
             {
                 Size = new int3(100, 100, 1),
                 Cell = 10f,
-                Origin = float3.zero,
-                Risk = default // Would be created by system
+                Origin = float3.zero
             };
         }
 
@@ -84,4 +83,3 @@ namespace PureDOTS.Tests.EditMode
         }
     }
 }
-

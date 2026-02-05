@@ -11,5 +11,5 @@ namespace PureDOTS.Runtime.Dynasty
     // Use DynastyService instead of DynastyServiceStub.
     // This stub file can be removed after verification.
 }
-#endif
 
+#endif

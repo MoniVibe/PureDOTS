@@ -23,3 +23,4 @@ namespace PureDOTS.Runtime.Logistics.Components
         public byte Severity;
     }
 }
+

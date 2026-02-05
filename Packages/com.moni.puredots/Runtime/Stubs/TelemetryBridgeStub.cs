@@ -10,3 +10,4 @@ namespace PureDOTS.Runtime.Telemetry
         public static void RecordEvent(FixedString64Bytes eventId) { }
     }
 }
+

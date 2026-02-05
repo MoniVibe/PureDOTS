@@ -23,3 +23,4 @@ namespace PureDOTS.Runtime.Morphing
         public float ExtinguishRate;
     }
 }
+

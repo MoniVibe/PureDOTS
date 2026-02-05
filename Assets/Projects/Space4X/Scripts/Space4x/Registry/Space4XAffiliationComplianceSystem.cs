@@ -98,13 +98,13 @@ namespace Space4X.Registry
                 var lawfulnessScore = AlignmentMath.Lawfulness(alignment.ValueRO);
 
                 var topOutlooks = TopThreeOutlooks.Empty;
-                if (SystemAPI.HasBuffer<OutlookEntry>(entity))
+                if (SystemAPI.HasBuffer<StanceEntry>(entity))
                 {
-                    topOutlooks.Populate(SystemAPI.GetBuffer<OutlookEntry>(entity));
+                    topOutlooks.Populate(SystemAPI.GetBuffer<StanceEntry>(entity));
                 }
-                else if (SystemAPI.HasBuffer<TopOutlook>(entity))
+                else if (SystemAPI.HasBuffer<TopStance>(entity))
                 {
-                    topOutlooks.Populate(SystemAPI.GetBuffer<TopOutlook>(entity));
+                    topOutlooks.Populate(SystemAPI.GetBuffer<TopStance>(entity));
                 }
 
                 var hasAxisBuffer = SystemAPI.HasBuffer<EthicAxisValue>(entity);
@@ -249,7 +249,7 @@ namespace Space4X.Registry
             for (int i = 0; i < expectations.Length; i++)
             {
                 var expectation = expectations[i];
-                if (!topOutlooks.TryGet(expectation.OutlookId, out var weight))
+                if (!topOutlooks.TryGet(expectation.StanceId, out var weight))
                 {
                     var missing = (float)expectation.MinimumWeight;
                     if (missing > tolerance)
@@ -341,27 +341,27 @@ namespace Space4X.Registry
 
             public static TopThreeOutlooks Empty => default;
 
-            public void Populate(DynamicBuffer<OutlookEntry> buffer)
+            public void Populate(DynamicBuffer<StanceEntry> buffer)
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    Consider(buffer[i].OutlookId, (float)buffer[i].Weight);
+                    Consider(buffer[i].StanceId, (float)buffer[i].Weight);
                 }
             }
 
-            public void Populate(DynamicBuffer<TopOutlook> buffer)
+            public void Populate(DynamicBuffer<TopStance> buffer)
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    Consider(buffer[i].OutlookId, (float)buffer[i].Weight);
+                    Consider(buffer[i].StanceId, (float)buffer[i].Weight);
                 }
             }
 
-            public void Consider(ushort outlookId, float weight)
+            public void Consider(ushort StanceId, float weight)
             {
                 var sample = new OutlookSample
                 {
-                    Id = outlookId,
+                    Id = StanceId,
                     Weight = weight,
                     Magnitude = math.abs(weight)
                 };
@@ -374,21 +374,21 @@ namespace Space4X.Registry
                 Insert(ref sample);
             }
 
-            public bool TryGet(ushort outlookId, out float weight)
+            public bool TryGet(ushort StanceId, out float weight)
             {
-                if (Count > 0 && First.Id == outlookId)
+                if (Count > 0 && First.Id == StanceId)
                 {
                     weight = First.Weight;
                     return true;
                 }
 
-                if (Count > 1 && Second.Id == outlookId)
+                if (Count > 1 && Second.Id == StanceId)
                 {
                     weight = Second.Weight;
                     return true;
                 }
 
-                if (Count > 2 && Third.Id == outlookId)
+                if (Count > 2 && Third.Id == StanceId)
                 {
                     weight = Third.Weight;
                     return true;
@@ -478,3 +478,4 @@ namespace Space4X.Registry
         }
     }
 }
+

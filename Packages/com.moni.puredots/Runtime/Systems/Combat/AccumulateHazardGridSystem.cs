@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Core;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -14,32 +15,18 @@ namespace PureDOTS.Systems.Combat
     /// Accumulates hazard slices into a 3D risk grid.
     /// Clears grid and rasterizes each HazardSlice into cells via AABB intersection.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
     [UpdateAfter(typeof(BuildHazardSlicesSystem))]
     public partial struct AccumulateHazardGridSystem : ISystem
     {
-        public void OnDestroy(ref SystemState state)
-        {
-            if (!SystemAPI.TryGetSingletonEntity<HazardGridSingleton>(out var singletonEntity))
-                return;
-
-            var singleton = SystemAPI.GetComponent<HazardGridSingleton>(singletonEntity);
-            if (singleton.GridEntity == Entity.Null || !SystemAPI.HasComponent<HazardGrid>(singleton.GridEntity))
-                return;
-
-            var grid = SystemAPI.GetComponent<HazardGrid>(singleton.GridEntity);
-            if (grid.Risk.IsCreated)
-            {
-                grid.Risk.Dispose();
-                grid.Risk = default;
-                SystemAPI.SetComponent(singleton.GridEntity, grid);
-            }
-        }
-
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            if (BugHuntGate.IsDisabled("hazard_grid"))
+            {
+                state.Enabled = false;
+                return;
+            }
+
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<HazardGridSingleton>();
@@ -77,10 +64,10 @@ namespace PureDOTS.Systems.Combat
                 {
                     Size = new int3(100, 100, 1), // 2D default
                     Cell = 10f,
-                    Origin = float3.zero,
-                    Risk = default
+                    Origin = float3.zero
                 };
                 state.EntityManager.AddComponentData(gridEntity, grid);
+                state.EntityManager.AddBuffer<HazardRiskCell>(gridEntity);
                 state.EntityManager.SetComponentData(singletonEntity, new HazardGridSingleton { GridEntity = gridEntity });
             }
 
@@ -93,35 +80,25 @@ namespace PureDOTS.Systems.Combat
 
             var slices = SystemAPI.GetBuffer<HazardSlice>(sliceBufferEntity);
 
-            // Rebuild risk blob if needed
-            int totalCells = grid.Size.x * grid.Size.y * grid.Size.z;
-            if (!grid.Risk.IsCreated || grid.Risk.Value.Risk.Length != totalCells)
+            if (!SystemAPI.HasBuffer<HazardRiskCell>(gridEntity))
             {
-                if (grid.Risk.IsCreated)
-                {
-                    grid.Risk.Dispose();
-                }
+                state.EntityManager.AddBuffer<HazardRiskCell>(gridEntity);
+            }
 
-                // Create new risk blob
-                var builder = new BlobBuilder(Allocator.Temp);
-                ref var root = ref builder.ConstructRoot<HazardRiskBlob>();
-                var riskArray = builder.Allocate(ref root.Risk, totalCells);
-                for (int i = 0; i < totalCells; i++)
-                {
-                    riskArray[i] = 0f;
-                }
-                var newRisk = builder.CreateBlobAssetReference<HazardRiskBlob>(Allocator.Persistent);
-                builder.Dispose();
+            var riskBuffer = SystemAPI.GetBuffer<HazardRiskCell>(gridEntity);
 
-                grid.Risk = newRisk;
-                SystemAPI.SetComponent(gridEntity, grid);
+            // Ensure risk buffer size
+            int totalCells = grid.Size.x * grid.Size.y * grid.Size.z;
+            if (riskBuffer.Length != totalCells)
+            {
+                riskBuffer.ResizeUninitialized(totalCells);
             }
 
             // Clear grid
-            ref var riskData = ref grid.Risk.Value.Risk;
+            var riskData = riskBuffer.AsNativeArray();
             unsafe
             {
-                UnsafeUtility.MemClear(riskData.GetUnsafePtr(), totalCells * sizeof(float));
+                UnsafeUtility.MemClear(riskData.GetUnsafePtr(), totalCells * UnsafeUtility.SizeOf<HazardRiskCell>());
             }
 
             // Convert slices to native array for job
@@ -146,7 +123,7 @@ namespace PureDOTS.Systems.Combat
             public uint CurrentTick;
             public float DeltaTime;
             [ReadOnly] public NativeArray<HazardSlice> Slices;
-            [NativeDisableParallelForRestriction] public BlobArray<float> RiskData;
+            [NativeDisableParallelForRestriction] public NativeArray<HazardRiskCell> RiskData;
 
             public void Execute(int index)
             {
@@ -200,11 +177,13 @@ namespace PureDOTS.Systems.Combat
 
                                 float risk = baseRisk * kindWeight;
 
-                                // Accumulate risk (atomic add for thread safety)
+                                // Accumulate risk (non-atomic; acceptable for coarse MVP risk fields)
                                 int cellIndex = Flatten(cell, Grid);
                                 if (cellIndex >= 0 && cellIndex < RiskData.Length)
                                 {
-                                    RiskData[cellIndex] += risk;
+                                    var cellRisk = RiskData[cellIndex];
+                                    cellRisk.Value += risk;
+                                    RiskData[cellIndex] = cellRisk;
                                 }
                             }
                         }

@@ -29,6 +29,15 @@ namespace PureDOTS.Systems.Telemetry
                 return;
             }
 
+#if UNITY_EDITOR
+            // Avoid enabling telemetry during editor batchmode builds to prevent structural-change churn.
+            if (Application.isBatchMode)
+            {
+                _initialized = true;
+                return;
+            }
+#endif
+
             var configRW = SystemAPI.GetSingletonRW<TelemetryExportConfig>();
             if (configRW.ValueRO.Enabled != 0 && configRW.ValueRO.OutputPath.Length > 0)
             {

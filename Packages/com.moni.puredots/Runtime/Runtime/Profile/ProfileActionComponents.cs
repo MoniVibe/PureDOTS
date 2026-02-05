@@ -2,6 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine.Serialization;
 
 namespace PureDOTS.Runtime.Profile
 {
@@ -98,8 +99,8 @@ namespace PureDOTS.Runtime.Profile
     {
         /// <summary>Alignment delta ordered as Moral, Order, Purity.</summary>
         public float3 AlignmentDelta;
-        /// <summary>Outlook delta ordered as Loyalist, Opportunist, Fanatic, Mutinous.</summary>
-        public float4 OutlookDelta;
+        /// <summary>Stance delta ordered as Loyalist, Opportunist, Fanatic, Mutinous.</summary>
+        public float4 StanceDelta;
         /// <summary>Disposition delta ordered as Compliance, Caution, FormationAdherence.</summary>
         public float3 DispositionDeltaA;
         /// <summary>Disposition delta ordered as RiskTolerance, Aggression, Patience.</summary>
@@ -116,10 +117,12 @@ namespace PureDOTS.Runtime.Profile
     public struct ProfileMutationConfig : IComponentData
     {
         public float AlignmentScale;
-        public float OutlookScale;
+        [FormerlySerializedAs("OutlookScale")]
+        public float StanceScale;
         public float DispositionScale;
         public float AlignmentMaxDelta;
-        public float OutlookMaxDelta;
+        [FormerlySerializedAs("OutlookMaxDelta")]
+        public float StanceMaxDelta;
         public float DispositionMaxDelta;
         public float AccumulatorDecay;
         public uint ApplyIntervalTicks;
@@ -133,10 +136,10 @@ namespace PureDOTS.Runtime.Profile
             return new ProfileMutationConfig
             {
                 AlignmentScale = 0.08f,
-                OutlookScale = 0.1f,
+                StanceScale = 0.1f,
                 DispositionScale = 0.07f,
                 AlignmentMaxDelta = 0.12f,
-                OutlookMaxDelta = 0.15f,
+                StanceMaxDelta = 0.15f,
                 DispositionMaxDelta = 0.1f,
                 AccumulatorDecay = 0.85f,
                 ApplyIntervalTicks = 30u,
@@ -151,7 +154,8 @@ namespace PureDOTS.Runtime.Profile
     public struct ProfileActionAccumulator : IComponentData
     {
         public float3 Alignment;
-        public float4 Outlook;
+        [FormerlySerializedAs("Outlook")]
+        public float4 Stance;
         public float3 DispositionA;
         public float3 DispositionB;
         public float PendingMagnitude;

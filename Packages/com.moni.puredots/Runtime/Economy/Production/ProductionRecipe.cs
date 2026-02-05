@@ -1,3 +1,4 @@
+using PureDOTS.Runtime.Economy.Resources;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -12,6 +13,8 @@ namespace PureDOTS.Runtime.Economy.Production
         public float Quantity;
         public float MinPurity; // For extracted resources
         public float MinQuality; // For produced materials
+        public ItemTags RequiredTags; // Optional tag-based match (e.g., AnyFuel)
+        public byte UseTagMatch; // 1 = use RequiredTags instead of ItemId
     }
 
     /// <summary>
@@ -21,6 +24,8 @@ namespace PureDOTS.Runtime.Economy.Production
     {
         public FixedString64Bytes ItemId;
         public float Quantity; // Can be formula-based (e.g., "InputPurity%")
+        public ItemTags OutputTags; // Optional tag-based output (e.g., AnyFuel)
+        public byte UseTagOutput; // 1 = use OutputTags when selecting output item
     }
 
     /// <summary>
@@ -56,4 +61,3 @@ namespace PureDOTS.Runtime.Economy.Production
         public BlobAssetReference<ProductionRecipeCatalogBlob> Catalog;
     }
 }
-

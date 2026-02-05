@@ -10,3 +10,4 @@ namespace PureDOTS.Runtime.Persistence
         public static void RequestLoad(SnapshotHandle handle) { }
     }
 }
+

@@ -8,3 +8,4 @@ namespace PureDOTS.Runtime.Narrative
         public static void SelectChoice(int eventId, int choiceIndex) { }
     }
 }
+

@@ -89,7 +89,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.ObeyOrder,
                 AlignmentDelta = new float3(0.02f, 0.15f, 0.05f),
-                OutlookDelta = new float4(0.2f, -0.05f, 0.05f, -0.1f),
+                StanceDelta = new float4(0.2f, -0.05f, 0.05f, -0.1f),
                 DispositionDeltaA = new float3(0.15f, 0.05f, 0.1f),
                 DispositionDeltaB = new float3(-0.05f, -0.02f, 0.08f),
                 Weight = 1f
@@ -98,7 +98,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.DisobeyOrder,
                 AlignmentDelta = new float3(-0.04f, -0.18f, -0.1f),
-                OutlookDelta = new float4(-0.2f, 0.12f, 0.06f, 0.2f),
+                StanceDelta = new float4(-0.2f, 0.12f, 0.06f, 0.2f),
                 DispositionDeltaA = new float3(-0.2f, -0.06f, -0.16f),
                 DispositionDeltaB = new float3(0.1f, 0.05f, -0.12f),
                 Weight = 1f
@@ -107,7 +107,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.AttackCivilian,
                 AlignmentDelta = new float3(-0.35f, -0.25f, -0.3f),
-                OutlookDelta = new float4(-0.15f, 0.1f, 0.08f, 0.15f),
+                StanceDelta = new float4(-0.15f, 0.1f, 0.08f, 0.15f),
                 DispositionDeltaA = new float3(-0.1f, -0.1f, -0.05f),
                 DispositionDeltaB = new float3(0.15f, 0.12f, -0.08f),
                 Weight = 1.2f
@@ -116,7 +116,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.AttackHostile,
                 AlignmentDelta = new float3(-0.06f, 0.08f, -0.04f),
-                OutlookDelta = new float4(0.05f, 0.02f, 0.12f, -0.03f),
+                StanceDelta = new float4(0.05f, 0.02f, 0.12f, -0.03f),
                 DispositionDeltaA = new float3(0.02f, -0.05f, 0.03f),
                 DispositionDeltaB = new float3(0.08f, 0.12f, -0.02f),
                 Weight = 0.9f
@@ -125,7 +125,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.Rescue,
                 AlignmentDelta = new float3(0.35f, 0.12f, 0.22f),
-                OutlookDelta = new float4(0.1f, -0.05f, 0.02f, -0.08f),
+                StanceDelta = new float4(0.1f, -0.05f, 0.02f, -0.08f),
                 DispositionDeltaA = new float3(0.1f, 0.12f, 0.07f),
                 DispositionDeltaB = new float3(-0.08f, -0.05f, 0.12f),
                 Weight = 1.1f
@@ -134,7 +134,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.MineResource,
                 AlignmentDelta = new float3(0.01f, 0.04f, 0.03f),
-                OutlookDelta = new float4(0.02f, 0.02f, 0.01f, -0.02f),
+                StanceDelta = new float4(0.02f, 0.02f, 0.01f, -0.02f),
                 DispositionDeltaA = new float3(0.06f, 0.08f, 0.05f),
                 DispositionDeltaB = new float3(-0.04f, -0.02f, 0.12f),
                 Weight = 0.6f
@@ -143,7 +143,7 @@ namespace PureDOTS.Systems.Profile
             {
                 Token = ProfileActionToken.OrderIssued,
                 AlignmentDelta = float3.zero,
-                OutlookDelta = float4.zero,
+                StanceDelta = float4.zero,
                 DispositionDeltaA = float3.zero,
                 DispositionDeltaB = float3.zero,
                 Weight = 0f
@@ -158,7 +158,7 @@ namespace PureDOTS.Systems.Profile
     public partial struct ProfileMutationSystem : ISystem
     {
         private ComponentLookup<AlignmentTriplet> _alignmentLookup;
-        private BufferLookup<OutlookEntry> _outlookLookup;
+        private BufferLookup<StanceEntry> _stanceLookup;
         private ComponentLookup<BehaviorDisposition> _behaviorDispositionLookup;
         private EntityStorageInfoLookup _entityInfo;
 
@@ -173,7 +173,7 @@ namespace PureDOTS.Systems.Profile
             state.RequireForUpdate<TimeState>();
 
             _alignmentLookup = state.GetComponentLookup<AlignmentTriplet>(false);
-            _outlookLookup = state.GetBufferLookup<OutlookEntry>(false);
+            _stanceLookup = state.GetBufferLookup<StanceEntry>(false);
             _behaviorDispositionLookup = state.GetComponentLookup<BehaviorDisposition>(false);
             _entityInfo = state.GetEntityStorageInfoLookup();
         }
@@ -268,7 +268,7 @@ namespace PureDOTS.Systems.Profile
             pendingTagAdds.Dispose();
 
             _alignmentLookup.Update(ref state);
-            _outlookLookup.Update(ref state);
+            _stanceLookup.Update(ref state);
             _behaviorDispositionLookup.Update(ref state);
             ApplyAccumulatedDrift(ref state, config, timeState.Tick);
         }
@@ -302,7 +302,7 @@ namespace PureDOTS.Systems.Profile
             float scale = magnitude * definition.Weight * multiplier;
 
             var alignmentDelta = definition.AlignmentDelta * (config.AlignmentScale * scale);
-            var outlookDelta = definition.OutlookDelta * (config.OutlookScale * scale);
+            var stanceDelta = definition.StanceDelta * (config.StanceScale * scale);
             var dispositionDeltaA = definition.DispositionDeltaA * (config.DispositionScale * scale);
             var dispositionDeltaB = definition.DispositionDeltaB * (config.DispositionScale * scale);
 
@@ -323,11 +323,11 @@ namespace PureDOTS.Systems.Profile
             }
 
             accumulator.Alignment += alignmentDelta;
-            accumulator.Outlook += outlookDelta;
+            accumulator.Stance += stanceDelta;
             accumulator.DispositionA += dispositionDeltaA;
             accumulator.DispositionB += dispositionDeltaB;
             accumulator.PendingMagnitude += math.csum(math.abs(alignmentDelta)) +
-                                            math.csum(math.abs(outlookDelta)) +
+                                            math.csum(math.abs(stanceDelta)) +
                                             math.csum(math.abs(dispositionDeltaA)) +
                                             math.csum(math.abs(dispositionDeltaB));
 
@@ -413,10 +413,10 @@ namespace PureDOTS.Systems.Profile
                     entityManager.SetComponentData(entity, AlignmentTriplet.FromFloats(next.x, next.y, next.z));
                 }
 
-                if (_outlookLookup.HasBuffer(entity))
+                if (_stanceLookup.HasBuffer(entity))
                 {
-                    var outlookBuffer = _outlookLookup[entity];
-                    ApplyOutlookDelta(ref outlookBuffer, accumulator.ValueRO.Outlook, config.OutlookMaxDelta);
+                    var stanceBuffer = _stanceLookup[entity];
+                    ApplyStanceDelta(ref stanceBuffer, accumulator.ValueRO.Stance, config.StanceMaxDelta);
                 }
 
                 if (_behaviorDispositionLookup.HasComponent(entity))
@@ -438,7 +438,7 @@ namespace PureDOTS.Systems.Profile
                 var updated = accumulator.ValueRW;
                 updated.LastAppliedTick = currentTick;
                 updated.Alignment *= config.AccumulatorDecay;
-                updated.Outlook *= config.AccumulatorDecay;
+                updated.Stance *= config.AccumulatorDecay;
                 updated.DispositionA *= config.AccumulatorDecay;
                 updated.DispositionB *= config.AccumulatorDecay;
                 updated.PendingMagnitude *= config.AccumulatorDecay;
@@ -460,15 +460,15 @@ namespace PureDOTS.Systems.Profile
             return math.clamp(value, new float3(-maxDelta), new float3(maxDelta));
         }
 
-        private static void ApplyOutlookDelta(ref DynamicBuffer<OutlookEntry> buffer, float4 delta, float maxDelta)
+        private static void ApplyStanceDelta(ref DynamicBuffer<StanceEntry> buffer, float4 delta, float maxDelta)
         {
-            ApplyOutlookDelta(ref buffer, Outlook.Loyalist, delta.x, maxDelta);
-            ApplyOutlookDelta(ref buffer, Outlook.Opportunist, delta.y, maxDelta);
-            ApplyOutlookDelta(ref buffer, Outlook.Fanatic, delta.z, maxDelta);
-            ApplyOutlookDelta(ref buffer, Outlook.Mutinous, delta.w, maxDelta);
+            ApplyStanceDelta(ref buffer, Stance.Loyalist, delta.x, maxDelta);
+            ApplyStanceDelta(ref buffer, Stance.Opportunist, delta.y, maxDelta);
+            ApplyStanceDelta(ref buffer, Stance.Fanatic, delta.z, maxDelta);
+            ApplyStanceDelta(ref buffer, Stance.Mutinous, delta.w, maxDelta);
         }
 
-        private static void ApplyOutlookDelta(ref DynamicBuffer<OutlookEntry> buffer, Outlook outlookId, float delta, float maxDelta)
+        private static void ApplyStanceDelta(ref DynamicBuffer<StanceEntry> buffer, Stance stanceId, float delta, float maxDelta)
         {
             if (math.abs(delta) <= math.EPSILON)
             {
@@ -479,7 +479,7 @@ namespace PureDOTS.Systems.Profile
 
             for (int i = 0; i < buffer.Length; i++)
             {
-                if (buffer[i].OutlookId != outlookId)
+                if (buffer[i].StanceId != stanceId)
                 {
                     continue;
                 }
@@ -490,9 +490,9 @@ namespace PureDOTS.Systems.Profile
                 return;
             }
 
-            buffer.Add(new OutlookEntry
+            buffer.Add(new StanceEntry
             {
-                OutlookId = outlookId,
+                StanceId = stanceId,
                 Weight = (half)math.clamp(delta, -1f, 1f)
             });
         }

@@ -1,4 +1,5 @@
 using Unity.Entities;
+using UnityEngine;
 using PureDOTS.Runtime.Components;
 
 namespace PureDOTS.Runtime.Time
@@ -7,6 +8,13 @@ namespace PureDOTS.Runtime.Time
     {
         public static void Request(EntityManager entityManager, uint tick, int exitCode)
         {
+            if (exitCode != 0)
+            {
+                Debug.LogError(
+                    $"[HeadlessExitUtility] Request exit_code={exitCode} tick={tick}\n" +
+                    System.Environment.StackTrace);
+            }
+
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<HeadlessExitRequest>());
             var entity = query.IsEmptyIgnoreFilter
                 ? entityManager.CreateEntity(typeof(HeadlessExitRequest))
@@ -20,4 +28,3 @@ namespace PureDOTS.Runtime.Time
         }
     }
 }
-

@@ -41,6 +41,24 @@ namespace PureDOTS.Runtime.Economy.Production
     }
 
     /// <summary>
+    /// Supervisor policy knobs for production outcomes.
+    /// Bias values are 0-1 where 0.5 = neutral.
+    /// </summary>
+    public struct ProductionSupervisorPolicy : IComponentData
+    {
+        public float QualityBias01;
+        public float ThroughputBias01;
+        public float RiskTolerance01;
+
+        public static ProductionSupervisorPolicy Neutral => new ProductionSupervisorPolicy
+        {
+            QualityBias01 = 0.5f,
+            ThroughputBias01 = 0.5f,
+            RiskTolerance01 = 0.5f
+        };
+    }
+
+    /// <summary>
     /// Production job buffer element.
     /// Represents a single production job in the queue.
     /// </summary>
@@ -63,4 +81,3 @@ namespace PureDOTS.Runtime.Economy.Production
         public Entity InventoryEntity;
     }
 }
-

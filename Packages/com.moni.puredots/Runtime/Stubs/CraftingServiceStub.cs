@@ -12,3 +12,4 @@ namespace PureDOTS.Runtime.Crafting
         public static float EvaluateQuality(in CraftingFormulaParams formula, float skill, float materialQuality) => 0f;
     }
 }
+
