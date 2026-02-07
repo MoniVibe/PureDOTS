@@ -80,4 +80,12 @@ namespace PureDOTS.Runtime.Economy.Production
     {
         public Entity InventoryEntity;
     }
+
+    /// <summary>
+    /// Cap on queued production jobs for a facility/business.
+    /// </summary>
+    public struct ProductionQueueCapacity : IComponentData
+    {
+        public int MaxQueuedJobs;
+    }
 }
