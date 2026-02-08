@@ -29,6 +29,7 @@ namespace PureDOTS.Systems.Scenarios
         private const float MaxAngularSpeedRad = math.PI * 4f;
         private const float MaxAngularAccelRad = math.PI * 8f;
         private const string Space4xTurnrateScenarioId = "space4x_turnrate_micro";
+        private const float ScenarioResetSeconds = 2f;
 
         private uint _lastTick;
         private float _lastWorldSeconds;
@@ -125,6 +126,13 @@ namespace PureDOTS.Systems.Scenarios
         {
             if (_hasLastTick != 0)
             {
+                if (tick == 0 && _lastTick > 0 && worldSeconds <= ScenarioResetSeconds)
+                {
+                    _lastTick = tick;
+                    _lastWorldSeconds = worldSeconds;
+                    return true;
+                }
+
                 if (tick < _lastTick)
                 {
                     ReportInvariant(ref state, tick, worldSeconds, "Invariant/TimeTick",
