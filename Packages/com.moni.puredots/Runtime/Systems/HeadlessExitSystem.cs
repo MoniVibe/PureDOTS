@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
 using PureDOTS.Systems.Telemetry;
+using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,8 @@ namespace PureDOTS.Systems
     [UpdateAfter(typeof(TelemetryExportSystem))]
     public partial struct HeadlessExitSystem : ISystem
     {
+        private static int _forceExitInit;
+        private static bool _forceExitImmediate;
         private byte _exitStage;
         private double _exitStartTime;
         private int _exitCode;
@@ -53,6 +56,12 @@ namespace PureDOTS.Systems
 
                 if (RuntimeMode.IsHeadless && Application.isBatchMode)
                 {
+                    if (ForceImmediateExitEnabled())
+                    {
+                        UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
+                        System.Environment.Exit(_exitCode);
+                        return;
+                    }
                     HeadlessExitFallback.ScheduleExit(_exitCode, 2000);
                     HeadlessExitFallback.ScheduleKill(7000);
                 }
@@ -92,7 +101,34 @@ namespace PureDOTS.Systems
                 return;
             }
 #endif
+            if (RuntimeMode.IsHeadless && Application.isBatchMode && ForceImmediateExitEnabled())
+            {
+                UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
+                System.Environment.Exit(exitCode);
+                return;
+            }
             Application.Quit(exitCode);
+        }
+
+        private static bool ForceImmediateExitEnabled()
+        {
+            if (Interlocked.CompareExchange(ref _forceExitInit, 1, 0) == 0)
+            {
+                _forceExitImmediate = IsTruthyEnv("PUREDOTS_HEADLESS_EXIT_IMMEDIATE");
+            }
+
+            return _forceExitImmediate;
+        }
+
+        private static bool IsTruthyEnv(string name)
+        {
+            var value = System.Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value)) { return false; }
+            value = value.Trim();
+            return value == "1"
+                || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", StringComparison.OrdinalIgnoreCase);
         }
 
         private static class HeadlessExitFallback
