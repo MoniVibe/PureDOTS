@@ -51,6 +51,9 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            var hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                 ammoCatalog.Catalog.IsCreated;
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var currentTick = timeState.Tick;
 
@@ -75,6 +78,8 @@ namespace PureDOTS.Systems.Combat
             var job = new ProjectileEffectExecutionJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
+                HasAmmoCatalog = hasAmmoCatalog,
+                AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default,
                 CurrentTick = currentTick,
                 Ecb = ecb,
                 PoolingEnabled = poolingEnabled,
@@ -94,6 +99,8 @@ namespace PureDOTS.Systems.Combat
         public partial struct ProjectileEffectExecutionJob : IJobEntity
         {
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
+            public bool HasAmmoCatalog;
+            [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
             public uint CurrentTick;
             public EntityCommandBuffer.ParallelWriter Ecb;
             public bool PoolingEnabled;
@@ -130,6 +137,8 @@ namespace PureDOTS.Systems.Combat
                     return;
                 }
 
+                var ammoModifiers = BuildAmmoModifiers(ref projectile, ref spec);
+
                 // Process each hit
                 for (int hitIndex = 0; hitIndex < hitResults.Length; hitIndex++)
                 {
@@ -152,7 +161,27 @@ namespace PureDOTS.Systems.Combat
                             ref spec,
                             effectOp,
                             hit,
-                            chunkIndex);
+                            ammoModifiers);
+                    }
+
+                    if (ammoModifiers.HasAmmoSpec)
+                    {
+                        ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                        if (!UnsafeRef.IsNull(ref ammoSpec))
+                        {
+                            for (int opIndex = 0; opIndex < ammoSpec.OnHitAdd.Length; opIndex++)
+                            {
+                                var ammoOp = ammoSpec.OnHitAdd[opIndex];
+                                ProcessEffectOp(
+                                    chunkIndex,
+                                    projectileEntity,
+                                    ref projectile,
+                                    ref spec,
+                                    ammoOp,
+                                    hit,
+                                    ammoModifiers);
+                            }
+                        }
                     }
 
                     // Decrement pierce count
@@ -196,20 +225,20 @@ namespace PureDOTS.Systems.Combat
                 ref ProjectileSpec spec,
                 EffectOp effectOp,
                 ProjectileHitResult hit,
-                int entityInQueryIndex)
+                in AmmoModifiers ammoModifiers)
             {
                 switch (effectOp.Kind)
                 {
                     case EffectOpKind.Damage:
-                        ApplyDamage(chunkIndex, projectile, ref spec, effectOp, hit);
+                        ApplyDamage(chunkIndex, projectile, ref spec, effectOp, hit, ammoModifiers);
                         break;
 
                     case EffectOpKind.AoE:
-                        ApplyAoE(chunkIndex, projectile, ref spec, effectOp, hit);
+                        ApplyAoE(chunkIndex, projectile, ref spec, effectOp, hit, ammoModifiers);
                         break;
 
                     case EffectOpKind.Chain:
-                        ApplyChain(chunkIndex, projectile, ref spec, effectOp, hit);
+                        ApplyChain(chunkIndex, projectile, ref spec, effectOp, hit, ammoModifiers);
                         break;
 
                     case EffectOpKind.Status:
@@ -217,7 +246,7 @@ namespace PureDOTS.Systems.Combat
                         break;
 
                     case EffectOpKind.Knockback:
-                        ApplyKnockback(chunkIndex, projectile, effectOp, hit);
+                        ApplyKnockback(chunkIndex, projectile, effectOp, hit, ammoModifiers);
                         break;
 
                     case EffectOpKind.SpawnSub:
@@ -231,10 +260,11 @@ namespace PureDOTS.Systems.Combat
                 ProjectileEntity projectile,
                 ref ProjectileSpec spec,
                 EffectOp effectOp,
-                ProjectileHitResult hit)
+                ProjectileHitResult hit,
+                in AmmoModifiers ammoModifiers)
             {
                 // Calculate base damage from spec and effect magnitude
-                float baseDamage = spec.Damage.BaseDamage * effectOp.Magnitude;
+                float baseDamage = spec.Damage.BaseDamage * effectOp.Magnitude * ammoModifiers.DamageMultiplier;
 
                 // Apply deterministic damage variation
                 float damageMultiplier = CalculateDamageMultiplier(
@@ -266,9 +296,9 @@ namespace PureDOTS.Systems.Combat
                         SourceEntity = projectile.SourceEntity,
                         TargetEntity = hit.HitEntity,
                         RawDamage = finalDamage,
-                        Type = DamageType.Physical, // Could be extended based on effectOp
+                        Type = ammoModifiers.DamageType,
                         Tick = CurrentTick,
-                        Flags = (isCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Pierce
+                        Flags = (isCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Pierce | ammoModifiers.DamageFlags
                     });
                 }
                 else
@@ -283,9 +313,11 @@ namespace PureDOTS.Systems.Combat
                 ProjectileEntity projectile,
                 ref ProjectileSpec spec,
                 EffectOp effectOp,
-                ProjectileHitResult hit)
+                ProjectileHitResult hit,
+                in AmmoModifiers ammoModifiers)
             {
                 float aoeRadius = effectOp.Aux > 0f ? effectOp.Aux : spec.AoERadius;
+                aoeRadius *= ammoModifiers.AoERadiusMultiplier;
                 if (aoeRadius <= 0f)
                 {
                     return;
@@ -345,7 +377,7 @@ namespace PureDOTS.Systems.Combat
                     // Calculate distance-based falloff
                     float distance = math.distance(hit.HitPosition, targetPos);
                     float falloff = math.saturate(1f - (distance / aoeRadius));
-                    float baseAoEDamage = spec.Damage.BaseDamage * effectOp.Magnitude * falloff;
+                    float baseAoEDamage = spec.Damage.BaseDamage * effectOp.Magnitude * falloff * ammoModifiers.DamageMultiplier;
 
                     // Apply deterministic damage variation for AoE
                     float aoeDamageMultiplier = CalculateDamageMultiplier(
@@ -377,9 +409,9 @@ namespace PureDOTS.Systems.Combat
                             SourceEntity = projectile.SourceEntity,
                             TargetEntity = target,
                             RawDamage = finalAoEDamage,
-                            Type = DamageType.Physical,
+                            Type = ammoModifiers.DamageType,
                             Tick = CurrentTick,
-                            Flags = (isAoECritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.AoE | DamageFlags.Pierce
+                            Flags = (isAoECritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.AoE | DamageFlags.Pierce | ammoModifiers.DamageFlags
                         });
                     }
                     else
@@ -396,9 +428,11 @@ namespace PureDOTS.Systems.Combat
                 ProjectileEntity projectile,
                 ref ProjectileSpec spec,
                 EffectOp effectOp,
-                ProjectileHitResult hit)
+                ProjectileHitResult hit,
+                in AmmoModifiers ammoModifiers)
             {
                 float chainRange = effectOp.Aux > 0f ? effectOp.Aux : spec.ChainRange;
+                chainRange *= ammoModifiers.ChainRangeMultiplier;
                 if (chainRange <= 0f)
                 {
                     return;
@@ -433,7 +467,7 @@ namespace PureDOTS.Systems.Combat
                     currentTarget = nextTarget;
 
                     // Apply chain damage (reduced per hop)
-                    float baseChainDamage = spec.Damage.BaseDamage * effectOp.Magnitude * math.pow(0.7f, chainIndex + 1);
+                    float baseChainDamage = spec.Damage.BaseDamage * effectOp.Magnitude * math.pow(0.7f, chainIndex + 1) * ammoModifiers.DamageMultiplier;
 
                     // Apply deterministic damage variation for chain
                     float chainDamageMultiplier = CalculateDamageMultiplier(
@@ -465,9 +499,9 @@ namespace PureDOTS.Systems.Combat
                             SourceEntity = projectile.SourceEntity,
                             TargetEntity = nextTarget,
                             RawDamage = finalChainDamage,
-                            Type = DamageType.Physical,
+                            Type = ammoModifiers.DamageType,
                             Tick = CurrentTick,
-                            Flags = (isChainCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Chain | DamageFlags.Pierce
+                            Flags = (isChainCritical ? DamageFlags.Critical : DamageFlags.None) | DamageFlags.Chain | DamageFlags.Pierce | ammoModifiers.DamageFlags
                         });
                     }
                     else
@@ -516,7 +550,8 @@ namespace PureDOTS.Systems.Combat
                 int chunkIndex,
                 ProjectileEntity projectile,
                 EffectOp effectOp,
-                ProjectileHitResult hit)
+                ProjectileHitResult hit,
+                in AmmoModifiers ammoModifiers)
             {
                 // Apply knockback force
                 // Would require Velocity component or similar
@@ -621,6 +656,90 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return ref UnsafeRef.Null<ProjectileSpec>();
+            }
+
+            private AmmoModifiers BuildAmmoModifiers(ref ProjectileEntity projectile, ref ProjectileSpec spec)
+            {
+                var modifiers = new AmmoModifiers
+                {
+                    DamageMultiplier = 1f,
+                    AoERadiusMultiplier = 1f,
+                    ChainRangeMultiplier = 1f,
+                    KnockbackMultiplier = 1f,
+                    DamageType = DetermineDamageTypeFromSpec(ref spec),
+                    DamageFlags = DamageFlags.None,
+                    HasAmmoSpec = false
+                };
+
+                if (!HasAmmoCatalog || projectile.AmmoId.Length == 0)
+                {
+                    return modifiers;
+                }
+
+                ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                if (UnsafeRef.IsNull(ref ammoSpec))
+                {
+                    return modifiers;
+                }
+
+                modifiers.HasAmmoSpec = true;
+                modifiers.DamageMultiplier = ammoSpec.DamageMultiplier;
+                modifiers.AoERadiusMultiplier = ammoSpec.AoERadiusMultiplier;
+                modifiers.ChainRangeMultiplier = ammoSpec.ChainRangeMultiplier;
+                modifiers.KnockbackMultiplier = ammoSpec.KnockbackMultiplier;
+                modifiers.DamageFlags = ammoSpec.DamageFlags;
+
+                if (ammoSpec.DamageTypeOverride != 255)
+                {
+                    modifiers.DamageType = (DamageType)ammoSpec.DamageTypeOverride;
+                }
+
+                return modifiers;
+            }
+
+            private static DamageType DetermineDamageTypeFromSpec(ref ProjectileSpec spec)
+            {
+                var kind = (ProjectileKind)spec.Kind;
+                return kind switch
+                {
+                    ProjectileKind.Beam => DamageType.Fire,
+                    ProjectileKind.Homing => DamageType.Physical,
+                    ProjectileKind.Ballistic => DamageType.Physical,
+                    _ => DamageType.Physical
+                };
+            }
+
+            private static ref AmmoSpec FindAmmoSpec(
+                BlobAssetReference<AmmoCatalogBlob> catalog,
+                FixedString32Bytes ammoId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref UnsafeRef.Null<AmmoSpec>();
+                }
+
+                ref var ammos = ref catalog.Value.Ammunition;
+                for (int i = 0; i < ammos.Length; i++)
+                {
+                    ref var ammoSpec = ref ammos[i];
+                    if (ammoSpec.Id.Equals(ammoId))
+                    {
+                        return ref ammoSpec;
+                    }
+                }
+
+                return ref UnsafeRef.Null<AmmoSpec>();
+            }
+
+            private struct AmmoModifiers
+            {
+                public float DamageMultiplier;
+                public float AoERadiusMultiplier;
+                public float ChainRangeMultiplier;
+                public float KnockbackMultiplier;
+                public DamageType DamageType;
+                public DamageFlags DamageFlags;
+                public bool HasAmmoSpec;
             }
 
             /// <summary>

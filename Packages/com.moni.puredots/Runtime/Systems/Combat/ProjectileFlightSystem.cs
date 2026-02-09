@@ -54,6 +54,9 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            var hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                 ammoCatalog.Catalog.IsCreated;
+
             var poolingEnabled = SystemAPI.TryGetSingleton<ProjectilePoolConfig>(out var poolConfig) &&
                                  poolConfig.Capacity > 0 &&
                                  poolConfig.Prefab != Entity.Null;
@@ -68,6 +71,8 @@ namespace PureDOTS.Systems.Combat
             {
                 DeltaTime = timeState.DeltaTime,
                 ProjectileCatalog = projectileCatalog.Catalog,
+                HasAmmoCatalog = hasAmmoCatalog,
+                AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default,
                 TransformLookup = _transformLookup,
                 VelocityLookup = _velocityLookup,
                 PoolingEnabled = poolingEnabled,
@@ -82,6 +87,8 @@ namespace PureDOTS.Systems.Combat
         {
             public float DeltaTime;
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
+            public bool HasAmmoCatalog;
+            [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public ComponentLookup<VelocitySample> VelocityLookup;
             public bool PoolingEnabled;
@@ -106,6 +113,23 @@ namespace PureDOTS.Systems.Combat
                     return;
                 }
 
+                float speedMultiplier = 1f;
+                float lifetimeMultiplier = 1f;
+                float turnRateMultiplier = 1f;
+                float seekRadiusMultiplier = 1f;
+
+                if (HasAmmoCatalog && projectile.AmmoId.Length > 0)
+                {
+                    ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                    if (!UnsafeRef.IsNull(ref ammoSpec))
+                    {
+                        speedMultiplier = ammoSpec.SpeedMultiplier;
+                        lifetimeMultiplier = ammoSpec.LifetimeMultiplier;
+                        turnRateMultiplier = ammoSpec.TurnRateMultiplier;
+                        seekRadiusMultiplier = ammoSpec.SeekRadiusMultiplier;
+                    }
+                }
+
                 float dt = DeltaTime;
                 if (dt <= 0f)
                 {
@@ -116,7 +140,8 @@ namespace PureDOTS.Systems.Combat
                 projectile.PrevPos = currentPos;
 
                 projectile.Age += dt;
-                if (spec.Lifetime > 0f && projectile.Age >= spec.Lifetime)
+                float effectiveLifetime = spec.Lifetime > 0f ? spec.Lifetime * lifetimeMultiplier : 0f;
+                if (effectiveLifetime > 0f && projectile.Age >= effectiveLifetime)
                 {
                     RetireProjectile(chunkIndex, entity, ref projectile, ref active, ref recycleTag);
                     return;
@@ -130,19 +155,23 @@ namespace PureDOTS.Systems.Combat
                     if (spec.Speed > 0f)
                     {
                         var forward = transform.Forward();
-                        velocity = math.normalizesafe(forward, new float3(0f, 0f, 1f)) * spec.Speed;
-                        speed = spec.Speed;
+                        float effectiveSpeed = spec.Speed * speedMultiplier;
+                        velocity = math.normalizesafe(forward, new float3(0f, 0f, 1f)) * effectiveSpeed;
+                        speed = effectiveSpeed;
                     }
                 }
                 else if (spec.Speed > 0f)
                 {
-                    velocity = math.normalizesafe(velocity) * spec.Speed;
-                    speed = spec.Speed;
+                    float effectiveSpeed = spec.Speed * speedMultiplier;
+                    velocity = math.normalizesafe(velocity) * effectiveSpeed;
+                    speed = effectiveSpeed;
                 }
 
                 if ((ProjectileKind)spec.Kind == ProjectileKind.Homing && speed > 1e-4f)
                 {
-                    velocity = ApplyHoming(ref projectile, ref spec, currentPos, velocity, speed);
+                    float effectiveTurnRate = spec.TurnRateDeg * turnRateMultiplier;
+                    float effectiveSeekRadius = spec.SeekRadius * seekRadiusMultiplier;
+                    velocity = ApplyHoming(ref projectile, currentPos, velocity, speed, effectiveTurnRate, effectiveSeekRadius);
                 }
 
                 var delta = velocity * dt;
@@ -160,10 +189,11 @@ namespace PureDOTS.Systems.Combat
 
             private float3 ApplyHoming(
                 ref ProjectileEntity projectile,
-                ref ProjectileSpec spec,
                 float3 currentPos,
                 float3 currentVel,
-                float speed)
+                float speed,
+                float turnRateDeg,
+                float seekRadius)
             {
                 if (projectile.TargetEntity == Entity.Null)
                 {
@@ -198,7 +228,7 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 float distance = math.sqrt(distSq);
-                if (spec.SeekRadius > 0f && distance > spec.SeekRadius)
+                if (seekRadius > 0f && distance > seekRadius)
                 {
                     projectile.TargetEntity = Entity.Null;
                     return currentVel;
@@ -209,7 +239,7 @@ namespace PureDOTS.Systems.Combat
 
                 float dot = math.clamp(math.dot(currentDir, desiredDir), -1f, 1f);
                 float angle = math.acos(dot);
-                float maxTurn = math.radians(spec.TurnRateDeg) * DeltaTime;
+                float maxTurn = math.radians(turnRateDeg) * DeltaTime;
 
                 float t = angle <= 1e-5f ? 1f : math.saturate(maxTurn / angle);
                 float3 newDir = math.normalizesafe(math.lerp(currentDir, desiredDir, t), desiredDir);
@@ -257,6 +287,28 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return ref UnsafeRef.Null<ProjectileSpec>();
+            }
+
+            private static ref AmmoSpec FindAmmoSpec(
+                BlobAssetReference<AmmoCatalogBlob> catalog,
+                FixedString32Bytes ammoId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref UnsafeRef.Null<AmmoSpec>();
+                }
+
+                ref var ammos = ref catalog.Value.Ammunition;
+                for (int i = 0; i < ammos.Length; i++)
+                {
+                    ref var ammoSpec = ref ammos[i];
+                    if (ammoSpec.Id.Equals(ammoId))
+                    {
+                        return ref ammoSpec;
+                    }
+                }
+
+                return ref UnsafeRef.Null<AmmoSpec>();
             }
         }
     }

@@ -35,6 +35,7 @@ namespace PureDOTS.Runtime.Combat
     public struct ProjectileEntity : IComponentData
     {
         public FixedString64Bytes ProjectileId; // Reference to ProjectileSpec
+        public FixedString32Bytes AmmoId; // Reference to AmmoSpec (optional)
         public Entity SourceEntity; // Entity that fired this projectile
         public Entity TargetEntity; // Target entity (for homing, Entity.Null for ballistic)
         public float3 Velocity; // Current velocity vector
@@ -90,6 +91,7 @@ namespace PureDOTS.Runtime.Combat
     public struct ProjectileSpawnRequest : IBufferElementData
     {
         public FixedString64Bytes ProjectileId;
+        public FixedString32Bytes AmmoId;
         public float3 SpawnPosition;
         public float3 SpawnDirection;
         public Entity SourceEntity;
@@ -110,4 +112,3 @@ namespace PureDOTS.Runtime.Combat
         public float TimeOfImpact; // 0-1 along the segment from PrevPos to Pos
     }
 }
-
