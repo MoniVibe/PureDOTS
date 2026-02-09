@@ -59,6 +59,7 @@ namespace PureDOTS.Systems
                     if (ForceImmediateExitEnabled())
                     {
                         UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
+                        HeadlessExitFallback.ScheduleKill(5000);
                         System.Environment.Exit(_exitCode);
                         return;
                     }
