@@ -64,6 +64,8 @@ namespace PureDOTS.Systems
                     }
                     HeadlessExitFallback.ScheduleExit(_exitCode, 2000);
                     HeadlessExitFallback.ScheduleKill(7000);
+                    // Avoid Application.Quit in headless runs; it can trigger a shutdown crash.
+                    return;
                 }
 
                 Quit(request.ExitCode);
