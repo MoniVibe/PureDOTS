@@ -37,6 +37,7 @@ namespace PureDOTS.Systems
         private static BlobAssetReference<ResourceRecipeSetBlob> s_ResourceRecipeSetBlob;
         private const string HeadlessTimeScaleEnv = "PUREDOTS_HEADLESS_TIME_SCALE";
         private const string HeadlessTimeScaleArg = "--headless-time-scale";
+        private const string PerfFixedTickBudgetEnv = "PUREDOTS_PERF_BUDGET_FIXED_TICK_MS";
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         private static bool s_loggedTimeBootstrap;
         private static bool s_loggedTimeConfigs;
@@ -208,6 +209,7 @@ namespace PureDOTS.Systems
             {
                 entityManager.AddComponentData(timeEntity, PerformanceBudgetDefaults.CreateDefault());
             }
+            ApplyPerformanceBudgetOverrides(entityManager, timeEntity);
 
             if (!entityManager.HasComponent<InputCommandLogState>(timeEntity))
             {
@@ -1506,6 +1508,34 @@ namespace PureDOTS.Systems
 
             parsed = math.clamp(raw, 0.1f, 16f);
             return true;
+        }
+
+        private static void ApplyPerformanceBudgetOverrides(EntityManager entityManager, Entity timeEntity)
+        {
+            if (!entityManager.HasComponent<PerformanceBudgetSettings>(timeEntity))
+            {
+                return;
+            }
+
+            var settings = entityManager.GetComponentData<PerformanceBudgetSettings>(timeEntity);
+            if (TryGetEnvFloat(PerfFixedTickBudgetEnv, out var fixedTickMs) && fixedTickMs > 0f)
+            {
+                settings.FixedTickBudgetMs = fixedTickMs;
+                entityManager.SetComponentData(timeEntity, settings);
+            }
+        }
+
+        private static bool TryGetEnvFloat(string key, out float value)
+        {
+            value = 0f;
+            var raw = global::System.Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            return float.TryParse(raw, global::System.Globalization.NumberStyles.Float,
+                global::System.Globalization.CultureInfo.InvariantCulture, out value);
         }
 
         private static bool TryGetCommandLineArg(string key, out string value)
