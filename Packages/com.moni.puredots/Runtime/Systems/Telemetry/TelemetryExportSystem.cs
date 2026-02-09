@@ -43,6 +43,7 @@ namespace PureDOTS.Systems.Telemetry
         private double _flushStartTime;
         private int _flushGraceMs;
         private byte _flushStage;
+        private byte _flushGraceReported;
 
         protected override void OnCreate()
         {
@@ -79,6 +80,7 @@ namespace PureDOTS.Systems.Telemetry
                 _truncateOutput = true;
                 _capRecordWritten = false;
                 _flushStage = 0;
+                _flushGraceReported = 0;
                 ClearExportState(ref exportState.ValueRW);
                 return;
             }
@@ -102,6 +104,7 @@ namespace PureDOTS.Systems.Telemetry
                 _capRecordWritten = false;
                 _oracleProbeLoggedRunId = string.Empty;
                 _flushStage = 0;
+                _flushGraceReported = 0;
                 ResetExportState(ref exportState.ValueRW, config);
             }
             else if (!exportState.ValueRO.RunId.Equals(config.RunId) || exportState.ValueRO.MaxOutputBytes != config.MaxOutputBytes)
@@ -123,6 +126,7 @@ namespace PureDOTS.Systems.Telemetry
                 {
                     _flushStage = 2;
                     _outputCapReached = true;
+                    EmitFlushGraceExceededEvent(GetCurrentTick(), elapsedMs);
                     UnityDebug.LogWarning($"[TelemetryExportSystem] Flush grace exceeded after {elapsedMs:F0}ms (grace={_flushGraceMs}ms); pausing telemetry export.");
                     exportState.ValueRW.CapReached = 1;
                     exportState.ValueRW.MaxOutputBytes = config.MaxOutputBytes;
@@ -491,6 +495,24 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return parsed > maxValue ? maxValue : parsed;
+        }
+
+        private void EmitFlushGraceExceededEvent(uint tick, double elapsedMs)
+        {
+            if (_flushGraceReported != 0)
+            {
+                return;
+            }
+
+            _flushGraceReported = 1;
+            var telemetryEntity = TelemetryStreamUtility.EnsureEventStream(EntityManager);
+            var payload = string.Format(CultureInfo.InvariantCulture,
+                "{{\"graceMs\":{0},\"elapsedMs\":{1}}}", _flushGraceMs, (int)Math.Round(elapsedMs));
+            EntityManager.GetBuffer<TelemetryEvent>(telemetryEntity).AddEvent(
+                new FixedString64Bytes("telemetry.flush.grace_exceeded"),
+                tick,
+                new FixedString64Bytes("TelemetryExportSystem"),
+                new FixedString128Bytes(payload));
         }
 
         private bool WriteOracleProbe(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
