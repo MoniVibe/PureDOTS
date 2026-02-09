@@ -41,6 +41,9 @@ projects/*/Packages/Coplay/Editor/Checkpoints/
 *.stacktrace
 *.tmp
 
+## Ignore Unity-generated meta noise for runtime package scripts/folders
+Packages/com.moni.puredots/Runtime/**/*.meta
+
 ## OS cruft
 .DS_Store
 Thumbs.db
