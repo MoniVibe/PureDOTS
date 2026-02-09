@@ -54,6 +54,10 @@ namespace PureDOTS.Runtime.Scenarios
 
             GitMetadataUtility.TryReadMetadata(out s_gitMetadata);
 
+            var exitGraceMs = ResolveExitGraceMs();
+            var exitKillMs = ResolveExitKillMs(exitGraceMs);
+            var telemetryFlushGraceMs = ResolveTelemetryFlushGraceMs();
+
             s_header = new RunHeaderRecord
             {
                 type = "run",
@@ -68,7 +72,10 @@ namespace PureDOTS.Runtime.Scenarios
                 buildConfig = GetBuildConfig(),
                 platform = Application.platform.ToString(),
                 unityVersion = Application.unityVersion,
-                timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
+                timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                exitGraceMs = exitGraceMs,
+                exitKillMs = exitKillMs,
+                telemetryFlushGraceMs = telemetryFlushGraceMs
             };
         }
 
@@ -495,6 +502,50 @@ namespace PureDOTS.Runtime.Scenarios
             s_writer.WriteLine(json);
         }
 
+        private static int ResolveExitGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_HEADLESS_EXIT_GRACE_MS", 2000, 100, 120000);
+        }
+
+        private static int ResolveExitKillMs(int graceMs)
+        {
+            var defaultKillMs = graceMs + 5000;
+            var minKillMs = graceMs + 1000;
+            var killMs = GetEnvInt("PUREDOTS_HEADLESS_EXIT_KILL_MS", defaultKillMs, minKillMs, 300000);
+            if (killMs <= graceMs)
+            {
+                killMs = minKillMs;
+            }
+
+            return killMs;
+        }
+
+        private static int ResolveTelemetryFlushGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_TELEMETRY_FLUSH_GRACE_MS", 0, 0, 300000);
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = global::System.Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
+        }
+
         private const uint FnvSeed = 2166136261u;
 
         private static uint HashStep(uint current, uint value)
@@ -522,6 +573,9 @@ namespace PureDOTS.Runtime.Scenarios
             public string platform;
             public string unityVersion;
             public string timestampUtc;
+            public int exitGraceMs;
+            public int exitKillMs;
+            public int telemetryFlushGraceMs;
             public uint registryAggregateHash;
             public CatalogRecord[] catalogs;
         }
