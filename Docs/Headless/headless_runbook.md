@@ -1,7 +1,8 @@
 # Headless Runbook - Build Channels + Test Bank (TRI)
 
 ## Canonical invocation (ACI)
-Use `Tools/Headless/headlessctl run_task <task_id> --seed <n> --pack nightly-default` as the canonical headless entrypoint.
+Use `python Tools/HeadlessRebuildTool/Tools/Headless/headlessctl.py run_task <task_id> --seed <n> --pack nightly-default` as the canonical headless entrypoint.
+If present, `Tools/Tools/Headless/headlessctl` is an equivalent wrapper (WSL-friendly).
 Manual shell commands are debug-only; prefer `headlessctl` for machine-gradable outputs and artifacts.
 
 Purpose: keep headless agents productive without rebuild churn and protect a pinned current build by enforcing:
@@ -18,6 +19,7 @@ This runbook splits headless validation into two agents with per-project banks.
 - Align Unity versions before rebuilds: read `ProjectSettings/ProjectVersion.txt` in the target repo and set `UNITY_WIN` to that exact version; treat any mismatch as a stale build and fix before proceeding.
 - Ops bus lives at `$TRI_STATE_DIR/ops`; requests go to `$TRI_STATE_DIR/ops/requests/*.json`. Do not write ops under `TRI_ROOT`.
 - Before running WSL headless after a Windows rebuild, confirm `/home/oni/Tri/Tools/builds/<project>/Linux_latest` matches `/mnt/c/dev/Tri/Tools/builds/<project>/Linux_latest`; if not, request a publish/sync.
+- Windows note: if `C:\dev\Tri\.tri\state` is a broken symlink, set `TRI_STATE_DIR=C:\dev\Tri\.tri\state_win` and create the directory before running `headlessctl`.
 
 ## Canonical state + docs (WSL polisher)
 - TRI_ROOT must be `/mnt/c/dev/Tri`.
