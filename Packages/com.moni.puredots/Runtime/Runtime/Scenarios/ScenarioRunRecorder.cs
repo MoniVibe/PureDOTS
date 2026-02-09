@@ -57,6 +57,8 @@ namespace PureDOTS.Runtime.Scenarios
             var exitGraceMs = ResolveExitGraceMs();
             var exitKillMs = ResolveExitKillMs(exitGraceMs);
             var telemetryFlushGraceMs = ResolveTelemetryFlushGraceMs();
+            var exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+            var exitPolicyEnv = ScenarioExitUtility.GetExitPolicyEnvRaw();
 
             s_header = new RunHeaderRecord
             {
@@ -73,6 +75,8 @@ namespace PureDOTS.Runtime.Scenarios
                 platform = Application.platform.ToString(),
                 unityVersion = Application.unityVersion,
                 timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                exitPolicy = exitPolicy.ToString(),
+                exitPolicyEnvRaw = exitPolicyEnv ?? string.Empty,
                 exitGraceMs = exitGraceMs,
                 exitKillMs = exitKillMs,
                 telemetryFlushGraceMs = telemetryFlushGraceMs
@@ -196,6 +200,12 @@ namespace PureDOTS.Runtime.Scenarios
                     perfBudgetValue = result.PerformanceBudgetValue,
                     perfBudgetLimit = result.PerformanceBudgetLimit,
                     perfBudgetTick = result.PerformanceBudgetTick,
+                    exitPolicy = result.ExitPolicy.ToString(),
+                    exitPolicyEnvRaw = result.ExitPolicyEnvRaw ?? string.Empty,
+                    highestSeverity = result.HighestSeverity.ToString(),
+                    telemetryBytesWritten = result.TelemetryBytesWritten,
+                    telemetryMaxBytes = result.TelemetryMaxBytes,
+                    telemetryCapReached = result.TelemetryCapReached,
                     exitGraceMs = s_header.exitGraceMs,
                     exitKillMs = s_header.exitKillMs,
                     telemetryFlushGraceMs = s_header.telemetryFlushGraceMs,
@@ -576,6 +586,8 @@ namespace PureDOTS.Runtime.Scenarios
             public string platform;
             public string unityVersion;
             public string timestampUtc;
+            public string exitPolicy;
+            public string exitPolicyEnvRaw;
             public int exitGraceMs;
             public int exitKillMs;
             public int telemetryFlushGraceMs;
@@ -631,6 +643,12 @@ namespace PureDOTS.Runtime.Scenarios
             public float perfBudgetValue;
             public float perfBudgetLimit;
             public uint perfBudgetTick;
+            public string exitPolicy;
+            public string exitPolicyEnvRaw;
+            public string highestSeverity;
+            public ulong telemetryBytesWritten;
+            public ulong telemetryMaxBytes;
+            public bool telemetryCapReached;
             public int exitGraceMs;
             public int exitKillMs;
             public int telemetryFlushGraceMs;

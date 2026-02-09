@@ -110,6 +110,7 @@ namespace PureDOTS.Runtime.Scenarios
                 EntityCountEntries = scenario.EntityCounts.Length,
                 Metrics = new List<ScenarioMetric>(8),
                 ExitPolicy = exitPolicy,
+                ExitPolicyEnvRaw = s_exitPolicyEnvRaw,
                 HighestSeverity = ScenarioSeverity.Info
             };
 
@@ -520,6 +521,16 @@ namespace PureDOTS.Runtime.Scenarios
                 result.TelemetryVersion = entityManager.GetComponentData<TelemetryStream>(rewindEntity).Version;
             }
 
+            using (var exportQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportState>()))
+            {
+                if (exportQuery.TryGetSingleton(out TelemetryExportState exportState))
+                {
+                    result.TelemetryBytesWritten = exportState.BytesWritten;
+                    result.TelemetryMaxBytes = exportState.MaxOutputBytes;
+                    result.TelemetryCapReached = exportState.CapReached != 0;
+                }
+            }
+
             if (entityManager.HasComponent<DebugDisplayData>(rewindEntity))
             {
                 var debug = entityManager.GetComponentData<DebugDisplayData>(rewindEntity);
@@ -928,6 +939,9 @@ namespace PureDOTS.Runtime.Scenarios
         public int RunTicks;
         public uint FinalTick;
         public uint TelemetryVersion;
+        public ulong TelemetryBytesWritten;
+        public ulong TelemetryMaxBytes;
+        public bool TelemetryCapReached;
         public int CommandLogCount;
         public int SnapshotLogCount;
         public bool FrameTimingBudgetExceeded;
@@ -951,6 +965,7 @@ namespace PureDOTS.Runtime.Scenarios
         public List<ScenarioAssertionReport> AssertionResults;
         public ScenarioSeverity HighestSeverity;
         public ExitPolicy ExitPolicy;
+        public string ExitPolicyEnvRaw;
 
         public void AddMetric(string key, double value)
         {
