@@ -129,6 +129,7 @@ namespace PureDOTS.Runtime.Scenarios
             world.Unmanaged.Time = new TimeData(FixedDeltaTime, 0);
             initGroup.Update();
             ScenarioRunRecorder.TryWriteRunHeader(entityManager);
+            EmitExitPolicyTelemetry(entityManager, exitPolicy, s_exitPolicyEnvRaw);
 
             using (var commandQueue = BuildCommandLookup(in scenario))
             {
@@ -167,6 +168,30 @@ namespace PureDOTS.Runtime.Scenarios
             TryEmitBankResult(world.EntityManager, in scenario);
             ScenarioRunIssueReporter.FlushToResult(ref result);
             return result;
+        }
+
+        private static void EmitExitPolicyTelemetry(EntityManager entityManager, ExitPolicy exitPolicy, string envRaw)
+        {
+            var streamEntity = TelemetryStreamUtility.EnsureEventStream(entityManager);
+            var payload = JsonUtility.ToJson(new ExitPolicyEventPayload
+            {
+                policy = exitPolicy.ToString(),
+                env = envRaw ?? string.Empty
+            });
+
+            var buffer = entityManager.GetBuffer<TelemetryEvent>(streamEntity);
+            buffer.AddEvent(
+                new FixedString64Bytes("scenario.exit_policy"),
+                0u,
+                new FixedString64Bytes("ScenarioRunnerExecutor"),
+                new FixedString128Bytes(payload));
+        }
+
+        [Serializable]
+        private struct ExitPolicyEventPayload
+        {
+            public string policy;
+            public string env;
         }
 
         private static World CreateWorld(string name)

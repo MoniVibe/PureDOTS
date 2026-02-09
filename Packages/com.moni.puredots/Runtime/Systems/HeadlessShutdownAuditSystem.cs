@@ -46,9 +46,15 @@ namespace PureDOTS.Systems
             var exitRequest = SystemAPI.GetSingleton<HeadlessExitRequest>();
             var ticksSinceRequest = tick >= exitRequest.RequestedTick ? tick - exitRequest.RequestedTick : 0u;
             var headlessExitImmediate = IsTruthyEnv("PUREDOTS_HEADLESS_EXIT_IMMEDIATE");
+            var exitGraceMs = ResolveExitGraceMs();
+            var exitKillMs = ResolveExitKillMs(exitGraceMs);
+            var telemetryFlushGraceMs = ResolveTelemetryFlushGraceMs();
+            var exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+            var exitPolicyEnv = ScenarioExitUtility.GetExitPolicyEnvRaw();
 
             UnityDebug.Log($"[ShutdownAudit] tick={tick} scenario={scenarioId} entities={totalEntities} bughunt_disabled={BugHuntGate.DisabledRaw}");
             UnityDebug.Log($"[ShutdownAudit] exit_code={exitRequest.ExitCode} requested_tick={exitRequest.RequestedTick} ticks_since_request={ticksSinceRequest} exit_immediate={headlessExitImmediate}");
+            UnityDebug.Log($"[ShutdownAudit] exit_policy={exitPolicy} exit_policy_env='{exitPolicyEnv}' exit_grace_ms={exitGraceMs} exit_kill_ms={exitKillMs} telemetry_flush_grace_ms={telemetryFlushGraceMs}");
             UnityDebug.Log($"[ShutdownAudit] worlds={World.All.Count} exit_request_count={Count<HeadlessExitRequest>(em)}");
 
             EmitTelemetryAudit(ref state, tick);
@@ -108,6 +114,50 @@ namespace PureDOTS.Systems
                 || value.Equals("true", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int ResolveExitGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_HEADLESS_EXIT_GRACE_MS", 2000, 100, 120000);
+        }
+
+        private static int ResolveExitKillMs(int graceMs)
+        {
+            var defaultKillMs = graceMs + 5000;
+            var minKillMs = graceMs + 1000;
+            var killMs = GetEnvInt("PUREDOTS_HEADLESS_EXIT_KILL_MS", defaultKillMs, minKillMs, 300000);
+            if (killMs <= graceMs)
+            {
+                killMs = minKillMs;
+            }
+
+            return killMs;
+        }
+
+        private static int ResolveTelemetryFlushGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_TELEMETRY_FLUSH_GRACE_MS", 0, 0, 300000);
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
         }
     }
 }
