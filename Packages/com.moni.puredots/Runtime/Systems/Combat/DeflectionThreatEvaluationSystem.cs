@@ -51,6 +51,8 @@ namespace PureDOTS.Systems.Combat
 
             bool hasCatalog = SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog) &&
                               projectileCatalog.Catalog.IsCreated;
+            bool hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                  ammoCatalog.Catalog.IsCreated;
 
             var bufferLookup = SystemAPI.GetBufferLookup<DeflectionThreat>(false);
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -113,6 +115,7 @@ namespace PureDOTS.Systems.Combat
                     float dodgeDifficulty = 0.4f;
                     float deflectResistance = 0.3f;
                     float controlResistance = 0.2f;
+                    float damageMultiplier = 1f;
 
                     if (hasCatalog)
                     {
@@ -146,6 +149,15 @@ namespace PureDOTS.Systems.Combat
                         }
                     }
 
+                    if (hasAmmoCatalog && projectile.ValueRO.AmmoId.Length > 0)
+                    {
+                        ref var ammoSpec = ref FindAmmoSpec(ammoCatalog.Catalog, projectile.ValueRO.AmmoId);
+                        if (!UnsafeRef.IsNull(ref ammoSpec))
+                        {
+                            damageMultiplier = ammoSpec.DamageMultiplier;
+                        }
+                    }
+
                     if (speed <= 1e-4f)
                     {
                         speed = 1f;
@@ -162,7 +174,7 @@ namespace PureDOTS.Systems.Combat
                     deflectResistance = math.saturate(deflectResistance + math.saturate(speed * 0.01f));
                     controlResistance = math.saturate(controlResistance + math.saturate(speed * 0.005f));
 
-                    float threatScore = baseDamage * math.rcp(1f + timeToImpact);
+                    float threatScore = baseDamage * damageMultiplier * math.rcp(1f + timeToImpact);
 
                     var threat = new DeflectionThreat
                     {
@@ -224,6 +236,28 @@ namespace PureDOTS.Systems.Combat
             }
 
             return ref UnsafeRef.Null<ProjectileSpec>();
+        }
+
+        private static ref AmmoSpec FindAmmoSpec(
+            BlobAssetReference<AmmoCatalogBlob> catalog,
+            FixedString32Bytes ammoId)
+        {
+            if (!catalog.IsCreated)
+            {
+                return ref UnsafeRef.Null<AmmoSpec>();
+            }
+
+            ref var ammos = ref catalog.Value.Ammunition;
+            for (int i = 0; i < ammos.Length; i++)
+            {
+                ref var ammoSpec = ref ammos[i];
+                if (ammoSpec.Id.Equals(ammoId))
+                {
+                    return ref ammoSpec;
+                }
+            }
+
+            return ref UnsafeRef.Null<AmmoSpec>();
         }
     }
 }

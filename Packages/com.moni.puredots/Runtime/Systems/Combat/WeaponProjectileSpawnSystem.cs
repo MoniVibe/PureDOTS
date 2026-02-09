@@ -16,6 +16,7 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(ProjectilePoolSpawnSystem))]
     public partial struct WeaponProjectileSpawnSystem : ISystem
     {
+        private static readonly FixedString32Bytes DefaultAmmoId = new FixedString32Bytes("ammo.standard");
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<TurretState> _turretLookup;
         private ComponentLookup<PersistentId> _persistentLookup;
@@ -184,6 +185,10 @@ namespace PureDOTS.Systems.Combat
                 var seed = ComputeShotSeed(entity, currentTick, shotSequence);
                 var rng = new Unity.Mathematics.Random(seed == 0u ? 1u : seed);
 
+                var ammoId = hasMagazine && magazine.AmmoType.Length > 0
+                    ? magazine.AmmoType
+                    : DefaultAmmoId;
+
                 for (int i = 0; i < burst; i++)
                 {
                     if (hasMagazine)
@@ -200,6 +205,7 @@ namespace PureDOTS.Systems.Combat
                     spawnBuffer.Add(new ProjectileSpawnRequest
                     {
                         ProjectileId = weaponSpec.ProjectileId,
+                        AmmoId = ammoId,
                         SpawnPosition = muzzlePos,
                         SpawnDirection = direction,
                         SourceEntity = entity,

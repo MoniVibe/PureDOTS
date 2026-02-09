@@ -53,6 +53,9 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            var hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                 ammoCatalog.Catalog.IsCreated;
+
             var poolingEnabled = SystemAPI.TryGetSingleton<ProjectilePoolConfig>(out var poolConfig) &&
                                  poolConfig.Capacity > 0 &&
                                  poolConfig.Prefab != Entity.Null;
@@ -74,7 +77,9 @@ namespace PureDOTS.Systems.Combat
                 HealthLookup = _healthLookup,
                 DamageableLookup = _damageableLookup,
                 DamageBuffers = _damageBufferLookup,
-                ProjectileCatalog = projectileCatalog.Catalog
+                ProjectileCatalog = projectileCatalog.Catalog,
+                HasAmmoCatalog = hasAmmoCatalog,
+                AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = jobHandle;
@@ -91,6 +96,8 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public ComponentLookup<Damageable> DamageableLookup;
             [NativeDisableParallelForRestriction] public BufferLookup<DamageEvent> DamageBuffers;
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
+            public bool HasAmmoCatalog;
+            [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
 
             void Execute(
                 Entity projectileEntity,
@@ -126,6 +133,9 @@ namespace PureDOTS.Systems.Combat
                 float damage = 10f; // Default fallback
                 DamageType damageType = DamageType.Physical;
                 DamageFlags damageFlags = DamageFlags.None;
+                float damageMultiplier = 1f;
+                DamageFlags ammoFlags = DamageFlags.None;
+                byte damageTypeOverride = 255;
 
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
                 if (!UnsafeRef.IsNull(ref spec))
@@ -134,6 +144,24 @@ namespace PureDOTS.Systems.Combat
                     damageType = DetermineDamageTypeFromSpec(ref spec);
                     damageFlags = DetermineDamageFlagsFromSpec(ref spec);
                 }
+
+                if (HasAmmoCatalog && projectile.AmmoId.Length > 0)
+                {
+                    ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                    if (!UnsafeRef.IsNull(ref ammoSpec))
+                    {
+                        damageMultiplier = ammoSpec.DamageMultiplier;
+                        ammoFlags = ammoSpec.DamageFlags;
+                        damageTypeOverride = ammoSpec.DamageTypeOverride;
+                    }
+                }
+
+                damage *= damageMultiplier;
+                if (damageTypeOverride != 255)
+                {
+                    damageType = (DamageType)damageTypeOverride;
+                }
+                damageFlags |= ammoFlags;
 
                 // Create damage event
                 var damageEvent = new DamageEvent
@@ -212,6 +240,28 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return ref UnsafeRef.Null<ProjectileSpec>();
+            }
+
+            private static ref AmmoSpec FindAmmoSpec(
+                BlobAssetReference<AmmoCatalogBlob> catalog,
+                FixedString32Bytes ammoId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref UnsafeRef.Null<AmmoSpec>();
+                }
+
+                ref var ammos = ref catalog.Value.Ammunition;
+                for (int i = 0; i < ammos.Length; i++)
+                {
+                    ref var ammoSpec = ref ammos[i];
+                    if (ammoSpec.Id.Equals(ammoId))
+                    {
+                        return ref ammoSpec;
+                    }
+                }
+
+                return ref UnsafeRef.Null<AmmoSpec>();
             }
 
             /// <summary>

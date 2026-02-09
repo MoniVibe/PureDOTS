@@ -61,6 +61,9 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            bool hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                  ammoCatalog.Catalog.IsCreated;
+
             // Get weapon catalog for spray variance lookup
             BlobAssetReference<WeaponCatalogBlob> weaponCatalog = default;
             if (SystemAPI.TryGetSingleton<WeaponCatalog>(out var wc))
@@ -104,6 +107,8 @@ namespace PureDOTS.Systems.Combat
             var job = new BuildHazardSlicesJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
+                HasAmmoCatalog = hasAmmoCatalog,
+                AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default,
                 WeaponCatalog = weaponCatalog,
                 FactionLookup = _factionLookup,
                 WeaponMountLookup = _weaponMountLookup,
@@ -131,6 +136,8 @@ namespace PureDOTS.Systems.Combat
         public partial struct BuildHazardSlicesJob : IJobEntity
         {
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
+            public bool HasAmmoCatalog;
+            [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
             [ReadOnly] public BlobAssetReference<WeaponCatalogBlob> WeaponCatalog;
             [ReadOnly] public ComponentLookup<FactionId> FactionLookup;
             [ReadOnly] public ComponentLookup<WeaponMount> WeaponMountLookup;
@@ -159,6 +166,10 @@ namespace PureDOTS.Systems.Combat
                     return;
                 }
 
+                float lifetimeMultiplier = 1f;
+                float aoeRadiusMultiplier = 1f;
+                float chainRangeMultiplier = 1f;
+
                 float3 pos = transform.Position;
                 float3 vel = projectile.Velocity;
                 float speed = math.length(vel);
@@ -170,11 +181,30 @@ namespace PureDOTS.Systems.Combat
 
                 // Determine hazard kind from projectile spec
                 HazardKind kind = 0;
-                if (spec.AoERadius > 0f)
+                float aoeRadius = spec.AoERadius;
+                float chainRange = spec.ChainRange;
+
+                if (HasAmmoCatalog && projectile.AmmoId.Length > 0)
+                {
+                    ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                    if (!UnsafeRef.IsNull(ref ammoSpec))
+                    {
+                        lifetimeMultiplier = ammoSpec.LifetimeMultiplier;
+                        aoeRadiusMultiplier = ammoSpec.AoERadiusMultiplier;
+                        chainRangeMultiplier = ammoSpec.ChainRangeMultiplier;
+
+                        aoeRadius *= aoeRadiusMultiplier;
+                        chainRange *= chainRangeMultiplier;
+
+                        ApplyAmmoHazards(ref ammoSpec, ref kind, ref aoeRadius, ref chainRange, aoeRadiusMultiplier, chainRangeMultiplier);
+                    }
+                }
+
+                if (aoeRadius > 0f)
                 {
                     kind |= HazardKind.AoE;
                 }
-                if (spec.ChainRange > 0f)
+                if (chainRange > 0f)
                 {
                     kind |= HazardKind.Chain;
                 }
@@ -185,6 +215,14 @@ namespace PureDOTS.Systems.Combat
 
                 // Extract contagion probability from OnHit effects (game-defined in spec)
                 float contagionProb = ExtractContagionProbability(ref spec);
+                if (HasAmmoCatalog && projectile.AmmoId.Length > 0)
+                {
+                    ref var ammoSpec = ref FindAmmoSpec(AmmoCatalog, projectile.AmmoId);
+                    if (!UnsafeRef.IsNull(ref ammoSpec))
+                    {
+                        contagionProb = math.max(contagionProb, ExtractContagionProbability(ref ammoSpec));
+                    }
+                }
 
                 // Check for plague/spray hazard kinds
                 if (contagionProb > 0f)
@@ -204,7 +242,7 @@ namespace PureDOTS.Systems.Combat
                 uint teamMask = ExtractTeamMask(projectile.SourceEntity);
 
                 // Predict trajectory for lookahead period
-                float lifetime = spec.Lifetime;
+                float lifetime = spec.Lifetime * lifetimeMultiplier;
                 float remainingLifetime = lifetime - projectile.Age;
                 float predictionTime = math.min(remainingLifetime, LookaheadTicks * DeltaTime);
 
@@ -218,12 +256,12 @@ namespace PureDOTS.Systems.Combat
                 {
                     Center = pos,
                     Vel = vel,
-                    Radius0 = spec.AoERadius,
+                    Radius0 = aoeRadius,
                     RadiusGrow = 0f, // No growth during flight
                     StartTick = CurrentTick,
                     EndTick = CurrentTick + (uint)math.ceil(predictionTime / DeltaTime),
                     Kind = kind,
-                    ChainRadius = spec.ChainRange,
+                    ChainRadius = chainRange,
                     ContagionProb = contagionProb,
                     HomingConeCos = (ProjectileKind)spec.Kind == ProjectileKind.Homing ? math.cos(math.radians(45f)) : 0f,
                     SprayVariance = sprayVariance,
@@ -235,10 +273,10 @@ namespace PureDOTS.Systems.Combat
                 TempSlices.Add(segmentSlice);
 
                 // If AoE projectile, create impact slice
-                if (spec.AoERadius > 0f && remainingLifetime > 0f)
+                if (aoeRadius > 0f && remainingLifetime > 0f)
                 {
                     float3 impactPos = pos + vel * remainingLifetime;
-                    float impactRadius = spec.AoERadius;
+                    float impactRadius = aoeRadius;
                     float blastRadius = impactRadius * 2f; // Blast wave expands to 2x radius
 
                     var impactSlice = new HazardSlice
@@ -283,6 +321,61 @@ namespace PureDOTS.Systems.Combat
                     }
                 }
                 return 0f;
+            }
+
+            private static float ExtractContagionProbability(ref AmmoSpec spec)
+            {
+                if (!spec.OnHitAdd.Length.Equals(0))
+                {
+                    for (int i = 0; i < spec.OnHitAdd.Length; i++)
+                    {
+                        var effect = spec.OnHitAdd[i];
+                        if (effect.Kind == EffectOpKind.Status && effect.Aux > 0f)
+                        {
+                            return effect.Aux;
+                        }
+                    }
+                }
+                return 0f;
+            }
+
+            private static void ApplyAmmoHazards(
+                ref AmmoSpec spec,
+                ref HazardKind kind,
+                ref float aoeRadius,
+                ref float chainRange,
+                float aoeRadiusMultiplier,
+                float chainRangeMultiplier)
+            {
+                if (spec.OnHitAdd.Length == 0)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < spec.OnHitAdd.Length; i++)
+                {
+                    var effect = spec.OnHitAdd[i];
+                    if (effect.Kind == EffectOpKind.AoE)
+                    {
+                        kind |= HazardKind.AoE;
+                        if (effect.Aux > 0f)
+                        {
+                            aoeRadius = math.max(aoeRadius, effect.Aux * aoeRadiusMultiplier);
+                        }
+                    }
+                    else if (effect.Kind == EffectOpKind.Chain)
+                    {
+                        kind |= HazardKind.Chain;
+                        if (effect.Aux > 0f)
+                        {
+                            chainRange = math.max(chainRange, effect.Aux * chainRangeMultiplier);
+                        }
+                    }
+                    else if (effect.Kind == EffectOpKind.Status && effect.Aux > 0f)
+                    {
+                        kind |= HazardKind.Plague;
+                    }
+                }
             }
 
             /// <summary>
@@ -366,6 +459,28 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return ref UnsafeRef.Null<ProjectileSpec>();
+            }
+
+            private static ref AmmoSpec FindAmmoSpec(
+                BlobAssetReference<AmmoCatalogBlob> catalog,
+                FixedString32Bytes ammoId)
+            {
+                if (!catalog.IsCreated)
+                {
+                    return ref UnsafeRef.Null<AmmoSpec>();
+                }
+
+                ref var ammos = ref catalog.Value.Ammunition;
+                for (int i = 0; i < ammos.Length; i++)
+                {
+                    ref var ammoSpec = ref ammos[i];
+                    if (ammoSpec.Id.Equals(ammoId))
+                    {
+                        return ref ammoSpec;
+                    }
+                }
+
+                return ref UnsafeRef.Null<AmmoSpec>();
             }
         }
     }
