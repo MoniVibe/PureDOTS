@@ -61,6 +61,7 @@ namespace PureDOTS.Systems.Combat
                                  poolConfig.Capacity > 0 &&
                                  poolConfig.Prefab != Entity.Null;
 
+            var hasTrackingHub = SystemAPI.TryGetSingletonEntity<ProjectileTrackingHub>(out var trackingHubEntity);
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
@@ -76,6 +77,10 @@ namespace PureDOTS.Systems.Combat
                 TransformLookup = _transformLookup,
                 VelocityLookup = _velocityLookup,
                 PoolingEnabled = poolingEnabled,
+                HasTrackingHub = hasTrackingHub,
+                TrackingHub = trackingHubEntity,
+                CurrentTick = timeState.Tick,
+                CurrentTime = timeState.ElapsedTime,
                 Ecb = ecb
             };
 
@@ -92,12 +97,17 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public ComponentLookup<VelocitySample> VelocityLookup;
             public bool PoolingEnabled;
+            public bool HasTrackingHub;
+            public Entity TrackingHub;
+            public uint CurrentTick;
+            public float CurrentTime;
             public EntityCommandBuffer.ParallelWriter Ecb;
 
             public void Execute(
                 [ChunkIndexInQuery] int chunkIndex,
                 Entity entity,
                 ref ProjectileEntity projectile,
+                ref ProjectileTrackingState tracking,
                 ref LocalTransform transform,
                 EnabledRefRW<ProjectileActive> active,
                 EnabledRefRW<ProjectileRecycleTag> recycleTag)
@@ -143,6 +153,28 @@ namespace PureDOTS.Systems.Combat
                 float effectiveLifetime = spec.Lifetime > 0f ? spec.Lifetime * lifetimeMultiplier : 0f;
                 if (effectiveLifetime > 0f && projectile.Age >= effectiveLifetime)
                 {
+                    if (HasTrackingHub && tracking.TrackingId != 0)
+                    {
+                        Ecb.AppendToBuffer(chunkIndex, TrackingHub, new ProjectileTrackingEvent
+                        {
+                            Kind = ProjectileTrackingEventKind.Expire,
+                            TrackingId = tracking.TrackingId,
+                            Projectile = entity,
+                            Source = projectile.SourceEntity,
+                            Target = projectile.TargetEntity,
+                            ProjectileId = projectile.ProjectileId,
+                            AmmoId = projectile.AmmoId,
+                            Position = transform.Position,
+                            Direction = math.normalizesafe(projectile.Velocity),
+                            Tick = CurrentTick,
+                            Time = CurrentTime,
+                            Value = projectile.Age,
+                            Mode = 0,
+                            Result = 1
+                        });
+                        tracking.LastEventTick = CurrentTick;
+                    }
+
                     RetireProjectile(chunkIndex, entity, ref projectile, ref active, ref recycleTag);
                     return;
                 }

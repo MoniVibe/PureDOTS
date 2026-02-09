@@ -23,6 +23,7 @@ namespace PureDOTS.Systems.Combat
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<ProjectileActive> _activeLookup;
         private ComponentLookup<ProjectileRecycleTag> _recycleLookup;
+        private ComponentLookup<ProjectileTrackingState> _trackingLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -37,6 +38,7 @@ namespace PureDOTS.Systems.Combat
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _activeLookup = state.GetComponentLookup<ProjectileActive>();
             _recycleLookup = state.GetComponentLookup<ProjectileRecycleTag>();
+            _trackingLookup = state.GetComponentLookup<ProjectileTrackingState>();
         }
 
         [BurstCompile]
@@ -59,6 +61,7 @@ namespace PureDOTS.Systems.Combat
             _transformLookup.Update(ref state);
             _activeLookup.Update(ref state);
             _recycleLookup.Update(ref state);
+            _trackingLookup.Update(ref state);
 
             var hasCatalog = SystemAPI.TryGetSingleton<ProjectileCatalog>(out var projectileCatalog) &&
                              projectileCatalog.Catalog.IsCreated;
@@ -70,6 +73,15 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             var eventBufferLookup = SystemAPI.GetBufferLookup<DeflectionEvent>(false);
+
+            var hasTrackingHub = SystemAPI.TryGetSingletonEntity<ProjectileTrackingHub>(out var trackingHubEntity);
+            DynamicBuffer<ProjectileTrackingEvent> trackingEvents = default;
+            ProjectileTrackingConfig trackingConfig = default;
+            if (hasTrackingHub)
+            {
+                trackingEvents = SystemAPI.GetBuffer<ProjectileTrackingEvent>(trackingHubEntity);
+                trackingConfig = SystemAPI.GetComponent<ProjectileTrackingConfig>(trackingHubEntity);
+            }
 
             foreach (var (requests, ownerEntity) in SystemAPI.Query<DynamicBuffer<DeflectionRequest>>().WithEntityAccess())
             {
@@ -143,6 +155,35 @@ namespace PureDOTS.Systems.Combat
                         Result = (byte)(success ? 1 : 0),
                         Tick = timeState.Tick
                     });
+
+                    if (hasTrackingHub && request.Projectile != Entity.Null && _trackingLookup.HasComponent(request.Projectile))
+                    {
+                        var tracking = _trackingLookup[request.Projectile];
+                        if (tracking.TrackingId != 0 &&
+                            (trackingConfig.MaxEvents <= 0 || trackingEvents.Length < trackingConfig.MaxEvents))
+                        {
+                            trackingEvents.Add(new ProjectileTrackingEvent
+                            {
+                                Kind = MapDeflectionEventKind(request.Mode),
+                                TrackingId = tracking.TrackingId,
+                                Projectile = request.Projectile,
+                                Source = request.Source,
+                                Target = request.Projectile,
+                                ProjectileId = _projectileLookup.HasComponent(request.Projectile) ? _projectileLookup[request.Projectile].ProjectileId : default,
+                                AmmoId = _projectileLookup.HasComponent(request.Projectile) ? _projectileLookup[request.Projectile].AmmoId : default,
+                                Position = _transformLookup.HasComponent(request.Projectile) ? _transformLookup[request.Projectile].Position : float3.zero,
+                                Direction = resultDirection,
+                                Tick = timeState.Tick,
+                                Time = timeState.WorldSeconds,
+                                Value = 0f,
+                                Mode = (byte)request.Mode,
+                                Result = (byte)(success ? 1 : 0)
+                            });
+
+                            tracking.LastEventTick = timeState.Tick;
+                            _trackingLookup[request.Projectile] = tracking;
+                        }
+                    }
                 }
 
                 requests.Clear();
@@ -301,6 +342,16 @@ namespace PureDOTS.Systems.Combat
             }
 
             return ref UnsafeRef.Null<ProjectileSpec>();
+        }
+
+        private static ProjectileTrackingEventKind MapDeflectionEventKind(DeflectionMode mode)
+        {
+            return mode switch
+            {
+                DeflectionMode.Redirect => ProjectileTrackingEventKind.Redirect,
+                DeflectionMode.Control => ProjectileTrackingEventKind.Control,
+                _ => ProjectileTrackingEventKind.Deflect
+            };
         }
     }
 }

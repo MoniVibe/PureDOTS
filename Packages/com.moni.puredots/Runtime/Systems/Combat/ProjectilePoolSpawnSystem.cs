@@ -64,6 +64,19 @@ namespace PureDOTS.Systems.Combat
             var poolState = SystemAPI.GetComponentRW<ProjectilePoolState>(poolEntity);
             var poolBuffer = SystemAPI.GetBuffer<ProjectilePoolEntry>(poolEntity);
             var currentTime = timeState.ElapsedTime;
+            var currentTick = timeState.Tick;
+
+            var hasTrackingHub = SystemAPI.TryGetSingletonEntity<ProjectileTrackingHub>(out var trackingHubEntity);
+            DynamicBuffer<ProjectileTrackingEvent> trackingEvents = default;
+            ProjectileTrackingConfig trackingConfig = default;
+            RefRW<ProjectileTrackingCounters> trackingCounters = default;
+
+            if (hasTrackingHub)
+            {
+                trackingEvents = SystemAPI.GetBuffer<ProjectileTrackingEvent>(trackingHubEntity);
+                trackingConfig = SystemAPI.GetComponent<ProjectileTrackingConfig>(trackingHubEntity);
+                trackingCounters = SystemAPI.GetComponentRW<ProjectileTrackingCounters>(trackingHubEntity);
+            }
 
             foreach (var requests in SystemAPI.Query<DynamicBuffer<ProjectileSpawnRequest>>())
             {
@@ -96,7 +109,63 @@ namespace PureDOTS.Systems.Combat
                         continue;
                     }
 
+                    var ammoId = request.AmmoId.Length > 0
+                        ? request.AmmoId
+                        : new FixedString32Bytes("ammo.standard");
+
+                    uint trackingId = 0;
+                    if (hasTrackingHub)
+                    {
+                        var nextId = trackingCounters.ValueRO.NextId;
+                        if (nextId == 0)
+                        {
+                            nextId = 1;
+                        }
+                        trackingId = nextId;
+                        trackingCounters.ValueRW.NextId = nextId + 1;
+                    }
+
                     ActivateProjectile(entityManager, pooled, request, ref spec, currentTime, hasAmmoCatalog, hasAmmoCatalog ? ammoCatalog.Catalog : default);
+
+                    if (hasTrackingHub)
+                    {
+                        var trackingState = new ProjectileTrackingState
+                        {
+                            TrackingId = trackingId,
+                            SpawnTick = currentTick,
+                            LastEventTick = currentTick
+                        };
+
+                        if (entityManager.HasComponent<ProjectileTrackingState>(pooled))
+                        {
+                            entityManager.SetComponentData(pooled, trackingState);
+                        }
+                        else
+                        {
+                            entityManager.AddComponentData(pooled, trackingState);
+                        }
+
+                        if (trackingConfig.MaxEvents <= 0 || trackingEvents.Length < trackingConfig.MaxEvents)
+                        {
+                            trackingEvents.Add(new ProjectileTrackingEvent
+                            {
+                                Kind = ProjectileTrackingEventKind.Spawn,
+                                TrackingId = trackingId,
+                                Projectile = pooled,
+                                Source = request.SourceEntity,
+                                Target = request.TargetEntity,
+                                ProjectileId = request.ProjectileId,
+                                AmmoId = ammoId,
+                                Position = request.SpawnPosition,
+                                Direction = request.SpawnDirection,
+                                Tick = currentTick,
+                                Time = currentTime,
+                                Value = spec.Damage.BaseDamage,
+                                Mode = 0,
+                                Result = 1
+                            });
+                        }
+                    }
                 }
 
                 requests.Clear();

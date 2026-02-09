@@ -56,6 +56,7 @@ namespace PureDOTS.Systems.Combat
 
             var timeState = SystemAPI.GetSingleton<TimeState>();
             var currentTick = timeState.Tick;
+            var currentTime = timeState.ElapsedTime;
 
             // Optional: get spatial grid for AoE/Chain queries
             var hasSpatialGrid = SystemAPI.TryGetSingleton<SpatialGridConfig>(out var spatialConfig) &&
@@ -75,12 +76,15 @@ namespace PureDOTS.Systems.Combat
                                  poolConfig.Capacity > 0 &&
                                  poolConfig.Prefab != Entity.Null;
 
+            var hasTrackingHub = SystemAPI.TryGetSingletonEntity<ProjectileTrackingHub>(out var trackingHubEntity);
+
             var job = new ProjectileEffectExecutionJob
             {
                 ProjectileCatalog = projectileCatalog.Catalog,
                 HasAmmoCatalog = hasAmmoCatalog,
                 AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default,
                 CurrentTick = currentTick,
+                CurrentTime = currentTime,
                 Ecb = ecb,
                 PoolingEnabled = poolingEnabled,
                 HasSpatialGrid = hasSpatialGrid,
@@ -89,7 +93,9 @@ namespace PureDOTS.Systems.Combat
                 PhysicsWorld = hasPhysicsWorld ? physicsWorld : default,
                 DamageBuffers = _damageBufferLookup,
                 BuffRequestBuffers = _buffRequestBufferLookup,
-                TransformLookup = _transformLookup
+                TransformLookup = _transformLookup,
+                HasTrackingHub = hasTrackingHub,
+                TrackingHub = trackingHubEntity
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -102,6 +108,7 @@ namespace PureDOTS.Systems.Combat
             public bool HasAmmoCatalog;
             [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
             public uint CurrentTick;
+            public float CurrentTime;
             public EntityCommandBuffer.ParallelWriter Ecb;
             public bool PoolingEnabled;
             public bool HasSpatialGrid;
@@ -111,11 +118,14 @@ namespace PureDOTS.Systems.Combat
             [NativeDisableParallelForRestriction] public BufferLookup<DamageEvent> DamageBuffers;
             [NativeDisableParallelForRestriction] public BufferLookup<BuffApplicationRequest> BuffRequestBuffers;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            public bool HasTrackingHub;
+            public Entity TrackingHub;
 
             public void Execute(
                 [ChunkIndexInQuery] int chunkIndex,
                 Entity projectileEntity,
                 ref ProjectileEntity projectile,
+                ref ProjectileTrackingState tracking,
                 DynamicBuffer<ProjectileHitResult> hitResults,
                 EnabledRefRW<ProjectileActive> active,
                 EnabledRefRW<ProjectileRecycleTag> recycleTag)
@@ -148,6 +158,28 @@ namespace PureDOTS.Systems.Combat
                     if (hit.HitEntity == Entity.Null)
                     {
                         continue;
+                    }
+
+                    if (HasTrackingHub && tracking.TrackingId != 0)
+                    {
+                        Ecb.AppendToBuffer(chunkIndex, TrackingHub, new ProjectileTrackingEvent
+                        {
+                            Kind = ProjectileTrackingEventKind.Hit,
+                            TrackingId = tracking.TrackingId,
+                            Projectile = projectileEntity,
+                            Source = projectile.SourceEntity,
+                            Target = hit.HitEntity,
+                            ProjectileId = projectile.ProjectileId,
+                            AmmoId = projectile.AmmoId,
+                            Position = hit.HitPosition,
+                            Direction = math.normalizesafe(projectile.Velocity),
+                            Tick = CurrentTick,
+                            Time = CurrentTime,
+                            Value = spec.Damage.BaseDamage * ammoModifiers.DamageMultiplier,
+                            Mode = 0,
+                            Result = 1
+                        });
+                        tracking.LastEventTick = CurrentTick;
                     }
 
                     // Process all effect operations
@@ -188,6 +220,28 @@ namespace PureDOTS.Systems.Combat
                     projectile.HitsLeft -= 1f;
                     if (projectile.HitsLeft <= 0f)
                     {
+                        if (HasTrackingHub && tracking.TrackingId != 0)
+                        {
+                            Ecb.AppendToBuffer(chunkIndex, TrackingHub, new ProjectileTrackingEvent
+                            {
+                                Kind = ProjectileTrackingEventKind.Retire,
+                                TrackingId = tracking.TrackingId,
+                                Projectile = projectileEntity,
+                                Source = projectile.SourceEntity,
+                                Target = hit.HitEntity,
+                                ProjectileId = projectile.ProjectileId,
+                                AmmoId = projectile.AmmoId,
+                                Position = hit.HitPosition,
+                                Direction = math.normalizesafe(projectile.Velocity),
+                                Tick = CurrentTick,
+                                Time = CurrentTime,
+                                Value = projectile.DistanceTraveled,
+                                Mode = 0,
+                                Result = 1
+                            });
+                            tracking.LastEventTick = CurrentTick;
+                        }
+
                         // Projectile exhausted - retire it
                         RetireProjectile(chunkIndex, projectileEntity, ref projectile, ref active, ref recycleTag);
                         return;
