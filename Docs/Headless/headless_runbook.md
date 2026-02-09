@@ -19,6 +19,7 @@ This runbook splits headless validation into two agents with per-project banks.
 - Align Unity versions before rebuilds: read `ProjectSettings/ProjectVersion.txt` in the target repo and set `UNITY_WIN` to that exact version; treat any mismatch as a stale build and fix before proceeding.
 - Ops bus lives at `$TRI_STATE_DIR/ops`; requests go to `$TRI_STATE_DIR/ops/requests/*.json`. Do not write ops under `TRI_ROOT`.
 - Before running WSL headless after a Windows rebuild, confirm `/home/oni/Tri/Tools/builds/<project>/Linux_latest` matches `/mnt/c/dev/Tri/Tools/builds/<project>/Linux_latest`; if not, request a publish/sync.
+- Windows note: `Linux_latest/*_Headless.x86_64` binaries must be run in WSL (Windows cannot execute them). Use `wsl -e bash -lc "<headlessctl run_task ...>"` with `TRI_ROOT=/mnt/c/dev/Tri` and `TRI_STATE_DIR=/mnt/c/dev/Tri/.tri/state`.
 - Windows note: if `C:\dev\Tri\.tri\state` is a broken symlink, set `TRI_STATE_DIR=C:\dev\Tri\.tri\state_win` and create the directory before running `headlessctl`.
 
 ## Canonical state + docs (WSL polisher)
