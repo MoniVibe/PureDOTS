@@ -155,7 +155,7 @@ namespace PureDOTS.Systems
 
         private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = System.Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(value))
             {
                 return defaultValue;
@@ -289,7 +289,7 @@ namespace PureDOTS.Systems
                 new FixedString128Bytes(payload));
         }
 
-        private static uint ResolveTelemetryTick(ref SystemState state)
+        private uint ResolveTelemetryTick(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton(out TimeState timeState))
             {

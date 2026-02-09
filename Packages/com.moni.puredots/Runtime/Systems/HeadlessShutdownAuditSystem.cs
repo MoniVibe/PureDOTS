@@ -60,7 +60,7 @@ namespace PureDOTS.Systems
             EmitTelemetryAudit(ref state, tick);
         }
 
-        private static void EmitTelemetryAudit(ref SystemState state, uint tick)
+        private void EmitTelemetryAudit(ref SystemState state, uint tick)
         {
             if (!SystemAPI.TryGetSingleton<TelemetryExportConfig>(out var exportConfig))
             {
@@ -103,7 +103,7 @@ namespace PureDOTS.Systems
 
         private static bool IsTruthyEnv(string name)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = System.Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(value))
             {
                 return false;
@@ -141,7 +141,7 @@ namespace PureDOTS.Systems
 
         private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = System.Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(value))
             {
                 return defaultValue;
