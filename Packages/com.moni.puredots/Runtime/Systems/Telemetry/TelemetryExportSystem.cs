@@ -40,6 +40,9 @@ namespace PureDOTS.Systems.Telemetry
         private bool _oracleProbeInitialized;
         private string _oracleProbeLoggedRunId;
         private const string OracleProbeVersion = "oracle_probe_v1";
+        private double _flushStartTime;
+        private int _flushGraceMs;
+        private byte _flushStage;
 
         protected override void OnCreate()
         {
@@ -75,6 +78,7 @@ namespace PureDOTS.Systems.Telemetry
                 _outputCapReached = false;
                 _truncateOutput = true;
                 _capRecordWritten = false;
+                _flushStage = 0;
                 ClearExportState(ref exportState.ValueRW);
                 return;
             }
@@ -97,11 +101,34 @@ namespace PureDOTS.Systems.Telemetry
                 _truncateOutput = true;
                 _capRecordWritten = false;
                 _oracleProbeLoggedRunId = string.Empty;
+                _flushStage = 0;
                 ResetExportState(ref exportState.ValueRW, config);
             }
             else if (!exportState.ValueRO.RunId.Equals(config.RunId) || exportState.ValueRO.MaxOutputBytes != config.MaxOutputBytes)
             {
                 ResetExportState(ref exportState.ValueRW, config);
+            }
+
+            _flushGraceMs = ResolveFlushGraceMs();
+
+            if (_flushStage == 0)
+            {
+                _flushStage = 1;
+                _flushStartTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
+            }
+            else if (_flushStage == 1 && _flushGraceMs > 0)
+            {
+                var elapsedMs = (UnityEngine.Time.realtimeSinceStartupAsDouble - _flushStartTime) * 1000.0;
+                if (elapsedMs >= _flushGraceMs)
+                {
+                    _flushStage = 2;
+                    _outputCapReached = true;
+                    UnityDebug.LogWarning($"[TelemetryExportSystem] Flush grace exceeded after {elapsedMs:F0}ms (grace={_flushGraceMs}ms); pausing telemetry export.");
+                    exportState.ValueRW.CapReached = 1;
+                    exportState.ValueRW.MaxOutputBytes = config.MaxOutputBytes;
+                    exportState.ValueRW.RunId = config.RunId;
+                    return;
+                }
             }
 
             if (string.IsNullOrEmpty(_activePath))
@@ -228,6 +255,7 @@ namespace PureDOTS.Systems.Telemetry
                 exportState.ValueRW.MaxOutputBytes = maxBytes;
                 exportState.ValueRW.RunId = config.RunId;
                 exportState.ValueRW.CapReached = _outputCapReached ? (byte)1 : (byte)0;
+                exportState.ValueRW.LastWriteTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
             }
             catch (Exception ex)
             {
@@ -250,6 +278,7 @@ namespace PureDOTS.Systems.Telemetry
             state.BytesWritten = 0;
             state.MaxOutputBytes = 0;
             state.CapReached = 0;
+            state.LastWriteTime = 0;
         }
 
         private static void ResetExportState(ref TelemetryExportState state, in TelemetryExportConfig config)
@@ -258,6 +287,7 @@ namespace PureDOTS.Systems.Telemetry
             state.BytesWritten = 0;
             state.MaxOutputBytes = config.MaxOutputBytes;
             state.CapReached = 0;
+            state.LastWriteTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
         }
 
         private StreamWriter OpenWriter(string path, bool truncate, out ulong bytesWritten)
@@ -435,6 +465,32 @@ namespace PureDOTS.Systems.Telemetry
                 || value.Equals("true", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int ResolveFlushGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_TELEMETRY_FLUSH_GRACE_MS", 0, 0, 300000);
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = SystemEnvironment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
         }
 
         private bool WriteOracleProbe(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
