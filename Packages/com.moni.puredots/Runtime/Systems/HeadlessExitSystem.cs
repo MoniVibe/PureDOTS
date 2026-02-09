@@ -69,11 +69,14 @@ namespace PureDOTS.Systems
                         UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
                         EmitExitTelemetry(ref state, "headless.exit.force_immediate", 0f);
                         HeadlessExitFallback.ScheduleKill(_exitKillMs);
+                        FreezeWorldUpdates();
                         System.Environment.Exit(_exitCode);
                         return;
                     }
                     HeadlessExitFallback.ScheduleExit(_exitCode, _exitGraceMs);
                     HeadlessExitFallback.ScheduleKill(_exitKillMs);
+                    // Prevent another update tick from running after exit is requested.
+                    FreezeWorldUpdates();
                     // Avoid Application.Quit in headless runs; it can trigger a shutdown crash.
                     return;
                 }
@@ -257,6 +260,41 @@ namespace PureDOTS.Systems
                 catch
                 {
                 }
+            }
+        }
+
+        private static void FreezeWorldUpdates()
+        {
+            try
+            {
+                foreach (var world in World.All)
+                {
+                    world.QuitUpdate = true;
+                    DisableGroup<InitializationSystemGroup>(world);
+                    DisableGroup<SimulationSystemGroup>(world);
+                    DisableGroup<LateSimulationSystemGroup>(world);
+                    DisableGroup<FixedStepSimulationSystemGroup>(world);
+                    DisableGroup<PresentationSystemGroup>(world);
+                }
+            }
+            catch
+            {
+                // Best-effort freeze; exit fallback handles termination even if this fails.
+            }
+        }
+
+        private static void DisableGroup<T>(World world) where T : ComponentSystemGroup
+        {
+            try
+            {
+                var group = world.GetExistingSystemManaged<T>();
+                if (group != null)
+                {
+                    group.Enabled = false;
+                }
+            }
+            catch
+            {
             }
         }
 
