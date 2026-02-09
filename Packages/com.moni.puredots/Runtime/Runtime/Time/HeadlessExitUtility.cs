@@ -16,15 +16,45 @@ namespace PureDOTS.Runtime.Time
             }
 
             using var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<HeadlessExitRequest>());
-            var entity = query.IsEmptyIgnoreFilter
-                ? entityManager.CreateEntity(typeof(HeadlessExitRequest))
-                : query.GetSingletonEntity();
-
-            entityManager.SetComponentData(entity, new HeadlessExitRequest
+            if (query.IsEmptyIgnoreFilter)
             {
-                ExitCode = exitCode,
-                RequestedTick = tick
-            });
+                var created = entityManager.CreateEntity(typeof(HeadlessExitRequest));
+                entityManager.SetComponentData(created, new HeadlessExitRequest
+                {
+                    ExitCode = exitCode,
+                    RequestedTick = tick
+                });
+                return;
+            }
+
+            var entity = query.GetSingletonEntity();
+            var existing = entityManager.GetComponentData<HeadlessExitRequest>(entity);
+            var newExitCode = existing.ExitCode;
+            var newTick = existing.RequestedTick;
+            var update = false;
+
+            // Only upgrade exit code (success -> failure); never downgrade or overwrite.
+            if (existing.ExitCode == 0 && exitCode != 0)
+            {
+                newExitCode = exitCode;
+                update = true;
+            }
+
+            // Preserve the first observed exit tick when possible.
+            if (newTick == 0 && tick != 0)
+            {
+                newTick = tick;
+                update = true;
+            }
+
+            if (update)
+            {
+                entityManager.SetComponentData(entity, new HeadlessExitRequest
+                {
+                    ExitCode = newExitCode,
+                    RequestedTick = newTick
+                });
+            }
         }
     }
 }

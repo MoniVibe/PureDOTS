@@ -39,7 +39,12 @@ namespace PureDOTS.Systems.Telemetry
         private bool _oracleProbeEnabled;
         private bool _oracleProbeInitialized;
         private string _oracleProbeLoggedRunId;
+        private bool _exportSummaryEmitted;
         private const string OracleProbeVersion = "oracle_probe_v1";
+        private double _flushStartTime;
+        private int _flushGraceMs;
+        private byte _flushStage;
+        private byte _flushGraceReported;
 
         protected override void OnCreate()
         {
@@ -75,6 +80,9 @@ namespace PureDOTS.Systems.Telemetry
                 _outputCapReached = false;
                 _truncateOutput = true;
                 _capRecordWritten = false;
+                _flushStage = 0;
+                _flushGraceReported = 0;
+                _exportSummaryEmitted = false;
                 ClearExportState(ref exportState.ValueRW);
                 return;
             }
@@ -97,11 +105,38 @@ namespace PureDOTS.Systems.Telemetry
                 _truncateOutput = true;
                 _capRecordWritten = false;
                 _oracleProbeLoggedRunId = string.Empty;
+                _flushStage = 0;
+                _flushGraceReported = 0;
+                _exportSummaryEmitted = false;
                 ResetExportState(ref exportState.ValueRW, config);
             }
             else if (!exportState.ValueRO.RunId.Equals(config.RunId) || exportState.ValueRO.MaxOutputBytes != config.MaxOutputBytes)
             {
                 ResetExportState(ref exportState.ValueRW, config);
+            }
+
+            _flushGraceMs = ResolveFlushGraceMs();
+
+            if (_flushStage == 0)
+            {
+                _flushStage = 1;
+                _flushStartTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
+            }
+            else if (_flushStage == 1 && _flushGraceMs > 0)
+            {
+                var elapsedMs = (UnityEngine.Time.realtimeSinceStartupAsDouble - _flushStartTime) * 1000.0;
+                if (elapsedMs >= _flushGraceMs)
+                {
+                    _flushStage = 2;
+                    _outputCapReached = true;
+                    EmitFlushGraceExceededEvent(GetCurrentTick(), elapsedMs);
+                    TryEmitExportSummaryEvent(exportState.ValueRO.BytesWritten, config.MaxOutputBytes, true);
+                    UnityDebug.LogWarning($"[TelemetryExportSystem] Flush grace exceeded after {elapsedMs:F0}ms (grace={_flushGraceMs}ms); pausing telemetry export.");
+                    exportState.ValueRW.CapReached = 1;
+                    exportState.ValueRW.MaxOutputBytes = config.MaxOutputBytes;
+                    exportState.ValueRW.RunId = config.RunId;
+                    return;
+                }
             }
 
             if (string.IsNullOrEmpty(_activePath))
@@ -228,6 +263,7 @@ namespace PureDOTS.Systems.Telemetry
                 exportState.ValueRW.MaxOutputBytes = maxBytes;
                 exportState.ValueRW.RunId = config.RunId;
                 exportState.ValueRW.CapReached = _outputCapReached ? (byte)1 : (byte)0;
+                exportState.ValueRW.LastWriteTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
             }
             catch (Exception ex)
             {
@@ -250,6 +286,7 @@ namespace PureDOTS.Systems.Telemetry
             state.BytesWritten = 0;
             state.MaxOutputBytes = 0;
             state.CapReached = 0;
+            state.LastWriteTime = 0;
         }
 
         private static void ResetExportState(ref TelemetryExportState state, in TelemetryExportConfig config)
@@ -258,6 +295,7 @@ namespace PureDOTS.Systems.Telemetry
             state.BytesWritten = 0;
             state.MaxOutputBytes = config.MaxOutputBytes;
             state.CapReached = 0;
+            state.LastWriteTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
         }
 
         private StreamWriter OpenWriter(string path, bool truncate, out ulong bytesWritten)
@@ -328,6 +366,7 @@ namespace PureDOTS.Systems.Telemetry
 
                 writer.Flush();
                 _outputCapReached = true;
+                TryEmitExportSummaryEvent(bytesWritten, maxBytes, true);
                 UnityDebug.LogWarning($"[TelemetryExportSystem] Output cap reached ({bytesWritten} of {maxBytes} bytes). Telemetry export paused.");
             }
 
@@ -411,6 +450,38 @@ namespace PureDOTS.Systems.Telemetry
             return 0;
         }
 
+        private void TryEmitExportSummaryEvent(ulong bytesWritten, ulong maxBytes, bool capReached)
+        {
+            if (_exportSummaryEmitted)
+            {
+                return;
+            }
+
+            var streamEntity = TelemetryStreamUtility.EnsureEventStream(EntityManager);
+            if (streamEntity == Entity.Null || !EntityManager.HasBuffer<TelemetryEvent>(streamEntity))
+            {
+                return;
+            }
+
+            var payload = new FixedString128Bytes();
+            payload.Append("{\"bytes\":");
+            payload.Append(bytesWritten.ToString());
+            payload.Append(",\"max\":");
+            payload.Append(maxBytes.ToString());
+            payload.Append(",\"cap\":");
+            payload.Append(capReached ? "1" : "0");
+            payload.Append("}");
+
+            var buffer = EntityManager.GetBuffer<TelemetryEvent>(streamEntity);
+            buffer.AddEvent(
+                new FixedString64Bytes("telemetry.export.summary"),
+                GetCurrentTick(),
+                new FixedString64Bytes("TelemetryExportSystem"),
+                payload);
+
+            _exportSummaryEmitted = true;
+        }
+
         private void EnsureOracleProbeState()
         {
             if (_oracleProbeInitialized)
@@ -435,6 +506,50 @@ namespace PureDOTS.Systems.Telemetry
                 || value.Equals("true", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int ResolveFlushGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_TELEMETRY_FLUSH_GRACE_MS", 0, 0, 300000);
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = SystemEnvironment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
+        }
+
+        private void EmitFlushGraceExceededEvent(uint tick, double elapsedMs)
+        {
+            if (_flushGraceReported != 0)
+            {
+                return;
+            }
+
+            _flushGraceReported = 1;
+            var telemetryEntity = TelemetryStreamUtility.EnsureEventStream(EntityManager);
+            var payload = string.Format(CultureInfo.InvariantCulture,
+                "{{\"graceMs\":{0},\"elapsedMs\":{1}}}", _flushGraceMs, (int)Math.Round(elapsedMs));
+            EntityManager.GetBuffer<TelemetryEvent>(telemetryEntity).AddEvent(
+                new FixedString64Bytes("telemetry.flush.grace_exceeded"),
+                tick,
+                new FixedString64Bytes("TelemetryExportSystem"),
+                new FixedString128Bytes(payload));
         }
 
         private bool WriteOracleProbe(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)

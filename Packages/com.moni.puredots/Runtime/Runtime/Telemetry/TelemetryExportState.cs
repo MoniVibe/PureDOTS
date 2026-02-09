@@ -12,5 +12,6 @@ namespace PureDOTS.Runtime.Telemetry
         public ulong BytesWritten;
         public ulong MaxOutputBytes;
         public byte CapReached;
+        public double LastWriteTime;
     }
 }

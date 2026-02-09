@@ -54,6 +54,12 @@ namespace PureDOTS.Runtime.Scenarios
 
             GitMetadataUtility.TryReadMetadata(out s_gitMetadata);
 
+            var exitGraceMs = ResolveExitGraceMs();
+            var exitKillMs = ResolveExitKillMs(exitGraceMs);
+            var telemetryFlushGraceMs = ResolveTelemetryFlushGraceMs();
+            var exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+            var exitPolicyEnv = ScenarioExitUtility.GetExitPolicyEnvRaw();
+
             s_header = new RunHeaderRecord
             {
                 type = "run",
@@ -68,7 +74,12 @@ namespace PureDOTS.Runtime.Scenarios
                 buildConfig = GetBuildConfig(),
                 platform = Application.platform.ToString(),
                 unityVersion = Application.unityVersion,
-                timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
+                timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                exitPolicy = exitPolicy.ToString(),
+                exitPolicyEnvRaw = exitPolicyEnv ?? string.Empty,
+                exitGraceMs = exitGraceMs,
+                exitKillMs = exitKillMs,
+                telemetryFlushGraceMs = telemetryFlushGraceMs
             };
         }
 
@@ -189,6 +200,15 @@ namespace PureDOTS.Runtime.Scenarios
                     perfBudgetValue = result.PerformanceBudgetValue,
                     perfBudgetLimit = result.PerformanceBudgetLimit,
                     perfBudgetTick = result.PerformanceBudgetTick,
+                    exitPolicy = result.ExitPolicy.ToString(),
+                    exitPolicyEnvRaw = result.ExitPolicyEnvRaw ?? string.Empty,
+                    highestSeverity = result.HighestSeverity.ToString(),
+                    telemetryBytesWritten = result.TelemetryBytesWritten,
+                    telemetryMaxBytes = result.TelemetryMaxBytes,
+                    telemetryCapReached = result.TelemetryCapReached,
+                    exitGraceMs = s_header.exitGraceMs,
+                    exitKillMs = s_header.exitKillMs,
+                    telemetryFlushGraceMs = s_header.telemetryFlushGraceMs,
                     metrics = ConvertMetrics(result.Metrics)
                 };
 
@@ -495,6 +515,50 @@ namespace PureDOTS.Runtime.Scenarios
             s_writer.WriteLine(json);
         }
 
+        private static int ResolveExitGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_HEADLESS_EXIT_GRACE_MS", 2000, 100, 120000);
+        }
+
+        private static int ResolveExitKillMs(int graceMs)
+        {
+            var defaultKillMs = graceMs + 5000;
+            var minKillMs = graceMs + 1000;
+            var killMs = GetEnvInt("PUREDOTS_HEADLESS_EXIT_KILL_MS", defaultKillMs, minKillMs, 300000);
+            if (killMs <= graceMs)
+            {
+                killMs = minKillMs;
+            }
+
+            return killMs;
+        }
+
+        private static int ResolveTelemetryFlushGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_TELEMETRY_FLUSH_GRACE_MS", 0, 0, 300000);
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = global::System.Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
+        }
+
         private const uint FnvSeed = 2166136261u;
 
         private static uint HashStep(uint current, uint value)
@@ -522,6 +586,11 @@ namespace PureDOTS.Runtime.Scenarios
             public string platform;
             public string unityVersion;
             public string timestampUtc;
+            public string exitPolicy;
+            public string exitPolicyEnvRaw;
+            public int exitGraceMs;
+            public int exitKillMs;
+            public int telemetryFlushGraceMs;
             public uint registryAggregateHash;
             public CatalogRecord[] catalogs;
         }
@@ -574,6 +643,15 @@ namespace PureDOTS.Runtime.Scenarios
             public float perfBudgetValue;
             public float perfBudgetLimit;
             public uint perfBudgetTick;
+            public string exitPolicy;
+            public string exitPolicyEnvRaw;
+            public string highestSeverity;
+            public ulong telemetryBytesWritten;
+            public ulong telemetryMaxBytes;
+            public bool telemetryCapReached;
+            public int exitGraceMs;
+            public int exitKillMs;
+            public int telemetryFlushGraceMs;
             public List<MetricRecord> metrics;
         }
 

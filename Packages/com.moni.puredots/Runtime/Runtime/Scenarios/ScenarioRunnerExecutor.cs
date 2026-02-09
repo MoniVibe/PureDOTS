@@ -42,13 +42,15 @@ namespace PureDOTS.Runtime.Scenarios
 
         private static ExitPolicy s_exitPolicy = ExitPolicy.InvariantsAndDeterminism;
         private static bool s_exitPolicyResolved;
+        private static string s_exitPolicyEnvRaw;
         private static ExitPolicy GetExitPolicy()
         {
             if (!s_exitPolicyResolved)
             {
                 s_exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+                s_exitPolicyEnvRaw = ScenarioExitUtility.GetExitPolicyEnvRaw();
                 s_exitPolicyResolved = true;
-                Debug.Log($"[ScenarioRunner] Exit policy set to {s_exitPolicy}");
+                Debug.Log($"[ScenarioRunner] Exit policy set to {s_exitPolicy} (PUREDOTS_EXIT_POLICY='{s_exitPolicyEnvRaw}')");
             }
 
             return s_exitPolicy;
@@ -108,6 +110,7 @@ namespace PureDOTS.Runtime.Scenarios
                 EntityCountEntries = scenario.EntityCounts.Length,
                 Metrics = new List<ScenarioMetric>(8),
                 ExitPolicy = exitPolicy,
+                ExitPolicyEnvRaw = s_exitPolicyEnvRaw,
                 HighestSeverity = ScenarioSeverity.Info
             };
 
@@ -127,6 +130,7 @@ namespace PureDOTS.Runtime.Scenarios
             world.Unmanaged.Time = new TimeData(FixedDeltaTime, 0);
             initGroup.Update();
             ScenarioRunRecorder.TryWriteRunHeader(entityManager);
+            EmitExitPolicyTelemetry(entityManager, exitPolicy, s_exitPolicyEnvRaw);
 
             using (var commandQueue = BuildCommandLookup(in scenario))
             {
@@ -165,6 +169,30 @@ namespace PureDOTS.Runtime.Scenarios
             TryEmitBankResult(world.EntityManager, in scenario);
             ScenarioRunIssueReporter.FlushToResult(ref result);
             return result;
+        }
+
+        private static void EmitExitPolicyTelemetry(EntityManager entityManager, ExitPolicy exitPolicy, string envRaw)
+        {
+            var streamEntity = TelemetryStreamUtility.EnsureEventStream(entityManager);
+            var payload = JsonUtility.ToJson(new ExitPolicyEventPayload
+            {
+                policy = exitPolicy.ToString(),
+                env = envRaw ?? string.Empty
+            });
+
+            var buffer = entityManager.GetBuffer<TelemetryEvent>(streamEntity);
+            buffer.AddEvent(
+                new FixedString64Bytes("scenario.exit_policy"),
+                0u,
+                new FixedString64Bytes("ScenarioRunnerExecutor"),
+                new FixedString128Bytes(payload));
+        }
+
+        [Serializable]
+        private struct ExitPolicyEventPayload
+        {
+            public string policy;
+            public string env;
         }
 
         private static World CreateWorld(string name)
@@ -491,6 +519,16 @@ namespace PureDOTS.Runtime.Scenarios
             if (entityManager.HasComponent<TelemetryStream>(rewindEntity))
             {
                 result.TelemetryVersion = entityManager.GetComponentData<TelemetryStream>(rewindEntity).Version;
+            }
+
+            using (var exportQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<TelemetryExportState>()))
+            {
+                if (exportQuery.TryGetSingleton(out TelemetryExportState exportState))
+                {
+                    result.TelemetryBytesWritten = exportState.BytesWritten;
+                    result.TelemetryMaxBytes = exportState.MaxOutputBytes;
+                    result.TelemetryCapReached = exportState.CapReached != 0;
+                }
             }
 
             if (entityManager.HasComponent<DebugDisplayData>(rewindEntity))
@@ -901,6 +939,9 @@ namespace PureDOTS.Runtime.Scenarios
         public int RunTicks;
         public uint FinalTick;
         public uint TelemetryVersion;
+        public ulong TelemetryBytesWritten;
+        public ulong TelemetryMaxBytes;
+        public bool TelemetryCapReached;
         public int CommandLogCount;
         public int SnapshotLogCount;
         public bool FrameTimingBudgetExceeded;
@@ -924,6 +965,7 @@ namespace PureDOTS.Runtime.Scenarios
         public List<ScenarioAssertionReport> AssertionResults;
         public ScenarioSeverity HighestSeverity;
         public ExitPolicy ExitPolicy;
+        public string ExitPolicyEnvRaw;
 
         public void AddMetric(string key, double value)
         {
