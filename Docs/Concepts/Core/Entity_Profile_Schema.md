@@ -71,6 +71,21 @@ Existing close matches:
 - `PureDOTS.Runtime.Alignment.EthicAxisValue` with `EthicAxis { Authority, Military, Economic, Tolerance, Expansion }`.
 - `Space4X.Registry.EthicAxisValue` with `EthicAxisId { War, Materialist, Authoritarian, Xenophobia, Expansionist }`.
 
+### 2.1 Outlook axes vs outlook tags (derived)
+Outlook axes are the **continuous math inputs**; outlook tags are the **compact labels** used by UI, gating rules, and content lookup.
+
+Derivation guidance (deterministic, cheap):
+- Maintain the signed axis buffer as the source of truth.
+- Sort axes by `abs(Value)` and pick the top 3.
+- Map sign to the tag label (e.g., `Authority +0.6` => `Authoritarian`, `Authority -0.6` => `Egalitarian`).
+- Persist `Primary/Secondary/Tertiary` tags **with their weights** (abs value) so downstream systems can blend instead of snap.
+- Fanatic tags: if `abs(Value) >= 0.75` and the next axis is `<= 0.35`, mark the primary as fanatic to signal extreme culture.
+
+Usage rules:
+- **Weighting** uses axis values (continuous, signed).
+- **Gating** and **content selection** can use tags (discrete), but should still respect weights when possible.
+- Aggregates derive tags the same way; individual entities can optionally override tags for named characters.
+
 ### 3) Temperament / Personality / Behavior (how, not what)
 These do *not* encode ideology; they encode response patterns.
 
@@ -174,6 +189,32 @@ These are the “shared knobs” that both games can consume:
 
 Implementation note: PureDOTS already has `BehaviorTuning` for several biases; expand or layer a second “AuthorityPolicy” facet rather than cramming everything into one component.
 
+### Decision weighting model (Policy -> Choices)
+Decision weights are the **bridge** between profile/policy and actual option selection.
+They should be deterministic, clamped, and cached whenever profile or dynamic state changes.
+
+Recommended shape (per decision category):
+```
+weight = clamp01(base
+    + sum(axis_value * axis_weight)
+    + sum(personality_axis * personality_weight)
+    + (morale * morale_weight)
+    - (stress * stress_weight)
+    + context_bias)
+```
+
+Example surfaces (conceptual, not fixed numbers):
+- **ComplianceWeight**: +Authority +Conviction +Morale -Grievance
+- **AggressionWeight**: +Military +Boldness -Selflessness -ROEStrictness
+- **NegotiationWeight**: +Economic +Tolerance -Military +Selflessness
+- **RiskWeight**: +Boldness +Military -Conviction -MoraleLow
+- **PunishmentWeight**: +Authority +Conviction -Selflessness -Cohesion
+
+Where these weights apply:
+- **Goal selection** (which objectives are even considered).
+- **Option scoring** (ranking available actions).
+- **Execution gates** (final go/no-go checks under ROE/legitimacy).
+
 ### Governance mode derived from ideology
 For aggregates (villages, ships):
 - High **Authority** axis (authoritarian) → single executive authority (mayor/captain) with delegates; low consensus appetite.
@@ -260,3 +301,9 @@ For every new behavior slice that depends on profile/policy, add at least:
 - a proof/event when a threshold is crossed (e.g., `event.mutiny_pressure_crossed`)
 
 Keep payloads small; prefer structured metrics over giant JSON snapshots.
+
+---
+
+## Scenario showpieces
+For concrete headless scenarios that exercise profiles/outlooks/decision weights, see:
+- `Docs/Plans/PureDOTS_Outlook_Profile_Scenario_Plan.md`
