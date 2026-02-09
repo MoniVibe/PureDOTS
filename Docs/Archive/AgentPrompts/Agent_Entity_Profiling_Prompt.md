@@ -379,7 +379,7 @@ public struct IndividualProfile : IComponentData
 - `Runtime/Individual/StatsComponents.cs` - Existing stat components
 - `Runtime/Identity/Components.cs` - Existing alignment/outlook/personality components
 - `godgame/Docs/Individual_Template_Stats.md` - Godgame stat schema
-- `Docs/Archive/BehaviorAlignment_Summary.md` - Behavior/alignment summary
+- `Docs/Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md` - Canonical profile catalog (alignment/outlook/behavior)
 
 ---
 
@@ -427,4 +427,3 @@ public struct IndividualProfile : IComponentData
 ✅ System supports both Godgame and Space4X profiles  
 ✅ Profile application is deterministic  
 ✅ System is performant (profiling happens at creation, not runtime)
-

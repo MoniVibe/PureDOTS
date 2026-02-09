@@ -1,5 +1,8 @@
 # Entity Behaviors, Alignments, Outlooks & Aggregate Dynamics - Summary
 
+**DEPRECATED**: Consolidated into `Docs/Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md` (single canonical profile catalog).
+This file remains for historical reference only.
+
 **Last Updated**: 2025-11-29
 **Source**: [Dual Leadership Pattern](../Packages/com.moni.puredots/Documentation/DesignNotes/DualLeadershipPattern.md)
 

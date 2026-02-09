@@ -126,7 +126,7 @@ Docs/
 ├── FoundationGuidelines.md               # Core coding standards
 ├── PUREDOTS_INTEGRATION_SPEC.md          # Integration guide
 ├── ORIENTATION_SUMMARY.md                # Codebase overview
-├── BehaviorAlignment_Summary.md          # Entity behaviors
+├── Entity_Stats_And_Archetypes_Canonical.md # Canonical profile catalog (alignment/outlook/behavior)
 ├── CONCEPT_CAPTURE_METHODS.md            # Documentation patterns
 ├── DOCUMENTATION_ORGANIZATION_GUIDE.md   # This guide
 ├── NEW_PROJECT_QUICKSTART.md             # New project setup

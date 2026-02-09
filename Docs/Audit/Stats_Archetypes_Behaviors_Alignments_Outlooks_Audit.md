@@ -250,7 +250,7 @@
 
 ### 4.1 Tri-Axis Alignment
 
-#### Documented Requirements (`Entity_Stats_And_Archetypes_Canonical.md`, `BehaviorAlignment_Summary.md`)
+#### Documented Requirements (`Entity_Stats_And_Archetypes_Canonical.md`)
 - **Moral**: Good (+100) ↔ Evil (-100)
 - **Order**: Lawful (+100) ↔ Chaotic (-100)
 - **Purity**: Pure (+100) ↔ Corrupt (-100)
@@ -276,7 +276,7 @@
 
 ### 4.2 Aggregate Alignment
 
-#### Documented Requirements (`BehaviorAlignment_Summary.md`)
+#### Documented Requirements (`Entity_Stats_And_Archetypes_Canonical.md`)
 - Weighted average of member alignments
 - Cohesion tracking
 
@@ -314,7 +314,7 @@
 
 ### 5.1 Outlook Types
 
-#### Documented Requirements (`Entity_Stats_And_Archetypes_Canonical.md`, `BehaviorAlignment_Summary.md`)
+#### Documented Requirements (`Entity_Stats_And_Archetypes_Canonical.md`)
 - Up to 3 outlook tags per entity (Primary, Secondary, Tertiary)
 - Types: Warlike, Peaceful, Spiritual, Materialistic, Scholarly, Pragmatic, Xenophobic, Egalitarian, Authoritarian
 
@@ -427,4 +427,3 @@
 ### Outlooks
 - `Runtime/Identity/Components.cs` - Generic outlook
 - `space4x/Assets/Scripts/Space4x/Registry/Space4XFactionComponents.cs` - Space4X faction outlook
-

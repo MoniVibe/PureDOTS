@@ -66,6 +66,16 @@ Use ideology/ethics **Authority axis** (Authoritarian ↔ Egalitarian) and polic
 
 This keeps “one authority vs multiple authorities” *data-driven*, not hardcoded per entity type.
 
+### Outlook tiers (placeholder rule)
+Governance selection must respect the **outlook tiering** described in
+`Docs/Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md` (§1.6.3.1–1.6.3.2):
+- Axis magnitude tiers: **0–15 none**, **16–75 regular**, **76–100 fanatic**.
+- Aggregates use **top 3** outlooks (or **top 2** if any fanatics are present).
+- The 4th-ranked axis still influences decision matrices, but not aggregate outlook selection.
+
+Authority selection should be expressed as **weighted preferences** driven by outlook composition,
+not hardcoded per aggregate type.
+
 ### LOD & Governance Consistency
 
 - LOD changes **cadence and fidelity**, not the governance rules or legitimacy checks.

@@ -291,6 +291,89 @@ TraitDriftSystem.ApplyFootprint(entity, baseFootprint, intentMod, contextMod);
 
 ---
 
+## 1.6 Canonical Profile Catalog (Alignment / Outlook / Behavior)
+
+**This document is the single canonical catalog.** Any secondary summaries must link here and are considered historical.
+
+### 1.6.1 Profile Composition (what a “profile” is)
+A profile is a **data-authored bundle** that combines:
+- **Trait axis values** (alignment / behavior / outlook axes from §1.5)
+- **Decision-weight tuning** (behavior biases, utility curve weights)
+- **Policy curves** (compliance/obedience/etc. as curves, not hardcoded constants)
+
+**Profile identity** should be an explicit id (e.g., `BehaviorProfileId`) attached to the entity, while the **values/weights live in blobs or ScriptableObjects** for determinism and shared use.
+
+### 1.6.2 Alignment (canonical)
+- **Tri-axis alignment**: `LawfulChaotic`, `GoodEvil`, `CorruptPure` (range -100..+100)
+- **Strength / conviction**: 0..1 (used as a multiplier on alignment influence)
+- **Aggregate alignment**: weighted average of member alignment (members with higher weight influence the aggregate more)
+
+### 1.6.3 Outlooks (canonical)
+- **Outlook tags** are **derived or assigned**, but represent **philosophical stance** rather than pure morality.
+- Entities may carry **up to three** outlooks (Primary / Secondary / Tertiary).
+- Outlooks can be **derived from axis combinations** (e.g., Warlike+Authoritarian) or assigned explicitly by profile.
+- Aggregates derive dominant outlooks from **member composition** (weighted by membership influence).
+
+#### 1.6.3.1 Outlook intensity tiers (placeholder logic)
+Outlooks are derived from **axis magnitude** and tiered for aggregation. This is a **temporary, deterministic rule** until a richer gating system lands.
+
+- Axis values are treated as **-100..+100** (sign selects side; magnitude selects intensity).
+- Intensity = `abs(axisValue)`.
+- Tiers:
+  - `0..15` → **not registered**
+  - `16..75` → **regular**
+  - `76..100` → **fanatic**
+
+**Per-entity rules:**
+- An individual humanoid may have:
+  - **1–3 regular outlooks**, or
+  - **1 fanatic + up to 2 regular**, or
+  - **up to 2 fanatics** (no more than 2).
+- **Aggregation uses only the top 3** outlooks by intensity  
+  (or **top 2** if any fanatic outlooks are present).
+- The **4th-ranked axis still influences decision matrices**, but does **not** count toward aggregate outlook selection.
+- Humanoids can be **born with no outlooks** and **gain/lose** them over time (drift + actions).
+
+**Axis sets (current canonical):**
+- `AuthoritarianEgalitarian`
+- `SpiritualMaterialist`
+- `XenophobiaXenophilia`
+- `MightBalanceMagic`
+
+#### 1.6.3.2 Aggregate governance implications (placeholder)
+Aggregate regime selection is driven by **dominant outlook composition** and **fanatic tiers**. Examples (illustrative, not exhaustive):
+- Fanatic **Authoritarian** majorities may crown a liege quickly (even if the liege is egalitarian).
+- **Corrupt** blocs favor pliable/pawn leaders; **Warlike** blocs favor glory/martial merit.
+- **Materialists** weight intelligence/competence more heavily.
+- **Peaceful/Xenophilic** blocs prefer charismatic/empathetic leaders.
+- **Chaotic** blocs are noisy, may splinter, or even refuse majority outcomes.
+- **Xenophobic** blocs bias toward in‑group prejudice (race/culture).
+
+These nuances should be expressed as **weights** in the selection model, not hardcoded if/else.
+
+### 1.6.4 Behavior nuance = decision weights (what we must prove)
+We care less about proving that *every entity* has a profile assigned, and more about proving that **nuanced decision weights exist** and are wired into decision systems.
+
+**Canonical weight sources (must be data-authored):**
+- **BehaviorTuning** (individual biases): aggression, social, greed, curiosity, obedience, etc.
+- **AggregateBehaviorProfile** (collective vs personal weighting): shortage vs ambition, emergency override, compliance curves.
+- **Utility curve sets** (AI decision curves): axis-aware weights that shape utility scoring.
+
+**Decision weight sketch (illustrative):**
+```
+utility = baseScore
+        * profileWeight
+        * axisMultiplier
+        * behaviorBias
+        * policyCurve(context)
+```
+
+**Validation focus:**
+- Prove the **weights/curves exist, are serialized, and are read by systems** (e.g., AggregateBehaviorProfile in workforce decisions).
+- Assignment proofs are secondary; if a profile is missing, systems must degrade gracefully.
+
+---
+
 ## 2) Universal Combat Envelope (minimal, composable)
 Combat-facing stats exist as **derived envelopes**; games may keep richer stats locally.
 
@@ -425,4 +508,3 @@ See: `Concepts/Core/Capabilities_And_Affordances_System.md`.
 - Profile/archetype facet framing: `puredots/Docs/Concepts/Core/Entity_Profile_Schema.md`
 - Godgame stat schema: `godgame/Docs/Individual_Template_Stats.md`, `godgame/Docs/Individual_Stats_Requirements.md`
 - Space4X officer/archetype framing: `space4x/Docs/Conceptualization/Mechanics/AceOfficerProgression.md`, `space4x/Docs/PureDOTS_Request_Space4xStats.md`
-

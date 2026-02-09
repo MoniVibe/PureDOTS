@@ -1614,7 +1614,7 @@ When axes are near **neutral (0)** or **balanced**, the aesthetic expression ten
 
 - **Entity Stats & Archetypes:** `Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md`
 - **Alignment Framework:** `Concepts/Meta/Generalized_Alignment_Framework.md`
-- **Behavior Systems:** `Archive/BehaviorAlignment_Summary.md`
+- **Behavior Systems:** `Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md`
 - **Presentation Architecture:** `PresentationBridgeArchitecture.md`
 
 ---
@@ -1639,4 +1639,3 @@ When axes are near **neutral (0)** or **balanced**, the aesthetic expression ten
 
 **Last Updated:** 2025-01-XX  
 **Status:** Draft - Ready for visual design iteration and implementation planning
-
