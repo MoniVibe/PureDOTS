@@ -14,6 +14,8 @@ namespace PureDOTS.Runtime.Combat
         public float GuidanceJitter;  // Noise to apply to steering
         public float MaxTurnRateDeg;  // Optional override
         public uint ControlTick;
+        public float ControlUntilTime; // World time when control expires (0 = no expiry)
+        public float3 TargetPosition; // Optional steer target override
     }
 
     /// <summary>

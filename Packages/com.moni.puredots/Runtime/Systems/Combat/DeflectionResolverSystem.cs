@@ -130,6 +130,7 @@ namespace PureDOTS.Systems.Combat
                             projectileCatalog.Catalog,
                             poolingEnabled,
                             ecb,
+                            timeState.WorldSeconds,
                             ref resultDirection);
                     }
 
@@ -155,6 +156,7 @@ namespace PureDOTS.Systems.Combat
             BlobAssetReference<ProjectileCatalogBlob> catalog,
             bool poolingEnabled,
             EntityCommandBuffer ecb,
+            float worldTime,
             ref float3 resultDirection)
         {
             if (request.Projectile == Entity.Null)
@@ -225,7 +227,9 @@ namespace PureDOTS.Systems.Combat
                         ControlStrength = 1f,
                         GuidanceJitter = 0f,
                         MaxTurnRateDeg = 0f,
-                        ControlTick = request.RequestTick
+                        ControlTick = request.RequestTick,
+                        ControlUntilTime = worldTime + 0.25f,
+                        TargetPosition = float3.zero
                     };
 
                     if (_controlLookup.HasComponent(request.Projectile))
