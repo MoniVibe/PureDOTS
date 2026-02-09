@@ -8,8 +8,9 @@ Single map of data-only primitives used to express scenarios without presentatio
 This is a reference for sprint planning and scenario design.
 
 ## Combat + Projectiles
-- Weapon data: `WeaponMount`, `WeaponCatalog`, `WeaponSpec`, `WeaponComponent`
+- Weapon data: `WeaponMount`, `WeaponSpawner`, `WeaponCatalog`, `WeaponSpec`, `WeaponComponent`
 - Projectile data: `ProjectileCatalog`, `ProjectileSpec`, `ProjectileEntity`, `ProjectileSpawnRequest`
+- Ammo spec: `AmmoCatalog`, `AmmoSpec`
 - Pooling: `ProjectilePoolConfig`, `ProjectilePoolState`, `ProjectilePoolEntry`
 - Targeting: `TargetingComputer`, `TargetingSolution`, `ProjectileFlightSpec`
 - Damage: `Health`, `Damageable`, `DamageEvent`, `DeathEvent`, `DamageProfile`

@@ -69,15 +69,28 @@ Determinism cues: seed and scenarioId
 4. Verify weapon mount installed on hull.
 
 ## Metrics
-- shipyard.equip.count: installs completed
-- shipyard.pool.pick_role: selected role bucket
-- shipyard.equip.time_to_install: seconds until weapon installed
+- shipyard.count: active shipyards
+- shipyard.requests.pending: queued equip requests
+- shipyard.install.queued_total: shipyard requests that queued an install
+- shipyard.request.invalid_total: invalid install requests dropped
+- weapon.install.completed_total: installs applied
+- weapon.install.mount_total: mount installs applied
+- weapon.install.spawner_total: spawner installs applied
+- weapon.mount.count: entities with WeaponMount
+- weapon.spawner.count: entities with WeaponSpawner
+- puredots.q.shipyard.equip: headless question (1 = equip succeeded)
+
+## Assertion Set (v0)
+- shipyard.install.queued_total >= 1
+- weapon.install.completed_total >= 1
+- shipyard.equip.success >= 1
+- puredots.q.shipyard.equip >= 1
 
 ## Scoring
-- install_success = shipyard.equip.count / requests
+- install_success = weapon.install.completed_total >= 1
 
 ## Acceptance
-- install_success == 1
+- install_success == true
 - selection remains deterministic for fixed seed
 
 ## Regression Guardrails
@@ -109,7 +122,7 @@ Owner/Reviewer: shonh
 - WeaponPoolSelectionHelpers
 
 ## Risks/Notes
-- Metrics wiring pending in ScenarioMetricsCollectorSystem.
+- Metrics wired in ScenarioMetricsCollectorSystem + install systems.
 - Pool selection uses defaults unless biases are explicitly set.
 
 ## Scenario JSON

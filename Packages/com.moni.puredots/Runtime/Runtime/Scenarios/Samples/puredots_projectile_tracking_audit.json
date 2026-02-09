@@ -1,0 +1,46 @@
+{
+  "scenarioId": "scenario.puredots.projectile_tracking.audit",
+  "seed": 39214,
+  "runTicks": 600,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "projectile.tracking.spawned_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tracking recorded at least one spawn."
+    },
+    {
+      "metricId": "projectile.tracking.hits_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tracking recorded at least one hit."
+    },
+    {
+      "metricId": "projectile.tracking.spawned.ammo.arc",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Per-ammo spawn counter incremented for ammo.arc."
+    },
+    {
+      "metricId": "projectile.tracking.hits.ammo.arc",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Per-ammo hit counter incremented for ammo.arc."
+    },
+    {
+      "metricId": "puredots.q.projectile_tracking.audit",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Audit pass flag was set."
+    }
+  ],
+  "docs": "PureDOTS projectile tracking audit. Reuses weapon spawner seeding with ammo.arc to ensure tracking events and per-ammo counters are emitted."
+}

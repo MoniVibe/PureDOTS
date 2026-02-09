@@ -1,5 +1,5 @@
 {
-  "scenarioId": "puredots_master_mage_micro",
+  "scenarioId": "puredots_last_stand_summoner_micro",
   "seed": 1,
   "duration_s": 180,
   "scenarioConfig": {
@@ -15,7 +15,11 @@
     },
     "headlessQuestions": [
       {
-        "id": "puredots.q.master_mage.survival",
+        "id": "puredots.q.last_stand.summoner_killed",
+        "required": true
+      },
+      {
+        "id": "puredots.q.last_stand.hero_survives",
         "required": true
       }
     ]

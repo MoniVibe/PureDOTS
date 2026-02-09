@@ -1,0 +1,40 @@
+{
+  "scenarioId": "scenario.puredots.shipyard.equip",
+  "seed": 55213,
+  "runTicks": 600,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "shipyard.install.queued_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Shipyard queues at least one install request."
+    },
+    {
+      "metricId": "weapon.install.completed_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "At least one weapon install completes."
+    },
+    {
+      "metricId": "shipyard.equip.success",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Hull has at least one weapon installed."
+    },
+    {
+      "metricId": "puredots.q.shipyard.equip",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Headless question reports shipyard equip success."
+    }
+  ],
+  "docs": "PureDOTS shipyard equip smoke test. Uses shipyard weapon pool selection to install a railgun or launcher on a test hull."
+}
