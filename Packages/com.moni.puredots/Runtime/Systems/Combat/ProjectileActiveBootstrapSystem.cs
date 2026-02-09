@@ -33,6 +33,11 @@ namespace PureDOTS.Systems.Combat
                 entityManager.AddComponent<ProjectileActive>(entity);
                 entityManager.SetComponentEnabled<ProjectileActive>(entity, true);
 
+                if (!entityManager.HasComponent<ProjectileTrackingState>(entity))
+                {
+                    entityManager.AddComponentData(entity, default(ProjectileTrackingState));
+                }
+
                 if (!entityManager.HasComponent<ProjectileRecycleTag>(entity))
                 {
                     entityManager.AddComponent<ProjectileRecycleTag>(entity);

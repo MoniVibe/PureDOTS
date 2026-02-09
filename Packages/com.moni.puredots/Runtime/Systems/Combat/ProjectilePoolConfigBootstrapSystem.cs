@@ -32,6 +32,7 @@ namespace PureDOTS.Systems.Combat
             entityManager.AddComponent<Prefab>(prefab);
             entityManager.AddComponentData(prefab, LocalTransform.FromPosition(float3.zero));
             entityManager.AddComponentData(prefab, default(ProjectileEntity));
+            entityManager.AddComponentData(prefab, default(ProjectileTrackingState));
             entityManager.AddComponent<ProjectileActive>(prefab);
             entityManager.AddComponent<ProjectileRecycleTag>(prefab);
             entityManager.AddBuffer<ProjectileHitResult>(prefab);
