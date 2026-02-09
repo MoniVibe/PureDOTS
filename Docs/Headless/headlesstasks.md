@@ -538,3 +538,13 @@ Format:
 - Action: Ran space4x_smoke twice on rebuilt binaries (cycle_walktest_postrebuild_20260103_214644)
 - Result: FAIL (oracle metrics missing)
 - Notes: telemetry /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_postrebuild_20260103_214644/space4x_run1/telemetry/space4x_headless_run_20260103_214658.ndjson and /mnt/c/dev/Tri/.tri/state/runs/2026-01-03/cycle_walktest_postrebuild_20260103_214644/space4x_run2/telemetry/space4x_headless_run_20260103_214919.ndjson
+- UTC: 2026-02-09T23:57:48Z
+- Agent: nightly-desktop
+- Project: Cross-cutting
+- Task: H-T03 Headless BANK markers (S0/G0)
+- Scenario: `space4x/Assets/Scenarios/space4x_smoke.json` + `godgame/Assets/Scenarios/Godgame/godgame_smoke.json`
+- Baseline: Space4X missing BANK line; Godgame emits BANK line
+- Threshold: BANK lines present for both S0/G0 in stdout
+- Action: Ran `headlessctl run_task S0.SPACE4X_SMOKE` and `G0.GODGAME_SMOKE` via WSL (seed 77/42).
+- Result: Space4X FAIL (bank_failed), Godgame PASS
+- Notes: S0 run_id=3b359e919b11476e8ddfb871c9b80399 (no BANK lines in stdout; exit_code=10). G0 run_id=4809922aa2104077ae34fa5749be0fe5 (BANK:G0.GODGAME_SMOKE:PASS).
