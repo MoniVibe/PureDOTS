@@ -129,6 +129,11 @@ namespace PureDOTS.Runtime.Scenarios
             }
         }
 
+        public static string GetExitPolicyEnvRaw()
+        {
+            return GetEnv(ExitPolicyEnvVar);
+        }
+
         public static ScenarioSeverity CalculateHighestSeverity(ExitPolicy policy, IReadOnlyList<ScenarioRunIssue> issues)
         {
             var highest = ScenarioSeverity.Info;

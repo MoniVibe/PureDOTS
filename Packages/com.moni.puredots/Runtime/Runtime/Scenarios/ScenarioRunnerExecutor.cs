@@ -42,13 +42,15 @@ namespace PureDOTS.Runtime.Scenarios
 
         private static ExitPolicy s_exitPolicy = ExitPolicy.InvariantsAndDeterminism;
         private static bool s_exitPolicyResolved;
+        private static string s_exitPolicyEnvRaw;
         private static ExitPolicy GetExitPolicy()
         {
             if (!s_exitPolicyResolved)
             {
                 s_exitPolicy = ScenarioExitUtility.ResolveExitPolicy();
+                s_exitPolicyEnvRaw = ScenarioExitUtility.GetExitPolicyEnvRaw();
                 s_exitPolicyResolved = true;
-                Debug.Log($"[ScenarioRunner] Exit policy set to {s_exitPolicy}");
+                Debug.Log($"[ScenarioRunner] Exit policy set to {s_exitPolicy} (PUREDOTS_EXIT_POLICY='{s_exitPolicyEnvRaw}')");
             }
 
             return s_exitPolicy;
