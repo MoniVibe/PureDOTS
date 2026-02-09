@@ -23,6 +23,8 @@ namespace PureDOTS.Systems
         private byte _exitStage;
         private double _exitStartTime;
         private int _exitCode;
+        private int _exitGraceMs;
+        private int _exitKillMs;
 
         public void OnCreate(ref SystemState state)
         {
@@ -48,8 +50,11 @@ namespace PureDOTS.Systems
                 _exitStage = 1;
                 _exitStartTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
                 _exitCode = request.ExitCode;
+                _exitGraceMs = ResolveExitGraceMs();
+                _exitKillMs = ResolveExitKillMs(_exitGraceMs);
                 UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
                 UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
+                UnityDebug.Log($"[HeadlessExitSystem] exit grace={_exitGraceMs}ms kill={_exitKillMs}ms");
 
                 state.Dependency.Complete();
                 state.EntityManager.CompleteAllTrackedJobs();
@@ -59,12 +64,12 @@ namespace PureDOTS.Systems
                     if (ForceImmediateExitEnabled())
                     {
                         UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
-                        HeadlessExitFallback.ScheduleKill(5000);
+                        HeadlessExitFallback.ScheduleKill(_exitKillMs);
                         System.Environment.Exit(_exitCode);
                         return;
                     }
-                    HeadlessExitFallback.ScheduleExit(_exitCode, 2000);
-                    HeadlessExitFallback.ScheduleKill(7000);
+                    HeadlessExitFallback.ScheduleExit(_exitCode, _exitGraceMs);
+                    HeadlessExitFallback.ScheduleKill(_exitKillMs);
                     // Avoid Application.Quit in headless runs; it can trigger a shutdown crash.
                     return;
                 }
@@ -78,19 +83,20 @@ namespace PureDOTS.Systems
                 return;
             }
 
-            var elapsed = UnityEngine.Time.realtimeSinceStartupAsDouble - _exitStartTime;
-            if (_exitStage == 1 && elapsed >= 2.0)
+            var elapsedMs = (UnityEngine.Time.realtimeSinceStartupAsDouble - _exitStartTime) * 1000.0;
+            if (_exitStage == 1 && elapsedMs >= _exitGraceMs)
             {
                 _exitStage = 2;
-                UnityDebug.LogWarning("[HeadlessExitSystem] Quit still pending; escalating to Environment.Exit.");
-                HeadlessExitFallback.ScheduleKill(5000);
+                var remainingKillMs = Math.Max(1000, _exitKillMs - (int)Math.Round(elapsedMs));
+                UnityDebug.LogWarning($"[HeadlessExitSystem] Quit still pending after {elapsedMs:F0}ms (grace={_exitGraceMs}ms); escalating to Environment.Exit.");
+                HeadlessExitFallback.ScheduleKill(remainingKillMs);
                 System.Environment.Exit(_exitCode);
                 return;
             }
 
-            if (_exitStage == 2 && elapsed >= 7.0)
+            if (_exitStage == 2 && elapsedMs >= _exitKillMs)
             {
-                UnityDebug.LogError("[HeadlessExitSystem] Environment.Exit did not terminate; forcing process kill.");
+                UnityDebug.LogError($"[HeadlessExitSystem] Environment.Exit did not terminate after {elapsedMs:F0}ms (kill={_exitKillMs}ms); forcing process kill.");
                 HeadlessExitFallback.KillImmediate();
             }
         }
@@ -121,6 +127,45 @@ namespace PureDOTS.Systems
             }
 
             return _forceExitImmediate;
+        }
+
+        private static int ResolveExitGraceMs()
+        {
+            return GetEnvInt("PUREDOTS_HEADLESS_EXIT_GRACE_MS", 2000, 100, 120000);
+        }
+
+        private static int ResolveExitKillMs(int graceMs)
+        {
+            var defaultKillMs = graceMs + 5000;
+            var minKillMs = graceMs + 1000;
+            var killMs = GetEnvInt("PUREDOTS_HEADLESS_EXIT_KILL_MS", defaultKillMs, minKillMs, 300000);
+            if (killMs <= graceMs)
+            {
+                killMs = minKillMs;
+            }
+
+            return killMs;
+        }
+
+        private static int GetEnvInt(string name, int defaultValue, int minValue, int maxValue)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(value.Trim(), out var parsed))
+            {
+                return defaultValue;
+            }
+
+            if (parsed < minValue)
+            {
+                return minValue;
+            }
+
+            return parsed > maxValue ? maxValue : parsed;
         }
 
         private static bool IsTruthyEnv(string name)
