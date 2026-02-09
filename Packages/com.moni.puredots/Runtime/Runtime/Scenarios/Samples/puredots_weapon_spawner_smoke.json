@@ -1,0 +1,40 @@
+{
+  "scenarioId": "scenario.puredots.weapon_spawner.smoke",
+  "seed": 38941,
+  "runTicks": 600,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "weapon.spawner.count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "At least one weapon spawner exists."
+    },
+    {
+      "metricId": "ammo.shots_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Spawner fired at least one shot."
+    },
+    {
+      "metricId": "ammo.used_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Ammo was consumed by the spawner."
+    },
+    {
+      "metricId": "projectile.tracking.spawned_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Projectile tracking recorded at least one spawn."
+    }
+  ],
+  "docs": "PureDOTS weapon spawner smoke test. Spawns a data-only WeaponSpawner entity targeting a dummy hull with physics collider. Uses ammo.arc to exercise ammo modifiers + OnHitAdd pipeline."
+}

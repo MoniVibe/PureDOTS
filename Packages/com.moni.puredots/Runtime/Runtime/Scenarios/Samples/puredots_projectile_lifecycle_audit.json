@@ -1,0 +1,40 @@
+{
+  "scenarioId": "scenario.puredots.projectile_lifecycle.audit",
+  "seed": 39228,
+  "runTicks": 600,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "projectile.tracking.retire_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "At least one projectile retired after hits were exhausted."
+    },
+    {
+      "metricId": "projectile.tracking.expire_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "At least one projectile expired due to lifetime."
+    },
+    {
+      "metricId": "projectile.tracking.recycle_total",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "At least one projectile recycled back into the pool."
+    },
+    {
+      "metricId": "puredots.q.projectile_lifecycle.audit",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Lifecycle audit pass flag was set."
+    }
+  ],
+  "docs": "PureDOTS projectile lifecycle audit. Seeds two spawners: one hits a target (retire) and one fires into empty space (expire), both recycling through the pool."
+}

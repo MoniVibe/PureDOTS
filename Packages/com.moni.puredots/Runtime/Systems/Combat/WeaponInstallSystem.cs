@@ -1,5 +1,6 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Scenarios;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -73,13 +74,31 @@ namespace PureDOTS.Systems.Combat
                         continue;
                     }
 
+                    bool installed;
                     if (request.Mode == WeaponInstallMode.Mount)
                     {
-                        InstallMount(entityManager, entity, request);
+                        installed = InstallMount(entityManager, entity, request);
+                        if (installed)
+                        {
+                            ScenarioMetricsUtility.AddMetric(entityManager, "weapon.install.mount_total", 1.0);
+                        }
                     }
                     else
                     {
-                        InstallSpawner(entityManager, entity, request);
+                        installed = InstallSpawner(entityManager, entity, request);
+                        if (installed)
+                        {
+                            ScenarioMetricsUtility.AddMetric(entityManager, "weapon.install.spawner_total", 1.0);
+                        }
+                    }
+
+                    if (installed)
+                    {
+                        ScenarioMetricsUtility.AddMetric(entityManager, "weapon.install.completed_total", 1.0);
+                    }
+                    else
+                    {
+                        ScenarioMetricsUtility.AddMetric(entityManager, "weapon.install.skipped_total", 1.0);
                     }
 
                     if (request.ConsumeBudget != 0 && _budgetLookup.HasComponent(entity))
@@ -126,12 +145,12 @@ namespace PureDOTS.Systems.Combat
             return true;
         }
 
-        private void InstallMount(EntityManager entityManager, Entity entity, in WeaponInstallRequest request)
+        private bool InstallMount(EntityManager entityManager, Entity entity, in WeaponInstallRequest request)
         {
             var hasMount = entityManager.HasComponent<WeaponMount>(entity);
             if (hasMount && request.ReplaceExisting == 0)
             {
-                return;
+                return false;
             }
 
             var mount = new WeaponMount
@@ -157,14 +176,15 @@ namespace PureDOTS.Systems.Combat
             }
 
             ApplyAmmoComponents(entityManager, entity, request);
+            return true;
         }
 
-        private void InstallSpawner(EntityManager entityManager, Entity entity, in WeaponInstallRequest request)
+        private bool InstallSpawner(EntityManager entityManager, Entity entity, in WeaponInstallRequest request)
         {
             var hasSpawner = entityManager.HasComponent<WeaponSpawner>(entity);
             if (hasSpawner && request.ReplaceExisting == 0)
             {
-                return;
+                return false;
             }
 
             var spawner = new WeaponSpawner
@@ -192,6 +212,7 @@ namespace PureDOTS.Systems.Combat
             }
 
             ApplyAmmoComponents(entityManager, entity, request);
+            return true;
         }
 
         private static void ApplyAmmoComponents(EntityManager entityManager, Entity entity, in WeaponInstallRequest request)

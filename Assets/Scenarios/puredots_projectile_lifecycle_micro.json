@@ -1,7 +1,7 @@
 {
-  "scenarioId": "puredots_master_mage_micro",
+  "scenarioId": "puredots_projectile_lifecycle_micro",
   "seed": 1,
-  "duration_s": 180,
+  "duration_s": 120,
   "scenarioConfig": {
     "applyDefaultModuleLoadouts": false,
     "applyReferenceFrames": true,
@@ -15,7 +15,7 @@
     },
     "headlessQuestions": [
       {
-        "id": "puredots.q.master_mage.survival",
+        "id": "puredots.q.projectile_lifecycle.audit",
         "required": true
       }
     ]

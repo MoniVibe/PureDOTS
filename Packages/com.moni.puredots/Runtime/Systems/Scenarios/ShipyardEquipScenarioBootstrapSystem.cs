@@ -11,6 +11,7 @@ namespace PureDOTS.Systems.Scenarios
     /// Seeds a pure-data shipyard equip scenario using weapon pools.
     /// Scenario ID: scenario.puredots.shipyard.equip
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial class ShipyardEquipScenarioBootstrapSystem : SystemBase
     {
@@ -71,7 +72,13 @@ namespace PureDOTS.Systems.Scenarios
                 ReplaceExisting = 1,
                 ConsumeBudget = 0,
                 InitialEnergy = 1000f,
-                InitialHeat = 0f
+                InitialHeat = 0f,
+                MagazineCapacity = 12,
+                MagazineCurrent = 12,
+                AmmoPerShot = 1,
+                ReloadSec = 1.4f,
+                StockpileCapacity = 120,
+                StockpileCurrent = 120
             });
 
             pool.Add(new WeaponPoolEntry
@@ -85,7 +92,13 @@ namespace PureDOTS.Systems.Scenarios
                 ReplaceExisting = 1,
                 ConsumeBudget = 0,
                 InitialEnergy = 1000f,
-                InitialHeat = 0f
+                InitialHeat = 0f,
+                MagazineCapacity = 8,
+                MagazineCurrent = 8,
+                AmmoPerShot = 1,
+                ReloadSec = 1.8f,
+                StockpileCapacity = 80,
+                StockpileCurrent = 80
             });
 
             ShipyardSeedingHelpers.QueueEquip(EntityManager, shipyard, new ShipyardEquipRequest
@@ -97,6 +110,10 @@ namespace PureDOTS.Systems.Scenarios
                 InstallMode = WeaponInstallMode.Mount,
                 AimMode = WeaponSpawnerAimMode.TargetEntity,
                 TriggerTick = 0,
+                ShipyardRequireEnergy = 50f,
+                ShipyardRequireMaterials = 10f,
+                ShipyardRequireCrew = 1f,
+                ConsumeShipyardBudget = 1,
                 ReplaceExisting = 1
             });
         }
@@ -114,11 +131,11 @@ namespace PureDOTS.Systems.Scenarios
                 IsActive = 1
             });
 
-            EntityManager.AddComponentData(entity, new WeaponBuildBudget
+            EntityManager.AddComponentData(entity, new ShipyardBuildBudget
             {
-                Energy = 500f,
-                Materials = 200f,
-                Crew = 20f,
+                Energy = 1000f,
+                Materials = 400f,
+                Crew = 40f,
                 LastSpendTime = 0f
             });
 

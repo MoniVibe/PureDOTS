@@ -1,6 +1,8 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.LowLevel;
+using PureDOTS.Runtime.Scenarios;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -157,11 +159,23 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 var ammoPerShot = hasMagazine ? math.max(1, magazine.AmmoPerShot) : 0;
+
+                var ammoId = spawner.ValueRO.AmmoId.Length > 0
+                    ? spawner.ValueRO.AmmoId
+                    : (hasMagazine && magazine.AmmoType.Length > 0 ? magazine.AmmoType : DefaultAmmoId);
+
+                var shotsFired = 0;
+                var ammoSpent = 0;
+                var outOfAmmo = false;
+
                 if (hasMagazine && magazine.Current < ammoPerShot)
                 {
                     if (!TryReloadMagazine(entity, ref magazine, ammoPerShot, currentTime))
                     {
                         _magazineLookup[entity] = magazine;
+                        outOfAmmo = true;
+                        RecordAmmoMetrics(entityManager, ammoId, shotsFired, ammoSpent, outOfAmmo);
+                        EmitOutOfAmmoInterrupt(entityManager, entity, ammoId, currentTick, outOfAmmo);
                         continue;
                     }
                 }
@@ -171,20 +185,18 @@ namespace PureDOTS.Systems.Combat
                 var seed = ComputeShotSeed(entity, currentTick, shotSequence);
                 var rng = new Unity.Mathematics.Random(seed == 0u ? 1u : seed);
 
-                var ammoId = spawner.ValueRO.AmmoId.Length > 0
-                    ? spawner.ValueRO.AmmoId
-                    : (hasMagazine && magazine.AmmoType.Length > 0 ? magazine.AmmoType : DefaultAmmoId);
-
                 for (int i = 0; i < burst; i++)
                 {
                     if (hasMagazine)
                     {
                         if (magazine.Current < ammoPerShot && !TryReloadMagazine(entity, ref magazine, ammoPerShot, currentTime))
                         {
+                            outOfAmmo = true;
                             break;
                         }
 
                         magazine.Current = math.max(0, magazine.Current - ammoPerShot);
+                        ammoSpent += ammoPerShot;
                     }
 
                     var direction = ApplySpread(fireDirection, spreadRad, ref rng);
@@ -200,6 +212,7 @@ namespace PureDOTS.Systems.Combat
                         ShotSequence = shotSequence,
                         PelletIndex = i
                     });
+                    shotsFired++;
                 }
 
                 ApplyShotCosts(ref spawner.ValueRW, weaponSpec, currentTime);
@@ -208,6 +221,9 @@ namespace PureDOTS.Systems.Combat
                 {
                     _magazineLookup[entity] = magazine;
                 }
+
+                RecordAmmoMetrics(entityManager, ammoId, shotsFired, ammoSpent, outOfAmmo);
+                EmitOutOfAmmoInterrupt(entityManager, entity, ammoId, currentTick, outOfAmmo);
             }
         }
 
@@ -292,6 +308,77 @@ namespace PureDOTS.Systems.Combat
             var pitch = rng.NextFloat(-spreadRad, spreadRad);
             var rot = quaternion.Euler(pitch, yaw, 0f);
             return math.normalizesafe(math.mul(rot, direction), direction);
+        }
+
+        private static void RecordAmmoMetrics(
+            EntityManager entityManager,
+            FixedString32Bytes ammoId,
+            int shotsFired,
+            int ammoSpent,
+            bool outOfAmmo)
+        {
+            if (shotsFired > 0)
+            {
+                ScenarioMetricsUtility.AddMetric(entityManager, "ammo.shots_total", shotsFired);
+                if (ammoId.Length > 0)
+                {
+                    var shotsKey = new FixedString64Bytes("ammo.shots.");
+                    shotsKey.Append(ammoId);
+                    ScenarioMetricsUtility.AddMetric(entityManager, shotsKey, shotsFired);
+                }
+            }
+
+            if (ammoSpent > 0)
+            {
+                ScenarioMetricsUtility.AddMetric(entityManager, "ammo.used_total", ammoSpent);
+                if (ammoId.Length > 0)
+                {
+                    var usedKey = new FixedString64Bytes("ammo.used.");
+                    usedKey.Append(ammoId);
+                    ScenarioMetricsUtility.AddMetric(entityManager, usedKey, ammoSpent);
+                }
+            }
+
+            if (outOfAmmo)
+            {
+                ScenarioMetricsUtility.AddMetric(entityManager, "ammo.out_of_ammo_total", 1.0);
+                if (ammoId.Length > 0)
+                {
+                    var outKey = new FixedString64Bytes("ammo.out_of_ammo.");
+                    outKey.Append(ammoId);
+                    ScenarioMetricsUtility.AddMetric(entityManager, outKey, 1.0);
+                }
+            }
+        }
+
+        private static void EmitOutOfAmmoInterrupt(
+            EntityManager entityManager,
+            Entity entity,
+            FixedString32Bytes ammoId,
+            uint currentTick,
+            bool outOfAmmo)
+        {
+            if (!outOfAmmo || !entityManager.HasBuffer<Interrupt>(entity))
+            {
+                return;
+            }
+
+            var interruptBuffer = entityManager.GetBuffer<Interrupt>(entity);
+            for (int i = 0; i < interruptBuffer.Length; i++)
+            {
+                var existing = interruptBuffer[i];
+                if (existing.Type == InterruptType.OutOfAmmo && existing.IsProcessed == 0)
+                {
+                    return;
+                }
+            }
+            InterruptUtils.Emit(
+                ref interruptBuffer,
+                InterruptType.OutOfAmmo,
+                InterruptPriority.High,
+                entity,
+                currentTick,
+                payloadId: ammoId);
         }
 
         private bool TryReloadMagazine(Entity entity, ref WeaponMagazine magazine, int ammoPerShot, float currentTime)

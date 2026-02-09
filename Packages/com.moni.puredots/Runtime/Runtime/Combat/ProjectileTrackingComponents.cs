@@ -70,6 +70,23 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
+    /// Per-ammo aggregate counters for audit/telemetry.
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct ProjectileTrackingAmmoCounter : IBufferElementData
+    {
+        public FixedString32Bytes AmmoId;
+        public uint Spawned;
+        public uint Hits;
+        public uint Deflections;
+        public uint Redirects;
+        public uint Controls;
+        public uint Retired;
+        public uint Expired;
+        public uint Recycled;
+    }
+
+    /// <summary>
     /// Event kinds for projectile tracking.
     /// </summary>
     public enum ProjectileTrackingEventKind : byte
