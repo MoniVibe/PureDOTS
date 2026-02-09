@@ -1,10 +1,12 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Core;
+using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems.Telemetry;
 using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityDebug = UnityEngine.Debug;
@@ -55,6 +57,7 @@ namespace PureDOTS.Systems
                 UnityDebug.Log($"[HeadlessExitSystem] Quit requested (code={request.ExitCode}, tick={request.RequestedTick}); quitting.");
                 UnityDebug.Log($"[HeadlessExitSystem] headless={RuntimeMode.IsHeadless} batch={Application.isBatchMode}");
                 UnityDebug.Log($"[HeadlessExitSystem] exit grace={_exitGraceMs}ms kill={_exitKillMs}ms");
+                EmitExitTelemetry(ref state, "headless.exit.request", 0f);
 
                 state.Dependency.Complete();
                 state.EntityManager.CompleteAllTrackedJobs();
@@ -64,6 +67,7 @@ namespace PureDOTS.Systems
                     if (ForceImmediateExitEnabled())
                     {
                         UnityDebug.LogWarning("[HeadlessExitSystem] ForceImmediateExit enabled; calling Environment.Exit.");
+                        EmitExitTelemetry(ref state, "headless.exit.force_immediate", 0f);
                         HeadlessExitFallback.ScheduleKill(_exitKillMs);
                         System.Environment.Exit(_exitCode);
                         return;
@@ -89,6 +93,7 @@ namespace PureDOTS.Systems
                 _exitStage = 2;
                 var remainingKillMs = Math.Max(1000, _exitKillMs - (int)Math.Round(elapsedMs));
                 UnityDebug.LogWarning($"[HeadlessExitSystem] Quit still pending after {elapsedMs:F0}ms (grace={_exitGraceMs}ms); escalating to Environment.Exit.");
+                EmitExitTelemetry(ref state, "headless.exit.escalate", (float)elapsedMs);
                 HeadlessExitFallback.ScheduleKill(remainingKillMs);
                 System.Environment.Exit(_exitCode);
                 return;
@@ -97,6 +102,7 @@ namespace PureDOTS.Systems
             if (_exitStage == 2 && elapsedMs >= _exitKillMs)
             {
                 UnityDebug.LogError($"[HeadlessExitSystem] Environment.Exit did not terminate after {elapsedMs:F0}ms (kill={_exitKillMs}ms); forcing process kill.");
+                EmitExitTelemetry(ref state, "headless.exit.kill", (float)elapsedMs);
                 HeadlessExitFallback.KillImmediate();
             }
         }
@@ -252,6 +258,54 @@ namespace PureDOTS.Systems
                 {
                 }
             }
+        }
+
+        private void EmitExitTelemetry(ref SystemState state, string eventType, float elapsedMs)
+        {
+            if (!RuntimeMode.IsHeadless || !Application.isBatchMode)
+            {
+                return;
+            }
+
+            var streamEntity = TelemetryStreamUtility.EnsureEventStream(state.EntityManager);
+            if (streamEntity == Entity.Null || !state.EntityManager.HasBuffer<TelemetryEvent>(streamEntity))
+            {
+                return;
+            }
+
+            var payload = JsonUtility.ToJson(new ExitEventPayload
+            {
+                code = _exitCode,
+                graceMs = _exitGraceMs,
+                killMs = _exitKillMs,
+                elapsedMs = elapsedMs
+            });
+
+            var buffer = state.EntityManager.GetBuffer<TelemetryEvent>(streamEntity);
+            buffer.AddEvent(
+                new FixedString64Bytes(eventType),
+                ResolveTelemetryTick(ref state),
+                new FixedString64Bytes("HeadlessExitSystem"),
+                new FixedString128Bytes(payload));
+        }
+
+        private static uint ResolveTelemetryTick(ref SystemState state)
+        {
+            if (SystemAPI.TryGetSingleton(out TimeState timeState))
+            {
+                return timeState.Tick;
+            }
+
+            return 0u;
+        }
+
+        [Serializable]
+        private struct ExitEventPayload
+        {
+            public int code;
+            public int graceMs;
+            public int killMs;
+            public float elapsedMs;
         }
     }
 }

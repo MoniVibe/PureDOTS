@@ -196,6 +196,9 @@ namespace PureDOTS.Runtime.Scenarios
                     perfBudgetValue = result.PerformanceBudgetValue,
                     perfBudgetLimit = result.PerformanceBudgetLimit,
                     perfBudgetTick = result.PerformanceBudgetTick,
+                    exitGraceMs = s_header.exitGraceMs,
+                    exitKillMs = s_header.exitKillMs,
+                    telemetryFlushGraceMs = s_header.telemetryFlushGraceMs,
                     metrics = ConvertMetrics(result.Metrics)
                 };
 
@@ -628,6 +631,9 @@ namespace PureDOTS.Runtime.Scenarios
             public float perfBudgetValue;
             public float perfBudgetLimit;
             public uint perfBudgetTick;
+            public int exitGraceMs;
+            public int exitKillMs;
+            public int telemetryFlushGraceMs;
             public List<MetricRecord> metrics;
         }
 
