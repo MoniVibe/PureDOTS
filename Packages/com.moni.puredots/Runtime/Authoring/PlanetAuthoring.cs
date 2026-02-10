@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Space;
+using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Time;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -128,6 +129,7 @@ namespace PureDOTS.Authoring
         public override void Bake(PlanetAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent<SpatialIndexedTag>(entity);
 
             // Add planet flavor
             AddComponent(entity, new PlanetFlavorComponent
@@ -254,4 +256,3 @@ namespace PureDOTS.Authoring
         }
     }
 }
-
