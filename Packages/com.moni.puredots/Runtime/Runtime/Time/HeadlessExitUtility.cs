@@ -1,6 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 
 namespace PureDOTS.Runtime.Time
 {
@@ -8,6 +9,11 @@ namespace PureDOTS.Runtime.Time
     {
         public static void Request(EntityManager entityManager, uint tick, int exitCode)
         {
+            if (RuntimeMode.IsHeadless && Application.isBatchMode)
+            {
+                HeadlessExitState.SignalExit("HeadlessExitUtility");
+            }
+
             if (exitCode != 0)
             {
                 Debug.LogError(

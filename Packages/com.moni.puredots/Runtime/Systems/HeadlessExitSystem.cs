@@ -50,6 +50,7 @@ namespace PureDOTS.Systems
             if (_exitStage == 0)
             {
                 _exitStage = 1;
+                HeadlessExitState.SignalExit("HeadlessExitSystem");
                 _exitStartTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
                 _exitCode = request.ExitCode;
                 _exitGraceMs = ResolveExitGraceMs();

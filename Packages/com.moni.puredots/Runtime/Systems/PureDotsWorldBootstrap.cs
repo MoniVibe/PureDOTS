@@ -13,6 +13,12 @@ namespace PureDOTS.Systems
 
         public bool Initialize(string defaultWorldName)
         {
+            if (RuntimeMode.IsHeadless && Application.isBatchMode && HeadlessExitState.ExitRequested)
+            {
+                Debug.LogWarning($"[PureDotsWorldBootstrap] Exit requested ({HeadlessExitState.ExitReason}); skipping world initialization.");
+                return true;
+            }
+
             // Create the world that will host every system.
             var world = new World(WorldName);
             World.DefaultGameObjectInjectionWorld = world;
