@@ -558,3 +558,13 @@ Format:
 - Action: Ran `headlessctl run_task S0.SPACE4X_SMOKE` and `G0.GODGAME_SMOKE` via WSL (seed 77/42).
 - Result: Space4X FAIL (bank_failed), Godgame PASS
 - Notes: S0 run_id=8ff2f2fd9ced4eb990ac1a43167071b2 (no BANK lines in stdout; exit_code=10). G0 run_id=2e0cb457f36342f6925bc039d2791159 (BANK:G0.GODGAME_SMOKE:PASS).
+- UTC: 2026-02-10T00:06:31Z
+- Agent: nightly-desktop
+- Project: Cross-cutting
+- Task: H-T03 Headless BANK markers (S0/G0)
+- Scenario: `space4x/Assets/Scenarios/space4x_smoke.json` + `godgame/Assets/Scenarios/Godgame/godgame_smoke.json`
+- Baseline: Space4X missing BANK line; Godgame emits BANK line
+- Threshold: BANK lines present for both S0/G0 in stdout
+- Action: Ran `headlessctl run_task S0.SPACE4X_SMOKE` and `G0.GODGAME_SMOKE` via WSL (seed 77/42).
+- Result: Space4X FAIL (bank_failed), Godgame PASS
+- Notes: S0 run_id=a0cdd9c8e99e48a292f182ec48fe8a04 (no BANK lines in stdout; exit_code=10). G0 run_id=75487700a0794b50a358bb1d88a30a62 (BANK:G0.GODGAME_SMOKE:PASS).
