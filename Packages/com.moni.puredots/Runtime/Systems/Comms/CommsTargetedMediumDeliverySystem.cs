@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Comms;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Deception;
 using PureDOTS.Runtime.Individual;
 using PureDOTS.Runtime.Interrupts;
 using PureDOTS.Runtime.Perception;
@@ -27,6 +28,7 @@ namespace PureDOTS.Systems.Comms
         private ComponentLookup<IndividualStats> _statsLookup;
         private ComponentLookup<PersonalityAxes> _personalityLookup;
         private ComponentLookup<FocusBudget> _focusLookup;
+        private ComponentLookup<DisguiseIdentity> _disguiseLookup;
         private BufferLookup<Interrupt> _interruptLookup;
         private BufferLookup<CommsInboxEntry> _inboxLookup;
         private BufferLookup<CommsOutboxEntry> _outboxLookup;
@@ -44,6 +46,7 @@ namespace PureDOTS.Systems.Comms
             _statsLookup = state.GetComponentLookup<IndividualStats>(true);
             _personalityLookup = state.GetComponentLookup<PersonalityAxes>(true);
             _focusLookup = state.GetComponentLookup<FocusBudget>(false);
+            _disguiseLookup = state.GetComponentLookup<DisguiseIdentity>(true);
             _interruptLookup = state.GetBufferLookup<Interrupt>(false);
             _inboxLookup = state.GetBufferLookup<CommsInboxEntry>(false);
             _outboxLookup = state.GetBufferLookup<CommsOutboxEntry>(false);
@@ -86,6 +89,7 @@ namespace PureDOTS.Systems.Comms
             _statsLookup.Update(ref state);
             _personalityLookup.Update(ref state);
             _focusLookup.Update(ref state);
+            _disguiseLookup.Update(ref state);
             _interruptLookup.Update(ref state);
             _inboxLookup.Update(ref state);
             _outboxLookup.Update(ref state);
@@ -169,6 +173,22 @@ namespace PureDOTS.Systems.Comms
 
                 var integrity01 = math.saturate(signal01 * message.Clarity01 * math.saturate(receiver.DecodeSkill) - math.saturate(receiver.NoiseFloor));
 
+                var wasDeceptionDetected = (byte)0;
+                var misType = MiscommunicationType.None;
+                var misSeverity = MiscommunicationSeverity.None;
+                var messageLost = false;
+                EvaluateMiscommunication(
+                    in message,
+                    in receiver,
+                    receiverEntity,
+                    integrity01,
+                    _disguiseLookup,
+                    _statsLookup,
+                    out wasDeceptionDetected,
+                    out misType,
+                    out misSeverity,
+                    out messageLost);
+
                 var interrupts = _interruptLookup[receiverEntity];
 
                 // Dedupe + repeat count based on emitted tick.
@@ -193,6 +213,37 @@ namespace PureDOTS.Systems.Comms
                             break;
                         }
                     }
+                }
+
+                if (messageLost)
+                {
+                    if (_inboxLookup.HasBuffer(receiverEntity))
+                    {
+                        var inbox = _inboxLookup[receiverEntity];
+                        if (inbox.Length >= receiver.MaxInbox && receiver.MaxInbox > 0)
+                        {
+                            inbox.RemoveAt(0);
+                        }
+                        inbox.Add(new CommsInboxEntry
+                        {
+                            ReceivedTick = time.Tick,
+                            SourceEmittedTick = message.EmittedTick,
+                            Token = message.Token,
+                            Sender = message.Sender,
+                            Origin = message.Origin,
+                            IntendedInterrupt = message.InterruptType,
+                            Priority = message.Priority,
+                            PayloadId = message.PayloadId.IsEmpty ? TokenToPayload(message.Token) : message.PayloadId,
+                            TransportUsed = message.TransportUsed,
+                            Integrity01 = integrity01,
+                            MisreadSeverity = misSeverity,
+                            MisreadType = misType,
+                            WasDeceptionDetected = wasDeceptionDetected,
+                            WasProcessed = 0,
+                            RepeatCount = repeatCount
+                        });
+                    }
+                    goto NextMessage;
                 }
 
                 // Always emit "message received".
@@ -326,9 +377,9 @@ namespace PureDOTS.Systems.Comms
                         PayloadId = message.PayloadId.IsEmpty ? TokenToPayload(message.Token) : message.PayloadId,
                         TransportUsed = message.TransportUsed,
                         Integrity01 = integrity01,
-                        MisreadSeverity = MiscommunicationSeverity.None,
-                        MisreadType = MiscommunicationType.None,
-                        WasDeceptionDetected = 0,
+                        MisreadSeverity = misSeverity,
+                        MisreadType = misType,
+                        WasDeceptionDetected = wasDeceptionDetected,
                         WasProcessed = 0,
                         RepeatCount = repeatCount
                     });
@@ -358,8 +409,85 @@ namespace PureDOTS.Systems.Comms
             s.Append(token);
             return s;
         }
+
+        private static void EvaluateMiscommunication(
+            in CommsMessage message,
+            in CommsReceiverConfig receiver,
+            Entity receiverEntity,
+            float integrity01,
+            in ComponentLookup<DisguiseIdentity> disguiseLookup,
+            in ComponentLookup<IndividualStats> statsLookup,
+            out byte wasDeceptionDetected,
+            out MiscommunicationType misType,
+            out MiscommunicationSeverity misSeverity,
+            out bool messageLost)
+        {
+            wasDeceptionDetected = 0;
+            misType = MiscommunicationType.None;
+            misSeverity = MiscommunicationSeverity.None;
+            messageLost = false;
+
+            var deceptive = message.DeceptionStrength01 > 0.01f || (message.Flags & CommsMessageFlags.IsDeceptive) != 0;
+            if (deceptive)
+            {
+                var liarSkill01 = 0.5f;
+                if (disguiseLookup.HasComponent(message.Sender) && disguiseLookup[message.Sender].IsActive != 0)
+                {
+                    liarSkill01 = math.saturate(disguiseLookup[message.Sender].LieSkill01);
+                }
+                else if (statsLookup.HasComponent(message.Sender))
+                {
+                    liarSkill01 = math.saturate(statsLookup[message.Sender].Social / 10f);
+                }
+
+                var detectChance =
+                    math.saturate(receiver.DeceptionDetectSkill) *
+                    math.saturate(message.DeceptionStrength01) *
+                    (1f - liarSkill01 * 0.6f);
+                var h = math.hash(new uint2(message.Token, (uint)receiverEntity.Index));
+                var r01 = (h & 0x00FFFFFFu) / 16777216f;
+                if (r01 < detectChance)
+                {
+                    wasDeceptionDetected = 1;
+                    misType = MiscommunicationType.DeceptionFalsePositive;
+                }
+                else
+                {
+                    misType = MiscommunicationType.DeceptionUndetected;
+                }
+            }
+
+            if (message.Secrecy01 > 0.01f || (message.Flags & CommsMessageFlags.IsEncrypted) != 0)
+            {
+                var bypass = math.saturate(receiver.SecrecyBypassSkill);
+                var effectiveSecrecy = math.saturate(message.Secrecy01 * (1f - bypass));
+                if (effectiveSecrecy > 0.5f && integrity01 < 0.25f)
+                {
+                    misType = MiscommunicationType.MessageLost;
+                    misSeverity = MiscommunicationSeverity.Major;
+                    messageLost = true;
+                    return;
+                }
+            }
+
+            var misChance = math.saturate(receiver.MisreadChanceScale) * (1f - integrity01);
+            if (misChance > 0.01f)
+            {
+                var h = math.hash(new uint3(message.Token, (uint)receiverEntity.Index, 0xC0FFEEu));
+                var r01 = (h & 0x00FFFFFFu) / 16777216f;
+                if (r01 < misChance)
+                {
+                    if (misType == MiscommunicationType.None)
+                    {
+                        misType = MiscommunicationType.IntentMisread;
+                    }
+                    misSeverity = integrity01 < 0.15f ? MiscommunicationSeverity.Critical
+                        : integrity01 < 0.3f ? MiscommunicationSeverity.Major
+                        : MiscommunicationSeverity.Moderate;
+                }
+            }
+        }
     }
 }
-
 
 

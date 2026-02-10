@@ -1,0 +1,23 @@
+{
+  "scenarioId": "puredots_shipyard_equip_micro",
+  "seed": 1,
+  "duration_s": 120,
+  "scenarioConfig": {
+    "applyDefaultModuleLoadouts": false,
+    "applyReferenceFrames": true,
+    "renderFrame": {
+      "enabled": 0,
+      "useBandScale": 0
+    },
+    "orbitalBand": {
+      "enabled": 0,
+      "presentationScale": 1.0
+    },
+    "headlessQuestions": [
+      {
+        "id": "puredots.q.shipyard.equip",
+        "required": true
+      }
+    ]
+  }
+}
