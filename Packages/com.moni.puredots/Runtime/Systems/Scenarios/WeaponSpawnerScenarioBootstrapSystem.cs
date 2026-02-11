@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Scenarios;
 using Unity.Collections;
