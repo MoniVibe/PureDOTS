@@ -106,7 +106,7 @@ namespace PureDOTS.Systems.Combat
                 requests.Clear();
             }
 
-            foreach (var (projectile, control, entity, active) in
+            foreach (var (projectile, control, active, entity) in
                      SystemAPI.Query<RefRW<ProjectileEntity>, RefRW<ProjectileControlState>, EnabledRefRO<ProjectileActive>>()
                          .WithEntityAccess())
             {
