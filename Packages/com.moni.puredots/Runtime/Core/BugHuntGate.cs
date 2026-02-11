@@ -65,9 +65,9 @@ namespace PureDOTS.Runtime.Core
                 return;
             }
 
-            var bugHuntEnv = Environment.GetEnvironmentVariable("PUREDOTS_BUGHUNT");
-            var shutdownEnv = Environment.GetEnvironmentVariable("PUREDOTS_SHUTDOWN_AUDIT");
-            var disabled = Environment.GetEnvironmentVariable("PUREDOTS_BUGHUNT_DISABLE") ?? string.Empty;
+            var bugHuntEnv = global::System.Environment.GetEnvironmentVariable("PUREDOTS_BUGHUNT");
+            var shutdownEnv = global::System.Environment.GetEnvironmentVariable("PUREDOTS_SHUTDOWN_AUDIT");
+            var disabled = global::System.Environment.GetEnvironmentVariable("PUREDOTS_BUGHUNT_DISABLE") ?? string.Empty;
 
             _disabledRaw = disabled;
             _shutdownAuditEnabled = IsTruthy(bugHuntEnv) || IsTruthy(shutdownEnv) || !string.IsNullOrWhiteSpace(disabled);

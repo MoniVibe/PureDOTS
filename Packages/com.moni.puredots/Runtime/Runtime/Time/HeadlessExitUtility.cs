@@ -78,7 +78,7 @@ namespace PureDOTS.Runtime.Time
 
         private static bool IsTruthyEnv(string name)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = global::System.Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(value))
             {
                 return false;
