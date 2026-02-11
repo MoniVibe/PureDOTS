@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using PureDOTS.Runtime.Groups;
 
-namespace PureDOTS.Tests.EditMode.Groups
+namespace PureDOTS.Tests.Groups
 {
     public class GroupMoraleContractTests
     {
