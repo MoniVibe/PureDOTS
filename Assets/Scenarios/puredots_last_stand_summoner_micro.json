@@ -1,0 +1,27 @@
+{
+  "scenarioId": "puredots_last_stand_summoner_micro",
+  "seed": 1,
+  "duration_s": 180,
+  "scenarioConfig": {
+    "applyDefaultModuleLoadouts": false,
+    "applyReferenceFrames": true,
+    "renderFrame": {
+      "enabled": 0,
+      "useBandScale": 0
+    },
+    "orbitalBand": {
+      "enabled": 0,
+      "presentationScale": 1.0
+    },
+    "headlessQuestions": [
+      {
+        "id": "puredots.q.last_stand.summoner_killed",
+        "required": true
+      },
+      {
+        "id": "puredots.q.last_stand.hero_survives",
+        "required": true
+      }
+    ]
+  }
+}

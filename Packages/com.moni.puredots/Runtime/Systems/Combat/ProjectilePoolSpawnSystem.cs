@@ -46,6 +46,9 @@ namespace PureDOTS.Systems.Combat
                 return;
             }
 
+            var hasAmmoCatalog = SystemAPI.TryGetSingleton<AmmoCatalog>(out var ammoCatalog) &&
+                                 ammoCatalog.Catalog.IsCreated;
+
             if (!SystemAPI.TryGetSingletonEntity<ProjectilePoolConfig>(out var poolEntity))
             {
                 return;
@@ -61,6 +64,19 @@ namespace PureDOTS.Systems.Combat
             var poolState = SystemAPI.GetComponentRW<ProjectilePoolState>(poolEntity);
             var poolBuffer = SystemAPI.GetBuffer<ProjectilePoolEntry>(poolEntity);
             var currentTime = timeState.ElapsedTime;
+            var currentTick = timeState.Tick;
+
+            var hasTrackingHub = SystemAPI.TryGetSingletonEntity<ProjectileTrackingHub>(out var trackingHubEntity);
+            DynamicBuffer<ProjectileTrackingEvent> trackingEvents = default;
+            ProjectileTrackingConfig trackingConfig = default;
+            RefRW<ProjectileTrackingCounters> trackingCounters = default;
+
+            if (hasTrackingHub)
+            {
+                trackingEvents = SystemAPI.GetBuffer<ProjectileTrackingEvent>(trackingHubEntity);
+                trackingConfig = SystemAPI.GetComponent<ProjectileTrackingConfig>(trackingHubEntity);
+                trackingCounters = SystemAPI.GetComponentRW<ProjectileTrackingCounters>(trackingHubEntity);
+            }
 
             foreach (var requests in SystemAPI.Query<DynamicBuffer<ProjectileSpawnRequest>>())
             {
@@ -93,7 +109,63 @@ namespace PureDOTS.Systems.Combat
                         continue;
                     }
 
-                    ActivateProjectile(entityManager, pooled, request, ref spec, currentTime);
+                    var ammoId = request.AmmoId.Length > 0
+                        ? request.AmmoId
+                        : new FixedString32Bytes("ammo.standard");
+
+                    uint trackingId = 0;
+                    if (hasTrackingHub)
+                    {
+                        var nextId = trackingCounters.ValueRO.NextId;
+                        if (nextId == 0)
+                        {
+                            nextId = 1;
+                        }
+                        trackingId = nextId;
+                        trackingCounters.ValueRW.NextId = nextId + 1;
+                    }
+
+                    ActivateProjectile(entityManager, pooled, request, ref spec, currentTime, hasAmmoCatalog, hasAmmoCatalog ? ammoCatalog.Catalog : default);
+
+                    if (hasTrackingHub)
+                    {
+                        var trackingState = new ProjectileTrackingState
+                        {
+                            TrackingId = trackingId,
+                            SpawnTick = currentTick,
+                            LastEventTick = currentTick
+                        };
+
+                        if (entityManager.HasComponent<ProjectileTrackingState>(pooled))
+                        {
+                            entityManager.SetComponentData(pooled, trackingState);
+                        }
+                        else
+                        {
+                            entityManager.AddComponentData(pooled, trackingState);
+                        }
+
+                        if (trackingConfig.MaxEvents <= 0 || trackingEvents.Length < trackingConfig.MaxEvents)
+                        {
+                            trackingEvents.Add(new ProjectileTrackingEvent
+                            {
+                                Kind = ProjectileTrackingEventKind.Spawn,
+                                TrackingId = trackingId,
+                                Projectile = pooled,
+                                Source = request.SourceEntity,
+                                Target = request.TargetEntity,
+                                ProjectileId = request.ProjectileId,
+                                AmmoId = ammoId,
+                                Position = request.SpawnPosition,
+                                Direction = request.SpawnDirection,
+                                Tick = currentTick,
+                                Time = currentTime,
+                                Value = spec.Damage.BaseDamage,
+                                Mode = 0,
+                                Result = 1
+                            });
+                        }
+                    }
                 }
 
                 requests.Clear();
@@ -108,10 +180,29 @@ namespace PureDOTS.Systems.Combat
             Entity projectile,
             in ProjectileSpawnRequest request,
             ref ProjectileSpec spec,
-            float currentTime)
+            float currentTime,
+            bool hasAmmoCatalog,
+            BlobAssetReference<AmmoCatalogBlob> ammoCatalog)
         {
             OrientationHelpers.LookRotationSafe3D(request.SpawnDirection, OrientationHelpers.WorldUp, out var rotation);
             var transform = LocalTransform.FromPositionRotation(request.SpawnPosition, rotation);
+
+            var ammoId = request.AmmoId.Length > 0
+                ? request.AmmoId
+                : new FixedString32Bytes("ammo.standard");
+
+            float speed = spec.Speed;
+            float hitsLeft = spec.Pierce;
+
+            if (hasAmmoCatalog && ammoId.Length > 0)
+            {
+                ref var ammoSpec = ref FindAmmoSpec(ammoCatalog, ammoId);
+                if (!UnsafeRef.IsNull(ref ammoSpec))
+                {
+                    speed *= ammoSpec.SpeedMultiplier;
+                    hitsLeft = math.max(0f, hitsLeft + ammoSpec.PierceBonus);
+                }
+            }
 
             if (entityManager.HasComponent<LocalTransform>(projectile))
             {
@@ -125,13 +216,14 @@ namespace PureDOTS.Systems.Combat
             var projectileData = new ProjectileEntity
             {
                 ProjectileId = request.ProjectileId,
+                AmmoId = ammoId,
                 SourceEntity = request.SourceEntity,
                 TargetEntity = request.TargetEntity,
-                Velocity = request.SpawnDirection * spec.Speed,
+                Velocity = request.SpawnDirection * speed,
                 PrevPos = request.SpawnPosition,
                 SpawnTime = currentTime,
                 DistanceTraveled = 0f,
-                HitsLeft = math.max(0f, spec.Pierce),
+                HitsLeft = math.max(0f, hitsLeft),
                 Age = 0f,
                 Seed = request.ShotSeed,
                 ShotSequence = request.ShotSequence,
@@ -189,6 +281,28 @@ namespace PureDOTS.Systems.Combat
             }
 
             return ref UnsafeRef.Null<ProjectileSpec>();
+        }
+
+        private static ref AmmoSpec FindAmmoSpec(
+            BlobAssetReference<AmmoCatalogBlob> catalog,
+            FixedString32Bytes ammoId)
+        {
+            if (!catalog.IsCreated)
+            {
+                return ref UnsafeRef.Null<AmmoSpec>();
+            }
+
+            ref var ammos = ref catalog.Value.Ammunition;
+            for (int i = 0; i < ammos.Length; i++)
+            {
+                ref var ammoSpec = ref ammos[i];
+                if (ammoSpec.Id.Equals(ammoId))
+                {
+                    return ref ammoSpec;
+                }
+            }
+
+            return ref UnsafeRef.Null<AmmoSpec>();
         }
     }
 }

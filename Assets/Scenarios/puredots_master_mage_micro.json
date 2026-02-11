@@ -1,0 +1,23 @@
+{
+  "scenarioId": "puredots_master_mage_micro",
+  "seed": 1,
+  "duration_s": 180,
+  "scenarioConfig": {
+    "applyDefaultModuleLoadouts": false,
+    "applyReferenceFrames": true,
+    "renderFrame": {
+      "enabled": 0,
+      "useBandScale": 0
+    },
+    "orbitalBand": {
+      "enabled": 0,
+      "presentationScale": 1.0
+    },
+    "headlessQuestions": [
+      {
+        "id": "puredots.q.master_mage.survival",
+        "required": true
+      }
+    ]
+  }
+}

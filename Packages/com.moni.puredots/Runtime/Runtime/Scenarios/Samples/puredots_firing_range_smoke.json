@@ -1,0 +1,14 @@
+{
+  "scenarioId": "scenario.puredots.firing_range.smoke",
+  "seed": 44021,
+  "runTicks": 900,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "docs": "PureDOTS firing range smoke test. Spawns a railgun shooter and a launcher shooter with simple ballistic + homing projectiles. Targets are data-only entities with Health + physics colliders. WeaponProjectileSpawnSystem + ProjectilePool systems handle launch + flight."
+}
