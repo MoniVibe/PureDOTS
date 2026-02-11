@@ -13,7 +13,6 @@ namespace PureDOTS.Systems.Scenarios
     /// Collects common scenario metrics so assertions/telemetry can reference them.
     /// Scans gameplay state each LateSimulation tick and writes values into ScenarioMetricsUtility.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct ScenarioMetricsCollectorSystem : ISystem
     {
@@ -66,7 +65,6 @@ namespace PureDOTS.Systems.Scenarios
         private EntityQuery _ammoStockpileQuery;
         private EntityQuery _weaponMagazineQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScenarioInfo>();
@@ -78,7 +76,6 @@ namespace PureDOTS.Systems.Scenarios
             _weaponMagazineQuery = state.GetEntityQuery(ComponentType.ReadOnly<WeaponMagazine>());
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var scenarioInfo = SystemAPI.GetSingleton<ScenarioInfo>();

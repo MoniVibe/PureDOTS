@@ -11,7 +11,6 @@ namespace PureDOTS.Systems.AI
     /// System that validates actions against constraints.
     /// Prevents entities from taking forbidden actions even if they're optimal.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(InterruptSystemGroup))]
     [UpdateBefore(typeof(GameplaySystemGroup))]
@@ -19,13 +18,11 @@ namespace PureDOTS.Systems.AI
     {
         private static readonly Unity.Collections.FixedString64Bytes ConstraintsRespectedKey = new Unity.Collections.FixedString64Bytes("constraints.respected");
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Phase 2: Validate EntityIntent against constraints

@@ -13,19 +13,16 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
     /// System that creates and manages GOAP action plans.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [BurstCompile]
     public partial struct GOAPPlannerSystem : ISystem
     {
         private static readonly FixedString64Bytes GoapPlansCreatedKey = new FixedString64Bytes("goap.plans.created");
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Phase 2: Enable planning in headless ScenarioRunner sims
