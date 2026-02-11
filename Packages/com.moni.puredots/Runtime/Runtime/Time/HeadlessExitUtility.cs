@@ -1,3 +1,4 @@
+using System;
 using Unity.Entities;
 using UnityEngine;
 using PureDOTS.Runtime.Components;
@@ -7,6 +8,8 @@ namespace PureDOTS.Runtime.Time
 {
     public static class HeadlessExitUtility
     {
+        private const string ExitOnResultEnv = "PUREDOTS_HEADLESS_EXIT_ON_RESULT";
+
         public static void Request(EntityManager entityManager, uint tick, int exitCode)
         {
             if (RuntimeMode.IsHeadless && Application.isBatchMode)
@@ -61,6 +64,31 @@ namespace PureDOTS.Runtime.Time
                     RequestedTick = newTick
                 });
             }
+        }
+
+        public static bool ShouldExitOnResult(string legacyEnvVar = null)
+        {
+            if (IsTruthyEnv(ExitOnResultEnv))
+            {
+                return true;
+            }
+
+            return !string.IsNullOrWhiteSpace(legacyEnvVar) && IsTruthyEnv(legacyEnvVar);
+        }
+
+        private static bool IsTruthyEnv(string name)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            value = value.Trim();
+            return value == "1"
+                   || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

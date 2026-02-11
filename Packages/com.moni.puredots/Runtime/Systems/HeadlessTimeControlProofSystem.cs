@@ -903,7 +903,7 @@ namespace PureDOTS.Systems
 
         private static void ExitIfRequested(ref SystemState state, uint tick, int exitCode)
         {
-            if (!string.Equals(SystemEnv.GetEnvironmentVariable(ExitOnResultEnv), "1", StringComparison.OrdinalIgnoreCase))
+            if (!HeadlessExitUtility.ShouldExitOnResult(ExitOnResultEnv))
             {
                 return;
             }
