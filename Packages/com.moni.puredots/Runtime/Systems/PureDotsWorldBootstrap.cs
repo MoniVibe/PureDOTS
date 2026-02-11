@@ -15,7 +15,7 @@ namespace PureDOTS.Systems
         {
             if (RuntimeMode.IsHeadless && Application.isBatchMode && HeadlessExitState.ExitRequested)
             {
-                Debug.LogWarning($"[PureDotsWorldBootstrap] Exit requested ({HeadlessExitState.ExitReason}); skipping world initialization.");
+                UnityEngine.Debug.LogWarning($"[PureDotsWorldBootstrap] Exit requested ({HeadlessExitState.ExitReason}); skipping world initialization.");
                 return true;
             }
 
