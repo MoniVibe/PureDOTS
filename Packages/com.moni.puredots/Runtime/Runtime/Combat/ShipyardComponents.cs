@@ -15,17 +15,6 @@ namespace PureDOTS.Runtime.Combat
     }
 
     /// <summary>
-    /// Budget for shipyard-driven installs (data-only).
-    /// </summary>
-    public struct ShipyardBuildBudget : IComponentData
-    {
-        public float Energy;
-        public float Materials;
-        public float Crew;
-        public float LastSpendTime;
-    }
-
-    /// <summary>
     /// Request to equip an entity via a shipyard.
     /// </summary>
     [InternalBufferCapacity(4)]
@@ -42,10 +31,6 @@ namespace PureDOTS.Runtime.Combat
         public float RequireMaterials;
         public float RequireCrew;
         public byte ConsumeBudget;
-        public float ShipyardRequireEnergy;
-        public float ShipyardRequireMaterials;
-        public float ShipyardRequireCrew;
-        public byte ConsumeShipyardBudget;
         public byte ReplaceExisting;
         public float InitialEnergy;
         public float InitialHeat;

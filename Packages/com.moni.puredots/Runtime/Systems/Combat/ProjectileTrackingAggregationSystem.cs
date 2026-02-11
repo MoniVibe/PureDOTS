@@ -1,5 +1,4 @@
 using PureDOTS.Runtime.Combat;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -22,7 +21,6 @@ namespace PureDOTS.Systems.Combat
             var config = SystemAPI.GetComponentRW<ProjectileTrackingConfig>(hubEntity);
             var counters = SystemAPI.GetComponentRW<ProjectileTrackingCounters>(hubEntity);
             var events = SystemAPI.GetBuffer<ProjectileTrackingEvent>(hubEntity);
-            var ammoCounters = SystemAPI.GetBuffer<ProjectileTrackingAmmoCounter>(hubEntity);
 
             int startIndex = config.ValueRO.ClearEachFrame != 0
                 ? 0
@@ -31,7 +29,6 @@ namespace PureDOTS.Systems.Combat
             for (int i = startIndex; i < events.Length; i++)
             {
                 var evt = events[i];
-                UpdateAmmoCounters(ref ammoCounters, evt);
                 switch (evt.Kind)
                 {
                     case ProjectileTrackingEventKind.Spawn:
@@ -83,66 +80,6 @@ namespace PureDOTS.Systems.Combat
             {
                 counters.ValueRW.LastProcessedIndex = events.Length;
             }
-        }
-
-        private static void UpdateAmmoCounters(ref DynamicBuffer<ProjectileTrackingAmmoCounter> ammoCounters, in ProjectileTrackingEvent evt)
-        {
-            var ammoId = evt.AmmoId;
-            if (ammoId.Length == 0)
-            {
-                ammoId = new FixedString32Bytes("ammo.unknown");
-            }
-
-            var index = FindOrAddAmmoCounter(ref ammoCounters, ammoId);
-            var counter = ammoCounters[index];
-
-            switch (evt.Kind)
-            {
-                case ProjectileTrackingEventKind.Spawn:
-                    counter.Spawned++;
-                    break;
-                case ProjectileTrackingEventKind.Hit:
-                    counter.Hits++;
-                    break;
-                case ProjectileTrackingEventKind.Deflect:
-                    counter.Deflections++;
-                    break;
-                case ProjectileTrackingEventKind.Redirect:
-                    counter.Redirects++;
-                    break;
-                case ProjectileTrackingEventKind.Control:
-                    counter.Controls++;
-                    break;
-                case ProjectileTrackingEventKind.Retire:
-                    counter.Retired++;
-                    break;
-                case ProjectileTrackingEventKind.Expire:
-                    counter.Expired++;
-                    break;
-                case ProjectileTrackingEventKind.Recycle:
-                    counter.Recycled++;
-                    break;
-            }
-
-            ammoCounters[index] = counter;
-        }
-
-        private static int FindOrAddAmmoCounter(ref DynamicBuffer<ProjectileTrackingAmmoCounter> ammoCounters, FixedString32Bytes ammoId)
-        {
-            for (int i = 0; i < ammoCounters.Length; i++)
-            {
-                if (ammoCounters[i].AmmoId.Equals(ammoId))
-                {
-                    return i;
-                }
-            }
-
-            var entry = new ProjectileTrackingAmmoCounter
-            {
-                AmmoId = ammoId
-            };
-            ammoCounters.Add(entry);
-            return ammoCounters.Length - 1;
         }
     }
 }

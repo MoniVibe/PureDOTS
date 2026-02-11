@@ -1,6 +1,5 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
-using PureDOTS.Runtime.Scenarios;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -18,7 +17,6 @@ namespace PureDOTS.Systems.Combat
         private ComponentLookup<WeaponPoolConfig> _poolConfigLookup;
         private BufferLookup<WeaponPoolEntry> _poolLookup;
         private ComponentLookup<PersistentId> _persistentLookup;
-        private ComponentLookup<ShipyardBuildBudget> _shipyardBudgetLookup;
 
         public void OnCreate(ref SystemState state)
         {
@@ -31,7 +29,6 @@ namespace PureDOTS.Systems.Combat
             _poolConfigLookup = state.GetComponentLookup<WeaponPoolConfig>(false);
             _poolLookup = state.GetBufferLookup<WeaponPoolEntry>(true);
             _persistentLookup = state.GetComponentLookup<PersistentId>(true);
-            _shipyardBudgetLookup = state.GetComponentLookup<ShipyardBuildBudget>(false);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -51,7 +48,6 @@ namespace PureDOTS.Systems.Combat
             _poolConfigLookup.Update(ref state);
             _poolLookup.Update(ref state);
             _persistentLookup.Update(ref state);
-            _shipyardBudgetLookup.Update(ref state);
 
             var entityManager = state.EntityManager;
             var currentTime = timeState.ElapsedTime;
@@ -76,7 +72,6 @@ namespace PureDOTS.Systems.Combat
                     if (request.InstallEntity == Entity.Null)
                     {
                         requests.RemoveAtSwapBack(i);
-                        ScenarioMetricsUtility.AddMetric(entityManager, "shipyard.request.invalid_total", 1.0);
                         continue;
                     }
 
@@ -92,11 +87,6 @@ namespace PureDOTS.Systems.Combat
                         continue;
                     }
 
-                    if (!MeetsShipyardBudget(shipyardEntity, request))
-                    {
-                        continue;
-                    }
-
                     if (!TryResolveEntry(shipyardEntity, request, currentTick, currentTime, out var entry))
                     {
                         continue;
@@ -104,10 +94,8 @@ namespace PureDOTS.Systems.Combat
 
                     var installRequest = BuildInstallRequest(entry, request, currentTick);
                     WeaponSeedingHelpers.QueueInstall(entityManager, request.InstallEntity, installRequest);
-                    ScenarioMetricsUtility.AddMetric(entityManager, "shipyard.install.queued_total", 1.0);
 
                     shipyard.ValueRW.LastInstallTime = currentTime;
-                    ConsumeShipyardBudget(shipyardEntity, request, currentTime);
                     requests.RemoveAtSwapBack(i);
                 }
             }
@@ -202,50 +190,6 @@ namespace PureDOTS.Systems.Combat
             }
 
             return true;
-        }
-
-        private bool MeetsShipyardBudget(Entity shipyardEntity, in ShipyardEquipRequest request)
-        {
-            if (request.ShipyardRequireEnergy <= 0f && request.ShipyardRequireMaterials <= 0f && request.ShipyardRequireCrew <= 0f)
-            {
-                return true;
-            }
-
-            if (!_shipyardBudgetLookup.HasComponent(shipyardEntity))
-            {
-                return false;
-            }
-
-            var budget = _shipyardBudgetLookup[shipyardEntity];
-            if (budget.Energy < request.ShipyardRequireEnergy)
-            {
-                return false;
-            }
-            if (budget.Materials < request.ShipyardRequireMaterials)
-            {
-                return false;
-            }
-            if (budget.Crew < request.ShipyardRequireCrew)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private void ConsumeShipyardBudget(Entity shipyardEntity, in ShipyardEquipRequest request, float currentTime)
-        {
-            if (request.ConsumeShipyardBudget == 0 || !_shipyardBudgetLookup.HasComponent(shipyardEntity))
-            {
-                return;
-            }
-
-            var budget = _shipyardBudgetLookup[shipyardEntity];
-            budget.Energy = math.max(0f, budget.Energy - request.ShipyardRequireEnergy);
-            budget.Materials = math.max(0f, budget.Materials - request.ShipyardRequireMaterials);
-            budget.Crew = math.max(0f, budget.Crew - request.ShipyardRequireCrew);
-            budget.LastSpendTime = currentTime;
-            _shipyardBudgetLookup[shipyardEntity] = budget;
         }
 
         private static WeaponInstallRequest BuildInstallRequest(in WeaponPoolEntry entry, in ShipyardEquipRequest request, uint currentTick)

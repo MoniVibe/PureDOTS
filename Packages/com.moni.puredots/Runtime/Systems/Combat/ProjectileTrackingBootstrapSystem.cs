@@ -40,7 +40,6 @@ namespace PureDOTS.Systems.Combat
             });
 
             state.EntityManager.AddBuffer<ProjectileTrackingEvent>(entity);
-            state.EntityManager.AddBuffer<ProjectileTrackingAmmoCounter>(entity);
             state.Enabled = false;
         }
     }

@@ -32,17 +32,6 @@ namespace PureDOTS.Authoring.Combat
         public bool OverrideDamageType;
         public DamageType DamageTypeOverride;
         public DamageFlags DamageFlags;
-        public List<AmmoEffectOpEntry> OnHitAdd;
-    }
-
-    [Serializable]
-    public struct AmmoEffectOpEntry
-    {
-        public EffectOpKind Kind;
-        public float Magnitude;
-        public float Duration;
-        public float Aux;
-        public uint StatusId;
     }
 
     /// <summary>
@@ -92,20 +81,7 @@ namespace PureDOTS.Authoring.Combat
                     DamageFlags = entry.DamageFlags
                 };
 
-                var effectCount = entry.OnHitAdd != null ? entry.OnHitAdd.Count : 0;
-                var effects = builder.Allocate(ref spec.OnHitAdd, effectCount);
-                for (int e = 0; e < effectCount; e++)
-                {
-                    var op = entry.OnHitAdd[e];
-                    effects[e] = new EffectOp
-                    {
-                        Kind = op.Kind,
-                        Magnitude = op.Magnitude,
-                        Duration = op.Duration,
-                        Aux = op.Aux,
-                        StatusId = op.StatusId
-                    };
-                }
+                builder.Allocate(ref spec.OnHitAdd, 0);
                 AmmoSpecSanitizer.Sanitize(ref spec);
             }
 

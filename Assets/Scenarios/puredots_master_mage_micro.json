@@ -19,5 +19,7 @@
         "required": true
       }
     ]
-  }
+  },
+  "spawn": [],
+  "actions": []
 }
