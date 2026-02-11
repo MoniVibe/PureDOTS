@@ -1,6 +1,7 @@
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.LowLevel;
+using PureDOTS.Runtime.Movement;
 using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Steering;
 using Unity.Burst;
