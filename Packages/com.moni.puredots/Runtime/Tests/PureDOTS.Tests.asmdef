@@ -7,9 +7,11 @@
         "PureDOTS.Core",
         "PureDOTS.Config",
         "PureDOTS.Input",
+        "PureDOTS.Rendering",
         "Unity.Entities",
         "Unity.Mathematics",
         "Unity.Transforms",
+        "Unity.Entities.Graphics",
         "Unity.Collections",
         "Unity.Burst"
     ],
