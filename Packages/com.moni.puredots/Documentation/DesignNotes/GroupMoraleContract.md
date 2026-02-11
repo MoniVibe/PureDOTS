@@ -36,3 +36,7 @@ Core policy helpers:
 2. Keep project-specific flavor in adapter systems, not in the contract.
 3. Emit `GroupMoraleTransitionEvent` for telemetry and narrative hooks.
 4. Gate splinter execution off `ShouldSplit` and regroup off `ShouldRejoin`.
+
+## Current Wiring
+- `GroupMoraleContractEnsureSystem` seeds default profile/state/buffer on group entities with `GroupMetrics`.
+- `GroupMoraleContractAdapterSystem` computes morale phase + intent from `GroupMetrics`, `GroupAggregate`, optional anchor/goal signals, and emits transition events on phase changes.
