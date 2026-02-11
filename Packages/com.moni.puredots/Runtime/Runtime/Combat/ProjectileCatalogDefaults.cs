@@ -16,7 +16,7 @@ namespace PureDOTS.Runtime.Combat
             var array = builder.Allocate(ref root.Projectiles, 2);
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[0],
                 "projectile.simple.ballistic",
                 ProjectileKind.Ballistic,
@@ -30,7 +30,7 @@ namespace PureDOTS.Runtime.Combat
                 baseDamage: 12f);
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[1],
                 "projectile.simple.homing",
                 ProjectileKind.Homing,
@@ -47,7 +47,7 @@ namespace PureDOTS.Runtime.Combat
         }
 
         private static void BuildSpec(
-            ref BlobBuilder builder,
+            BlobBuilder builder,
             ref ProjectileSpec spec,
             string id,
             ProjectileKind kind,

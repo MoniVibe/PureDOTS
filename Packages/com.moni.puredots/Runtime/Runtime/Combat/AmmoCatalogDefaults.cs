@@ -16,7 +16,7 @@ namespace PureDOTS.Runtime.Combat
             var array = builder.Allocate(ref root.Ammunition, 5);
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[0],
                 "ammo.standard",
                 damageMultiplier: 1f,
@@ -33,7 +33,7 @@ namespace PureDOTS.Runtime.Combat
                 onHitCount: 0);
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[1],
                 "ammo.kinetic",
                 damageMultiplier: 1.15f,
@@ -50,7 +50,7 @@ namespace PureDOTS.Runtime.Combat
                 onHitCount: 0);
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[2],
                 "ammo.he",
                 damageMultiplier: 0.9f,
@@ -77,7 +77,7 @@ namespace PureDOTS.Runtime.Combat
             };
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[3],
                 "ammo.emp",
                 damageMultiplier: 0.75f,
@@ -104,7 +104,7 @@ namespace PureDOTS.Runtime.Combat
             };
 
             BuildSpec(
-                ref builder,
+                builder,
                 ref array[4],
                 "ammo.arc",
                 damageMultiplier: 0.85f,
@@ -134,7 +134,7 @@ namespace PureDOTS.Runtime.Combat
         }
 
         private static void BuildSpec(
-            ref BlobBuilder builder,
+            BlobBuilder builder,
             ref AmmoSpec spec,
             string id,
             float damageMultiplier,
@@ -151,7 +151,7 @@ namespace PureDOTS.Runtime.Combat
             int onHitCount)
         {
             BuildSpec(
-                ref builder,
+                builder,
                 ref spec,
                 id,
                 damageMultiplier,
@@ -170,7 +170,7 @@ namespace PureDOTS.Runtime.Combat
         }
 
         private static void BuildSpec(
-            ref BlobBuilder builder,
+            BlobBuilder builder,
             ref AmmoSpec spec,
             string id,
             float damageMultiplier,
