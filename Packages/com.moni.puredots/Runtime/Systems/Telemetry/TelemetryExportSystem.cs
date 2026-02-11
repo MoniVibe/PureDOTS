@@ -218,7 +218,7 @@ namespace PureDOTS.Systems.Telemetry
                     }
                     else
                     {
-                        ClearTelemetryMetricsBuffer();
+                        PruneTelemetryMetricsBufferOnCadenceSkip();
                     }
                 }
 
@@ -749,7 +749,7 @@ namespace PureDOTS.Systems.Telemetry
             return completed;
         }
 
-        private void ClearTelemetryMetricsBuffer()
+        private void PruneTelemetryMetricsBufferOnCadenceSkip()
         {
             if (!SystemAPI.TryGetSingletonEntity<TelemetryStream>(out var telemetryEntity))
             {
@@ -762,10 +762,51 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             var buffer = EntityManager.GetBuffer<TelemetryMetric>(telemetryEntity);
-            if (buffer.Length > 0)
+            if (buffer.Length == 0)
+            {
+                return;
+            }
+
+            // Retain only the validator-gating oracle metrics between cadence ticks.
+            var keepCount = 0;
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                var metric = buffer[i];
+                if (!ShouldPreserveCadenceSkippedMetric(metric.Key.ToString()))
+                {
+                    continue;
+                }
+
+                if (keepCount != i)
+                {
+                    buffer[keepCount] = metric;
+                }
+
+                keepCount++;
+            }
+
+            if (keepCount == 0)
             {
                 buffer.Clear();
+                return;
             }
+
+            if (keepCount < buffer.Length)
+            {
+                buffer.RemoveRange(keepCount, buffer.Length - keepCount);
+            }
+        }
+
+        private static bool ShouldPreserveCadenceSkippedMetric(string metricKey)
+        {
+            if (string.IsNullOrEmpty(metricKey))
+            {
+                return false;
+            }
+
+            return metricKey.StartsWith("telemetry.oracle.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.Equals("ai.idle_with_work_ratio", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.Equals("move.stuck_ticks", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool ExportFrameTiming(StreamWriter writer, uint tick, ref ulong bytesWritten, ulong maxBytes, ulong reserveBytes)
