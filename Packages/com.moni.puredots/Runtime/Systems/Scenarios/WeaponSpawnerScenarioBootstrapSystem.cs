@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Physics;
 using PureDOTS.Runtime.Scenarios;
+using PureDOTS.Runtime.Spatial;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
