@@ -13,6 +13,7 @@ namespace PureDOTS.Systems.Scenarios
     /// Seeds a pure-data firing range scenario with basic railgun + launcher weapons.
     /// Scenario ID: scenario.puredots.firing_range.smoke
     /// </summary>
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial class FiringRangeScenarioBootstrapSystem : SystemBase
     {
@@ -54,12 +55,14 @@ namespace PureDOTS.Systems.Scenarios
                 new float3(0f, 0f, 0f),
                 new FixedString64Bytes("weapon.basic.railgun"),
                 targetBallistic,
+                new FixedString32Bytes("ammo.kinetic"),
                 101u);
 
             CreateShooter(
                 new float3(-8f, 0f, -4f),
                 new FixedString64Bytes("weapon.basic.launcher"),
                 targetHoming,
+                new FixedString32Bytes("ammo.he"),
                 102u);
         }
 
@@ -97,7 +100,7 @@ namespace PureDOTS.Systems.Scenarios
             return entity;
         }
 
-        private Entity CreateShooter(float3 position, FixedString64Bytes weaponId, Entity target, uint persistentId)
+        private Entity CreateShooter(float3 position, FixedString64Bytes weaponId, Entity target, FixedString32Bytes ammoId, uint persistentId)
         {
             var entity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(entity, LocalTransform.FromPosition(position));
@@ -118,14 +121,14 @@ namespace PureDOTS.Systems.Scenarios
 
             EntityManager.AddComponentData(entity, new AmmoStockpile
             {
-                AmmoType = new FixedString32Bytes("ammo.kinetic"),
+                AmmoType = ammoId,
                 Current = 200,
                 Capacity = 200
             });
 
             EntityManager.AddComponentData(entity, new WeaponMagazine
             {
-                AmmoType = new FixedString32Bytes("ammo.kinetic"),
+                AmmoType = ammoId,
                 Current = 20,
                 Capacity = 20,
                 AmmoPerShot = 1,

@@ -13,7 +13,7 @@ namespace PureDOTS.Runtime.Combat
         {
             using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<AmmoCatalogBlob>();
-            var array = builder.Allocate(ref root.Ammunition, 4);
+            var array = builder.Allocate(ref root.Ammunition, 5);
 
             BuildSpec(
                 ref builder,
@@ -101,6 +101,33 @@ namespace PureDOTS.Runtime.Combat
                 Duration = 4f,
                 Aux = 0f,
                 StatusId = 2
+            };
+
+            BuildSpec(
+                ref builder,
+                ref array[4],
+                "ammo.arc",
+                damageMultiplier: 0.85f,
+                speedMultiplier: 1f,
+                lifetimeMultiplier: 1f,
+                turnRateMultiplier: 1f,
+                seekRadiusMultiplier: 1f,
+                aoeRadiusMultiplier: 1f,
+                chainRangeMultiplier: 1f,
+                pierceBonus: 0f,
+                knockbackMultiplier: 0.9f,
+                damageTypeOverride: (byte)DamageType.Lightning,
+                damageFlags: DamageFlags.Chain,
+                onHitCount: 1,
+                out var chainEffects);
+
+            chainEffects[0] = new EffectOp
+            {
+                Kind = EffectOpKind.Chain,
+                Magnitude = 1f,
+                Duration = 0f,
+                Aux = 8f,
+                StatusId = 0
             };
 
             return builder.CreateBlobAssetReference<AmmoCatalogBlob>(Allocator.Persistent);
