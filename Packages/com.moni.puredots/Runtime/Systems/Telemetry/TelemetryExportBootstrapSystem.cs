@@ -74,7 +74,8 @@ namespace PureDOTS.Systems.Telemetry
             }
             if (level == TelemetryExportLevel.Summary && string.IsNullOrEmpty(flagsValue))
             {
-                flags = TelemetryExportFlags.IncludeTelemetryMetrics | TelemetryExportFlags.IncludeFrameTiming;
+                // Summary is intended to be small/high-signal for headless gating.
+                flags = TelemetryExportFlags.IncludeTelemetryMetrics | TelemetryExportFlags.IncludeTelemetryEvents;
             }
             else if (level == TelemetryExportLevel.Full && string.IsNullOrEmpty(flagsValue))
             {

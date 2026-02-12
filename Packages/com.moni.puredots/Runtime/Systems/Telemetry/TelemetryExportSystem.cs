@@ -704,11 +704,22 @@ namespace PureDOTS.Systems.Telemetry
                 return true;
             }
 
+            var isMinimal = false;
+            if (SystemAPI.TryGetSingleton<TelemetryExportConfig>(out var config))
+            {
+                isMinimal = config.Lod == TelemetryExportLod.Minimal;
+            }
+
             var culture = CultureInfo.InvariantCulture;
             var completed = true;
             for (int i = 0; i < buffer.Length; i++)
             {
                 var metric = buffer[i];
+                if (isMinimal && !ShouldWriteMinimalMetric(metric.Key.ToString()))
+                {
+                    continue;
+                }
+
                 var loopLabel = GetLoopLabel(metric.Key.ToString());
                 if (!ShouldWriteLoop(loopLabel))
                 {
@@ -747,6 +758,23 @@ namespace PureDOTS.Systems.Telemetry
             }
 
             return completed;
+        }
+
+        private static bool ShouldWriteMinimalMetric(string metricKey)
+        {
+            if (string.IsNullOrEmpty(metricKey))
+            {
+                return false;
+            }
+
+            // Minimal telemetry is intended for gating: keep high-signal oracle + loop aggregates and export health.
+            return metricKey.StartsWith("telemetry.oracle.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("telemetry.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("ai.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("move.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("power.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("module.", StringComparison.OrdinalIgnoreCase) ||
+                   metricKey.StartsWith("loop.", StringComparison.OrdinalIgnoreCase);
         }
 
         private void PruneTelemetryMetricsBufferOnCadenceSkip()
