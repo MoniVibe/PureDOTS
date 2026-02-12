@@ -72,3 +72,9 @@ If a detail is critical (API choice, breaking change), ask the user once rather 
 - Keep `Packages/manifest.json` and `Packages/packages-lock.json` in sync across clones when logic changes; drift causes slice-only compile errors.
 - Do not share `Library` between OSes; each clone keeps its own cache.
 - WSL is case-sensitive; fix casing mismatches that Windows may tolerate.
+
+## Multi-Agent Workflow (Iterators + Validator)
+
+- Iterators do not trigger Buildbox/nightlies/queues. They push a branch + PR + intent card and add label `needs-validate`.
+- Validator is the only actor that runs Buildbox, applies fix-up commits, and merges.
+- Workflow details: `Docs/VALIDATOR_WORKFLOW.md`.
