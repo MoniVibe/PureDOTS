@@ -16,48 +16,457 @@ namespace PureDOTS.Systems.Scenarios
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct ScenarioMetricsCollectorSystem : ISystem
     {
-        private static readonly FixedString64Bytes VillagerCountKey = new FixedString64Bytes("villager.count");
-        private static readonly FixedString64Bytes ShipyardCountKey = new FixedString64Bytes("shipyard.count");
-        private static readonly FixedString64Bytes ShipyardRequestsPendingKey = new FixedString64Bytes("shipyard.requests.pending");
-        private static readonly FixedString64Bytes WeaponMountCountKey = new FixedString64Bytes("weapon.mount.count");
-        private static readonly FixedString64Bytes WeaponSpawnerCountKey = new FixedString64Bytes("weapon.spawner.count");
-        private static readonly FixedString64Bytes ShipyardEquipSuccessKey = new FixedString64Bytes("shipyard.equip.success");
-        private static readonly FixedString64Bytes ShipyardEquipScenarioId = new FixedString64Bytes("scenario.puredots.shipyard.equip");
-        private static readonly FixedString64Bytes ShipyardEquipMetricKey = new FixedString64Bytes("puredots.q.shipyard.equip");
-        private static readonly FixedString64Bytes AmmoStockpileCountKey = new FixedString64Bytes("ammo.stockpile.count");
-        private static readonly FixedString64Bytes AmmoMagazineCountKey = new FixedString64Bytes("ammo.magazine.count");
-        private static readonly FixedString64Bytes AmmoStockpileCurrentTotalKey = new FixedString64Bytes("ammo.stockpile.current_total");
-        private static readonly FixedString64Bytes AmmoStockpileCapacityTotalKey = new FixedString64Bytes("ammo.stockpile.capacity_total");
-        private static readonly FixedString64Bytes AmmoMagazineCurrentTotalKey = new FixedString64Bytes("ammo.magazine.current_total");
-        private static readonly FixedString64Bytes AmmoMagazineCapacityTotalKey = new FixedString64Bytes("ammo.magazine.capacity_total");
-        private static readonly FixedString64Bytes ProjectileTrackingSpawnedTotalKey = new FixedString64Bytes("projectile.tracking.spawned_total");
-        private static readonly FixedString64Bytes ProjectileTrackingHitsTotalKey = new FixedString64Bytes("projectile.tracking.hits_total");
-        private static readonly FixedString64Bytes ProjectileTrackingDeflectTotalKey = new FixedString64Bytes("projectile.tracking.deflect_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRedirectTotalKey = new FixedString64Bytes("projectile.tracking.redirect_total");
-        private static readonly FixedString64Bytes ProjectileTrackingControlTotalKey = new FixedString64Bytes("projectile.tracking.control_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRetireTotalKey = new FixedString64Bytes("projectile.tracking.retire_total");
-        private static readonly FixedString64Bytes ProjectileTrackingExpireTotalKey = new FixedString64Bytes("projectile.tracking.expire_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRecycleTotalKey = new FixedString64Bytes("projectile.tracking.recycle_total");
-        private static readonly FixedString64Bytes ProjectileTrackingEventsCountKey = new FixedString64Bytes("projectile.tracking.events_count");
-        private static readonly FixedString64Bytes ProjectileTrackingSpawnedPrefix = new FixedString64Bytes("projectile.tracking.spawned.");
-        private static readonly FixedString64Bytes ProjectileTrackingHitsPrefix = new FixedString64Bytes("projectile.tracking.hits.");
-        private static readonly FixedString64Bytes ProjectileTrackingDeflectPrefix = new FixedString64Bytes("projectile.tracking.deflect.");
-        private static readonly FixedString64Bytes ProjectileTrackingRedirectPrefix = new FixedString64Bytes("projectile.tracking.redirect.");
-        private static readonly FixedString64Bytes ProjectileTrackingControlPrefix = new FixedString64Bytes("projectile.tracking.control.");
-        private static readonly FixedString64Bytes ProjectileTrackingRetirePrefix = new FixedString64Bytes("projectile.tracking.retire.");
-        private static readonly FixedString64Bytes ProjectileTrackingExpirePrefix = new FixedString64Bytes("projectile.tracking.expire.");
-        private static readonly FixedString64Bytes ProjectileTrackingRecyclePrefix = new FixedString64Bytes("projectile.tracking.recycle.");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditMicroId = new FixedString64Bytes("puredots_projectile_tracking_audit_micro");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditScenarioId = new FixedString64Bytes("scenario.puredots.projectile_tracking.audit");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditMetricKey = new FixedString64Bytes("puredots.q.projectile_tracking.audit");
-        private static readonly FixedString64Bytes ProjectileLifecycleMicroId = new FixedString64Bytes("puredots_projectile_lifecycle_micro");
-        private static readonly FixedString64Bytes ProjectileLifecycleScenarioId = new FixedString64Bytes("scenario.puredots.projectile_lifecycle.audit");
-        private static readonly FixedString64Bytes ProjectileLifecycleMetricKey = new FixedString64Bytes("puredots.q.projectile_lifecycle.audit");
-        private static readonly FixedString64Bytes DeliveriesCountKey = new FixedString64Bytes("deliveries.count");
-        private static readonly FixedString64Bytes StorehouseInventoryKey = new FixedString64Bytes("storehouse.inventory");
-        private static readonly FixedString64Bytes ConstraintsRespectedKey = new FixedString64Bytes("constraints.respected");
-        private static readonly FixedString64Bytes DeterministicReplayKey = new FixedString64Bytes("deterministic.replay");
+        // Burst-safe literal construction: avoid FixedStringXXBytes(string) in static initializers (Burst does not support managed string APIs).
+        private static readonly FixedString64Bytes VillagerCountKey = CreateVillagerCountKey();
+        private static readonly FixedString64Bytes ShipyardCountKey = CreateShipyardCountKey();
+        private static readonly FixedString64Bytes ShipyardRequestsPendingKey = CreateShipyardRequestsPendingKey();
+        private static readonly FixedString64Bytes WeaponMountCountKey = CreateWeaponMountCountKey();
+        private static readonly FixedString64Bytes WeaponSpawnerCountKey = CreateWeaponSpawnerCountKey();
+        private static readonly FixedString64Bytes ShipyardEquipSuccessKey = CreateShipyardEquipSuccessKey();
+        private static readonly FixedString64Bytes ShipyardEquipScenarioId = CreateShipyardEquipScenarioId();
+        private static readonly FixedString64Bytes ShipyardEquipMetricKey = CreateShipyardEquipMetricKey();
+        private static readonly FixedString64Bytes AmmoStockpileCountKey = CreateAmmoStockpileCountKey();
+        private static readonly FixedString64Bytes AmmoMagazineCountKey = CreateAmmoMagazineCountKey();
+        private static readonly FixedString64Bytes AmmoStockpileCurrentTotalKey = CreateAmmoStockpileCurrentTotalKey();
+        private static readonly FixedString64Bytes AmmoStockpileCapacityTotalKey = CreateAmmoStockpileCapacityTotalKey();
+        private static readonly FixedString64Bytes AmmoMagazineCurrentTotalKey = CreateAmmoMagazineCurrentTotalKey();
+        private static readonly FixedString64Bytes AmmoMagazineCapacityTotalKey = CreateAmmoMagazineCapacityTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingSpawnedTotalKey = CreateProjectileTrackingSpawnedTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingHitsTotalKey = CreateProjectileTrackingHitsTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingDeflectTotalKey = CreateProjectileTrackingDeflectTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingRedirectTotalKey = CreateProjectileTrackingRedirectTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingControlTotalKey = CreateProjectileTrackingControlTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingRetireTotalKey = CreateProjectileTrackingRetireTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingExpireTotalKey = CreateProjectileTrackingExpireTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingRecycleTotalKey = CreateProjectileTrackingRecycleTotalKey();
+        private static readonly FixedString64Bytes ProjectileTrackingEventsCountKey = CreateProjectileTrackingEventsCountKey();
+        private static readonly FixedString64Bytes ProjectileTrackingSpawnedPrefix = CreateProjectileTrackingSpawnedPrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingHitsPrefix = CreateProjectileTrackingHitsPrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingDeflectPrefix = CreateProjectileTrackingDeflectPrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingRedirectPrefix = CreateProjectileTrackingRedirectPrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingControlPrefix = CreateProjectileTrackingControlPrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingRetirePrefix = CreateProjectileTrackingRetirePrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingExpirePrefix = CreateProjectileTrackingExpirePrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingRecyclePrefix = CreateProjectileTrackingRecyclePrefix();
+        private static readonly FixedString64Bytes ProjectileTrackingAuditMicroId = CreateProjectileTrackingAuditMicroId();
+        private static readonly FixedString64Bytes ProjectileTrackingAuditScenarioId = CreateProjectileTrackingAuditScenarioId();
+        private static readonly FixedString64Bytes ProjectileTrackingAuditMetricKey = CreateProjectileTrackingAuditMetricKey();
+        private static readonly FixedString64Bytes ProjectileLifecycleMicroId = CreateProjectileLifecycleMicroId();
+        private static readonly FixedString64Bytes ProjectileLifecycleScenarioId = CreateProjectileLifecycleScenarioId();
+        private static readonly FixedString64Bytes ProjectileLifecycleMetricKey = CreateProjectileLifecycleMetricKey();
+        private static readonly FixedString64Bytes DeliveriesCountKey = CreateDeliveriesCountKey();
+        private static readonly FixedString64Bytes StorehouseInventoryKey = CreateStorehouseInventoryKey();
+        private static readonly FixedString64Bytes ConstraintsRespectedKey = CreateConstraintsRespectedKey();
+        private static readonly FixedString64Bytes DeterministicReplayKey = CreateDeterministicReplayKey();
 
+        private static FixedString64Bytes CreateVillagerCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('v'); s.Append('i'); s.Append('l'); s.Append('l'); s.Append('a'); s.Append('g'); s.Append('e'); s.Append('r');
+            s.Append('.'); s.Append('c'); s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateShipyardCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('h'); s.Append('i'); s.Append('p'); s.Append('y'); s.Append('a'); s.Append('r'); s.Append('d');
+            s.Append('.'); s.Append('c'); s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateShipyardRequestsPendingKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('h'); s.Append('i'); s.Append('p'); s.Append('y'); s.Append('a'); s.Append('r'); s.Append('d');
+            s.Append('.'); s.Append('r'); s.Append('e'); s.Append('q'); s.Append('u'); s.Append('e'); s.Append('s'); s.Append('t');
+            s.Append('s'); s.Append('.'); s.Append('p'); s.Append('e'); s.Append('n'); s.Append('d'); s.Append('i'); s.Append('n');
+            s.Append('g');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateWeaponMountCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('w'); s.Append('e'); s.Append('a'); s.Append('p'); s.Append('o'); s.Append('n'); s.Append('.'); s.Append('m');
+            s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t'); s.Append('.'); s.Append('c'); s.Append('o'); s.Append('u');
+            s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateWeaponSpawnerCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('w'); s.Append('e'); s.Append('a'); s.Append('p'); s.Append('o'); s.Append('n'); s.Append('.'); s.Append('s');
+            s.Append('p'); s.Append('a'); s.Append('w'); s.Append('n'); s.Append('e'); s.Append('r'); s.Append('.'); s.Append('c');
+            s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateShipyardEquipSuccessKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('h'); s.Append('i'); s.Append('p'); s.Append('y'); s.Append('a'); s.Append('r'); s.Append('d');
+            s.Append('.'); s.Append('e'); s.Append('q'); s.Append('u'); s.Append('i'); s.Append('p'); s.Append('.'); s.Append('s');
+            s.Append('u'); s.Append('c'); s.Append('c'); s.Append('e'); s.Append('s'); s.Append('s');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateShipyardEquipScenarioId()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('c'); s.Append('e'); s.Append('n'); s.Append('a'); s.Append('r'); s.Append('i'); s.Append('o');
+            s.Append('.'); s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t');
+            s.Append('s'); s.Append('.'); s.Append('s'); s.Append('h'); s.Append('i'); s.Append('p'); s.Append('y'); s.Append('a');
+            s.Append('r'); s.Append('d'); s.Append('.'); s.Append('e'); s.Append('q'); s.Append('u'); s.Append('i'); s.Append('p');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateShipyardEquipMetricKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t'); s.Append('s');
+            s.Append('.'); s.Append('q'); s.Append('.'); s.Append('s'); s.Append('h'); s.Append('i'); s.Append('p'); s.Append('y');
+            s.Append('a'); s.Append('r'); s.Append('d'); s.Append('.'); s.Append('e'); s.Append('q'); s.Append('u'); s.Append('i');
+            s.Append('p');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoStockpileCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('s'); s.Append('t'); s.Append('o');
+            s.Append('c'); s.Append('k'); s.Append('p'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('.'); s.Append('c');
+            s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoMagazineCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('m'); s.Append('a'); s.Append('g');
+            s.Append('a'); s.Append('z'); s.Append('i'); s.Append('n'); s.Append('e'); s.Append('.'); s.Append('c'); s.Append('o');
+            s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoStockpileCurrentTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('s'); s.Append('t'); s.Append('o');
+            s.Append('c'); s.Append('k'); s.Append('p'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('.'); s.Append('c');
+            s.Append('u'); s.Append('r'); s.Append('r'); s.Append('e'); s.Append('n'); s.Append('t'); s.Append('_'); s.Append('t');
+            s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoStockpileCapacityTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('s'); s.Append('t'); s.Append('o');
+            s.Append('c'); s.Append('k'); s.Append('p'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('.'); s.Append('c');
+            s.Append('a'); s.Append('p'); s.Append('a'); s.Append('c'); s.Append('i'); s.Append('t'); s.Append('y'); s.Append('_');
+            s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoMagazineCurrentTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('m'); s.Append('a'); s.Append('g');
+            s.Append('a'); s.Append('z'); s.Append('i'); s.Append('n'); s.Append('e'); s.Append('.'); s.Append('c'); s.Append('u');
+            s.Append('r'); s.Append('r'); s.Append('e'); s.Append('n'); s.Append('t'); s.Append('_'); s.Append('t'); s.Append('o');
+            s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateAmmoMagazineCapacityTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('a'); s.Append('m'); s.Append('m'); s.Append('o'); s.Append('.'); s.Append('m'); s.Append('a'); s.Append('g');
+            s.Append('a'); s.Append('z'); s.Append('i'); s.Append('n'); s.Append('e'); s.Append('.'); s.Append('c'); s.Append('a');
+            s.Append('p'); s.Append('a'); s.Append('c'); s.Append('i'); s.Append('t'); s.Append('y'); s.Append('_'); s.Append('t');
+            s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingSpawnedTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('s'); s.Append('p'); s.Append('a'); s.Append('w');
+            s.Append('n'); s.Append('e'); s.Append('d'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a');
+            s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingHitsTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('h'); s.Append('i'); s.Append('t'); s.Append('s');
+            s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingDeflectTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('d'); s.Append('e'); s.Append('f'); s.Append('l');
+            s.Append('e'); s.Append('c'); s.Append('t'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a');
+            s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRedirectTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t');
+            s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingControlTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('c'); s.Append('o'); s.Append('n'); s.Append('t');
+            s.Append('r'); s.Append('o'); s.Append('l'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a');
+            s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRetireTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('t'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingExpireTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('e'); s.Append('x'); s.Append('p'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a'); s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRecycleTotalKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('c'); s.Append('y');
+            s.Append('c'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('o'); s.Append('t'); s.Append('a');
+            s.Append('l');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingEventsCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('e'); s.Append('v'); s.Append('e'); s.Append('n');
+            s.Append('t'); s.Append('s'); s.Append('_'); s.Append('c'); s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingSpawnedPrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('s'); s.Append('p'); s.Append('a'); s.Append('w');
+            s.Append('n'); s.Append('e'); s.Append('d'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingHitsPrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('h'); s.Append('i'); s.Append('t'); s.Append('s');
+            s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingDeflectPrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('d'); s.Append('e'); s.Append('f'); s.Append('l');
+            s.Append('e'); s.Append('c'); s.Append('t'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRedirectPrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingControlPrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('c'); s.Append('o'); s.Append('n'); s.Append('t');
+            s.Append('r'); s.Append('o'); s.Append('l'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRetirePrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('t'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingExpirePrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('e'); s.Append('x'); s.Append('p'); s.Append('i');
+            s.Append('r'); s.Append('e'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingRecyclePrefix()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t'); s.Append('i');
+            s.Append('l'); s.Append('e'); s.Append('.'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c'); s.Append('k');
+            s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('c'); s.Append('y');
+            s.Append('c'); s.Append('l'); s.Append('e'); s.Append('.');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingAuditMicroId()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t'); s.Append('s');
+            s.Append('_'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t');
+            s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('c');
+            s.Append('k'); s.Append('i'); s.Append('n'); s.Append('g'); s.Append('_'); s.Append('a'); s.Append('u'); s.Append('d');
+            s.Append('i'); s.Append('t'); s.Append('_'); s.Append('m'); s.Append('i'); s.Append('c'); s.Append('r'); s.Append('o');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingAuditScenarioId()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('c'); s.Append('e'); s.Append('n'); s.Append('a'); s.Append('r'); s.Append('i'); s.Append('o');
+            s.Append('.'); s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t');
+            s.Append('s'); s.Append('.'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c');
+            s.Append('t'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('r'); s.Append('a');
+            s.Append('c'); s.Append('k'); s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('a'); s.Append('u');
+            s.Append('d'); s.Append('i'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileTrackingAuditMetricKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t'); s.Append('s');
+            s.Append('.'); s.Append('q'); s.Append('.'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e');
+            s.Append('c'); s.Append('t'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('t'); s.Append('r');
+            s.Append('a'); s.Append('c'); s.Append('k'); s.Append('i'); s.Append('n'); s.Append('g'); s.Append('.'); s.Append('a');
+            s.Append('u'); s.Append('d'); s.Append('i'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileLifecycleMicroId()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t'); s.Append('s');
+            s.Append('_'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c'); s.Append('t');
+            s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('l'); s.Append('i'); s.Append('f'); s.Append('e');
+            s.Append('c'); s.Append('y'); s.Append('c'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('m'); s.Append('i');
+            s.Append('c'); s.Append('r'); s.Append('o');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileLifecycleScenarioId()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('c'); s.Append('e'); s.Append('n'); s.Append('a'); s.Append('r'); s.Append('i'); s.Append('o');
+            s.Append('.'); s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t');
+            s.Append('s'); s.Append('.'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e'); s.Append('c');
+            s.Append('t'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('l'); s.Append('i'); s.Append('f');
+            s.Append('e'); s.Append('c'); s.Append('y'); s.Append('c'); s.Append('l'); s.Append('e'); s.Append('.'); s.Append('a');
+            s.Append('u'); s.Append('d'); s.Append('i'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateProjectileLifecycleMetricKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('p'); s.Append('u'); s.Append('r'); s.Append('e'); s.Append('d'); s.Append('o'); s.Append('t'); s.Append('s');
+            s.Append('.'); s.Append('q'); s.Append('.'); s.Append('p'); s.Append('r'); s.Append('o'); s.Append('j'); s.Append('e');
+            s.Append('c'); s.Append('t'); s.Append('i'); s.Append('l'); s.Append('e'); s.Append('_'); s.Append('l'); s.Append('i');
+            s.Append('f'); s.Append('e'); s.Append('c'); s.Append('y'); s.Append('c'); s.Append('l'); s.Append('e'); s.Append('.');
+            s.Append('a'); s.Append('u'); s.Append('d'); s.Append('i'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateDeliveriesCountKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('d'); s.Append('e'); s.Append('l'); s.Append('i'); s.Append('v'); s.Append('e'); s.Append('r'); s.Append('i');
+            s.Append('e'); s.Append('s'); s.Append('.'); s.Append('c'); s.Append('o'); s.Append('u'); s.Append('n'); s.Append('t');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateStorehouseInventoryKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('s'); s.Append('t'); s.Append('o'); s.Append('r'); s.Append('e'); s.Append('h'); s.Append('o'); s.Append('u');
+            s.Append('s'); s.Append('e'); s.Append('.'); s.Append('i'); s.Append('n'); s.Append('v'); s.Append('e'); s.Append('n');
+            s.Append('t'); s.Append('o'); s.Append('r'); s.Append('y');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateConstraintsRespectedKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('c'); s.Append('o'); s.Append('n'); s.Append('s'); s.Append('t'); s.Append('r'); s.Append('a'); s.Append('i');
+            s.Append('n'); s.Append('t'); s.Append('s'); s.Append('.'); s.Append('r'); s.Append('e'); s.Append('s'); s.Append('p');
+            s.Append('e'); s.Append('c'); s.Append('t'); s.Append('e'); s.Append('d');
+            return s;
+        }
+
+        private static FixedString64Bytes CreateDeterministicReplayKey()
+        {
+            FixedString64Bytes s = default;
+            s.Append('d'); s.Append('e'); s.Append('t'); s.Append('e'); s.Append('r'); s.Append('m'); s.Append('i'); s.Append('n');
+            s.Append('i'); s.Append('s'); s.Append('t'); s.Append('i'); s.Append('c'); s.Append('.'); s.Append('r'); s.Append('e');
+            s.Append('p'); s.Append('l'); s.Append('a'); s.Append('y');
+            return s;
+        }
         private EntityQuery _villagerQuery;
         private EntityQuery _shipyardQuery;
         private EntityQuery _weaponMountQuery;
@@ -256,3 +665,4 @@ namespace PureDOTS.Systems.Scenarios
         }
     }
 }
+
