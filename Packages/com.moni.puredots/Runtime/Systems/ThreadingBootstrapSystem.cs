@@ -32,6 +32,7 @@ namespace PureDOTS.Systems
             // Get threading config (if available)
             int workerCount = 0;
             bool burstSync = true;
+            bool disableBurst = IsTruthyEnv("PUREDOTS_DISABLE_BURST") || IsTruthyEnv("TRI_DISABLE_BURST");
             
             if (SystemAPI.TryGetSingleton<ThreadingSettingsConfig>(out var threadingConfig))
             {
@@ -66,6 +67,16 @@ namespace PureDOTS.Systems
 
             // Configure Burst compilation
             #if UNITY_BURST
+            if (disableBurst)
+            {
+                // Debug knob: allow headless/buildbox runs to disable Burst without changing project settings.
+                BurstCompiler.Options.EnableBurstCompilation = false;
+                BurstCompiler.Options.EnableBurstSafetyChecks = false;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log("[ThreadingBootstrap] Burst disabled via env (PUREDOTS_DISABLE_BURST/TRI_DISABLE_BURST).");
+#endif
+                return;
+            }
             BurstCompilerOptions.CompileSynchronously = burstSync;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (burstSync)
@@ -75,6 +86,16 @@ namespace PureDOTS.Systems
 #endif
             #endif
         }
+
+        private static bool IsTruthyEnv(string name)
+        {
+            var value = System.Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value)) { return false; }
+            value = value.Trim();
+            return value == "1"
+                || value.Equals("true", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("yes", System.StringComparison.OrdinalIgnoreCase)
+                || value.Equals("on", System.StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
-
