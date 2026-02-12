@@ -15,12 +15,13 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct GOAPPlannerSystem : ISystem
     {
-        private static readonly FixedString64Bytes GoapPlansCreatedKey = new FixedString64Bytes("goap.plans.created");
+        private FixedString64Bytes GoapPlansCreatedKey;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            GoapPlansCreatedKey = new FixedString64Bytes("goap.plans.created");
         }
 
         public void OnUpdate(ref SystemState state)

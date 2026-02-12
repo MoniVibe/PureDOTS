@@ -16,11 +16,12 @@ namespace PureDOTS.Systems.AI
     [UpdateBefore(typeof(GameplaySystemGroup))]
     public partial struct ConstraintEnforcementSystem : ISystem
     {
-        private static readonly Unity.Collections.FixedString64Bytes ConstraintsRespectedKey = new Unity.Collections.FixedString64Bytes("constraints.respected");
+        private Unity.Collections.FixedString64Bytes ConstraintsRespectedKey;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            ConstraintsRespectedKey = new Unity.Collections.FixedString64Bytes("constraints.respected");
         }
 
         public void OnUpdate(ref SystemState state)
