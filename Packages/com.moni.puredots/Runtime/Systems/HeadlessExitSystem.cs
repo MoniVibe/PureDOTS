@@ -78,7 +78,8 @@ namespace PureDOTS.Systems
                     HeadlessExitFallback.ScheduleKill(_exitKillMs);
                     // Prevent another update tick from running after exit is requested.
                     FreezeWorldUpdates();
-                    // Avoid Application.Quit in headless runs; it can trigger a shutdown crash.
+                    // Prefer Application.Quit for a clean shutdown; keep fallbacks armed to avoid hangs.
+                    Quit(_exitCode);
                     return;
                 }
 
