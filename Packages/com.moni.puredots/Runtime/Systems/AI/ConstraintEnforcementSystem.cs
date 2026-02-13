@@ -17,12 +17,12 @@ namespace PureDOTS.Systems.AI
     [UpdateBefore(typeof(GameplaySystemGroup))]
     public partial struct ConstraintEnforcementSystem : ISystem
     {
-        private static readonly Unity.Collections.FixedString64Bytes ConstraintsRespectedKey = new Unity.Collections.FixedString64Bytes("constraints.respected");
+        private Unity.Collections.FixedString64Bytes _constraintsRespectedKey;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
+            _constraintsRespectedKey = new Unity.Collections.FixedString64Bytes("constraints.respected");
         }
 
         [BurstCompile]
@@ -86,7 +86,7 @@ namespace PureDOTS.Systems.AI
 
                 if (constraintViolated && scenarioEntity != Entity.Null && metricLookup.HasBuffer(scenarioEntity))
                 {
-                    ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, ConstraintsRespectedKey, 0.0);
+                    ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _constraintsRespectedKey, 0.0);
                 }
             }
         }
