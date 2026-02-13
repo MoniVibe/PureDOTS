@@ -16,6 +16,9 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateAfter(typeof(HitDetectionSystem))]
+    [UpdateAfter(typeof(DamageResolutionSystem))]
+    [UpdateAfter(typeof(ProjectileDamageSystem))]
     public partial struct DamageApplicationSystem : ISystem
     {
         private ComponentLookup<BuffStatCache> _buffLookup;
@@ -257,4 +260,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

@@ -15,6 +15,7 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateAfter(typeof(CombatResolutionSystem))]
     public partial struct FireControlSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
@@ -132,4 +133,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

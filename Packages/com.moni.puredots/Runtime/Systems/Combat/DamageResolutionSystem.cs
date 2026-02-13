@@ -16,6 +16,7 @@ namespace PureDOTS.Systems.Combat
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
     [UpdateAfter(typeof(FireControlSystem))]
+    [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct DamageResolutionSystem : ISystem
     {
         [BurstCompile]
@@ -134,4 +135,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-

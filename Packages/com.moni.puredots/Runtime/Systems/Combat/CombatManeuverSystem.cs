@@ -2,6 +2,7 @@ using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Combat
 {
@@ -113,15 +114,17 @@ namespace PureDOTS.Systems.Combat
             float interval = 5f - (xp * 0.02f); // Higher XP = more frequent maneuvers
             interval = interval < 2f ? 2f : interval; // Minimum 2 second cooldown
 
-            // Deterministic "random" based on tick and entity
-            uint hash = (tick + (uint)entityIndex * 31) % 1000;
             float probability = xp * 0.001f; // Higher XP = higher chance per tick
 
             // Check if we're at a trigger point
             float phaseTimerMod = phaseTimer % interval;
             bool atTriggerPoint = phaseTimerMod < 0.1f; // Within 0.1s of interval boundary
 
-            return atTriggerPoint && (hash < probability * 1000);
+            uint randomSeed = math.hash(new uint3((uint)entityIndex, tick, 0x5B8D80A1u));
+            randomSeed = randomSeed == 0u ? 1u : randomSeed;
+            var rng = Unity.Mathematics.Random.CreateFromIndex(randomSeed);
+
+            return atTriggerPoint && (rng.NextFloat() < probability);
         }
 
         [BurstCompile]

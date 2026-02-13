@@ -15,6 +15,7 @@ namespace PureDOTS.Systems.Combat
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(CombatSystemGroup))]
+    [UpdateAfter(typeof(FireControlSystem))]
     [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct HitDetectionSystem : ISystem
     {
@@ -177,12 +178,11 @@ namespace PureDOTS.Systems.Combat
             [BurstCompile]
             private static float DeterministicRandom(int seed1, int seed2, uint tick)
             {
-                // Simple deterministic RNG using seeds and tick
-                uint hash = (uint)(seed1 * 73856093) ^ (uint)(seed2 * 19349663) ^ tick;
-                hash = hash * 1103515245 + 12345;
-                return (hash & 0x7FFFFFFF) / (float)0x7FFFFFFF; // 0-1 range
+                uint seed = math.hash(new uint4((uint)seed1, (uint)seed2, tick, 0xA1B2C3D4u));
+                seed = seed == 0u ? 1u : seed;
+                var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
+                return rng.NextFloat();
             }
         }
     }
 }
-

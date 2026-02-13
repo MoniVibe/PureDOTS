@@ -160,11 +160,11 @@ namespace PureDOTS.Systems.Combat
             [BurstCompile]
             private static float DeterministicRandom(int seed, uint tick)
             {
-                uint hash = (uint)(seed * 73856093) ^ tick;
-                hash = hash * 1103515245 + 12345;
-                return (hash & 0x7FFFFFFF) / (float)0x7FFFFFFF;
+                uint randomSeed = math.hash(new uint3((uint)seed, tick, 0x7F4A7C15u));
+                randomSeed = randomSeed == 0u ? 1u : randomSeed;
+                var rng = Unity.Mathematics.Random.CreateFromIndex(randomSeed);
+                return rng.NextFloat();
             }
         }
     }
 }
-
