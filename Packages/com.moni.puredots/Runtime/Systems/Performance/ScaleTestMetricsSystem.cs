@@ -1,4 +1,7 @@
+using System;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Rendering;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Telemetry;
 using PureDOTS.Systems;
 using Unity.Burst;
@@ -6,6 +9,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace PureDOTS.Runtime.Systems.Performance
 {
@@ -16,37 +20,65 @@ namespace PureDOTS.Runtime.Systems.Performance
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct ScaleTestMetricsSystem : ISystem
     {
+        private const int MaxTickSamples = 2048;
+
         private double _lastTickStartTime;
         private bool _initialized;
+        private EntityQuery _villagerQuery;
+        private EntityQuery _resourceChunkQuery;
+        private EntityQuery _aggregateQuery;
+
+        private FixedString64Bytes _averageTickTimeMsKey;
+        private FixedString64Bytes _maxTickTimeMsKey;
+        private FixedString64Bytes _p95TickTimeMsKey;
+        private FixedString64Bytes _p99TickTimeMsKey;
+        private FixedString64Bytes _peakMemoryMbKey;
+        private FixedString64Bytes _totalEntitiesKey;
+        private FixedString64Bytes _targetTickTimeMsKey;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScaleTestMetricsConfig>();
+
+            _villagerQuery = state.GetEntityQuery(ComponentType.ReadOnly<VillagerId>());
+            _resourceChunkQuery = state.GetEntityQuery(ComponentType.ReadOnly<ResourceChunkState>());
+            _aggregateQuery = state.GetEntityQuery(ComponentType.ReadOnly<AggregateTag>());
+
+            _averageTickTimeMsKey = new FixedString64Bytes("averageTickTimeMs");
+            _maxTickTimeMsKey = new FixedString64Bytes("maxTickTimeMs");
+            _p95TickTimeMsKey = new FixedString64Bytes("p95TickTimeMs");
+            _p99TickTimeMsKey = new FixedString64Bytes("p99TickTimeMs");
+            _peakMemoryMbKey = new FixedString64Bytes("peakMemoryMB");
+            _totalEntitiesKey = new FixedString64Bytes("totalEntities");
+            _targetTickTimeMsKey = new FixedString64Bytes("targetTickTimeMs");
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var currentTime = UnityEngine.Time.realtimeSinceStartupAsDouble;
-            
+
             if (!_initialized)
             {
                 _lastTickStartTime = currentTime;
                 _initialized = true;
-                
-                // Initialize metrics singleton if not present
+
                 if (!SystemAPI.TryGetSingleton<ScaleTestMetrics>(out _))
                 {
                     var entity = state.EntityManager.CreateEntity();
                     state.EntityManager.AddComponentData(entity, new ScaleTestMetrics
                     {
-                        MinTickTime = float.MaxValue
+                        MinTickTime = float.MaxValue,
+                        MaxTickTime = 0f,
+                        SampleCount = 0,
+                        SampleWriteIndex = 0
                     });
                     state.EntityManager.AddBuffer<TickTimeSample>(entity);
                 }
+
                 return;
             }
 
-            var tickTime = (float)((currentTime - _lastTickStartTime) * 1000.0); // Convert to ms
+            var tickTime = (float)((currentTime - _lastTickStartTime) * 1000.0);
             _lastTickStartTime = currentTime;
 
             if (!SystemAPI.TryGetSingleton<ScaleTestMetricsConfig>(out var config))
@@ -60,17 +92,24 @@ namespace PureDOTS.Runtime.Systems.Performance
                 tick = timeState.Tick;
             }
 
-            // Check if we should sample this tick
             if (config.SampleInterval > 0 && tick % config.SampleInterval != 0)
             {
                 return;
             }
 
-            // Update metrics
-            foreach (var (metrics, samples) in 
+            var scenarioEntity = ResolveScenarioEntity();
+            var canWriteScenarioMetrics = scenarioEntity != Entity.Null;
+            var metricLookup = default(BufferLookup<ScenarioMetricSample>);
+            if (canWriteScenarioMetrics)
+            {
+                metricLookup = SystemAPI.GetBufferLookup<ScenarioMetricSample>(isReadOnly: false);
+                metricLookup.Update(ref state);
+                canWriteScenarioMetrics = metricLookup.HasBuffer(scenarioEntity);
+            }
+
+            foreach (var (metrics, samples) in
                 SystemAPI.Query<RefRW<ScaleTestMetrics>, DynamicBuffer<TickTimeSample>>())
             {
-                // Update tick time statistics
                 metrics.ValueRW.CurrentTick = tick;
                 metrics.ValueRW.TotalTickTime = tickTime;
                 metrics.ValueRW.SampleCount++;
@@ -80,20 +119,23 @@ namespace PureDOTS.Runtime.Systems.Performance
                 metrics.ValueRW.MaxTickTime = math.max(metrics.ValueRO.MaxTickTime, tickTime);
                 metrics.ValueRW.MinTickTime = math.min(metrics.ValueRO.MinTickTime, tickTime);
 
-                // Store sample for percentile calculation
-                if (samples.Length < samples.Capacity)
-                {
-                    samples.Add(new TickTimeSample
-                    {
-                        TickTimeMs = tickTime,
-                        Tick = tick
-                    });
-                }
+                UpdateTickSamples(ref metrics.ValueRW, samples, tickTime, tick);
+                ComputePercentiles(samples, out var p95, out var p99);
+                metrics.ValueRW.P95TickTime = p95;
+                metrics.ValueRW.P99TickTime = p99;
 
-                // Count entities by type
                 CountEntities(ref state, ref metrics.ValueRW);
 
-                // Log if interval reached
+                if (config.CollectMemoryStats != 0)
+                {
+                    SampleMemory(ref metrics.ValueRW);
+                }
+
+                if (canWriteScenarioMetrics)
+                {
+                    PublishScenarioMetrics(ref metricLookup, scenarioEntity, in metrics.ValueRO, in config);
+                }
+
                 if (config.LogInterval > 0 && tick % config.LogInterval == 0)
                 {
                     LogMetrics(in metrics.ValueRO, tick, in config);
@@ -101,54 +143,126 @@ namespace PureDOTS.Runtime.Systems.Performance
             }
         }
 
+        private Entity ResolveScenarioEntity()
+        {
+            if (SystemAPI.TryGetSingleton<ScenarioEntitySingleton>(out var singleton) &&
+                singleton.Value != Entity.Null)
+            {
+                return singleton.Value;
+            }
+
+            return SystemAPI.HasSingleton<ScenarioInfo>()
+                ? SystemAPI.GetSingletonEntity<ScenarioInfo>()
+                : Entity.Null;
+        }
+
         private void CountEntities(ref SystemState state, ref ScaleTestMetrics metrics)
         {
-            metrics.VillagerCount = 0;
-            metrics.ResourceChunkCount = 0;
+            metrics.VillagerCount = _villagerQuery.CalculateEntityCount();
+            metrics.ResourceChunkCount = _resourceChunkQuery.CalculateEntityCount();
+            metrics.AggregateCount = _aggregateQuery.CalculateEntityCount();
+            metrics.TotalEntityCount = state.EntityManager.UniversalQuery.CalculateEntityCount();
+
             metrics.ProjectileCount = 0;
             metrics.CarrierCount = 0;
-            metrics.AggregateCount = 0;
-            metrics.TotalEntityCount = 0;
+        }
 
-            // Count villagers
-            foreach (var _ in SystemAPI.Query<RefRO<VillagerId>>())
+        private static void SampleMemory(ref ScaleTestMetrics metrics)
+        {
+            var totalAllocated = Profiler.GetTotalAllocatedMemoryLong();
+            var monoUsed = Profiler.GetMonoUsedSizeLong();
+            var gcManaged = GC.GetTotalMemory(false);
+            var managedRough = monoUsed > gcManaged ? monoUsed : gcManaged;
+            var nativeRough = totalAllocated - managedRough;
+            if (nativeRough < 0)
             {
-                metrics.VillagerCount++;
+                nativeRough = 0;
             }
 
-            // Count resource chunks
-            foreach (var _ in SystemAPI.Query<RefRO<ResourceChunkState>>())
+            metrics.TotalMemoryBytes = totalAllocated;
+            metrics.ChunkMemoryBytes = nativeRough;
+            if (totalAllocated > metrics.PeakMemoryBytes)
             {
-                metrics.ResourceChunkCount++;
+                metrics.PeakMemoryBytes = totalAllocated;
+            }
+        }
+
+        private static void UpdateTickSamples(ref ScaleTestMetrics metrics, DynamicBuffer<TickTimeSample> samples, float tickTimeMs, uint tick)
+        {
+            var sample = new TickTimeSample
+            {
+                TickTimeMs = tickTimeMs,
+                Tick = tick
+            };
+
+            if (samples.Length < MaxTickSamples)
+            {
+                samples.Add(sample);
+            }
+            else
+            {
+                var index = metrics.SampleWriteIndex % MaxTickSamples;
+                samples[index] = sample;
             }
 
-            // Count projectiles (if component exists)
-            // Note: ProjectileEntity may not be available in all builds
-            // metrics.ProjectileCount = ...
+            metrics.SampleWriteIndex = (metrics.SampleWriteIndex + 1) % MaxTickSamples;
+        }
 
-            // Count carriers (if component exists)
-            // Note: CarrierOwner may not be available in all builds
-            // metrics.CarrierCount = ...
+        private static void ComputePercentiles(in DynamicBuffer<TickTimeSample> samples, out float p95, out float p99)
+        {
+            p95 = 0f;
+            p99 = 0f;
 
-            // Count aggregates
-            foreach (var _ in SystemAPI.Query<RefRO<PureDOTS.Runtime.Rendering.AggregateTag>>())
+            if (samples.Length == 0)
             {
-                metrics.AggregateCount++;
+                return;
             }
 
-            metrics.TotalEntityCount = metrics.VillagerCount + 
-                                       metrics.ResourceChunkCount + 
-                                       metrics.ProjectileCount + 
-                                       metrics.CarrierCount + 
-                                       metrics.AggregateCount;
+            var values = new NativeArray<float>(samples.Length, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < samples.Length; i++)
+                {
+                    values[i] = samples[i].TickTimeMs;
+                }
+
+                values.Sort();
+                var p95Index = math.clamp((int)math.ceil(samples.Length * 0.95f) - 1, 0, samples.Length - 1);
+                var p99Index = math.clamp((int)math.ceil(samples.Length * 0.99f) - 1, 0, samples.Length - 1);
+                p95 = values[p95Index];
+                p99 = values[p99Index];
+            }
+            finally
+            {
+                values.Dispose();
+            }
+        }
+
+        private void PublishScenarioMetrics(
+            ref BufferLookup<ScenarioMetricSample> metricLookup,
+            in Entity scenarioEntity,
+            in ScaleTestMetrics metrics,
+            in ScaleTestMetricsConfig config)
+        {
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _averageTickTimeMsKey, metrics.AverageTickTime);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _maxTickTimeMsKey, metrics.MaxTickTime);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _p95TickTimeMsKey, metrics.P95TickTime);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _p99TickTimeMsKey, metrics.P99TickTime);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _totalEntitiesKey, metrics.TotalEntityCount);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _targetTickTimeMsKey, config.TargetTickTimeMs);
+
+            var peakMemoryMb = metrics.PeakMemoryBytes / (1024.0 * 1024.0);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, _peakMemoryMbKey, peakMemoryMb);
         }
 
         private static void LogMetrics(in ScaleTestMetrics metrics, uint tick, in ScaleTestMetricsConfig config)
         {
             var budgetStatus = metrics.TotalTickTime <= config.TargetTickTimeMs ? "OK" : "OVER";
-            
+            var peakMemoryMb = metrics.PeakMemoryBytes / (1024.0 * 1024.0);
+
             Debug.Log($"[ScaleTest] Tick {tick}: " +
-                      $"TickTime={metrics.TotalTickTime:F2}ms (avg={metrics.AverageTickTime:F2}ms, max={metrics.MaxTickTime:F2}ms) [{budgetStatus}] | " +
+                      $"TickTime={metrics.TotalTickTime:F2}ms (avg={metrics.AverageTickTime:F2}ms, p95={metrics.P95TickTime:F2}ms, max={metrics.MaxTickTime:F2}ms) [{budgetStatus}] | " +
+                      $"PeakMemory={peakMemoryMb:F1}MB | " +
                       $"Entities: Villagers={metrics.VillagerCount}, Resources={metrics.ResourceChunkCount}, " +
                       $"Aggregates={metrics.AggregateCount}, Total={metrics.TotalEntityCount}");
         }
@@ -413,4 +527,3 @@ namespace PureDOTS.Runtime.Systems.Performance
         }
     }
 }
-

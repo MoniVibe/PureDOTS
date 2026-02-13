@@ -1,5 +1,6 @@
 using System.Text;
 using System.Collections.Generic;
+using System;
 using Unity.Collections;
 using UnityEngine;
 
@@ -40,6 +41,17 @@ namespace PureDOTS.Runtime.Scenarios
             AppendUInt(sb, "performanceBudgetTick", result.PerformanceBudgetTick); sb.Append(",");
             AppendString(sb, "exitPolicy", result.ExitPolicy.ToString()); sb.Append(",");
             AppendString(sb, "highestSeverity", result.HighestSeverity.ToString());
+            if (TryBuildScaleSummary(result, out var scaleSummary))
+            {
+                sb.Append(",");
+                AppendDouble(sb, "averageTickTimeMs", scaleSummary.AverageTickTimeMs); sb.Append(",");
+                AppendDouble(sb, "maxTickTimeMs", scaleSummary.MaxTickTimeMs); sb.Append(",");
+                AppendDouble(sb, "p95TickTimeMs", scaleSummary.P95TickTimeMs); sb.Append(",");
+                AppendDouble(sb, "p99TickTimeMs", scaleSummary.P99TickTimeMs); sb.Append(",");
+                AppendDouble(sb, "targetTickTimeMs", scaleSummary.TargetTickTimeMs); sb.Append(",");
+                AppendDouble(sb, "peakMemoryMB", scaleSummary.PeakMemoryMB); sb.Append(",");
+                AppendDouble(sb, "totalEntities", scaleSummary.TotalEntities);
+            }
             var sectionWritten = false;
             if (result.Metrics != null && result.Metrics.Count > 0)
             {
@@ -160,6 +172,96 @@ namespace PureDOTS.Runtime.Scenarios
             }
 
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        private static bool TryBuildScaleSummary(in ScenarioRunResult result, out ScaleSummary summary)
+        {
+            summary = default;
+
+            if (result.Metrics == null || result.Metrics.Count == 0)
+            {
+                return false;
+            }
+
+            summary.AverageTickTimeMs = GetMetric(result.Metrics, "averageTickTimeMs", "scale.averageTickTimeMs");
+            summary.MaxTickTimeMs = GetMetric(result.Metrics, "maxTickTimeMs", "scale.maxTickTimeMs");
+            summary.P95TickTimeMs = GetMetric(result.Metrics, "p95TickTimeMs", "scale.p95TickTimeMs");
+            summary.P99TickTimeMs = GetMetric(result.Metrics, "p99TickTimeMs", "scale.p99TickTimeMs");
+            summary.TargetTickTimeMs = GetMetric(result.Metrics, "targetTickTimeMs", "scale.targetTickTimeMs");
+            summary.PeakMemoryMB = GetMetric(result.Metrics, "peakMemoryMB", "scale.peakMemoryMB");
+            summary.TotalEntities = GetMetric(result.Metrics, "totalEntities", "scale.totalEntities");
+
+            if (summary.MaxTickTimeMs <= 0.0 && result.FrameTimingWorstMs > 0f)
+            {
+                summary.MaxTickTimeMs = result.FrameTimingWorstMs;
+            }
+
+            if (summary.AverageTickTimeMs <= 0.0)
+            {
+                summary.AverageTickTimeMs = summary.MaxTickTimeMs;
+            }
+
+            if (summary.P95TickTimeMs <= 0.0)
+            {
+                summary.P95TickTimeMs = summary.AverageTickTimeMs;
+            }
+
+            if (summary.P99TickTimeMs <= 0.0)
+            {
+                summary.P99TickTimeMs = summary.MaxTickTimeMs;
+            }
+
+            if (summary.TargetTickTimeMs <= 0.0 && result.PerformanceBudgetLimit > 0f)
+            {
+                summary.TargetTickTimeMs = result.PerformanceBudgetLimit;
+            }
+
+            return summary.AverageTickTimeMs > 0.0
+                || summary.MaxTickTimeMs > 0.0
+                || summary.PeakMemoryMB > 0.0
+                || summary.TotalEntities > 0.0;
+        }
+
+        private static double GetMetric(List<ScenarioMetric> metrics, string primaryKey, string aliasKey)
+        {
+            if (TryGetMetric(metrics, primaryKey, out var value))
+            {
+                return value;
+            }
+
+            if (!string.IsNullOrEmpty(aliasKey) && TryGetMetric(metrics, aliasKey, out value))
+            {
+                return value;
+            }
+
+            return 0.0;
+        }
+
+        private static bool TryGetMetric(List<ScenarioMetric> metrics, string key, out double value)
+        {
+            for (int i = 0; i < metrics.Count; i++)
+            {
+                var metric = metrics[i];
+                if (string.Equals(metric.Key, key, StringComparison.Ordinal))
+                {
+                    value = metric.Value;
+                    return true;
+                }
+            }
+
+            value = 0.0;
+            return false;
+        }
+
+        private struct ScaleSummary
+        {
+            public double AverageTickTimeMs;
+            public double MaxTickTimeMs;
+            public double P95TickTimeMs;
+            public double P99TickTimeMs;
+            public double TargetTickTimeMs;
+            public double PeakMemoryMB;
+            public double TotalEntities;
         }
     }
 }

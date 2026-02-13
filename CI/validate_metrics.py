@@ -47,7 +47,7 @@ def validate_report(report_path: Path) -> tuple[bool, list[str]]:
     if not budget:
         # Try to match by prefix
         for key in BUDGETS:
-            if scenario_id.startswith(key.split("_")[0]):
+            if scenario_id.startswith(key):
                 budget = BUDGETS[key]
                 break
     
@@ -55,28 +55,60 @@ def validate_report(report_path: Path) -> tuple[bool, list[str]]:
         warnings.append(f"No budget defined for scenario: {scenario_id}")
         return True, warnings
     
-    # Check tick time
-    avg_tick_time = report.get("averageTickTimeMs", 0)
-    max_tick_time = report.get("maxTickTimeMs", 0)
-    target_tick_time = report.get("targetTickTimeMs", budget["maxTickTimeMs"])
-    
+    metrics_map = {}
+    for item in report.get("metrics", []):
+        if isinstance(item, dict):
+            key = item.get("key")
+            value = item.get("value")
+            if isinstance(key, str) and isinstance(value, (int, float)):
+                metrics_map[key] = float(value)
+
+    def read_metric(keys: list[str], default: float = 0.0) -> float:
+        for key in keys:
+            value = report.get(key)
+            if isinstance(value, (int, float)):
+                return float(value)
+        for key in keys:
+            if key in metrics_map:
+                return metrics_map[key]
+        return default
+
+    # Check tick time (budget threshold is authoritative for CI gate)
+    avg_tick_time = read_metric(["averageTickTimeMs", "scale.averageTickTimeMs"])
+    max_tick_time = read_metric(["maxTickTimeMs", "scale.maxTickTimeMs"])
+    p95_tick_time = read_metric(["p95TickTimeMs", "scale.p95TickTimeMs"])
+    target_tick_time = budget["maxTickTimeMs"]
+
+    if avg_tick_time <= 0:
+        errors.append("Missing real averageTickTimeMs metric (got <= 0)")
+    if max_tick_time <= 0:
+        errors.append("Missing real maxTickTimeMs metric (got <= 0)")
+
     if avg_tick_time > target_tick_time:
         errors.append(f"Average tick time {avg_tick_time:.2f}ms exceeds budget {target_tick_time:.2f}ms")
     elif avg_tick_time > target_tick_time * 0.8:
         warnings.append(f"Average tick time {avg_tick_time:.2f}ms approaching budget {target_tick_time:.2f}ms")
-    
+
     if max_tick_time > target_tick_time * 2:
         errors.append(f"Max tick time {max_tick_time:.2f}ms exceeds 2x budget {target_tick_time * 2:.2f}ms")
+    if p95_tick_time > 0 and p95_tick_time > target_tick_time * 1.5:
+        warnings.append(f"P95 tick time {p95_tick_time:.2f}ms is high relative to budget {target_tick_time:.2f}ms")
     
     # Check memory
-    peak_memory_mb = report.get("peakMemoryMB", 0)
+    peak_memory_mb = read_metric(["peakMemoryMB", "scale.peakMemoryMB"])
+    if peak_memory_mb <= 0:
+        errors.append("Missing real peakMemoryMB metric (got <= 0)")
+
     if peak_memory_mb > budget["maxMemoryMB"]:
         errors.append(f"Peak memory {peak_memory_mb:.0f}MB exceeds budget {budget['maxMemoryMB']}MB")
     elif peak_memory_mb > budget["maxMemoryMB"] * 0.75:
         warnings.append(f"Peak memory {peak_memory_mb:.0f}MB approaching budget {budget['maxMemoryMB']}MB")
     
     # Check entity counts
-    total_entities = report.get("totalEntities", 0)
+    total_entities = int(read_metric(["totalEntities", "scale.totalEntities"]))
+    if total_entities <= 0:
+        errors.append("Missing real totalEntities metric (got <= 0)")
+
     if total_entities > 100000 and scenario_id == "scale_baseline_10k":
         errors.append(f"Entity count {total_entities} exceeds baseline target of 10k")
     
@@ -143,4 +175,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
