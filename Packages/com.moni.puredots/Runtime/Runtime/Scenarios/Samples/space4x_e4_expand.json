@@ -1,0 +1,43 @@
+{
+  "scenarioId": "scenario.space4x.e4.expand",
+  "seed": 4402,
+  "runTicks": 1200,
+  "entityCounts": [
+    {
+      "registryId": "registry.captain",
+      "count": 8
+    },
+    {
+      "registryId": "registry.spawner.miner",
+      "count": 12
+    },
+    {
+      "registryId": "registry.storehouse",
+      "count": 10
+    },
+    {
+      "registryId": "registry.resource",
+      "count": 64
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "discover.transition.count",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Expand run should keep discovery transitions active."
+    },
+    {
+      "metricId": "claim.transition.count",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Expand run should produce non-zero claim transitions."
+    },
+    {
+      "metricId": "border.transition.count",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Border/control transitions should be observable during expansion."
+    }
+  ]
+}

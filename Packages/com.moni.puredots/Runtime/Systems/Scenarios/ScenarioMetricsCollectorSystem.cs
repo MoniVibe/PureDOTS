@@ -1,7 +1,10 @@
 using PureDOTS.Runtime.Combat;
+using PureDOTS.Runtime.Agency;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Resources;
 using PureDOTS.Runtime.Scenarios;
+using PureDOTS.Runtime.Social;
+using PureDOTS.Runtime.Villagers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -56,6 +59,12 @@ namespace PureDOTS.Systems.Scenarios
         private static readonly FixedString64Bytes ProjectileLifecycleMetricKey = new FixedString64Bytes("puredots.q.projectile_lifecycle.audit");
         private static readonly FixedString64Bytes DeliveriesCountKey = new FixedString64Bytes("deliveries.count");
         private static readonly FixedString64Bytes StorehouseInventoryKey = new FixedString64Bytes("storehouse.inventory");
+        private static readonly FixedString64Bytes DiscoverActiveCountKey = new FixedString64Bytes("discover.active.count");
+        private static readonly FixedString64Bytes DiscoverTransitionCountKey = new FixedString64Bytes("discover.transition.count");
+        private static readonly FixedString64Bytes ClaimActiveCountKey = new FixedString64Bytes("claim.active.count");
+        private static readonly FixedString64Bytes ClaimTransitionCountKey = new FixedString64Bytes("claim.transition.count");
+        private static readonly FixedString64Bytes BorderActiveCountKey = new FixedString64Bytes("border.active.count");
+        private static readonly FixedString64Bytes BorderTransitionCountKey = new FixedString64Bytes("border.transition.count");
         private static readonly FixedString64Bytes ConstraintsRespectedKey = new FixedString64Bytes("constraints.respected");
         private static readonly FixedString64Bytes DeterministicReplayKey = new FixedString64Bytes("deterministic.replay");
 
@@ -65,6 +74,13 @@ namespace PureDOTS.Systems.Scenarios
         private EntityQuery _weaponSpawnerQuery;
         private EntityQuery _ammoStockpileQuery;
         private EntityQuery _weaponMagazineQuery;
+        private int _lastDiscoverCount;
+        private int _lastClaimCount;
+        private int _lastBorderCount;
+        private int _discoverTransitions;
+        private int _claimTransitions;
+        private int _borderTransitions;
+        private bool _transitionBaselineInitialized;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -76,6 +92,13 @@ namespace PureDOTS.Systems.Scenarios
             _weaponSpawnerQuery = state.GetEntityQuery(ComponentType.ReadOnly<WeaponSpawner>());
             _ammoStockpileQuery = state.GetEntityQuery(ComponentType.ReadOnly<AmmoStockpile>());
             _weaponMagazineQuery = state.GetEntityQuery(ComponentType.ReadOnly<WeaponMagazine>());
+            _lastDiscoverCount = 0;
+            _lastClaimCount = 0;
+            _lastBorderCount = 0;
+            _discoverTransitions = 0;
+            _claimTransitions = 0;
+            _borderTransitions = 0;
+            _transitionBaselineInitialized = false;
         }
 
         [BurstCompile]
@@ -252,6 +275,52 @@ namespace PureDOTS.Systems.Scenarios
                 }
             }
             ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, StorehouseInventoryKey, totalInventory);
+
+            // Discovery/claim/border signals used by Explore+Expand scenario assertions.
+            int discoverCount = 0;
+            foreach (var relations in SystemAPI.Query<DynamicBuffer<EntityRelation>>())
+            {
+                discoverCount += relations.Length;
+            }
+
+            int claimCount = 0;
+            foreach (var claim in SystemAPI.Query<RefRO<WorkClaim>>())
+            {
+                if (claim.ValueRO.Offer != Entity.Null)
+                {
+                    claimCount++;
+                }
+            }
+
+            int borderCount = 0;
+            foreach (var claims in SystemAPI.Query<DynamicBuffer<ControlClaim>>())
+            {
+                borderCount += claims.Length;
+            }
+
+            if (!_transitionBaselineInitialized)
+            {
+                _lastDiscoverCount = discoverCount;
+                _lastClaimCount = claimCount;
+                _lastBorderCount = borderCount;
+                _transitionBaselineInitialized = true;
+            }
+            else
+            {
+                _discoverTransitions += math.max(0, discoverCount - _lastDiscoverCount);
+                _claimTransitions += math.max(0, claimCount - _lastClaimCount);
+                _borderTransitions += math.max(0, borderCount - _lastBorderCount);
+                _lastDiscoverCount = discoverCount;
+                _lastClaimCount = claimCount;
+                _lastBorderCount = borderCount;
+            }
+
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, DiscoverActiveCountKey, discoverCount);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, DiscoverTransitionCountKey, _discoverTransitions);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, ClaimActiveCountKey, claimCount);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, ClaimTransitionCountKey, _claimTransitions);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, BorderActiveCountKey, borderCount);
+            ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, BorderTransitionCountKey, _borderTransitions);
 
             // Defaults for boolean metrics – systems can override when violations occur.
             ScenarioMetricsUtility.SetMetricIfUnset(ref metricLookup, scenarioEntity, ConstraintsRespectedKey, 1.0);

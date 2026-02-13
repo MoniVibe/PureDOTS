@@ -1,7 +1,9 @@
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Economy;
 using PureDOTS.Runtime;
+using PureDOTS.Runtime.Scenarios;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -15,7 +17,14 @@ namespace PureDOTS.Systems.Economy
     [UpdateAfter(typeof(BatchInventorySystem))]
     public partial struct InventoryFlowTrackingSystem : ISystem
     {
+        private static readonly FixedString64Bytes MinedPerTickMetricKey = new FixedString64Bytes("minedPerTick");
+        private static readonly FixedString64Bytes StockpileDeltaMetricKey = new FixedString64Bytes("stockpileDelta");
+
         private ComponentLookup<InventoryFlowState> _flowLookup;
+        private float _baselineStockpileUnits;
+        private double _cumulativeMinedUnits;
+        private uint _metricSamples;
+        private bool _metricsInitialized;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -24,6 +33,10 @@ namespace PureDOTS.Systems.Economy
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             _flowLookup = state.GetComponentLookup<InventoryFlowState>(false);
+            _baselineStockpileUnits = 0f;
+            _cumulativeMinedUnits = 0.0;
+            _metricSamples = 0;
+            _metricsInitialized = false;
         }
 
         [BurstCompile]
@@ -52,9 +65,13 @@ namespace PureDOTS.Systems.Economy
             _flowLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+            var totalStockpileUnits = 0f;
+            var minedThisTick = 0f;
 
             foreach (var (inventory, entity) in SystemAPI.Query<RefRO<BatchInventory>>().WithEntityAccess())
             {
+                totalStockpileUnits += inventory.ValueRO.TotalUnits;
+
                 if (!_flowLookup.HasComponent(entity))
                 {
                     ecb.AddComponent(entity, new InventoryFlowState
@@ -71,6 +88,7 @@ namespace PureDOTS.Systems.Economy
                 var delta = inventory.ValueRO.TotalUnits - flow.LastUnits;
                 var inflow = math.max(0f, delta);
                 var outflow = math.max(0f, -delta);
+                minedThisTick += inflow;
 
                 flow.SmoothedInflow = math.lerp(flow.SmoothedInflow, inflow, smoothing);
                 flow.SmoothedOutflow = math.lerp(flow.SmoothedOutflow, outflow, smoothing);
@@ -82,6 +100,25 @@ namespace PureDOTS.Systems.Economy
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+
+            if (!_metricsInitialized)
+            {
+                _baselineStockpileUnits = totalStockpileUnits;
+                _cumulativeMinedUnits = 0.0;
+                _metricSamples = 0;
+                _metricsInitialized = true;
+            }
+
+            _metricSamples++;
+            _cumulativeMinedUnits += minedThisTick;
+
+            var minedPerTick = _metricSamples > 0
+                ? _cumulativeMinedUnits / _metricSamples
+                : 0.0;
+            var stockpileDelta = totalStockpileUnits - _baselineStockpileUnits;
+
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, MinedPerTickMetricKey, minedPerTick);
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, StockpileDeltaMetricKey, stockpileDelta);
         }
     }
 }

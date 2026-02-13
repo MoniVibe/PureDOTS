@@ -1,0 +1,43 @@
+{
+  "scenarioId": "scenario.space4x.e4.explore",
+  "seed": 4401,
+  "runTicks": 900,
+  "entityCounts": [
+    {
+      "registryId": "registry.villager",
+      "count": 64
+    },
+    {
+      "registryId": "registry.resource",
+      "count": 48
+    },
+    {
+      "registryId": "registry.storehouse",
+      "count": 8
+    },
+    {
+      "registryId": "registry.spawner.miner",
+      "count": 6
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "discover.transition.count",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Discover graph transitions should occur during explore progression."
+    },
+    {
+      "metricId": "claim.transition.count",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "At least one work/control claim transition should occur."
+    },
+    {
+      "metricId": "border.active.count",
+      "op": 5,
+      "expectedValue": 0.0,
+      "description": "Border signal metric must be present for explore diagnostics."
+    }
+  ]
+}

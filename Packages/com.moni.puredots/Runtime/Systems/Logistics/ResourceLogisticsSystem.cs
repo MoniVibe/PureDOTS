@@ -1,8 +1,11 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Logistics;
 using PureDOTS.Runtime.Logistics.Components;
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Resources;
+using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Time;
 using PureDOTS.Systems;
 
@@ -15,7 +18,11 @@ namespace PureDOTS.Systems.Logistics
     [UpdateInGroup(typeof(GameplaySystemGroup))]
     public partial struct ResourceLogisticsSystem : ISystem
     {
+        private static readonly FixedString64Bytes DeliveredPerTickMetricKey = new FixedString64Bytes("deliveredPerTick");
+
         private ComponentLookup<Shipment> _shipmentLookup;
+        private double _cumulativeDeliveredAmount;
+        private uint _deliverySamples;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -23,6 +30,8 @@ namespace PureDOTS.Systems.Logistics
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             _shipmentLookup = state.GetComponentLookup<Shipment>(true);
+            _cumulativeDeliveredAmount = 0.0;
+            _deliverySamples = 0;
         }
 
         [BurstCompile]
@@ -31,6 +40,7 @@ namespace PureDOTS.Systems.Logistics
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)
                 return;
 
+            var timeState = SystemAPI.GetSingleton<TimeState>();
             _shipmentLookup.Update(ref state);
 
             foreach (var (order, entity) in SystemAPI.Query<RefRW<LogisticsOrder>>().WithEntityAccess())
@@ -62,6 +72,26 @@ namespace PureDOTS.Systems.Logistics
                         break;
                 }
             }
+
+            var deliveredThisTick = 0.0;
+            foreach (var receipts in SystemAPI.Query<DynamicBuffer<DeliveryReceipt>>())
+            {
+                for (int i = 0; i < receipts.Length; i++)
+                {
+                    if (receipts[i].DeliveryTick == timeState.Tick)
+                    {
+                        deliveredThisTick += receipts[i].DeliveredAmount;
+                    }
+                }
+            }
+
+            _deliverySamples++;
+            _cumulativeDeliveredAmount += deliveredThisTick;
+
+            var deliveredPerTick = _deliverySamples > 0
+                ? _cumulativeDeliveredAmount / _deliverySamples
+                : 0.0;
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, DeliveredPerTickMetricKey, deliveredPerTick);
         }
 
         [BurstCompile]
@@ -74,4 +104,3 @@ namespace PureDOTS.Systems.Logistics
         }
     }
 }
-
