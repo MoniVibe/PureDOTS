@@ -7,7 +7,26 @@ set -e
 UNITY_PATH="${UNITY_PATH:-Unity}"
 PROJECT_PATH="${PROJECT_PATH:-.}"
 REPORTS_DIR="${REPORTS_DIR:-CI/Reports}"
-SAMPLES_PATH="Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples"
+PUREDOTS_PKG_DIR=""
+
+if [ -d "$PROJECT_PATH/Packages/com.moni.puredots" ]; then
+    PUREDOTS_PKG_DIR="$PROJECT_PATH/Packages/com.moni.puredots"
+else
+    for pkg_dir in "$PROJECT_PATH"/Library/PackageCache/com.moni.puredots@*; do
+        if [ -d "$pkg_dir" ]; then
+            PUREDOTS_PKG_DIR="$pkg_dir"
+            break
+        fi
+    done
+fi
+
+if [ -z "$PUREDOTS_PKG_DIR" ]; then
+    echo "ERROR: Could not locate com.moni.puredots package in embedded Packages/ or Library/PackageCache."
+    echo "Checked: $PROJECT_PATH/Packages/com.moni.puredots and $PROJECT_PATH/Library/PackageCache/com.moni.puredots@*"
+    exit 1
+fi
+
+SAMPLES_PATH="$PUREDOTS_PKG_DIR/Runtime/Runtime/Scenarios/Samples"
 
 # Ensure reports directory exists
 mkdir -p "$REPORTS_DIR"
@@ -31,7 +50,7 @@ run_scenario() {
     
     "$UNITY_PATH" -batchmode -quit -projectPath "$PROJECT_PATH" \
         -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \
-        --scenario "$scenario_name" \
+        --scenario "$scenario_file" \
         --metrics "$report_file" \
         --enable-lod-debug \
         --enable-aggregate-debug \
