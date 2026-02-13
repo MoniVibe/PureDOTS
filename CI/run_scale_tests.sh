@@ -49,8 +49,8 @@ run_scenario() {
 
 run_mini_tests() {
     echo "Running mini sanity tests..."
-    run_scenario "scale_mini_lod_demo"
-    run_scenario "scale_mini_aggregate_demo"
+    run_scenario "scale_mini_lod"
+    run_scenario "scale_mini_aggregate"
 }
 
 run_baseline() {
@@ -127,4 +127,3 @@ echo ""
 echo "========================================"
 echo "Scale tests completed successfully"
 echo "========================================"
-

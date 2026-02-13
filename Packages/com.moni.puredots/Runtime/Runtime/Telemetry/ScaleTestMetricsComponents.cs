@@ -33,6 +33,7 @@ namespace PureDOTS.Runtime.Telemetry
         // Memory (bytes)
         public long TotalMemoryBytes;
         public long ChunkMemoryBytes;
+        public long PeakMemoryBytes;
 
         // Tick info
         public uint CurrentTick;
@@ -44,6 +45,7 @@ namespace PureDOTS.Runtime.Telemetry
 
         // Sample tracking
         public int SampleCount;
+        public int SampleWriteIndex;
         public float SumTickTime;
         public float SumSquaredTickTime;
     }
@@ -227,4 +229,3 @@ namespace PureDOTS.Runtime.Telemetry
         };
     }
 }
-
