@@ -217,13 +217,11 @@ namespace PureDOTS.Systems.Space
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ShipVillageOrderInjectSystem : ISystem
     {
         private FixedString64Bytes _targetScenarioId;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScenarioInfo>();
@@ -290,14 +288,12 @@ namespace PureDOTS.Systems.Space
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ShipVillageOrderInjectSystem))]
     public partial struct ShipVillageSeatDecideSystem : ISystem
     {
         private FixedString64Bytes _targetScenarioId;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScenarioInfo>();
@@ -424,14 +420,12 @@ namespace PureDOTS.Systems.Space
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ShipVillageSeatDecideSystem))]
     public partial struct ShipVillageIntentApplySystem : ISystem
     {
         private FixedString64Bytes _targetScenarioId;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScenarioInfo>();
