@@ -37,20 +37,26 @@ RUN_MODE="${1:---baseline}"
 run_scenario() {
     local scenario_name=$1
     local scenario_file="${SAMPLES_PATH}/${scenario_name}.json"
+    local scenario_arg=""
     local report_file="${REPORTS_DIR}/${scenario_name}_report.json"
     
     echo "========================================"
     echo "Running: ${scenario_name}"
     echo "========================================"
     
-    if [ ! -f "$scenario_file" ]; then
-        echo "ERROR: Scenario file not found: $scenario_file"
-        return 1
+    if [ -f "$scenario_file" ]; then
+        scenario_arg="$scenario_file"
+    else
+        scenario_arg="$scenario_name"
     fi
+
+    echo "Tier0: scenario_name=$scenario_name"
+    echo "Tier0: scenario_file=$scenario_file exists=$( [ -f "$scenario_file" ] && echo 1 || echo 0 )"
+    echo "Tier0: scenario_arg=$scenario_arg"
     
     "$UNITY_PATH" -batchmode -quit -projectPath "$PROJECT_PATH" \
         -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \
-        --scenario "$scenario_file" \
+        --scenario "$scenario_arg" \
         --metrics "$report_file" \
         --enable-lod-debug \
         --enable-aggregate-debug \
