@@ -16,13 +16,13 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
     [BurstCompile]
     public partial struct GOAPPlannerSystem : ISystem
     {
-        private static readonly FixedString64Bytes GoapPlansCreatedKey = new FixedString64Bytes("goap.plans.created");
+        private FixedString64Bytes _goapPlansCreatedKey;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _goapPlansCreatedKey = new FixedString64Bytes("goap.plans.created");
         }
 
         [BurstCompile]
@@ -117,7 +117,7 @@ namespace PureDOTS.Runtime.Systems.AI.GOAP
                             planner.ValueRW.CurrentAction = planBuffer[0].ActionId;
                             if (scenarioEntity != Entity.Null && metricLookup.HasBuffer(scenarioEntity))
                             {
-                                ScenarioMetricsUtility.AddMetric(ref metricLookup, scenarioEntity, GoapPlansCreatedKey, 1.0);
+                                ScenarioMetricsUtility.AddMetric(ref metricLookup, scenarioEntity, _goapPlansCreatedKey, 1.0);
                             }
                         }
                     }

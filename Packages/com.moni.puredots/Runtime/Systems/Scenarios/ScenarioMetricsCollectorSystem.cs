@@ -17,47 +17,47 @@ namespace PureDOTS.Systems.Scenarios
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct ScenarioMetricsCollectorSystem : ISystem
     {
-        private static readonly FixedString64Bytes VillagerCountKey = new FixedString64Bytes("villager.count");
-        private static readonly FixedString64Bytes ShipyardCountKey = new FixedString64Bytes("shipyard.count");
-        private static readonly FixedString64Bytes ShipyardRequestsPendingKey = new FixedString64Bytes("shipyard.requests.pending");
-        private static readonly FixedString64Bytes WeaponMountCountKey = new FixedString64Bytes("weapon.mount.count");
-        private static readonly FixedString64Bytes WeaponSpawnerCountKey = new FixedString64Bytes("weapon.spawner.count");
-        private static readonly FixedString64Bytes ShipyardEquipSuccessKey = new FixedString64Bytes("shipyard.equip.success");
-        private static readonly FixedString64Bytes ShipyardEquipScenarioId = new FixedString64Bytes("scenario.puredots.shipyard.equip");
-        private static readonly FixedString64Bytes ShipyardEquipMetricKey = new FixedString64Bytes("puredots.q.shipyard.equip");
-        private static readonly FixedString64Bytes AmmoStockpileCountKey = new FixedString64Bytes("ammo.stockpile.count");
-        private static readonly FixedString64Bytes AmmoMagazineCountKey = new FixedString64Bytes("ammo.magazine.count");
-        private static readonly FixedString64Bytes AmmoStockpileCurrentTotalKey = new FixedString64Bytes("ammo.stockpile.current_total");
-        private static readonly FixedString64Bytes AmmoStockpileCapacityTotalKey = new FixedString64Bytes("ammo.stockpile.capacity_total");
-        private static readonly FixedString64Bytes AmmoMagazineCurrentTotalKey = new FixedString64Bytes("ammo.magazine.current_total");
-        private static readonly FixedString64Bytes AmmoMagazineCapacityTotalKey = new FixedString64Bytes("ammo.magazine.capacity_total");
-        private static readonly FixedString64Bytes ProjectileTrackingSpawnedTotalKey = new FixedString64Bytes("projectile.tracking.spawned_total");
-        private static readonly FixedString64Bytes ProjectileTrackingHitsTotalKey = new FixedString64Bytes("projectile.tracking.hits_total");
-        private static readonly FixedString64Bytes ProjectileTrackingDeflectTotalKey = new FixedString64Bytes("projectile.tracking.deflect_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRedirectTotalKey = new FixedString64Bytes("projectile.tracking.redirect_total");
-        private static readonly FixedString64Bytes ProjectileTrackingControlTotalKey = new FixedString64Bytes("projectile.tracking.control_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRetireTotalKey = new FixedString64Bytes("projectile.tracking.retire_total");
-        private static readonly FixedString64Bytes ProjectileTrackingExpireTotalKey = new FixedString64Bytes("projectile.tracking.expire_total");
-        private static readonly FixedString64Bytes ProjectileTrackingRecycleTotalKey = new FixedString64Bytes("projectile.tracking.recycle_total");
-        private static readonly FixedString64Bytes ProjectileTrackingEventsCountKey = new FixedString64Bytes("projectile.tracking.events_count");
-        private static readonly FixedString64Bytes ProjectileTrackingSpawnedPrefix = new FixedString64Bytes("projectile.tracking.spawned.");
-        private static readonly FixedString64Bytes ProjectileTrackingHitsPrefix = new FixedString64Bytes("projectile.tracking.hits.");
-        private static readonly FixedString64Bytes ProjectileTrackingDeflectPrefix = new FixedString64Bytes("projectile.tracking.deflect.");
-        private static readonly FixedString64Bytes ProjectileTrackingRedirectPrefix = new FixedString64Bytes("projectile.tracking.redirect.");
-        private static readonly FixedString64Bytes ProjectileTrackingControlPrefix = new FixedString64Bytes("projectile.tracking.control.");
-        private static readonly FixedString64Bytes ProjectileTrackingRetirePrefix = new FixedString64Bytes("projectile.tracking.retire.");
-        private static readonly FixedString64Bytes ProjectileTrackingExpirePrefix = new FixedString64Bytes("projectile.tracking.expire.");
-        private static readonly FixedString64Bytes ProjectileTrackingRecyclePrefix = new FixedString64Bytes("projectile.tracking.recycle.");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditMicroId = new FixedString64Bytes("puredots_projectile_tracking_audit_micro");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditScenarioId = new FixedString64Bytes("scenario.puredots.projectile_tracking.audit");
-        private static readonly FixedString64Bytes ProjectileTrackingAuditMetricKey = new FixedString64Bytes("puredots.q.projectile_tracking.audit");
-        private static readonly FixedString64Bytes ProjectileLifecycleMicroId = new FixedString64Bytes("puredots_projectile_lifecycle_micro");
-        private static readonly FixedString64Bytes ProjectileLifecycleScenarioId = new FixedString64Bytes("scenario.puredots.projectile_lifecycle.audit");
-        private static readonly FixedString64Bytes ProjectileLifecycleMetricKey = new FixedString64Bytes("puredots.q.projectile_lifecycle.audit");
-        private static readonly FixedString64Bytes DeliveriesCountKey = new FixedString64Bytes("deliveries.count");
-        private static readonly FixedString64Bytes StorehouseInventoryKey = new FixedString64Bytes("storehouse.inventory");
-        private static readonly FixedString64Bytes ConstraintsRespectedKey = new FixedString64Bytes("constraints.respected");
-        private static readonly FixedString64Bytes DeterministicReplayKey = new FixedString64Bytes("deterministic.replay");
+        private FixedString64Bytes VillagerCountKey;
+        private FixedString64Bytes ShipyardCountKey;
+        private FixedString64Bytes ShipyardRequestsPendingKey;
+        private FixedString64Bytes WeaponMountCountKey;
+        private FixedString64Bytes WeaponSpawnerCountKey;
+        private FixedString64Bytes ShipyardEquipSuccessKey;
+        private FixedString64Bytes ShipyardEquipScenarioId;
+        private FixedString64Bytes ShipyardEquipMetricKey;
+        private FixedString64Bytes AmmoStockpileCountKey;
+        private FixedString64Bytes AmmoMagazineCountKey;
+        private FixedString64Bytes AmmoStockpileCurrentTotalKey;
+        private FixedString64Bytes AmmoStockpileCapacityTotalKey;
+        private FixedString64Bytes AmmoMagazineCurrentTotalKey;
+        private FixedString64Bytes AmmoMagazineCapacityTotalKey;
+        private FixedString64Bytes ProjectileTrackingSpawnedTotalKey;
+        private FixedString64Bytes ProjectileTrackingHitsTotalKey;
+        private FixedString64Bytes ProjectileTrackingDeflectTotalKey;
+        private FixedString64Bytes ProjectileTrackingRedirectTotalKey;
+        private FixedString64Bytes ProjectileTrackingControlTotalKey;
+        private FixedString64Bytes ProjectileTrackingRetireTotalKey;
+        private FixedString64Bytes ProjectileTrackingExpireTotalKey;
+        private FixedString64Bytes ProjectileTrackingRecycleTotalKey;
+        private FixedString64Bytes ProjectileTrackingEventsCountKey;
+        private FixedString64Bytes ProjectileTrackingSpawnedPrefix;
+        private FixedString64Bytes ProjectileTrackingHitsPrefix;
+        private FixedString64Bytes ProjectileTrackingDeflectPrefix;
+        private FixedString64Bytes ProjectileTrackingRedirectPrefix;
+        private FixedString64Bytes ProjectileTrackingControlPrefix;
+        private FixedString64Bytes ProjectileTrackingRetirePrefix;
+        private FixedString64Bytes ProjectileTrackingExpirePrefix;
+        private FixedString64Bytes ProjectileTrackingRecyclePrefix;
+        private FixedString64Bytes ProjectileTrackingAuditMicroId;
+        private FixedString64Bytes ProjectileTrackingAuditScenarioId;
+        private FixedString64Bytes ProjectileTrackingAuditMetricKey;
+        private FixedString64Bytes ProjectileLifecycleMicroId;
+        private FixedString64Bytes ProjectileLifecycleScenarioId;
+        private FixedString64Bytes ProjectileLifecycleMetricKey;
+        private FixedString64Bytes DeliveriesCountKey;
+        private FixedString64Bytes StorehouseInventoryKey;
+        private FixedString64Bytes ConstraintsRespectedKey;
+        private FixedString64Bytes DeterministicReplayKey;
 
         private EntityQuery _villagerQuery;
         private EntityQuery _shipyardQuery;
@@ -66,7 +66,6 @@ namespace PureDOTS.Systems.Scenarios
         private EntityQuery _ammoStockpileQuery;
         private EntityQuery _weaponMagazineQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScenarioInfo>();
@@ -76,6 +75,47 @@ namespace PureDOTS.Systems.Scenarios
             _weaponSpawnerQuery = state.GetEntityQuery(ComponentType.ReadOnly<WeaponSpawner>());
             _ammoStockpileQuery = state.GetEntityQuery(ComponentType.ReadOnly<AmmoStockpile>());
             _weaponMagazineQuery = state.GetEntityQuery(ComponentType.ReadOnly<WeaponMagazine>());
+            VillagerCountKey = new FixedString64Bytes("villager.count");
+            ShipyardCountKey = new FixedString64Bytes("shipyard.count");
+            ShipyardRequestsPendingKey = new FixedString64Bytes("shipyard.requests.pending");
+            WeaponMountCountKey = new FixedString64Bytes("weapon.mount.count");
+            WeaponSpawnerCountKey = new FixedString64Bytes("weapon.spawner.count");
+            ShipyardEquipSuccessKey = new FixedString64Bytes("shipyard.equip.success");
+            ShipyardEquipScenarioId = new FixedString64Bytes("scenario.puredots.shipyard.equip");
+            ShipyardEquipMetricKey = new FixedString64Bytes("puredots.q.shipyard.equip");
+            AmmoStockpileCountKey = new FixedString64Bytes("ammo.stockpile.count");
+            AmmoMagazineCountKey = new FixedString64Bytes("ammo.magazine.count");
+            AmmoStockpileCurrentTotalKey = new FixedString64Bytes("ammo.stockpile.current_total");
+            AmmoStockpileCapacityTotalKey = new FixedString64Bytes("ammo.stockpile.capacity_total");
+            AmmoMagazineCurrentTotalKey = new FixedString64Bytes("ammo.magazine.current_total");
+            AmmoMagazineCapacityTotalKey = new FixedString64Bytes("ammo.magazine.capacity_total");
+            ProjectileTrackingSpawnedTotalKey = new FixedString64Bytes("projectile.tracking.spawned_total");
+            ProjectileTrackingHitsTotalKey = new FixedString64Bytes("projectile.tracking.hits_total");
+            ProjectileTrackingDeflectTotalKey = new FixedString64Bytes("projectile.tracking.deflect_total");
+            ProjectileTrackingRedirectTotalKey = new FixedString64Bytes("projectile.tracking.redirect_total");
+            ProjectileTrackingControlTotalKey = new FixedString64Bytes("projectile.tracking.control_total");
+            ProjectileTrackingRetireTotalKey = new FixedString64Bytes("projectile.tracking.retire_total");
+            ProjectileTrackingExpireTotalKey = new FixedString64Bytes("projectile.tracking.expire_total");
+            ProjectileTrackingRecycleTotalKey = new FixedString64Bytes("projectile.tracking.recycle_total");
+            ProjectileTrackingEventsCountKey = new FixedString64Bytes("projectile.tracking.events_count");
+            ProjectileTrackingSpawnedPrefix = new FixedString64Bytes("projectile.tracking.spawned.");
+            ProjectileTrackingHitsPrefix = new FixedString64Bytes("projectile.tracking.hits.");
+            ProjectileTrackingDeflectPrefix = new FixedString64Bytes("projectile.tracking.deflect.");
+            ProjectileTrackingRedirectPrefix = new FixedString64Bytes("projectile.tracking.redirect.");
+            ProjectileTrackingControlPrefix = new FixedString64Bytes("projectile.tracking.control.");
+            ProjectileTrackingRetirePrefix = new FixedString64Bytes("projectile.tracking.retire.");
+            ProjectileTrackingExpirePrefix = new FixedString64Bytes("projectile.tracking.expire.");
+            ProjectileTrackingRecyclePrefix = new FixedString64Bytes("projectile.tracking.recycle.");
+            ProjectileTrackingAuditMicroId = new FixedString64Bytes("puredots_projectile_tracking_audit_micro");
+            ProjectileTrackingAuditScenarioId = new FixedString64Bytes("scenario.puredots.projectile_tracking.audit");
+            ProjectileTrackingAuditMetricKey = new FixedString64Bytes("puredots.q.projectile_tracking.audit");
+            ProjectileLifecycleMicroId = new FixedString64Bytes("puredots_projectile_lifecycle_micro");
+            ProjectileLifecycleScenarioId = new FixedString64Bytes("scenario.puredots.projectile_lifecycle.audit");
+            ProjectileLifecycleMetricKey = new FixedString64Bytes("puredots.q.projectile_lifecycle.audit");
+            DeliveriesCountKey = new FixedString64Bytes("deliveries.count");
+            StorehouseInventoryKey = new FixedString64Bytes("storehouse.inventory");
+            ConstraintsRespectedKey = new FixedString64Bytes("constraints.respected");
+            DeterministicReplayKey = new FixedString64Bytes("deterministic.replay");
         }
 
         [BurstCompile]
@@ -259,3 +299,4 @@ namespace PureDOTS.Systems.Scenarios
         }
     }
 }
+
