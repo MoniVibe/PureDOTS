@@ -188,10 +188,18 @@ namespace PureDOTS.Runtime.Devtools
                 return scenarioArg;
             }
 
+            var scenarioKey = scenarioArg;
+            if (Path.IsPathRooted(scenarioKey) ||
+                scenarioKey.IndexOf('/') >= 0 ||
+                scenarioKey.IndexOf('\\') >= 0)
+            {
+                scenarioKey = Path.GetFileName(scenarioKey);
+            }
+
             // Try with .json extension
-            var withExtension = scenarioArg.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                ? scenarioArg
-                : scenarioArg + ".json";
+            var withExtension = scenarioKey.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                ? scenarioKey
+                : scenarioKey + ".json";
 
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
             var embeddedSamplesPath = Path.Combine(
@@ -214,8 +222,8 @@ namespace PureDOTS.Runtime.Devtools
             // Try common embedded variations
             var variations = new[]
             {
-                $"scale_{scenarioArg}.json",
-                $"{scenarioArg}_scale.json",
+                $"scale_{scenarioKey}.json",
+                $"{scenarioKey}_scale.json",
                 withExtension
             };
 
