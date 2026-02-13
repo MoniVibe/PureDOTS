@@ -75,10 +75,12 @@ namespace PureDOTS.Runtime.Devtools
                 return;
             }
 
-            var scenarioPath = ResolveScenarioPath(scenarioArg);
+            var scenarioPath = ResolveScenarioPath(scenarioArg, out var embeddedAttempt, out var packageCacheAttempt);
             if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
             {
-                Debug.LogError($"ScenarioExecutor: scenario not found: {scenarioArg}");
+                Debug.LogError(
+                    $"scenario_path_missing: scenario={scenarioArg} " +
+                    $"attemptedEmbedded={embeddedAttempt} attemptedPackageCache={packageCacheAttempt}");
                 return;
             }
 
@@ -111,10 +113,12 @@ namespace PureDOTS.Runtime.Devtools
                 return;
             }
 
-            var scenarioPath = ResolveScenarioPath(scenarioArg);
+            var scenarioPath = ResolveScenarioPath(scenarioArg, out var embeddedAttempt, out var packageCacheAttempt);
             if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
             {
-                Debug.LogError($"ScaleTest: scenario not found: {scenarioArg}");
+                Debug.LogError(
+                    $"scenario_path_missing: scenario={scenarioArg} " +
+                    $"attemptedEmbedded={embeddedAttempt} attemptedPackageCache={packageCacheAttempt}");
                 return;
             }
 
@@ -170,27 +174,44 @@ namespace PureDOTS.Runtime.Devtools
             Debug.Log("    --scenario <name> --metrics <output.json> [--enable-lod-debug] [--enable-aggregate-debug]");
         }
 
-        private static string ResolveScenarioPath(string scenarioArg)
+        private static string ResolveScenarioPath(
+            string scenarioArg,
+            out string attemptedEmbeddedPath,
+            out string attemptedPackageCachePath)
         {
+            attemptedEmbeddedPath = string.Empty;
+            attemptedPackageCachePath = string.Empty;
+
             // If it's already a path, use it directly
             if (File.Exists(scenarioArg))
             {
                 return scenarioArg;
             }
 
-            // Try to find in Samples folder
-            var basePath = "Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/";
-            
             // Try with .json extension
-            var withExtension = scenarioArg.EndsWith(".json") ? scenarioArg : scenarioArg + ".json";
-            var fullPath = basePath + withExtension;
-            
+            var withExtension = scenarioArg.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                ? scenarioArg
+                : scenarioArg + ".json";
+
+            var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
+            var embeddedSamplesPath = Path.Combine(
+                projectRoot,
+                "Packages",
+                "com.moni.puredots",
+                "Runtime",
+                "Runtime",
+                "Scenarios",
+                "Samples");
+
+            // Try embedded package first
+            var fullPath = Path.Combine(embeddedSamplesPath, withExtension);
+            attemptedEmbeddedPath = fullPath;
             if (File.Exists(fullPath))
             {
                 return fullPath;
             }
 
-            // Try common variations
+            // Try common embedded variations
             var variations = new[]
             {
                 $"scale_{scenarioArg}.json",
@@ -200,10 +221,41 @@ namespace PureDOTS.Runtime.Devtools
 
             foreach (var variant in variations)
             {
-                var path = basePath + variant;
+                var path = Path.Combine(embeddedSamplesPath, variant);
+                attemptedEmbeddedPath = path;
                 if (File.Exists(path))
                 {
                     return path;
+                }
+            }
+
+            // Fallback: UPM PackageCache (deterministic selection).
+            var packageCacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
+            attemptedPackageCachePath = Path.Combine(
+                packageCacheRoot,
+                "com.moni.puredots@*",
+                "Runtime",
+                "Runtime",
+                "Scenarios",
+                "Samples",
+                withExtension);
+            if (Directory.Exists(packageCacheRoot))
+            {
+                var packageMatches = Directory.GetDirectories(packageCacheRoot, "com.moni.puredots@*");
+                if (packageMatches.Length > 0)
+                {
+                    Array.Sort(packageMatches, StringComparer.Ordinal);
+                    var packageSamplesPath = Path.Combine(
+                        packageMatches[0],
+                        "Runtime",
+                        "Runtime",
+                        "Scenarios",
+                        "Samples");
+                    attemptedPackageCachePath = Path.Combine(packageSamplesPath, withExtension);
+                    if (File.Exists(attemptedPackageCachePath))
+                    {
+                        return attemptedPackageCachePath;
+                    }
                 }
             }
 
