@@ -15,15 +15,23 @@
 
 ## How to run
 
-Use the canonical headless entrypoint:
+Option 1: headless task run (`ship_micro_01`):
 
 ```bash
-python Tools/HeadlessRebuildTool/Tools/Headless/headlessctl.py run_task <task_id_that_uses_scenario_ship_micro_01> --seed 4101 --pack nightly-default
+python Tools/HeadlessRebuildTool/Tools/Headless/headlessctl.py run_task ship_micro_01 --seed 4101 --pack nightly-default
 ```
 
-Or run through your existing ScenarioRunner flow pointing at:
+Option 2: direct Unity batchmode run (fallback if task wiring is blocked):
 
-`Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/scenario_ship_micro_01.json`
+```powershell
+"C:\Program Files\Unity\Hub\Editor\6000.3.1f1\Editor\Unity.exe" `
+  -batchmode -nographics -quit `
+  -projectPath "C:\Dev\unity_clean\puredots" `
+  -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScenarioExecutorFromArgs `
+  --scenario "Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/scenario_ship_micro_01.json" `
+  --report "CI/Reports/scenario_ship_micro_01_report.json" `
+  -logFile "CI/Reports/scenario_ship_micro_01.log"
+```
 
 ## Expected output
 
