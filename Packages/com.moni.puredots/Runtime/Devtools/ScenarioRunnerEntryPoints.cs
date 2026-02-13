@@ -114,6 +114,8 @@ namespace PureDOTS.Runtime.Devtools
             }
 
             var scenarioPath = ResolveScenarioPath(scenarioArg, out var embeddedAttempt, out var packageCacheAttempt);
+            Debug.Log($"ScaleTest: scenarioArg={scenarioArg}");
+            Debug.Log($"ScaleTest: resolvedScenarioPath={scenarioPath}");
             if (string.IsNullOrWhiteSpace(scenarioPath) || !File.Exists(scenarioPath))
             {
                 Debug.LogError(
