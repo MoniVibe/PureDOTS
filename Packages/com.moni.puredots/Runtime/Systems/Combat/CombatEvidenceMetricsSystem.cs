@@ -22,6 +22,9 @@ namespace PureDOTS.Systems.Combat
         private static readonly FixedString64Bytes DamageTotalKey = new FixedString64Bytes("combat.damage.total");
         private static readonly FixedString64Bytes LossesTotalKey = new FixedString64Bytes("combat.losses.total");
         private static readonly FixedString64Bytes SalvageTotalKey = new FixedString64Bytes("combat.salvage.total");
+        private static readonly FixedString64Bytes FireEventsTotalKey = new FixedString64Bytes("combat.events.fire.total");
+        private static readonly FixedString64Bytes HitEventsTotalKey = new FixedString64Bytes("combat.events.hit.total");
+        private static readonly FixedString64Bytes DamageEventsTotalKey = new FixedString64Bytes("combat.events.damage.total");
         private static readonly FixedString64Bytes InvariantMonotonicKey = new FixedString64Bytes("combat.invariant.monotonic");
         private static readonly FixedString64Bytes InvariantDamageLossKey = new FixedString64Bytes("combat.invariant.damage_vs_losses");
         private static readonly FixedString64Bytes InvariantSalvageLossKey = new FixedString64Bytes("combat.invariant.salvage_vs_losses");
@@ -90,7 +93,14 @@ namespace PureDOTS.Systems.Combat
                 ? 1
                 : 0;
 
-            CombatEvidenceMetricsMath.Step(ref _accumulator, totalHealth, deadCount, activeEngagements);
+            CombatEvidenceMetricsMath.Step(
+                ref _accumulator,
+                totalHealth,
+                deadCount,
+                activeEngagements,
+                fireEventCount,
+                hitEventCount,
+                damageEventCount);
 
             if (!_accumulator.Initialized)
             {
@@ -102,6 +112,9 @@ namespace PureDOTS.Systems.Combat
             ScenarioMetricsUtility.SetMetric(state.EntityManager, DamageTotalKey, _accumulator.DamageTotal);
             ScenarioMetricsUtility.SetMetric(state.EntityManager, LossesTotalKey, _accumulator.LossesTotal);
             ScenarioMetricsUtility.SetMetric(state.EntityManager, SalvageTotalKey, _accumulator.SalvageTotal);
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, FireEventsTotalKey, _accumulator.FireEventsTotal);
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, HitEventsTotalKey, _accumulator.HitEventsTotal);
+            ScenarioMetricsUtility.SetMetric(state.EntityManager, DamageEventsTotalKey, _accumulator.DamageEventsTotal);
             ScenarioMetricsUtility.SetMetric(state.EntityManager, InvariantMonotonicKey, _accumulator.MonotonicInvariantOk ? 1.0 : 0.0);
             ScenarioMetricsUtility.SetMetric(state.EntityManager, InvariantDamageLossKey, _accumulator.DamageLossInvariantOk ? 1.0 : 0.0);
             ScenarioMetricsUtility.SetMetric(state.EntityManager, InvariantSalvageLossKey, _accumulator.SalvageInvariantOk ? 1.0 : 0.0);

@@ -37,6 +37,18 @@
       "description": "Damage accumulation must be measurable and non-zero."
     },
     {
+      "metricId": "combat.events.fire.total",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Exterminate flow must observe weapon fire events."
+    },
+    {
+      "metricId": "combat.events.damage.total",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Exterminate flow must observe damage event production."
+    },
+    {
       "metricId": "combat.losses.total",
       "op": 4,
       "expectedValue": 0.0,
@@ -81,4 +93,3 @@
   ],
   "docs": "Exterminate proof scenario for deterministic engagement->damage->losses->salvage evidence. No UI dependencies; headless-first assertions."
 }
-
