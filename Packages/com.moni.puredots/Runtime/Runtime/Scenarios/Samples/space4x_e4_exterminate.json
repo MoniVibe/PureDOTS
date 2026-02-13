@@ -1,0 +1,84 @@
+{
+  "scenarioId": "scenario.space4x.e4.exterminate",
+  "seed": 4513,
+  "runTicks": 1200,
+  "entityCounts": [
+    {
+      "registryId": "registry.carrier",
+      "count": 12
+    },
+    {
+      "registryId": "registry.craft",
+      "count": 48
+    },
+    {
+      "registryId": "registry.projectile",
+      "count": 80
+    }
+  ],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "combat.engagement.transitions",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Combat engagements should transition during exterminate pressure."
+    },
+    {
+      "metricId": "combat.damage.total",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Damage accumulation must be measurable and non-zero."
+    },
+    {
+      "metricId": "combat.losses.total",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "At least one loss event should occur."
+    },
+    {
+      "metricId": "combat.salvage.total",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Losses should progress into salvage evidence."
+    },
+    {
+      "metricId": "combat.invariant.monotonic",
+      "op": 0,
+      "expectedValue": 1.0,
+      "description": "Evidence counters must remain monotonic."
+    },
+    {
+      "metricId": "combat.invariant.damage_vs_losses",
+      "op": 0,
+      "expectedValue": 1.0,
+      "description": "Damage evidence must dominate losses."
+    },
+    {
+      "metricId": "combat.invariant.salvage_vs_losses",
+      "op": 0,
+      "expectedValue": 1.0,
+      "description": "Salvage evidence cannot exceed losses."
+    },
+    {
+      "metricId": "deterministic.replay",
+      "op": 0,
+      "expectedValue": 1.0,
+      "description": "Deterministic replay guard must stay true."
+    },
+    {
+      "metricId": "constraints.respected",
+      "op": 0,
+      "expectedValue": 1.0,
+      "description": "Constraint enforcement must stay within limits."
+    }
+  ],
+  "docs": "Exterminate proof scenario for deterministic engagement->damage->losses->salvage evidence. No UI dependencies; headless-first assertions."
+}
+
