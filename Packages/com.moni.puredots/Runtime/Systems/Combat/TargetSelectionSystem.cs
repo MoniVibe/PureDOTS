@@ -193,17 +193,7 @@ namespace PureDOTS.Systems.Combat
                 return _doctrineLookup[entity];
             }
 
-            return new CombatDoctrineProfile
-            {
-                ThreatWeight = math.max(0f, config.ThreatWeight),
-                RangeWeight = math.max(0f, config.DistanceWeight),
-                HealthWeight = math.max(0f, config.HealthWeight),
-                ObjectiveWeight = 0.2f,
-                FocusFireWeight = 0.2f,
-                EngageScoreThreshold = 0f,
-                RetreatHullThreshold = 0.3f,
-                RetreatRiskMultiplier = 1f
-            };
+            return CombatTargetProfileFallbacks.BuildDoctrineFallback(config);
         }
 
         private CombatIndividualProfile ResolveIndividual(Entity entity)
@@ -216,24 +206,10 @@ namespace PureDOTS.Systems.Combat
             if (_combatAiLookup.HasComponent(entity))
             {
                 var combatAI = _combatAiLookup[entity];
-                return new CombatIndividualProfile
-                {
-                    AggressionBias = math.clamp(combatAI.Aggression / 50f, -1f, 1f),
-                    ObjectiveBias = 0f,
-                    FinishOffBias = 0f,
-                    RangeBias = 0f,
-                    RiskTolerance = 1f - math.saturate(combatAI.FleeThresholdHP / 100f)
-                };
+                return CombatTargetProfileFallbacks.BuildIndividualFromCombatAI(combatAI);
             }
 
-            return new CombatIndividualProfile
-            {
-                AggressionBias = 0f,
-                ObjectiveBias = 0f,
-                FinishOffBias = 0f,
-                RangeBias = 0f,
-                RiskTolerance = 0.5f
-            };
+            return CombatTargetProfileFallbacks.BuildNeutralIndividualFallback();
         }
     }
 }
