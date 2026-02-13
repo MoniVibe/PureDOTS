@@ -67,7 +67,28 @@ namespace PureDOTS.Systems.Combat
                 }
             }
 
-            var activeEngagements = _activeCombatQuery.CalculateEntityCount();
+            var activeCombatCount = _activeCombatQuery.CalculateEntityCount();
+            var fireEventCount = 0;
+            foreach (var events in SystemAPI.Query<DynamicBuffer<FireEvent>>())
+            {
+                fireEventCount += events.Length;
+            }
+
+            var hitEventCount = 0;
+            foreach (var events in SystemAPI.Query<DynamicBuffer<HitEvent>>())
+            {
+                hitEventCount += events.Length;
+            }
+
+            var damageEventCount = 0;
+            foreach (var events in SystemAPI.Query<DynamicBuffer<DamageEvent>>())
+            {
+                damageEventCount += events.Length;
+            }
+
+            var activeEngagements = (activeCombatCount > 0 || fireEventCount > 0 || hitEventCount > 0 || damageEventCount > 0)
+                ? 1
+                : 0;
 
             CombatEvidenceMetricsMath.Step(ref _accumulator, totalHealth, deadCount, activeEngagements);
 
@@ -87,4 +108,3 @@ namespace PureDOTS.Systems.Combat
         }
     }
 }
-
