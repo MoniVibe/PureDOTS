@@ -11,6 +11,11 @@ from pathlib import Path
 
 # Performance budgets
 BUDGETS = {
+    "scenario.space4x.ship_micro.01": {
+        "maxTickTimeMs": 16.67,
+        "maxMemoryMB": 512,
+        "targetFPS": 60
+    },
     "scale_baseline_10k": {
         "maxTickTimeMs": 16.67,
         "maxMemoryMB": 512,
@@ -111,6 +116,22 @@ def validate_report(report_path: Path) -> tuple[bool, list[str]]:
 
     if total_entities > 100000 and scenario_id == "scale_baseline_10k":
         errors.append(f"Entity count {total_entities} exceeds baseline target of 10k")
+
+    # Tier-0 ship-as-village vibe checks
+    if scenario_id == "scenario.space4x.ship_micro.01":
+        events_count = read_metric(["ship.micro.events.count"])
+        seat_readiness = read_metric(["ship.micro.seat.readiness"], -1.0)
+        constraints_respected = read_metric(["constraints.respected"], -1.0)
+        deterministic_replay = read_metric(["deterministic.replay"], -1.0)
+
+        if events_count <= 0:
+            errors.append("Ship micro vibe proof missing comms activity (ship.micro.events.count <= 0)")
+        if seat_readiness <= 0:
+            errors.append("Ship micro vibe proof missing seat readiness signal (ship.micro.seat.readiness <= 0)")
+        if constraints_respected != 1.0:
+            errors.append("Ship micro constraints.respected metric is not 1.0")
+        if deterministic_replay != 1.0:
+            errors.append("Ship micro deterministic.replay metric is not 1.0")
     
     # Report status
     passed = len(errors) == 0

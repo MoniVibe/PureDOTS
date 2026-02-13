@@ -1,6 +1,6 @@
 #!/bin/bash
 # PureDOTS Scale Test Runner
-# Usage: ./CI/run_scale_tests.sh [--all|--mini|--baseline|--stress|--extreme]
+# Usage: ./CI/run_scale_tests.sh [--all|--tier0|--mini|--baseline|--stress|--extreme]
 
 set -e
 
@@ -53,6 +53,11 @@ run_mini_tests() {
     run_scenario "scale_mini_aggregate"
 }
 
+run_tier0() {
+    echo "Running Tier-0 vibe smoke test..."
+    run_scenario "scenario_ship_micro_01"
+}
+
 run_baseline() {
     echo "Running baseline 10k test..."
     run_scenario "scale_baseline_10k"
@@ -69,6 +74,7 @@ run_extreme() {
 }
 
 run_all() {
+    run_tier0
     run_mini_tests
     run_baseline
     run_stress
@@ -86,6 +92,9 @@ case "$RUN_MODE" in
     --all)
         run_all
         ;;
+    --tier0)
+        run_tier0
+        ;;
     --mini)
         run_mini_tests
         ;;
@@ -100,7 +109,7 @@ case "$RUN_MODE" in
         ;;
     *)
         echo "Unknown mode: $RUN_MODE"
-        echo "Usage: $0 [--all|--mini|--baseline|--stress|--extreme]"
+        echo "Usage: $0 [--all|--tier0|--mini|--baseline|--stress|--extreme]"
         exit 1
         ;;
 esac

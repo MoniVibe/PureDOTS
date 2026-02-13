@@ -33,6 +33,12 @@ Option 2: direct Unity batchmode run (fallback if task wiring is blocked):
   -logFile "CI/Reports/scenario_ship_micro_01.log"
 ```
 
+Option 3: Tier-0 vibe proof smoke via scale harness metrics gate:
+
+```bash
+./CI/run_scale_tests.sh --tier0
+```
+
 ## Expected output
 
 Every ~50 ticks, logs include:

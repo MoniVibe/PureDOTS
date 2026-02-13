@@ -7,6 +7,14 @@ Canonical scale/perf gate policy for headless acceptance.
 - Compare against stable baselines for the same scenario and build family.
 - Treat determinism and perf as a coupled gate: perf "wins" are invalid if determinism regresses.
 
+## Tier-0 Vibe Proof Gate
+- `Packages/com.moni.puredots/Runtime/Runtime/Scenarios/Samples/scenario_ship_micro_01.json`
+
+### Default Budget Target (Headless)
+- **T0 (ship_micro_01)**: sim frame avg <= 16.67 ms, peak memory <= 512 MB
+- Required vibe signals: `ship.micro.events.count > 0`, `ship.micro.seat.readiness > 0`
+- Required truth signals: `constraints.respected == 1`, `deterministic.replay == 1`
+
 ## Space4X Gate Ladder
 - `Assets/Scenarios/scenario_space_01_perf_gate_100k.json`
 - `Assets/Scenarios/scenario_space_01_perf_gate_250k.json`

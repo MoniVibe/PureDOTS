@@ -2,6 +2,7 @@ using PureDOTS.Runtime;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Scenarios;
 using PureDOTS.Runtime.Space;
+using PureDOTS.Runtime.Telemetry;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -31,6 +32,8 @@ namespace PureDOTS.Systems.Space
                 state.Enabled = false;
                 return;
             }
+
+            EnsureScaleMetricsConfig(ref state);
 
             if (!_shipRootQuery.IsEmptyIgnoreFilter)
             {
@@ -169,8 +172,32 @@ namespace PureDOTS.Systems.Space
             seatCrewCounts.Dispose();
             seatSkillSums.Dispose();
 
-            Debug.Log("[ShipVillageMicro] Seeded scenario.space4x.ship_micro.01 (ships=1 seats=8 crew=48)");
+            UnityEngine.Debug.Log("[ShipVillageMicro] Seeded scenario.space4x.ship_micro.01 (ships=1 seats=8 crew=48)");
             state.Enabled = false;
+        }
+
+        private void EnsureScaleMetricsConfig(ref SystemState state)
+        {
+            var config = new ScaleTestMetricsConfig
+            {
+                SampleInterval = 1,
+                LogInterval = 50,
+                CollectSystemTimings = 0,
+                CollectMemoryStats = 1,
+                TargetTickTimeMs = 16.67f,
+                TargetMemoryMB = 512f,
+                EnableLODDebug = 0,
+                EnableAggregateDebug = 0
+            };
+
+            if (SystemAPI.TryGetSingletonRW<ScaleTestMetricsConfig>(out var existing))
+            {
+                existing.ValueRW = config;
+                return;
+            }
+
+            var configEntity = state.EntityManager.CreateEntity(typeof(ScaleTestMetricsConfig));
+            state.EntityManager.SetComponentData(configEntity, config);
         }
 
         private static SeatRoleKind GetSeatRole(int index)
@@ -590,7 +617,7 @@ namespace PureDOTS.Systems.Space
 
                 if (tick >= runtime.LastTranscriptTick + 50u)
                 {
-                    Debug.Log($"[ShipVillageMicro] tick={tick} ship={shipId.ValueRO.Value} order={order.ValueRO.Type}/{order.ValueRO.State} readiness={shipIntent.ValueRO.Readiness:0.00} seats={seatReadiness:0.00} eventsWindow={runtime.EventsSinceTranscript} eventsTotal={runtime.TotalEvents} last={runtime.LastFromRole}>{runtime.LastToRole}#{runtime.LastEventCode}");
+                    UnityEngine.Debug.Log($"[ShipVillageMicro] tick={tick} ship={shipId.ValueRO.Value} order={order.ValueRO.Type}/{order.ValueRO.State} readiness={shipIntent.ValueRO.Readiness:0.00} seats={seatReadiness:0.00} eventsWindow={runtime.EventsSinceTranscript} eventsTotal={runtime.TotalEvents} last={runtime.LastFromRole}>{runtime.LastToRole}#{runtime.LastEventCode}");
                     runtime.EventsSinceTranscript = 0;
                     runtime.LastTranscriptTick = tick;
                 }
