@@ -4,10 +4,12 @@
     "references": [
         "PureDOTS.Systems",
         "PureDOTS.Runtime",
+        "PureDOTS.Rendering",
         "PureDOTS.Core",
         "PureDOTS.Config",
         "PureDOTS.Input",
         "Unity.Entities",
+        "Unity.Entities.Graphics",
         "Unity.Mathematics",
         "Unity.Transforms",
         "Unity.Collections",

@@ -1,4 +1,4 @@
-#if UNITY_EDITOR || UNITY_INCLUDE_TESTS
+#if UNITY_INCLUDE_TESTS
 using NUnit.Framework;
 using PureDOTS.Rendering;
 using Unity.Collections;
@@ -180,4 +180,3 @@ namespace PureDOTS.Tests.Rendering
     }
 }
 #endif
-

@@ -61,14 +61,15 @@ namespace PureDOTS.Runtime.Scenarios
             }
             if (result.Issues != null && result.Issues.Count > 0)
             {
-                if (!sectionWritten) sb.Append(",");
+                if (sectionWritten) sb.Append(",");
                 AppendIssues(sb, result.Issues);
                 sectionWritten = true;
             }
             if (result.AssertionResults != null && result.AssertionResults.Count > 0)
             {
-                if (!sectionWritten) sb.Append(",");
+                if (sectionWritten) sb.Append(",");
                 AppendAssertions(sb, result.AssertionResults);
+                sectionWritten = true;
             }
             sb.Append("}");
             return sb.ToString();
