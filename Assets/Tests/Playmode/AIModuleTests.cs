@@ -324,6 +324,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 0: prefers sensor reading 0 (nearest target).
             ref var action0 = ref actions[0];
+            action0.BiasMask = AIUtilityBiasMask.None;
             var factors0 = builder.Allocate(ref action0.Factors, 1);
             factors0[0] = new AIUtilityCurveBlob
             {
@@ -336,6 +337,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 1: evaluates sensor reading 1 (farther target).
             ref var action1 = ref actions[1];
+            action1.BiasMask = AIUtilityBiasMask.None;
             var factors1 = builder.Allocate(ref action1.Factors, 1);
             factors1[0] = new AIUtilityCurveBlob
             {

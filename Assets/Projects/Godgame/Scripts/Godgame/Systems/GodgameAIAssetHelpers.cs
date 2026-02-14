@@ -26,6 +26,7 @@ namespace Godgame.Systems
 
             // Action 0: SatisfyHunger - responds to hunger need (sensor reading 0 = hunger urgency)
             ref var action0 = ref actions[0];
+            action0.BiasMask = AIUtilityBiasMask.None;
             var factors0 = builder.Allocate(ref action0.Factors, 1);
             factors0[0] = new AIUtilityCurveBlob
             {
@@ -38,6 +39,7 @@ namespace Godgame.Systems
 
             // Action 1: Rest - responds to energy need (sensor reading 1 = energy urgency)
             ref var action1 = ref actions[1];
+            action1.BiasMask = AIUtilityBiasMask.None;
             var factors1 = builder.Allocate(ref action1.Factors, 1);
             factors1[0] = new AIUtilityCurveBlob
             {
@@ -50,6 +52,7 @@ namespace Godgame.Systems
 
             // Action 2: ImproveMorale - responds to morale need (sensor reading 2 = morale urgency)
             ref var action2 = ref actions[2];
+            action2.BiasMask = AIUtilityBiasMask.None;
             var factors2 = builder.Allocate(ref action2.Factors, 1);
             factors2[0] = new AIUtilityCurveBlob
             {
@@ -62,6 +65,7 @@ namespace Godgame.Systems
 
             // Action 3: Work - responds to job availability (sensor reading 3 = nearest resource node)
             ref var action3 = ref actions[3];
+            action3.BiasMask = AIUtilityBiasMask.None;
             var factors3 = builder.Allocate(ref action3.Factors, 1);
             factors3[0] = new AIUtilityCurveBlob
             {
@@ -78,4 +82,3 @@ namespace Godgame.Systems
         }
     }
 }
-
