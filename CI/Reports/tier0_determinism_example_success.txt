@@ -1,0 +1,23 @@
+============================================================
+PureDOTS Scale Test Validation
+============================================================
+
+Validating: scenario_ship_micro_01_run1_report.json
+----------------------------------------
+  Status: PASSED
+
+Validating: scenario_ship_micro_01_run2_report.json
+----------------------------------------
+  Status: PASSED
+
+Tier-0 Determinism Check
+----------------------------------------
+  Status: PASSED
+  WARNING: Tier-0 order-state sequence logs unavailable; used final ship.micro.order.state fallback.
+  WARNING: Tier-0 signature compared reports: scenario_ship_micro_01_run1_report.json vs scenario_ship_micro_01_run2_report.json
+
+============================================================
+Summary: 2 reports, 0 errors, 2 warnings
+============================================================
+
+Validation PASSED - all budgets met

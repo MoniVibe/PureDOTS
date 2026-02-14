@@ -36,9 +36,15 @@ RUN_MODE="${1:---baseline}"
 
 run_scenario() {
     local scenario_name=$1
+    local run_label="${2:-}"
     local scenario_file="${SAMPLES_PATH}/${scenario_name}.json"
     local scenario_arg=""
-    local report_file="${REPORTS_DIR}/${scenario_name}_report.json"
+    local suffix=""
+    if [ -n "$run_label" ]; then
+        suffix="_${run_label}"
+    fi
+    local report_file="${REPORTS_DIR}/${scenario_name}${suffix}_report.json"
+    local log_file="${REPORTS_DIR}/${scenario_name}${suffix}.log"
     
     echo "========================================"
     echo "Running: ${scenario_name}"
@@ -53,6 +59,7 @@ run_scenario() {
     echo "Tier0: scenario_name=$scenario_name"
     echo "Tier0: scenario_file=$scenario_file exists=$( [ -f "$scenario_file" ] && echo 1 || echo 0 )"
     echo "Tier0: scenario_arg=$scenario_arg"
+    echo "Tier0: run_label=${run_label:-default}"
     
     "$UNITY_PATH" -batchmode -quit -projectPath "$PROJECT_PATH" \
         -executeMethod PureDOTS.Runtime.Devtools.ScenarioRunnerEntryPoints.RunScaleTest \
@@ -60,7 +67,7 @@ run_scenario() {
         --metrics "$report_file" \
         --enable-lod-debug \
         --enable-aggregate-debug \
-        -logFile "${REPORTS_DIR}/${scenario_name}.log"
+        -logFile "$log_file"
     
     local exit_code=$?
     
@@ -80,7 +87,8 @@ run_mini_tests() {
 
 run_tier0() {
     echo "Running Tier-0 vibe smoke test..."
-    run_scenario "scenario_ship_micro_01"
+    run_scenario "scenario_ship_micro_01" "run1"
+    run_scenario "scenario_ship_micro_01" "run2"
 }
 
 run_baseline() {
