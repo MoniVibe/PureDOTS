@@ -97,7 +97,7 @@ namespace PureDOTS.Systems.Scenarios
             }
         }
 
-        private static Entity ResolveScenarioEntity(ref SystemState state)
+        private Entity ResolveScenarioEntity(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<ScenarioEntitySingleton>(out var singleton))
             {
