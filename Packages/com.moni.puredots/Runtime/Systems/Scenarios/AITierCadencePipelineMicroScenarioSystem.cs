@@ -127,7 +127,7 @@ namespace PureDOTS.Systems.Scenarios
             }
         }
 
-        private static void ForceGlobalCadenceToOne(ref SystemState state)
+        private void ForceGlobalCadenceToOne(ref SystemState state)
         {
             if (!SystemAPI.HasSingleton<MindCadenceSettings>())
             {
@@ -250,7 +250,7 @@ namespace PureDOTS.Systems.Scenarios
             }
         }
 
-        private static Entity ResolveScenarioEntity(ref SystemState state)
+        private Entity ResolveScenarioEntity(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<ScenarioEntitySingleton>(out var singleton))
             {
@@ -416,7 +416,7 @@ namespace PureDOTS.Systems.Scenarios
             ScenarioMetricsUtility.SetMetric(ref metricLookup, scenarioEntity, DigestKey, data.Digest);
         }
 
-        private static Entity ResolveScenarioEntity(ref SystemState state)
+        private Entity ResolveScenarioEntity(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<ScenarioEntitySingleton>(out var singleton))
             {
