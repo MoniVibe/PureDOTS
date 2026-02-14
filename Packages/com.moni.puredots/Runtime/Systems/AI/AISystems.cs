@@ -436,11 +436,13 @@ namespace PureDOTS.Systems.AI
     public partial struct AIUtilityScoringSystem : ISystem
     {
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<BehaviorTuning> _behaviorTuningLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _behaviorTuningLookup = state.GetComponentLookup<BehaviorTuning>(true);
             state.RequireForUpdate<AIBehaviourArchetype>();
             state.RequireForUpdate<AISensorConfig>();
             state.RequireForUpdate<MindCadenceSettings>();
@@ -462,6 +464,7 @@ namespace PureDOTS.Systems.AI
             }
 
             _transformLookup.Update(ref state);
+            _behaviorTuningLookup.Update(ref state);
 
             foreach (var (archetype, utilityState, sensorBuffer, transform, entity) in SystemAPI.Query<RefRO<AIBehaviourArchetype>, RefRW<AIUtilityState>, DynamicBuffer<AISensorReading>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
@@ -481,6 +484,8 @@ namespace PureDOTS.Systems.AI
                 var readings = sensorBuffer.AsNativeArray();
                 var bestScore = float.MinValue;
                 byte bestIndex = 0;
+                var hasBehaviorTuning = _behaviorTuningLookup.HasComponent(entity);
+                var behaviorTuning = hasBehaviorTuning ? _behaviorTuningLookup[entity] : BehaviorTuning.Neutral();
 
                 var hasActionBuffer = SystemAPI.HasBuffer<AIActionState>(entity);
                 DynamicBuffer<AIActionState> actionBuffer = default;
@@ -504,6 +509,8 @@ namespace PureDOTS.Systems.AI
                             : 0f;
                         score += EvaluateCurve(sensorValue, in factor);
                     }
+
+                    score *= GetBiasMultiplier(action.BiasMask, in behaviorTuning, hasBehaviorTuning);
 
                     if (hasActionBuffer)
                     {
@@ -551,6 +558,42 @@ namespace PureDOTS.Systems.AI
             var normalized = math.saturate(sensorValue / math.max(curve.MaxValue, 1e-3f));
             var delta = math.max(normalized - curve.Threshold, 0f);
             return math.pow(delta, math.max(curve.ResponsePower, 1f)) * curve.Weight;
+        }
+
+        private static float GetBiasMultiplier(AIUtilityBiasMask biasMask, in BehaviorTuning tuning, bool hasBehaviorTuning)
+        {
+            if (!hasBehaviorTuning || biasMask == AIUtilityBiasMask.None)
+            {
+                return 1f;
+            }
+
+            var multiplier = 1f;
+            if ((biasMask & AIUtilityBiasMask.Aggression) != 0)
+            {
+                multiplier *= math.max(0f, tuning.AggressionBias);
+            }
+
+            if ((biasMask & AIUtilityBiasMask.Social) != 0)
+            {
+                multiplier *= math.max(0f, tuning.SocialBias);
+            }
+
+            if ((biasMask & AIUtilityBiasMask.Greed) != 0)
+            {
+                multiplier *= math.max(0f, tuning.GreedBias);
+            }
+
+            if ((biasMask & AIUtilityBiasMask.Curiosity) != 0)
+            {
+                multiplier *= math.max(0f, tuning.CuriosityBias);
+            }
+
+            if ((biasMask & AIUtilityBiasMask.Obedience) != 0)
+            {
+                multiplier *= math.max(0f, tuning.ObedienceBias);
+            }
+
+            return multiplier;
         }
     }
 

@@ -82,6 +82,7 @@ namespace Space4X.Authoring
 
             // Action 0: Mining - prefers nearby resource nodes when not full
             ref var action0 = ref actions[0];
+            action0.BiasMask = AIUtilityBiasMask.Greed | AIUtilityBiasMask.Curiosity;
             var factors0 = blobBuilder.Allocate(ref action0.Factors, 1);
             factors0[0] = new AIUtilityCurveBlob
             {
@@ -94,6 +95,7 @@ namespace Space4X.Authoring
 
             // Action 1: Returning - prefers nearby carriers when full
             ref var action1 = ref actions[1];
+            action1.BiasMask = AIUtilityBiasMask.Obedience;
             var factors1 = blobBuilder.Allocate(ref action1.Factors, 1);
             factors1[0] = new AIUtilityCurveBlob
             {
@@ -177,4 +179,3 @@ namespace Space4X.Authoring
     }
 }
 #endif
-
