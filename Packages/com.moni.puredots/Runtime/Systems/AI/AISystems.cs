@@ -437,12 +437,14 @@ namespace PureDOTS.Systems.AI
     {
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<BehaviorTuning> _behaviorTuningLookup;
+        private ComponentLookup<AIFidelityTier> _fidelityTierLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
             _behaviorTuningLookup = state.GetComponentLookup<BehaviorTuning>(true);
+            _fidelityTierLookup = state.GetComponentLookup<AIFidelityTier>(true);
             state.RequireForUpdate<AIBehaviourArchetype>();
             state.RequireForUpdate<AISensorConfig>();
             state.RequireForUpdate<MindCadenceSettings>();
@@ -465,10 +467,25 @@ namespace PureDOTS.Systems.AI
 
             _transformLookup.Update(ref state);
             _behaviorTuningLookup.Update(ref state);
+            _fidelityTierLookup.Update(ref state);
+
+            var tierProfile = SystemAPI.HasSingleton<TierProfileSettings>()
+                ? SystemAPI.GetSingleton<TierProfileSettings>()
+                : TierProfileSettings.CreateDefaults(TierProfileId.Mid);
 
             foreach (var (archetype, utilityState, sensorBuffer, transform, entity) in SystemAPI.Query<RefRO<AIBehaviourArchetype>, RefRW<AIUtilityState>, DynamicBuffer<AISensorReading>, RefRO<LocalTransform>>()
                          .WithEntityAccess())
             {
+                if (_fidelityTierLookup.HasComponent(entity))
+                {
+                    var tier = _fidelityTierLookup[entity].Tier;
+                    var tierCadenceTicks = ResolveEvaluationCadenceTicks(in tierProfile, tier);
+                    if (!ShouldRunTierCadence(timeState.Tick, tierCadenceTicks, entity.Index))
+                    {
+                        continue;
+                    }
+                }
+
                 var blobRef = archetype.ValueRO.UtilityBlob;
                 if (!blobRef.IsCreated)
                 {
@@ -558,6 +575,32 @@ namespace PureDOTS.Systems.AI
             var normalized = math.saturate(sensorValue / math.max(curve.MaxValue, 1e-3f));
             var delta = math.max(normalized - curve.Threshold, 0f);
             return math.pow(delta, math.max(curve.ResponsePower, 1f)) * curve.Weight;
+        }
+
+        private static int ResolveEvaluationCadenceTicks(in TierProfileSettings profile, AILODTier tier)
+        {
+            return tier switch
+            {
+                AILODTier.Tier0_Full => profile.Tier0EvaluationCadenceTicks,
+                AILODTier.Tier1_Reduced => profile.Tier1EvaluationCadenceTicks,
+                AILODTier.Tier2_EventDriven => profile.Tier2EvaluationCadenceTicks,
+                AILODTier.Tier3_Aggregate => profile.Tier3EvaluationCadenceTicks,
+                _ => 1
+            };
+        }
+
+        private static bool ShouldRunTierCadence(uint tick, int cadenceTicks, int entityIndex)
+        {
+            var cadence = (uint)math.max(1, cadenceTicks);
+            if (cadence <= 1u)
+            {
+                return true;
+            }
+
+            // Stable phase offset derived from entity index to spread work deterministically.
+            var stableIndex = (uint)(entityIndex & 0x7fffffff);
+            var phase = stableIndex % cadence;
+            return (tick + phase) % cadence == 0u;
         }
 
         private static float GetBiasMultiplier(AIUtilityBiasMask biasMask, in BehaviorTuning tuning, bool hasBehaviorTuning)
