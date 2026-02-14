@@ -1,0 +1,34 @@
+{
+  "scenarioId": "scenario.puredots.ai_biasproof.micro",
+  "seed": 4101,
+  "runTicks": 240,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "ai.biasproof.groupA.action0_chosen_count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Group A should choose aggression-tagged action at least once."
+    },
+    {
+      "metricId": "ai.biasproof.groupB.action1_chosen_count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Group B should choose social-tagged action at least once."
+    },
+    {
+      "metricId": "ai.biasproof.monotonicity",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Bias proof counters are coherent and non-zero."
+    }
+  ],
+  "docs": "Bias proof harness: two agent groups with equal base utility scores and opposite BehaviorTuning values. Action0 is Aggression-biased and action1 is Social-biased."
+}
