@@ -143,8 +143,24 @@ namespace PureDOTS.Runtime.AI
     /// <summary>
     /// Blob describing the utility curves that contribute to a single action.
     /// </summary>
+    [System.Flags]
+    public enum AIUtilityBiasMask : byte
+    {
+        None = 0,
+        Aggression = 1 << 0,
+        Social = 1 << 1,
+        Greed = 1 << 2,
+        Curiosity = 1 << 3,
+        Obedience = 1 << 4
+    }
+
+    /// <summary>
+    /// Blob describing the utility curves that contribute to a single action.
+    /// BiasMask is optional and defaults to None (neutral).
+    /// </summary>
     public struct AIUtilityActionBlob
     {
+        public AIUtilityBiasMask BiasMask;
         public BlobArray<AIUtilityCurveBlob> Factors;
     }
 
