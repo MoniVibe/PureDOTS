@@ -1,0 +1,64 @@
+{
+  "scenarioId": "scenario.ai.tierpipe.micro",
+  "seed": 41041,
+  "runTicks": 1800,
+  "entityCounts": [],
+  "inputCommands": [],
+  "assertions": [
+    {
+      "metricId": "ai.tierpipe.tier0.sensor_samples",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier0 sensor samples are emitted."
+    },
+    {
+      "metricId": "ai.tierpipe.tier1.sensor_samples",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier1 sensor samples are emitted."
+    },
+    {
+      "metricId": "ai.tierpipe.tier2.sensor_samples",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier2 sensor samples are emitted."
+    },
+    {
+      "metricId": "ai.tierpipe.tier3.sensor_samples",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier3 sensor samples are emitted."
+    },
+    {
+      "metricId": "ai.tierpipe.tier0.commands_emitted",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier0 command emissions are recorded."
+    },
+    {
+      "metricId": "ai.tierpipe.tier1.commands_emitted",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier1 command emissions are recorded."
+    },
+    {
+      "metricId": "ai.tierpipe.tier2.commands_emitted",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier2 command emissions are recorded."
+    },
+    {
+      "metricId": "ai.tierpipe.tier3.commands_emitted",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier3 command emissions are recorded."
+    },
+    {
+      "metricId": "ai.tierpipe.digest",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Deterministic digest is emitted and non-zero."
+    }
+  ],
+  "docs": "Tier pipe micro: equal AI cohorts across Tier0/1/2/3 with stable perceived targets. Metrics prove tier cadence impacts sensors, scoring, and command emission across the full AI loop."
+}
