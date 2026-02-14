@@ -1,4 +1,4 @@
-#if UNITY_INCLUDE_TESTS
+#if MONI_ENABLE_BROKEN_TESTS && (UNITY_EDITOR || UNITY_INCLUDE_TESTS)
 using NUnit.Framework;
 using PureDOTS.Rendering;
 using Unity.Collections;

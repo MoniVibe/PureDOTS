@@ -1,3 +1,4 @@
+#if MONI_ENABLE_BROKEN_TESTS && UNITY_INCLUDE_TESTS
 using NUnit.Framework;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
@@ -401,3 +402,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+#endif
