@@ -123,6 +123,7 @@ namespace PureDOTS.Systems.AI
         private ComponentLookup<MiracleRuntimeStateNew> _miracleStateNewLookup;
         private ComponentLookup<SpatialGridResidency> _residencyLookup;
         private ComponentLookup<TransportUnitTag> _transportLookup;
+        private ComponentLookup<AIFidelityTier> _fidelityTierLookup;
         private BufferLookup<PerceivedEntity> _perceivedLookup;
 
         [BurstCompile]
@@ -143,6 +144,7 @@ namespace PureDOTS.Systems.AI
             _miracleStateNewLookup = state.GetComponentLookup<MiracleRuntimeStateNew>(true);
             _residencyLookup = state.GetComponentLookup<SpatialGridResidency>(true);
             _transportLookup = state.GetComponentLookup<TransportUnitTag>(true);
+            _fidelityTierLookup = state.GetComponentLookup<AIFidelityTier>(true);
             _perceivedLookup = state.GetBufferLookup<PerceivedEntity>(true);
         }
 
@@ -169,10 +171,14 @@ namespace PureDOTS.Systems.AI
             _miracleStateNewLookup.Update(ref state);
             _residencyLookup.Update(ref state);
             _transportLookup.Update(ref state);
+            _fidelityTierLookup.Update(ref state);
             _perceivedLookup.Update(ref state);
 
             var budget = SystemAPI.GetSingleton<UniversalPerformanceBudget>();
             var counters = SystemAPI.GetSingletonRW<UniversalPerformanceCounters>();
+            var tierProfile = SystemAPI.HasSingleton<TierProfileSettings>()
+                ? SystemAPI.GetSingleton<TierProfileSettings>()
+                : TierProfileSettings.CreateDefaults(TierProfileId.Mid);
             var results = new NativeList<AISensorReading>(Allocator.Temp);
 
             int processedCount = 0;
@@ -189,6 +195,17 @@ namespace PureDOTS.Systems.AI
                 var sensorConfig = config.ValueRO;
                 var stateRef = sensorState.ValueRW;
                 stateRef.Elapsed += timeState.FixedDeltaTime;
+
+                if (_fidelityTierLookup.HasComponent(entity))
+                {
+                    var tier = _fidelityTierLookup[entity].Tier;
+                    var tierCadenceTicks = ResolveSensorCadenceTicks(in tierProfile, tier);
+                    if (!ShouldRunTierCadence(timeState.Tick, tierCadenceTicks, entity.Index))
+                    {
+                        sensorState.ValueRW = stateRef;
+                        continue;
+                    }
+                }
 
                 if (sensorConfig.UpdateInterval > 0f &&
                     stateRef.Elapsed + 1e-5f < sensorConfig.UpdateInterval)
@@ -283,6 +300,31 @@ namespace PureDOTS.Systems.AI
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
+        }
+
+        private static int ResolveSensorCadenceTicks(in TierProfileSettings profile, AILODTier tier)
+        {
+            return tier switch
+            {
+                AILODTier.Tier0_Full => profile.Tier0SensorCadenceTicks,
+                AILODTier.Tier1_Reduced => profile.Tier1SensorCadenceTicks,
+                AILODTier.Tier2_EventDriven => profile.Tier2SensorCadenceTicks,
+                AILODTier.Tier3_Aggregate => profile.Tier3SensorCadenceTicks,
+                _ => 1
+            };
+        }
+
+        private static bool ShouldRunTierCadence(uint tick, int cadenceTicks, int entityIndex)
+        {
+            var cadence = (uint)math.max(1, cadenceTicks);
+            if (cadence <= 1u)
+            {
+                return true;
+            }
+
+            var stableIndex = (uint)(entityIndex & 0x7fffffff);
+            var phase = stableIndex % cadence;
+            return (tick + phase) % cadence == 0u;
         }
 
         private static void InsertSortedByDistance(ref NativeList<AISensorReading> readings, in AISensorReading reading, int maxResults)
@@ -813,6 +855,7 @@ namespace PureDOTS.Systems.AI
         private ComponentLookup<ResourcePools> _poolsLookup;
         private ComponentLookup<IndividualStats> _statsLookup;
         private ComponentLookup<VillagerNeedState> _villagerNeedsLookup;
+        private ComponentLookup<AIFidelityTier> _fidelityTierLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -829,6 +872,7 @@ namespace PureDOTS.Systems.AI
             _poolsLookup = state.GetComponentLookup<ResourcePools>(true);
             _statsLookup = state.GetComponentLookup<IndividualStats>(true);
             _villagerNeedsLookup = state.GetComponentLookup<VillagerNeedState>(true);
+            _fidelityTierLookup = state.GetComponentLookup<AIFidelityTier>(true);
         }
 
         [BurstCompile]
@@ -856,6 +900,11 @@ namespace PureDOTS.Systems.AI
             _poolsLookup.Update(ref state);
             _statsLookup.Update(ref state);
             _villagerNeedsLookup.Update(ref state);
+            _fidelityTierLookup.Update(ref state);
+
+            var tierProfile = SystemAPI.HasSingleton<TierProfileSettings>()
+                ? SystemAPI.GetSingleton<TierProfileSettings>()
+                : TierProfileSettings.CreateDefaults(TierProfileId.Mid);
 
             var hasAckStream = SystemAPI.HasSingleton<AIAckStreamTag>();
             DynamicBuffer<AIAckEvent> ackEvents = default;
@@ -875,6 +924,16 @@ namespace PureDOTS.Systems.AI
             foreach (var (utility, target, entity) in SystemAPI.Query<RefRO<AIUtilityState>, RefRO<AITargetState>>()
                          .WithEntityAccess())
             {
+                if (_fidelityTierLookup.HasComponent(entity))
+                {
+                    var tier = _fidelityTierLookup[entity].Tier;
+                    var tierCadenceTicks = ResolveResolutionCadenceTicks(in tierProfile, tier);
+                    if (!ShouldRunTierCadence(timeState.Tick, tierCadenceTicks, entity.Index))
+                    {
+                        continue;
+                    }
+                }
+
                 var utilityState = utility.ValueRO;
                 if (utilityState.LastEvaluationTick != timeState.Tick || utilityState.BestScore <= 0f)
                 {
@@ -965,6 +1024,31 @@ namespace PureDOTS.Systems.AI
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
+        }
+
+        private static int ResolveResolutionCadenceTicks(in TierProfileSettings profile, AILODTier tier)
+        {
+            return tier switch
+            {
+                AILODTier.Tier0_Full => profile.Tier0ResolutionCadenceTicks,
+                AILODTier.Tier1_Reduced => profile.Tier1ResolutionCadenceTicks,
+                AILODTier.Tier2_EventDriven => profile.Tier2ResolutionCadenceTicks,
+                AILODTier.Tier3_Aggregate => profile.Tier3ResolutionCadenceTicks,
+                _ => 1
+            };
+        }
+
+        private static bool ShouldRunTierCadence(uint tick, int cadenceTicks, int entityIndex)
+        {
+            var cadence = (uint)math.max(1, cadenceTicks);
+            if (cadence <= 1u)
+            {
+                return true;
+            }
+
+            var stableIndex = (uint)(entityIndex & 0x7fffffff);
+            var phase = stableIndex % cadence;
+            return (tick + phase) % cadence == 0u;
         }
     }
 }
