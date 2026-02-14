@@ -611,6 +611,7 @@ namespace PureDOTS.Systems.Space
 
                 if (tick >= runtime.LastTranscriptTick + 50u)
                 {
+                    UnityEngine.Debug.Log($"[ShipVillageMicroMetrics] ship.micro.events.count={runtime.TotalEvents} ship.micro.seat.readiness={seatReadiness:0.00} ship.micro.order.state={(byte)order.ValueRO.State}");
                     UnityEngine.Debug.Log($"[ShipVillageMicro] tick={tick} ship={shipId.ValueRO.Value} order={order.ValueRO.Type}/{order.ValueRO.State} readiness={shipIntent.ValueRO.Readiness:0.00} seats={seatReadiness:0.00} eventsWindow={runtime.EventsSinceTranscript} eventsTotal={runtime.TotalEvents} last={runtime.LastFromRole}>{runtime.LastToRole}#{runtime.LastEventCode}");
                     runtime.EventsSinceTranscript = 0;
                     runtime.LastTranscriptTick = tick;
