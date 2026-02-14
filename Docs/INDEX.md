@@ -10,10 +10,17 @@ Documentation is organized by responsibility:
 ---
 
 ## Entry Points
+- `AGENTS.md` (root) – **role-first agent guidelines** (Validator, Builder, Ops, Perf, Sherpa, Docs). Claim slots via `Docs/Agents/SLOTS.md`.
 - `Docs/INTEGRATION_GUIDE.md` – **quick reference for PureDOTS integration** (how to interface with PureDOTS)
 - `Docs/PUREDOTS_INTEGRATION_SPEC.md` – detailed extension procedures (for extending PureDOTS)
 - `TRI_PROJECT_BRIEFING.md` (root) – project overview and coding patterns
 - `Docs/INDEX.md` (this file) – documentation navigation
+
+## Canonical Direction Set (when present)
+- `Docs/NORTH_STAR.md`, `Docs/DEMO_SLICE.md`, `Docs/ARCHITECTURE.md`, `Docs/PERF_GATES.md`, `Docs/NETPLAY_NOT_NOW.md`, `Docs/PROGRESS_HUB.md` — if missing, use `TRI_PROJECT_BRIEFING` + `Docs/Headless/headless_runbook.md`, `headlesstasks.md`, `recurring.md`, `recurringerrors.md`.
+
+## Agents
+- `Docs/Agents/SLOTS.md` — slot locking rules. `Docs/Agents/SWEEP_REPORT.md` — desktop vs laptop doc inventory.
 
 ## Entity Stats & Archetypes ⭐ NEW
 - [Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md](Concepts/Core/Entity_Stats_And_Archetypes_Canonical.md) – **canonical** stat layers (core vs domain) + archetype schema (tags/weights/policies)
