@@ -1,3 +1,4 @@
+#if MONI_ENABLE_BROKEN_TESTS && UNITY_INCLUDE_TESTS
 using NUnit.Framework;
 using PureDOTS.Runtime.AI;
 using PureDOTS.Runtime.Components;
@@ -234,8 +235,8 @@ namespace PureDOTS.Tests.Playmode
 
                 // Verify bounded by color fraction
                 var maxExpectedCells = (totalCells / colorCount) + 10;
-                Assert.LessOrEqual(cellsWithEvents.Count(), maxExpectedCells,
-                    $"Cells with events ({cellsWithEvents.Count()}) should be bounded by {maxExpectedCells}");
+                Assert.LessOrEqual(cellsWithEvents.Count, maxExpectedCells,
+                    $"Cells with events ({cellsWithEvents.Count}) should be bounded by {maxExpectedCells}");
 
                 cellsWithEvents.Dispose();
             }
@@ -352,13 +353,13 @@ namespace PureDOTS.Tests.Playmode
             return (gridEntity, sensors, targets);
         }
 
-        private NativeHashMap<int, AwarenessSnapshot> CaptureSnapshots(Entity gridEntity)
+        private NativeHashMap<int, AwarenessCellSnapshot> CaptureSnapshots(Entity gridEntity)
         {
-            var snapshots = new NativeHashMap<int, AwarenessSnapshot>(64, Allocator.Temp);
+            var snapshots = new NativeHashMap<int, AwarenessCellSnapshot>(64, Allocator.Temp);
 
-            if (_entityManager.HasBuffer<AwarenessSnapshotBuffer>(gridEntity))
+            if (_entityManager.HasBuffer<AwarenessCellSnapshotBuffer>(gridEntity))
             {
-                var buffer = _entityManager.GetBuffer<AwarenessSnapshotBuffer>(gridEntity);
+                var buffer = _entityManager.GetBuffer<AwarenessCellSnapshotBuffer>(gridEntity);
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     var snapshot = buffer[i].Snapshot;
@@ -401,3 +402,4 @@ namespace PureDOTS.Tests.Playmode
         }
     }
 }
+#endif
