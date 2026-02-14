@@ -309,7 +309,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 2: ImproveMorale
             ref var action2 = ref actions[2];
-            action2.BiasMask = AIUtilityBiasMask.None;
+            action2.BiasMask = AIUtilityBiasMask.Social;
             var factors2 = builder.Allocate(ref action2.Factors, 1);
             factors2[0] = new AIUtilityCurveBlob
             {
@@ -322,7 +322,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 3: Work
             ref var action3 = ref actions[3];
-            action3.BiasMask = AIUtilityBiasMask.None;
+            action3.BiasMask = AIUtilityBiasMask.Greed;
             var factors3 = builder.Allocate(ref action3.Factors, 1);
             factors3[0] = new AIUtilityCurveBlob
             {
@@ -346,7 +346,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 0: Mining
             ref var action0 = ref actions[0];
-            action0.BiasMask = AIUtilityBiasMask.None;
+            action0.BiasMask = AIUtilityBiasMask.Greed | AIUtilityBiasMask.Curiosity;
             var factors0 = builder.Allocate(ref action0.Factors, 1);
             factors0[0] = new AIUtilityCurveBlob
             {
@@ -359,7 +359,7 @@ namespace PureDOTS.Tests.Playmode
 
             // Action 1: Returning
             ref var action1 = ref actions[1];
-            action1.BiasMask = AIUtilityBiasMask.None;
+            action1.BiasMask = AIUtilityBiasMask.Obedience;
             var factors1 = builder.Allocate(ref action1.Factors, 1);
             factors1[0] = new AIUtilityCurveBlob
             {

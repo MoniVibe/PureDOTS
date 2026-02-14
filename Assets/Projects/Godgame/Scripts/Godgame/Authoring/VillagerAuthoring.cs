@@ -132,7 +132,7 @@ namespace Godgame.Authoring
 
                 // Action 2: ImproveMorale
                 ref var action2 = ref actions[2];
-                action2.BiasMask = AIUtilityBiasMask.None;
+                action2.BiasMask = AIUtilityBiasMask.Social;
                 var factors2 = blobBuilder.Allocate(ref action2.Factors, 1);
                 factors2[0] = new AIUtilityCurveBlob
                 {
@@ -145,7 +145,7 @@ namespace Godgame.Authoring
 
                 // Action 3: Work
                 ref var action3 = ref actions[3];
-                action3.BiasMask = AIUtilityBiasMask.None;
+                action3.BiasMask = AIUtilityBiasMask.Greed;
                 var factors3 = blobBuilder.Allocate(ref action3.Factors, 1);
                 factors3[0] = new AIUtilityCurveBlob
                 {
@@ -231,5 +231,4 @@ namespace Godgame.Authoring
         }
     }
 }
-
 
