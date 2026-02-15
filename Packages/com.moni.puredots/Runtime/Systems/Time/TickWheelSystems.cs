@@ -105,9 +105,12 @@ namespace PureDOTS.Systems.Time
         {
             var currentTick = ResolveCurrentTick(ref state);
 
-            foreach (var (settingsRef, runtimeRef, buckets, events, requests) in
-                     SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>, DynamicBuffer<TickWheelBucket>, DynamicBuffer<TickWheelEvent>, DynamicBuffer<TickWheelScheduleRequest>>())
+            foreach (var (settingsRef, runtimeRef, entity) in
+                     SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>>().WithEntityAccess())
             {
+                var buckets = state.EntityManager.GetBuffer<TickWheelBucket>(entity);
+                var events = state.EntityManager.GetBuffer<TickWheelEvent>(entity);
+                var requests = state.EntityManager.GetBuffer<TickWheelScheduleRequest>(entity);
                 var settings = NormalizeSettings(settingsRef.ValueRO);
                 EnsureBucketShape(buckets, settings.WheelSize);
 
@@ -233,9 +236,11 @@ namespace PureDOTS.Systems.Time
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (settingsRef, runtimeRef, buckets, events) in
-                     SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>, DynamicBuffer<TickWheelBucket>, DynamicBuffer<TickWheelEvent>>())
+            foreach (var (settingsRef, runtimeRef, entity) in
+                     SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>>().WithEntityAccess())
             {
+                var buckets = state.EntityManager.GetBuffer<TickWheelBucket>(entity);
+                var events = state.EntityManager.GetBuffer<TickWheelEvent>(entity);
                 var settings = NormalizeSettings(settingsRef.ValueRO);
                 EnsureBucketShape(buckets, settings.WheelSize);
 
@@ -274,7 +279,7 @@ namespace PureDOTS.Systems.Time
                 dispatchBucket.HeadEventIndex = keepHead;
                 buckets[dispatchIndex] = dispatchBucket;
 
-                SortDueEvents(ref dueEventIndices, ref events);
+                SortDueEvents(ref dueEventIndices, events);
 
                 for (var i = 0; i < dueEventIndices.Length; i++)
                 {
@@ -366,7 +371,7 @@ namespace PureDOTS.Systems.Time
             }
         }
 
-        private static void SortDueEvents(ref NativeList<int> eventIndices, ref DynamicBuffer<TickWheelEvent> events)
+        private static void SortDueEvents(ref NativeList<int> eventIndices, DynamicBuffer<TickWheelEvent> events)
         {
             for (var i = 1; i < eventIndices.Length; i++)
             {
