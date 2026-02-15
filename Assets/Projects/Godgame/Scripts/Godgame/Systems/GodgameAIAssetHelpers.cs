@@ -52,7 +52,7 @@ namespace Godgame.Systems
 
             // Action 2: ImproveMorale - responds to morale need (sensor reading 2 = morale urgency)
             ref var action2 = ref actions[2];
-            action2.BiasMask = AIUtilityBiasMask.None;
+            action2.BiasMask = AIUtilityBiasMask.Social;
             var factors2 = builder.Allocate(ref action2.Factors, 1);
             factors2[0] = new AIUtilityCurveBlob
             {
@@ -65,7 +65,7 @@ namespace Godgame.Systems
 
             // Action 3: Work - responds to job availability (sensor reading 3 = nearest resource node)
             ref var action3 = ref actions[3];
-            action3.BiasMask = AIUtilityBiasMask.None;
+            action3.BiasMask = AIUtilityBiasMask.Greed;
             var factors3 = builder.Allocate(ref action3.Factors, 1);
             factors3[0] = new AIUtilityCurveBlob
             {
