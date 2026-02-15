@@ -103,13 +103,13 @@ namespace PureDOTS.Systems.Time
 
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = ResolveCurrentTick();
+            var currentTick = ResolveCurrentTick(ref state);
 
             foreach (var (settingsRef, runtimeRef, buckets, events, requests) in
                      SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>, DynamicBuffer<TickWheelBucket>, DynamicBuffer<TickWheelEvent>, DynamicBuffer<TickWheelScheduleRequest>>())
             {
                 var settings = NormalizeSettings(settingsRef.ValueRO);
-                EnsureBucketShape(ref buckets, settings.WheelSize);
+                EnsureBucketShape(buckets, settings.WheelSize);
 
                 if (requests.Length == 0)
                 {
@@ -159,7 +159,7 @@ namespace PureDOTS.Systems.Time
             };
         }
 
-        private static uint ResolveCurrentTick()
+        private uint ResolveCurrentTick(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
             {
@@ -175,7 +175,7 @@ namespace PureDOTS.Systems.Time
             return (int)(slotTick % settings.WheelSize);
         }
 
-        private static void EnsureBucketShape(ref DynamicBuffer<TickWheelBucket> buckets, uint wheelSize)
+        private static void EnsureBucketShape(DynamicBuffer<TickWheelBucket> buckets, uint wheelSize)
         {
             if (buckets.Length == (int)wheelSize)
             {
@@ -226,7 +226,7 @@ namespace PureDOTS.Systems.Time
 
         public void OnUpdate(ref SystemState state)
         {
-            var currentTick = ResolveCurrentTick();
+            var currentTick = ResolveCurrentTick(ref state);
             _receiptLookup.Update(ref state);
             _entityLookup.Update(ref state);
 
@@ -237,7 +237,7 @@ namespace PureDOTS.Systems.Time
                      SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>, DynamicBuffer<TickWheelBucket>, DynamicBuffer<TickWheelEvent>>())
             {
                 var settings = NormalizeSettings(settingsRef.ValueRO);
-                EnsureBucketShape(ref buckets, settings.WheelSize);
+                EnsureBucketShape(buckets, settings.WheelSize);
 
                 var runtime = runtimeRef.ValueRW;
                 var dispatchIndex = ComputeBucketIndex(currentTick, settings);
@@ -333,7 +333,7 @@ namespace PureDOTS.Systems.Time
             };
         }
 
-        private static uint ResolveCurrentTick()
+        private uint ResolveCurrentTick(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
             {
@@ -349,7 +349,7 @@ namespace PureDOTS.Systems.Time
             return (int)(slotTick % settings.WheelSize);
         }
 
-        private static void EnsureBucketShape(ref DynamicBuffer<TickWheelBucket> buckets, uint wheelSize)
+        private static void EnsureBucketShape(DynamicBuffer<TickWheelBucket> buckets, uint wheelSize)
         {
             if (buckets.Length == (int)wheelSize)
             {
