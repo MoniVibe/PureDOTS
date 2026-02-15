@@ -106,6 +106,7 @@ namespace Godgame.Authoring
 
                 // Action 0: SatisfyHunger
                 ref var action0 = ref actions[0];
+                action0.BiasMask = AIUtilityBiasMask.None;
                 var factors0 = blobBuilder.Allocate(ref action0.Factors, 1);
                 factors0[0] = new AIUtilityCurveBlob
                 {
@@ -118,6 +119,7 @@ namespace Godgame.Authoring
 
                 // Action 1: Rest
                 ref var action1 = ref actions[1];
+                action1.BiasMask = AIUtilityBiasMask.None;
                 var factors1 = blobBuilder.Allocate(ref action1.Factors, 1);
                 factors1[0] = new AIUtilityCurveBlob
                 {
@@ -130,6 +132,7 @@ namespace Godgame.Authoring
 
                 // Action 2: ImproveMorale
                 ref var action2 = ref actions[2];
+                action2.BiasMask = AIUtilityBiasMask.None;
                 var factors2 = blobBuilder.Allocate(ref action2.Factors, 1);
                 factors2[0] = new AIUtilityCurveBlob
                 {
@@ -142,6 +145,7 @@ namespace Godgame.Authoring
 
                 // Action 3: Work
                 ref var action3 = ref actions[3];
+                action3.BiasMask = AIUtilityBiasMask.None;
                 var factors3 = blobBuilder.Allocate(ref action3.Factors, 1);
                 factors3[0] = new AIUtilityCurveBlob
                 {
@@ -227,6 +231,5 @@ namespace Godgame.Authoring
         }
     }
 }
-
 
 

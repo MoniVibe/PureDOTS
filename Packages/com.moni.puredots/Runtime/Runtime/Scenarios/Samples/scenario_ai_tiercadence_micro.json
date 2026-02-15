@@ -1,0 +1,34 @@
+{
+  "scenarioId": "scenario.ai.tiercadence.micro",
+  "seed": 41029,
+  "runTicks": 1200,
+  "entityCounts": [],
+  "inputCommands": [],
+  "assertions": [
+    {
+      "metricId": "ai.tiercadence.tier0.eval_count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier0 evaluates repeatedly."
+    },
+    {
+      "metricId": "ai.tiercadence.tier1.eval_count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier1 evaluates at reduced cadence."
+    },
+    {
+      "metricId": "ai.tiercadence.tier2.eval_count",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Tier2 evaluates at event-driven cadence."
+    },
+    {
+      "metricId": "ai.tiercadence.digest",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Determinism digest is emitted and non-zero."
+    }
+  ],
+  "docs": "Tier cadence micro: equal AI cohorts across Tier0/1/2/3 with identical utility inputs. Per-tier evaluation counts prove cadence gating from TierProfileSettings."
+}

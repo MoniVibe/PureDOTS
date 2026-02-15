@@ -1,0 +1,28 @@
+{
+  "scenarioId": "scenario.ai.biasproof.micro",
+  "seed": 41019,
+  "runTicks": 1500,
+  "entityCounts": [],
+  "inputCommands": [],
+  "assertions": [
+    {
+      "metricId": "ai.biasproof.groupA.aggression_chosen",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Group A chooses aggression-tagged action at least once."
+    },
+    {
+      "metricId": "ai.biasproof.groupB.social_chosen",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Group B chooses social-tagged action at least once."
+    },
+    {
+      "metricId": "ai.biasproof.digest",
+      "op": 5,
+      "expectedValue": 1.0,
+      "description": "Determinism digest is emitted and non-zero."
+    }
+  ],
+  "docs": "AI biasproof micro: two cohorts share identical utility factors and sensor readings, but divergent BehaviorTuning biases drive different best-action selections via AIUtilityBiasMask."
+}
