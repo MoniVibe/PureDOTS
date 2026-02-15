@@ -41,7 +41,7 @@ namespace PureDOTS.Systems.Scenarios
                 return;
             }
 
-            var startTick = ResolveCurrentTick() + 1u;
+            var startTick = ResolveCurrentTick(ref state) + 1u;
             var wheelEntity = SystemAPI.GetSingletonEntity<TickWheelSingletonTag>();
             var settings = state.EntityManager.GetComponentData<TickWheelSettings>(wheelEntity);
             settings.WheelSize = 512u;
@@ -83,7 +83,7 @@ namespace PureDOTS.Systems.Scenarios
             state.Enabled = false;
         }
 
-        private static uint ResolveCurrentTick()
+        private uint ResolveCurrentTick(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<TickTimeState>(out var tickState))
             {
