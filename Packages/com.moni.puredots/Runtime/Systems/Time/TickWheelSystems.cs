@@ -377,7 +377,7 @@ namespace PureDOTS.Systems.Time
             {
                 var keyIndex = eventIndices[i];
                 var j = i - 1;
-                while (j >= 0 && CompareEvents(in events[keyIndex], in events[eventIndices[j]]) < 0)
+                while (j >= 0 && CompareEvents(events[keyIndex], events[eventIndices[j]]) < 0)
                 {
                     eventIndices[j + 1] = eventIndices[j];
                     j--;
@@ -387,7 +387,7 @@ namespace PureDOTS.Systems.Time
             }
         }
 
-        private static int CompareEvents(in TickWheelEvent lhs, in TickWheelEvent rhs)
+        private static int CompareEvents(TickWheelEvent lhs, TickWheelEvent rhs)
         {
             if (lhs.DueTick != rhs.DueTick)
             {
