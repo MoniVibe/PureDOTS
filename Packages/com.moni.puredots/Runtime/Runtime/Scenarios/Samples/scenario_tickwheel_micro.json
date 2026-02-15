@@ -1,0 +1,40 @@
+{
+  "scenarioId": "scenario.puredots.tickwheel.micro",
+  "seed": 4101,
+  "runTicks": 260,
+  "entityCounts": [],
+  "inputCommands": [
+    {
+      "tick": 0,
+      "commandId": "time.play",
+      "payload": ""
+    }
+  ],
+  "assertions": [
+    {
+      "metricId": "tickwheel.scheduled_count",
+      "op": 0,
+      "expectedValue": 4096.0,
+      "description": "All micro harness events were scheduled."
+    },
+    {
+      "metricId": "tickwheel.fired_count",
+      "op": 0,
+      "expectedValue": 4096.0,
+      "description": "All scheduled events fired exactly once."
+    },
+    {
+      "metricId": "tickwheel.max_lateness_ticks",
+      "op": 0,
+      "expectedValue": 0.0,
+      "description": "Wheel dispatch should fire at exact due ticks in the micro harness."
+    },
+    {
+      "metricId": "tickwheel.digest",
+      "op": 4,
+      "expectedValue": 0.0,
+      "description": "Digest should be non-zero and stable for same-seed runs."
+    }
+  ],
+  "docs": "Tick wheel micro harness with deterministic due ticks and tie-break ordering."
+}
