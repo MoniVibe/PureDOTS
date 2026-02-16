@@ -240,6 +240,10 @@ namespace PureDOTS.Systems.Time
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
+            // Ensure the metrics buffer exists before iterating query entities.
+            // ScenarioMetricsUtility.SetMetric can add the buffer if missing, which is illegal mid-iteration.
+            ScenarioMetricsUtility.TryGetMetricsBuffer(state.EntityManager, out _);
+
             foreach (var (settingsRef, runtimeRef, entity) in
                      SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>>().WithEntityAccess())
             {
