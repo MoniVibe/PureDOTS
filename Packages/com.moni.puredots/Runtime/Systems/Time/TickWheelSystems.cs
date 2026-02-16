@@ -32,9 +32,13 @@ namespace PureDOTS.Systems.Time
             state.EntityManager.SetComponentData(entity, TickWheelSettings.CreateDefault());
             state.EntityManager.SetComponentData(entity, default(TickWheelRuntimeState));
 
-            var buckets = state.EntityManager.AddBuffer<TickWheelBucket>(entity);
-            var events = state.EntityManager.AddBuffer<TickWheelEvent>(entity);
-            var requests = state.EntityManager.AddBuffer<TickWheelScheduleRequest>(entity);
+            state.EntityManager.AddBuffer<TickWheelBucket>(entity);
+            state.EntityManager.AddBuffer<TickWheelEvent>(entity);
+            state.EntityManager.AddBuffer<TickWheelScheduleRequest>(entity);
+
+            var buckets = state.EntityManager.GetBuffer<TickWheelBucket>(entity);
+            var events = state.EntityManager.GetBuffer<TickWheelEvent>(entity);
+            var requests = state.EntityManager.GetBuffer<TickWheelScheduleRequest>(entity);
 
             events.Clear();
             requests.Clear();
