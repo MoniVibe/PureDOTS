@@ -6,6 +6,7 @@ using PureDOTS.Runtime.Spatial;
 using PureDOTS.Runtime.Steering;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -95,7 +96,7 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
             public bool HasAmmoCatalog;
             [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly, NativeDisableContainerSafetyRestriction] public ComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public ComponentLookup<VelocitySample> VelocityLookup;
             public bool PoolingEnabled;
             public bool HasTrackingHub;

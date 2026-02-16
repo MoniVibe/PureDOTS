@@ -239,6 +239,8 @@ namespace PureDOTS.Systems.Time
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var hasRuntime = false;
+            TickWheelRuntimeState metricsRuntime = default;
 
             foreach (var (settingsRef, runtimeRef, entity) in
                      SystemAPI.Query<RefRO<TickWheelSettings>, RefRW<TickWheelRuntimeState>>().WithEntityAccess())
@@ -325,11 +327,17 @@ namespace PureDOTS.Systems.Time
                 dueEventIndices.Dispose();
 
                 runtimeRef.ValueRW = runtime;
-                ScenarioMetricsUtility.SetMetric(state.EntityManager, _scheduledCountKey, runtime.ScheduledCount);
-                ScenarioMetricsUtility.SetMetric(state.EntityManager, _firedCountKey, runtime.FiredCount);
-                ScenarioMetricsUtility.SetMetric(state.EntityManager, _maxLatenessTicksKey, runtime.MaxLatenessTicks);
-                ScenarioMetricsUtility.SetMetric(state.EntityManager, _digestKey, runtime.Digest);
+                metricsRuntime = runtime;
+                hasRuntime = true;
                 break;
+            }
+
+            if (hasRuntime)
+            {
+                ScenarioMetricsUtility.SetMetric(state.EntityManager, _scheduledCountKey, metricsRuntime.ScheduledCount);
+                ScenarioMetricsUtility.SetMetric(state.EntityManager, _firedCountKey, metricsRuntime.FiredCount);
+                ScenarioMetricsUtility.SetMetric(state.EntityManager, _maxLatenessTicksKey, metricsRuntime.MaxLatenessTicks);
+                ScenarioMetricsUtility.SetMetric(state.EntityManager, _digestKey, metricsRuntime.Digest);
             }
         }
 
