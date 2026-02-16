@@ -242,9 +242,14 @@ namespace PureDOTS.Runtime.Scenarios
                 return false;
             }
 
-            buffer = entityManager.HasBuffer<ScenarioMetricSample>(scenarioEntity)
-                ? entityManager.GetBuffer<ScenarioMetricSample>(scenarioEntity)
-                : entityManager.AddBuffer<ScenarioMetricSample>(scenarioEntity);
+            // Never create buffers here during simulation updates; structural changes can
+            // invalidate lookups/jobs mid-frame. Writers should no-op until bootstrap adds it.
+            if (!entityManager.HasBuffer<ScenarioMetricSample>(scenarioEntity))
+            {
+                return false;
+            }
+
+            buffer = entityManager.GetBuffer<ScenarioMetricSample>(scenarioEntity);
             return true;
         }
 
