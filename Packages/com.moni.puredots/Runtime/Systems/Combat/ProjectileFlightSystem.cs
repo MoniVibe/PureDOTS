@@ -22,7 +22,7 @@ namespace PureDOTS.Systems.Combat
     [UpdateBefore(typeof(ProjectileCollisionSystem))]
     public partial struct ProjectileFlightSystem : ISystem
     {
-        private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<LocalToWorld> _targetTransformLookup;
         private ComponentLookup<VelocitySample> _velocityLookup;
 
         [BurstCompile]
@@ -31,7 +31,7 @@ namespace PureDOTS.Systems.Combat
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ProjectileActive>();
-            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _targetTransformLookup = state.GetComponentLookup<LocalToWorld>(true);
             _velocityLookup = state.GetComponentLookup<VelocitySample>(true);
         }
 
@@ -66,7 +66,7 @@ namespace PureDOTS.Systems.Combat
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            _transformLookup.Update(ref state);
+            _targetTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);
 
             var job = new ProjectileFlightJob
@@ -75,7 +75,7 @@ namespace PureDOTS.Systems.Combat
                 ProjectileCatalog = projectileCatalog.Catalog,
                 HasAmmoCatalog = hasAmmoCatalog,
                 AmmoCatalog = hasAmmoCatalog ? ammoCatalog.Catalog : default,
-                TransformLookup = _transformLookup,
+                TargetTransformLookup = _targetTransformLookup,
                 VelocityLookup = _velocityLookup,
                 PoolingEnabled = poolingEnabled,
                 HasTrackingHub = hasTrackingHub,
@@ -95,7 +95,7 @@ namespace PureDOTS.Systems.Combat
             [ReadOnly] public BlobAssetReference<ProjectileCatalogBlob> ProjectileCatalog;
             public bool HasAmmoCatalog;
             [ReadOnly] public BlobAssetReference<AmmoCatalogBlob> AmmoCatalog;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalToWorld> TargetTransformLookup;
             [ReadOnly] public ComponentLookup<VelocitySample> VelocityLookup;
             public bool PoolingEnabled;
             public bool HasTrackingHub;
@@ -233,13 +233,13 @@ namespace PureDOTS.Systems.Combat
                     return currentVel;
                 }
 
-                if (!TransformLookup.HasComponent(projectile.TargetEntity))
+                if (!TargetTransformLookup.HasComponent(projectile.TargetEntity))
                 {
                     projectile.TargetEntity = Entity.Null;
                     return currentVel;
                 }
 
-                float3 targetPos = TransformLookup[projectile.TargetEntity].Position;
+                float3 targetPos = TargetTransformLookup[projectile.TargetEntity].Position;
                 float3 targetVel = VelocityLookup.HasComponent(projectile.TargetEntity)
                     ? VelocityLookup[projectile.TargetEntity].Velocity
                     : float3.zero;

@@ -60,6 +60,12 @@ namespace PureDOTS.Systems.Profile
                 }
                 ecb.Playback(state.EntityManager);
                 ecb.Dispose();
+
+                // Structural changes invalidate lookups; refresh before reading again.
+                _traitAxisLookup.Update(ref state);
+                _personalityLookup.Update(ref state);
+                _tuningLookup.Update(ref state);
+                _dispositionLookup.Update(ref state);
             }
 
             foreach (var (axes, resolved, entity) in SystemAPI
