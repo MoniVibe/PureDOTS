@@ -152,11 +152,12 @@ namespace PureDOTS.Rendering
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             using var missingEvents = new NativeQueue<MissingMappingEvent>(Allocator.TempJob);
-            var requiredKeys = default(NativeArray<ushort>);
+            var requiredKeys = new NativeArray<ushort>(0, Allocator.TempJob);
             if (EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderPresentationCatalogValidation.RequiredRenderSemanticKey>())
                 .TryGetSingletonBuffer(out DynamicBuffer<RenderPresentationCatalogValidation.RequiredRenderSemanticKey> requiredBuffer)
                 && requiredBuffer.Length > 0)
             {
+                requiredKeys.Dispose();
                 requiredKeys = new NativeArray<ushort>(requiredBuffer.Length, Allocator.TempJob);
                 for (int i = 0; i < requiredBuffer.Length; i++)
                     requiredKeys[i] = requiredBuffer[i].Value;
