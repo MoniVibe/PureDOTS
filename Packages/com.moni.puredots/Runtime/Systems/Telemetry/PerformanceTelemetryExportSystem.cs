@@ -51,6 +51,7 @@ namespace PureDOTS.Systems.Telemetry
         private bool _flushInitialized;
         private uint _nextFlushTick;
         private const uint ArchetypeSpikeWarmupTicks = 240;
+        private NativeList<EntityArchetype> _archetypeScratch;
 
         protected override void OnCreate()
         {
@@ -65,6 +66,7 @@ namespace PureDOTS.Systems.Telemetry
 
             _companionQuery = GetEntityQuery(ComponentType.ReadOnly<CompanionPresentation>());
             _universalQuery = EntityManager.UniversalQuery;
+            _archetypeScratch = new NativeList<EntityArchetype>(Allocator.Persistent);
 
             if (SystemAPI.TryGetSingletonEntity<TimeState>(out var timeEntity)
                 && !EntityManager.HasComponent<PerformanceBudgetStatus>(timeEntity))
@@ -79,6 +81,10 @@ namespace PureDOTS.Systems.Telemetry
 
         protected override void OnDestroy()
         {
+            if (_archetypeScratch.IsCreated)
+            {
+                _archetypeScratch.Dispose();
+            }
             _writer?.Dispose();
             _writer = null;
         }
@@ -127,11 +133,10 @@ namespace PureDOTS.Systems.Telemetry
 
             var entityCount = _universalQuery.CalculateEntityCount();
             var chunkCount = _universalQuery.CalculateChunkCountWithoutFiltering();
-            var archetypes = new NativeList<EntityArchetype>(Allocator.Temp);
-            EntityManager.GetAllArchetypes(archetypes);
-            var archetypeCount = archetypes.Length;
+            _archetypeScratch.Clear();
+            EntityManager.GetAllArchetypes(_archetypeScratch);
+            var archetypeCount = _archetypeScratch.Length;
             var chunksPerArchetype = archetypeCount > 0 ? (double)chunkCount / archetypeCount : 0d;
-            archetypes.Dispose();
 
             WriteMetric("entities.total", entityCount, "count", timeState.Tick, timestampMs);
             WriteMetric("chunks.total", chunkCount, "count", timeState.Tick, timestampMs);
