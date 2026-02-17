@@ -543,7 +543,32 @@ namespace PureDOTS.Systems
                 return enabled;
             }
 
+            // In batch PlayMode test runs, rewind proof mutates time and trips parity checks.
+            if (IsBatchTestRun())
+            {
+                return false;
+            }
+
             return RuntimeMode.IsHeadless;
+        }
+
+        private static bool IsBatchTestRun()
+        {
+            var args = SystemEnv.GetCommandLineArgs();
+            if (args == null)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "-runTests", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool ReadEnvFlag(string key, bool defaultValue)

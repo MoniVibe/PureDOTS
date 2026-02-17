@@ -842,7 +842,32 @@ namespace PureDOTS.Systems
                 return enabled;
             }
 
+            // Keep render/runtime parity runs deterministic: don't auto-enable time proof during batch test execution.
+            if (IsBatchTestRun())
+            {
+                return false;
+            }
+
             return RuntimeMode.IsHeadless;
+        }
+
+        private static bool IsBatchTestRun()
+        {
+            var args = SystemEnv.GetCommandLineArgs();
+            if (args == null)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "-runTests", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool TryReadEnvFlag(string key, out bool value)
