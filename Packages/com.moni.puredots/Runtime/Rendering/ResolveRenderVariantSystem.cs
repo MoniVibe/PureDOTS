@@ -152,14 +152,21 @@ namespace PureDOTS.Rendering
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             using var missingEvents = new NativeQueue<MissingMappingEvent>(Allocator.TempJob);
-            var requiredKeys = new NativeArray<ushort>(0, Allocator.TempJob);
+            var requiredSemanticCount = 0;
+            // Jobs require valid containers even when the logical required key set is empty.
+            var requiredKeys = new NativeArray<ushort>(1, Allocator.TempJob, NativeArrayOptions.ClearMemory);
             if (EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderPresentationCatalogValidation.RequiredRenderSemanticKey>())
                 .TryGetSingletonBuffer(out DynamicBuffer<RenderPresentationCatalogValidation.RequiredRenderSemanticKey> requiredBuffer)
                 && requiredBuffer.Length > 0)
             {
-                requiredKeys.Dispose();
-                requiredKeys = new NativeArray<ushort>(requiredBuffer.Length, Allocator.TempJob);
-                for (int i = 0; i < requiredBuffer.Length; i++)
+                requiredSemanticCount = requiredBuffer.Length;
+                if (requiredKeys.Length < requiredSemanticCount)
+                {
+                    requiredKeys.Dispose();
+                    requiredKeys = new NativeArray<ushort>(requiredSemanticCount, Allocator.TempJob);
+                }
+
+                for (int i = 0; i < requiredSemanticCount; i++)
                     requiredKeys[i] = requiredBuffer[i].Value;
             }
 #endif
@@ -172,7 +179,8 @@ namespace PureDOTS.Rendering
                 ActiveThemeId = theme.ThemeId,
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 MissingMappingEvents = missingEvents.AsParallelWriter(),
-                RequiredSemanticKeys = requiredKeys
+                RequiredSemanticKeys = requiredKeys,
+                RequiredSemanticCount = requiredSemanticCount
 #endif
             };
 
@@ -245,6 +253,7 @@ namespace PureDOTS.Rendering
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             public NativeQueue<MissingMappingEvent>.ParallelWriter MissingMappingEvents;
             [ReadOnly] public NativeArray<ushort> RequiredSemanticKeys;
+            [ReadOnly] public int RequiredSemanticCount;
 #endif
 
             private int ResolveThemeIndex(ushort themeId)
@@ -290,10 +299,10 @@ namespace PureDOTS.Rendering
 
                 // Dev-only detection: for game-declared required semantics, a resolved variant of 0 means "fallback due to missing mapping".
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                if (resolvedVariant == 0 && RequiredSemanticKeys.IsCreated)
+                if (resolvedVariant == 0 && RequiredSemanticCount > 0)
                 {
                     // Required key sets are small (Space4X: ~9). Linear scan is fine in dev.
-                    for (int i = 0; i < RequiredSemanticKeys.Length; i++)
+                    for (int i = 0; i < RequiredSemanticCount; i++)
                     {
                         if (RequiredSemanticKeys[i] == (ushort)semantic)
                         {
