@@ -20,6 +20,9 @@ namespace PureDOTS.Rendering
         private EntityQuery _themeOverrideChangeQuery;
         private EntityQuery _variantOverrideChangeQuery;
         private EntityQuery _renderKeyChangeQuery;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private EntityQuery _requiredSemanticKeysQuery;
+#endif
         private ushort _lastThemeId;
         private uint _lastCatalogVersion;
 
@@ -95,6 +98,10 @@ namespace PureDOTS.Rendering
             });
             _renderKeyChangeQuery.AddChangedVersionFilter(ComponentType.ReadOnly<RenderKey>());
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            _requiredSemanticKeysQuery = GetEntityQuery(ComponentType.ReadOnly<RenderPresentationCatalogValidation.RequiredRenderSemanticKey>());
+#endif
+
             RequireForUpdate<RenderPresentationCatalog>();
             RequireForUpdate<ActiveRenderTheme>();
 
@@ -155,8 +162,7 @@ namespace PureDOTS.Rendering
             var requiredSemanticCount = 0;
             // Jobs require valid containers even when the logical required key set is empty.
             var requiredKeys = new NativeArray<ushort>(1, Allocator.TempJob, NativeArrayOptions.ClearMemory);
-            if (EntityManager.CreateEntityQuery(ComponentType.ReadOnly<RenderPresentationCatalogValidation.RequiredRenderSemanticKey>())
-                .TryGetSingletonBuffer(out DynamicBuffer<RenderPresentationCatalogValidation.RequiredRenderSemanticKey> requiredBuffer)
+            if (_requiredSemanticKeysQuery.TryGetSingletonBuffer(out DynamicBuffer<RenderPresentationCatalogValidation.RequiredRenderSemanticKey> requiredBuffer)
                 && requiredBuffer.Length > 0)
             {
                 requiredSemanticCount = requiredBuffer.Length;
