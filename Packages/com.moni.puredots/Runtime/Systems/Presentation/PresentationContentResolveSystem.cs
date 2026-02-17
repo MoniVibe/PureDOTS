@@ -52,7 +52,8 @@ namespace PureDOTS.Systems
             }
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            bool allowRender = !RuntimeMode.IsHeadless;
+            // Allow render bindings when rendering is explicitly enabled, even in batch/headless parity runs.
+            bool allowRender = RuntimeMode.IsRenderingEnabled;
 
             foreach (var (identity, entity) in SystemAPI
                          .Query<RefRO<RegistryIdentity>>()
