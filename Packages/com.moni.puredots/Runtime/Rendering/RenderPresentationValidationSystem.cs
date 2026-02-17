@@ -12,14 +12,22 @@ namespace PureDOTS.Rendering
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
     public partial struct RenderPresentationValidationSystem : ISystem
     {
+        private const int ValidationWarmupFrames = 8;
+        private const int PersistentMissingFrameThreshold = 120;
+
         private EntityQuery _missingSemanticQuery;
         private EntityQuery _missingPresenterQuery;
         private NativeParallelHashSet<ulong> _reportedSemantic;
         private NativeParallelHashSet<ulong> _reportedPresenter;
         private EntityTypeHandle _entityTypeHandle;
+        private int _presentationReadyFrames;
+        private int _missingSemanticFrames;
+        private int _missingPresenterFrames;
 
         public void OnCreate(ref SystemState state)
         {
+            const EntityQueryOptions queryOptions = EntityQueryOptions.IgnoreComponentEnabledState;
+
             _missingSemanticQuery = state.GetEntityQuery(new EntityQueryDesc
             {
                 All = new[]
@@ -29,7 +37,8 @@ namespace PureDOTS.Rendering
                 None = new[]
                 {
                     ComponentType.ReadOnly<RenderSemanticKey>()
-                }
+                },
+                Options = queryOptions
             });
 
             _missingPresenterQuery = state.GetEntityQuery(new EntityQueryDesc
@@ -44,7 +53,8 @@ namespace PureDOTS.Rendering
                     ComponentType.ReadOnly<SpritePresenter>(),
                     ComponentType.ReadOnly<DebugPresenter>(),
                     ComponentType.ReadOnly<TracerPresenter>()
-                }
+                },
+                Options = queryOptions
             });
 
             _reportedSemantic = new NativeParallelHashSet<ulong>(64, Allocator.Persistent);
@@ -64,15 +74,46 @@ namespace PureDOTS.Rendering
         {
             if (!SystemAPI.HasSingleton<PresentationReady>())
             {
+                _presentationReadyFrames = 0;
+                _missingSemanticFrames = 0;
+                _missingPresenterFrames = 0;
+                return;
+            }
+
+            if (_presentationReadyFrames < ValidationWarmupFrames)
+            {
+                _presentationReadyFrames++;
                 return;
             }
 
             _entityTypeHandle.Update(ref state);
-            ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
-                "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");
+            if (_missingSemanticQuery.IsEmptyIgnoreFilter)
+            {
+                _missingSemanticFrames = 0;
+            }
+            else
+            {
+                _missingSemanticFrames++;
+                if (_missingSemanticFrames >= PersistentMissingFrameThreshold)
+                {
+                    ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
+                        "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");
+                }
+            }
 
-            ReportOnce(ref state, _missingPresenterQuery, ref _reportedPresenter,
-                "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Tracer/Debug).");
+            if (_missingPresenterQuery.IsEmptyIgnoreFilter)
+            {
+                _missingPresenterFrames = 0;
+            }
+            else
+            {
+                _missingPresenterFrames++;
+                if (_missingPresenterFrames >= PersistentMissingFrameThreshold)
+                {
+                    ReportOnce(ref state, _missingPresenterQuery, ref _reportedPresenter,
+                        "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Tracer/Debug).");
+                }
+            }
         }
 
         private void ReportOnce(
@@ -98,7 +139,17 @@ namespace PureDOTS.Rendering
                     continue;
 
                 reportedSet.Add(key);
-                Debug.LogError($"{message} Example entity: {entities[0]}");
+                var sample = entities[0];
+                var details = string.Empty;
+                if (state.EntityManager.HasComponent<RenderSemanticKey>(sample))
+                {
+                    details += $" SemanticKey={state.EntityManager.GetComponentData<RenderSemanticKey>(sample).Value}";
+                }
+                if (state.EntityManager.HasComponent<RenderKey>(sample))
+                {
+                    details += $" RenderKey={state.EntityManager.GetComponentData<RenderKey>(sample).ArchetypeId}";
+                }
+                Debug.LogError($"{message} Example entity: {sample}.{details}");
             }
         }
 
