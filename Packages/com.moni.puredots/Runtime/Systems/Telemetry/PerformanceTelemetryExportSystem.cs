@@ -50,6 +50,7 @@ namespace PureDOTS.Systems.Telemetry
         private bool _headerWritten;
         private bool _flushInitialized;
         private uint _nextFlushTick;
+        private const uint ArchetypeSpikeWarmupTicks = 240;
 
         protected override void OnCreate()
         {
@@ -264,6 +265,14 @@ namespace PureDOTS.Systems.Telemetry
             const int SpikeAbsoluteThreshold = 50; // Absolute increase threshold
             const float SpikePercentThreshold = 0.10f; // 10% increase threshold
             const uint WarningCooldownTicks = 60; // Rate limit: max one warning per 60 ticks
+
+            // Allow archetype cardinality to settle during world/bootstrap startup.
+            if (currentTick < ArchetypeSpikeWarmupTicks)
+            {
+                _lastArchetypeCount = currentArchetypeCount;
+                _hasArchetypeBaseline = true;
+                return;
+            }
 
             if (!_hasArchetypeBaseline)
             {
