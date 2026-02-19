@@ -1,0 +1,134 @@
+{
+  "version": "v0",
+  "date": "2026-02-19",
+  "entries": [
+    {
+      "canonicalKey": "canon.space4x.smoke",
+      "project": "space4x",
+      "scenarioId": "space4x_smoke",
+      "path": "space4x/Assets/Scenarios/space4x_smoke.json",
+      "tier": "smoke",
+      "purpose": "Primary Space4X smoke scenario."
+    },
+    {
+      "canonicalKey": "canon.space4x.supergreen",
+      "project": "space4x",
+      "scenarioId": "space4x_collision_micro",
+      "path": "space4x/Assets/Scenarios/space4x_collision_micro.json",
+      "tier": "smoke",
+      "purpose": "Fast headless super-green gate."
+    },
+    {
+      "canonicalKey": "canon.space4x.mining_micro",
+      "project": "space4x",
+      "scenarioId": "space4x_mining_micro",
+      "path": "space4x/Assets/Scenarios/space4x_mining_micro.json",
+      "tier": "micro",
+      "purpose": "Mining behavior slice."
+    },
+    {
+      "canonicalKey": "canon.space4x.combat_micro",
+      "project": "space4x",
+      "scenarioId": "space4x_combat_micro",
+      "path": "space4x/Assets/Scenarios/space4x_combat_micro.json",
+      "tier": "micro",
+      "purpose": "Combat behavior slice."
+    },
+    {
+      "canonicalKey": "canon.space4x.economy_micro",
+      "project": "space4x",
+      "scenarioId": "scenario.space4x.economy_loop_micro",
+      "path": "space4x/Assets/Scenarios/space4x_economy_loop_micro.json",
+      "tier": "micro",
+      "purpose": "Economy throughput slice."
+    },
+    {
+      "canonicalKey": "canon.space4x.mining_combat",
+      "project": "space4x",
+      "scenarioId": "space4x_mining_combat",
+      "path": "space4x/Assets/Scenarios/space4x_mining_combat.json",
+      "tier": "slice",
+      "purpose": "Mixed mining/combat slice."
+    },
+    {
+      "canonicalKey": "canon.space4x.fleetcrawl_survivors_v1",
+      "project": "space4x",
+      "scenarioId": "space4x_fleetcrawl_survivors_v1",
+      "path": "space4x/Assets/Scenarios/space4x_fleetcrawl_survivors_v1.json",
+      "tier": "slice",
+      "purpose": "FleetCrawl Survivors intent slice."
+    },
+    {
+      "canonicalKey": "canon.space4x.scale_100k",
+      "project": "space4x",
+      "scenarioId": "scenario_space_01_scale_100k",
+      "path": "space4x/Assets/Scenarios/scenario_space_01_scale_100k.json",
+      "tier": "scale",
+      "purpose": "Space4X scale baseline."
+    },
+    {
+      "canonicalKey": "canon.godgame.smoke",
+      "project": "godgame",
+      "scenarioId": "godgame_smoke",
+      "path": "godgame/Assets/Scenarios/Godgame/godgame_smoke.json",
+      "tier": "smoke",
+      "purpose": "Primary Godgame smoke scenario."
+    },
+    {
+      "canonicalKey": "canon.godgame.smoke_determinism",
+      "project": "godgame",
+      "scenarioId": "scenario.godgame.smoke_determinism",
+      "path": "godgame/Assets/Scenarios/Godgame/godgame_smoke_determinism.json",
+      "tier": "smoke",
+      "purpose": "Determinism smoke gate."
+    },
+    {
+      "canonicalKey": "canon.godgame.storehouse_throughput",
+      "project": "godgame",
+      "scenarioId": "godgame_storehouse_throughput_micro",
+      "path": "godgame/Assets/Scenarios/Godgame/godgame_storehouse_throughput_micro.json",
+      "tier": "micro",
+      "purpose": "Gather/deliver throughput slice."
+    },
+    {
+      "canonicalKey": "canon.godgame.villager_crowd_flow",
+      "project": "godgame",
+      "scenarioId": "godgame_villager_crowd_flow_micro",
+      "path": "godgame/Assets/Scenarios/Godgame/godgame_villager_crowd_flow_micro.json",
+      "tier": "micro",
+      "purpose": "Movement/collision crowd slice."
+    },
+    {
+      "canonicalKey": "canon.godgame.combat_micro",
+      "project": "godgame",
+      "scenarioId": "godgame_combat_micro",
+      "path": "godgame/Assets/Scenarios/Godgame/godgame_combat_micro.json",
+      "tier": "micro",
+      "purpose": "Combat slice."
+    },
+    {
+      "canonicalKey": "canon.puredots.firing_range_micro",
+      "project": "puredots",
+      "scenarioId": "puredots_firing_range_micro",
+      "path": "puredots/Assets/Scenarios/puredots_firing_range_micro.json",
+      "tier": "micro",
+      "purpose": "Core projectile/combat harness."
+    },
+    {
+      "canonicalKey": "canon.puredots.projectile_lifecycle_micro",
+      "project": "puredots",
+      "scenarioId": "puredots_projectile_lifecycle_micro",
+      "path": "puredots/Assets/Scenarios/puredots_projectile_lifecycle_micro.json",
+      "tier": "micro",
+      "purpose": "Projectile lifecycle verification."
+    },
+    {
+      "canonicalKey": "canon.puredots.shipyard_equip_micro",
+      "project": "puredots",
+      "scenarioId": "puredots_shipyard_equip_micro",
+      "path": "puredots/Assets/Scenarios/puredots_shipyard_equip_micro.json",
+      "tier": "micro",
+      "purpose": "Module equip pipeline slice."
+    }
+  ]
+}

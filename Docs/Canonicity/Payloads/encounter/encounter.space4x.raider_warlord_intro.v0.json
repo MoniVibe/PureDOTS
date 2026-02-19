@@ -1,0 +1,30 @@
+{
+  "contractId": "contract.encounter_profile.v0",
+  "id": "encounter.space4x.raider_warlord_intro.v0",
+  "encounterClass": "boss",
+  "factions": [
+    {
+      "factionId": "faction.survivors",
+      "role": "friendly",
+      "strengthWeight": 1
+    },
+    {
+      "factionId": "faction.raiders",
+      "role": "hostile",
+      "strengthWeight": 1.35
+    }
+  ],
+  "spawnBudget": {
+    "threat": 260,
+    "waveCountMax": 3,
+    "reinforcementDelay_s": 18
+  },
+  "bossProfile": {
+    "intentId": "intent.boss.raider_warlord",
+    "phaseCount": 3,
+    "enrageThreshold": 0.25
+  },
+  "escalationPolicy": {
+    "allowRetreat": false
+  }
+}

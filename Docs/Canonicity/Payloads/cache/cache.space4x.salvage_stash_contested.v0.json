@@ -1,0 +1,31 @@
+{
+  "contractId": "contract.loot_cache.v0",
+  "id": "cache.space4x.salvage_stash_contested.v0",
+  "cacheType": "salvage_stash",
+  "locationPolicy": {
+    "zone": "contested_inner_lane",
+    "riskTier": "medium"
+  },
+  "lootTable": [
+    {
+      "resourceId": "Minerals",
+      "minAmount": 120,
+      "maxAmount": 260,
+      "weight": 1
+    },
+    {
+      "resourceId": "RareMetals",
+      "minAmount": 20,
+      "maxAmount": 65,
+      "weight": 0.35
+    }
+  ],
+  "discoveryPolicy": {
+    "requiresScan": true,
+    "scanDifficulty": 0.45
+  },
+  "triggerPolicy": {
+    "triggerOnOpen": true,
+    "spawnEncounterId": "encounter.space4x.raider_warlord_intro.v0"
+  }
+}

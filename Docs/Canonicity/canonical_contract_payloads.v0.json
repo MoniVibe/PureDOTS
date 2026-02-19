@@ -1,0 +1,55 @@
+{
+  "version": "v0",
+  "date": "2026-02-19",
+  "entries": [
+    {
+      "payloadId": "mining.space4x.survivors_lane_alpha.v0",
+      "contractId": "contract.mining.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/mining/mining.space4x.survivors_lane_alpha.v0.json",
+      "purpose": "Shared mining slice payload for contested-lane extraction."
+    },
+    {
+      "payloadId": "combat.space4x.survivors_intercept_wave.v0",
+      "contractId": "contract.combat.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/combat/combat.space4x.survivors_intercept_wave.v0.json",
+      "purpose": "Shared combat intercept payload for survivor wave pressure."
+    },
+    {
+      "payloadId": "mission.space4x.escort_civilians_core.v0",
+      "contractId": "contract.mission_objective.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/mission/mission.space4x.escort_civilians_core.v0.json",
+      "purpose": "Shared escort objective payload for civilian survival/delivery checks."
+    },
+    {
+      "payloadId": "cache.space4x.salvage_stash_contested.v0",
+      "contractId": "contract.loot_cache.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/cache/cache.space4x.salvage_stash_contested.v0.json",
+      "purpose": "Shared salvage cache payload with risk trigger."
+    },
+    {
+      "payloadId": "encounter.space4x.raider_warlord_intro.v0",
+      "contractId": "contract.encounter_profile.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/encounter/encounter.space4x.raider_warlord_intro.v0.json",
+      "purpose": "Shared boss-profile encounter payload."
+    },
+    {
+      "payloadId": "room.space4x.survivors_opening.v0",
+      "contractId": "contract.room_profile.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/room/room.space4x.survivors_opening.v0.json",
+      "purpose": "Room composition payload referencing mining/combat/mission/cache/encounter contracts."
+    },
+    {
+      "payloadId": "scenario.space4x.contract_survivors_mvp.v0",
+      "contractId": "contract.scenario_envelope.v0",
+      "status": "scaffold",
+      "path": "puredots/Docs/Canonicity/Payloads/scenario/scenario.space4x.contract_survivors_mvp.v0.json",
+      "purpose": "Scenario envelope payload referencing canonical contract payload IDs."
+    }
+  ]
+}

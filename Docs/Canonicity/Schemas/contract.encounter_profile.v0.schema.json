@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.encounter_profile.v0.schema.json",
+  "title": "Encounter Profile Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "encounterClass",
+    "factions",
+    "spawnBudget"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.encounter_profile.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^encounter\\.[a-z0-9_\\.\\-]+$"
+    },
+    "encounterClass": {
+      "type": "string",
+      "enum": [
+        "patrol",
+        "ambush",
+        "siege",
+        "boss"
+      ]
+    },
+    "factions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/factionRef"
+      }
+    },
+    "spawnBudget": {
+      "$ref": "#/$defs/spawnBudget"
+    },
+    "bossProfile": {
+      "$ref": "#/$defs/bossProfile"
+    },
+    "escalationPolicy": {
+      "$ref": "#/$defs/escalationPolicy"
+    }
+  },
+  "$defs": {
+    "factionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factionId",
+        "role"
+      ],
+      "properties": {
+        "factionId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "friendly",
+            "hostile",
+            "neutral"
+          ]
+        },
+        "strengthWeight": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "spawnBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "threat",
+        "waveCountMax"
+      ],
+      "properties": {
+        "threat": {
+          "type": "number",
+          "minimum": 0
+        },
+        "waveCountMax": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reinforcementDelay_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "bossProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intentId",
+        "phaseCount"
+      ],
+      "properties": {
+        "intentId": {
+          "type": "string",
+          "pattern": "^intent\\.boss\\.[a-z0-9_\\.\\-]+$"
+        },
+        "phaseCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "enrageThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "escalationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowRetreat": {
+          "type": "boolean"
+        },
+        "fallbackEncounterId": {
+          "type": "string",
+          "pattern": "^encounter\\.[a-z0-9_\\.\\-]+$"
+        }
+      }
+    }
+  }
+}

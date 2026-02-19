@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.combat.v0.schema.json",
+  "title": "Combat Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "engagementType",
+    "forces",
+    "winConditions"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.combat.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^combat\\.[a-z0-9_\\.\\-]+$"
+    },
+    "engagementType": {
+      "type": "string",
+      "enum": [
+        "intercept",
+        "raid_defense",
+        "lane_control",
+        "boss_encounter"
+      ]
+    },
+    "forces": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/forceGroup"
+      }
+    },
+    "waves": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/wave"
+      }
+    },
+    "winConditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/winCondition"
+      }
+    },
+    "telemetryExpectations": {
+      "$ref": "#/$defs/combatTelemetry"
+    }
+  },
+  "$defs": {
+    "forceGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "affiliation",
+        "strengthBudget"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "affiliation": {
+          "type": "string",
+          "enum": [
+            "friendly",
+            "hostile",
+            "neutral"
+          ]
+        },
+        "strengthBudget": {
+          "type": "number",
+          "minimum": 0
+        },
+        "interceptEnabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "wave": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "start_s",
+        "forceId",
+        "intent"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "start_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "forceId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "pressure",
+            "flank",
+            "breakthrough",
+            "pursuit"
+          ]
+        }
+      }
+    },
+    "winCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "survive_duration",
+            "eliminate_force",
+            "protect_targets",
+            "hold_corridor"
+          ]
+        },
+        "value": {
+          "type": "number"
+        }
+      }
+    },
+    "combatTelemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expectInterceptAttempts": {
+          "type": "boolean"
+        },
+        "expectCombatResolution": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

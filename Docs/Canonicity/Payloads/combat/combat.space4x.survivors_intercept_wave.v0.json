@@ -1,0 +1,47 @@
+{
+  "contractId": "contract.combat.v0",
+  "id": "combat.space4x.survivors_intercept_wave.v0",
+  "engagementType": "boss_encounter",
+  "forces": [
+    {
+      "id": "force.friendly.survivors",
+      "affiliation": "friendly",
+      "strengthBudget": 180,
+      "interceptEnabled": true
+    },
+    {
+      "id": "force.hostile.raiders",
+      "affiliation": "hostile",
+      "strengthBudget": 240,
+      "interceptEnabled": true
+    }
+  ],
+  "waves": [
+    {
+      "id": "wave.raider.pressure",
+      "start_s": 24,
+      "forceId": "force.hostile.raiders",
+      "intent": "pressure"
+    },
+    {
+      "id": "wave.raider.breakthrough",
+      "start_s": 46,
+      "forceId": "force.hostile.raiders",
+      "intent": "breakthrough"
+    }
+  ],
+  "winConditions": [
+    {
+      "type": "survive_duration",
+      "value": 120
+    },
+    {
+      "type": "protect_targets",
+      "value": 1
+    }
+  ],
+  "telemetryExpectations": {
+    "expectInterceptAttempts": true,
+    "expectCombatResolution": true
+  }
+}

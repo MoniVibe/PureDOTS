@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.room_profile.v0.schema.json",
+  "title": "Room Profile Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "tier",
+    "budgets",
+    "contractRefs"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.room_profile.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^room\\.[a-z0-9_\\.\\-]+$"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "starter",
+        "mid",
+        "late",
+        "boss"
+      ]
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "threat",
+        "resource",
+        "event"
+      ],
+      "properties": {
+        "threat": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resource": {
+          "type": "number",
+          "minimum": 0
+        },
+        "event": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "contractRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/contractRef"
+      }
+    },
+    "spawnPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "variantCountMin": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "variantCountMax": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowCivilianSpawns": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "contractRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "weight"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "mining",
+            "combat",
+            "mission",
+            "cache",
+            "encounter"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

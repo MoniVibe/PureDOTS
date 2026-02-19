@@ -1,0 +1,37 @@
+{
+  "contractId": "contract.mission_objective.v0",
+  "id": "mission.space4x.escort_civilians_core.v0",
+  "objectiveType": "escort_civilians",
+  "targets": [
+    {
+      "id": "civilian.convoy.primary",
+      "role": "civilian",
+      "requiredCount": 1
+    },
+    {
+      "id": "corridor.delta",
+      "role": "corridor",
+      "requiredCount": 1
+    }
+  ],
+  "successConditions": [
+    {
+      "type": "survive_ratio",
+      "value": 0.7
+    },
+    {
+      "type": "reach_destination",
+      "value": 1
+    }
+  ],
+  "failureConditions": [
+    {
+      "type": "survive_ratio",
+      "value": 0.5
+    }
+  ],
+  "rewardPolicy": {
+    "resourceUnits": 450,
+    "reputationDelta": 8
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.mission_objective.v0.schema.json",
+  "title": "Mission Objective Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "objectiveType",
+    "targets",
+    "successConditions"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.mission_objective.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^mission\\.[a-z0-9_\\.\\-]+$"
+    },
+    "objectiveType": {
+      "type": "string",
+      "enum": [
+        "escort_civilians",
+        "secure_corridor",
+        "recover_cache",
+        "defend_colony",
+        "intercept_raider"
+      ]
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/targetRef"
+      }
+    },
+    "successConditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/condition"
+      }
+    },
+    "failureConditions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/condition"
+      }
+    },
+    "rewardPolicy": {
+      "$ref": "#/$defs/rewardPolicy"
+    }
+  },
+  "$defs": {
+    "targetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "civilian",
+            "colony",
+            "cache",
+            "corridor",
+            "force",
+            "boss"
+          ]
+        },
+        "requiredCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "survive_ratio",
+            "hold_duration",
+            "reach_destination",
+            "eliminate_target",
+            "extract_cache"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "rewardPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resourceUnits": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reputationDelta": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

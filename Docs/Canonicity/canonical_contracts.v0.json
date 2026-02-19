@@ -1,0 +1,76 @@
+{
+  "version": "v0",
+  "date": "2026-02-19",
+  "entries": [
+    {
+      "canonicalKey": "canon.contract.mining.v0",
+      "contractId": "contract.mining.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "draft-active",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.mining.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md",
+      "purpose": "Deterministic mining semantics shared by Space4X and Godgame."
+    },
+    {
+      "canonicalKey": "canon.contract.combat.v0",
+      "contractId": "contract.combat.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "draft-active",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.combat.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md",
+      "purpose": "Deterministic combat engagement semantics shared by Space4X and Godgame."
+    },
+    {
+      "canonicalKey": "canon.contract.room_profile.v0",
+      "contractId": "contract.room_profile.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "draft-active",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.room_profile.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md",
+      "purpose": "Room-level composition contract for weighted slice assembly."
+    },
+    {
+      "canonicalKey": "canon.contract.scenario_envelope.v0",
+      "contractId": "contract.scenario_envelope.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "draft-active",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.scenario_envelope.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md",
+      "purpose": "Scenario envelope for canonical scenarioId and contract references."
+    },
+    {
+      "canonicalKey": "canon.contract.mission_objective.v0",
+      "contractId": "contract.mission_objective.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "scaffold",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.mission_objective.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md",
+      "purpose": "Shared mission objective semantics decoupled from game-specific flavor text."
+    },
+    {
+      "canonicalKey": "canon.contract.loot_cache.v0",
+      "contractId": "contract.loot_cache.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "scaffold",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.loot_cache.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md",
+      "purpose": "Shared hidden-cache semantics and reward/risk profile."
+    },
+    {
+      "canonicalKey": "canon.contract.encounter_profile.v0",
+      "contractId": "contract.encounter_profile.v0",
+      "owner": "puredots",
+      "scope": "shared",
+      "status": "scaffold",
+      "schemaPath": "puredots/Docs/Canonicity/Schemas/contract.encounter_profile.v0.schema.json",
+      "docPath": "puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md",
+      "purpose": "Shared encounter/boss profile semantics used by scenario composition."
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.loot_cache.v0.schema.json",
+  "title": "Loot Cache Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "cacheType",
+    "lootTable"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.loot_cache.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^cache\\.[a-z0-9_\\.\\-]+$"
+    },
+    "cacheType": {
+      "type": "string",
+      "enum": [
+        "salvage_stash",
+        "military_lockbox",
+        "decoy_trap"
+      ]
+    },
+    "locationPolicy": {
+      "$ref": "#/$defs/locationPolicy"
+    },
+    "lootTable": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/lootItem"
+      }
+    },
+    "discoveryPolicy": {
+      "$ref": "#/$defs/discoveryPolicy"
+    },
+    "triggerPolicy": {
+      "$ref": "#/$defs/triggerPolicy"
+    }
+  },
+  "$defs": {
+    "locationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "zone": {
+          "type": "string"
+        },
+        "riskTier": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      }
+    },
+    "lootItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceId",
+        "minAmount",
+        "maxAmount",
+        "weight"
+      ],
+      "properties": {
+        "resourceId": {
+          "type": "string"
+        },
+        "minAmount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maxAmount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "discoveryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requiresScan": {
+          "type": "boolean",
+          "default": true
+        },
+        "scanDifficulty": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "triggerPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "triggerOnOpen": {
+          "type": "boolean"
+        },
+        "spawnEncounterId": {
+          "type": "string",
+          "pattern": "^encounter\\.[a-z0-9_\\.\\-]+$"
+        }
+      }
+    }
+  }
+}

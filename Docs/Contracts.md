@@ -110,6 +110,105 @@ Simple breadcrumbs for shared systems. When you add or change a contract, update
   - DefaultSpeed (float) - default launch speed if not specified
 - Notes: Singleton-like config per launcher entity. Set at bake time.
 
+## MiningContractPayload v0
+
+- Producer: Contract-authored scenario data (project JSON + schema validation).
+- Consumer: PureDOTS mining systems via game adapters.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md`
+  - `puredots/Docs/Canonicity/Schemas/contract.mining.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.mining.v0`)
+  - `id` (stable mining contract ID)
+  - `resourceNodes[]` (position, resource type, units, gather parameters)
+  - `workerGroups[]` (count, efficiency, speed, cargo, affiliation)
+  - optional `deliveryPolicy`, `telemetryExpectations`
+- Notes: Deterministic fields only in core semantics; presentation mappings stay game-side.
+
+## CombatContractPayload v0
+
+- Producer: Contract-authored scenario data (project JSON + schema validation).
+- Consumer: PureDOTS combat/engagement systems via game adapters.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md`
+  - `puredots/Docs/Canonicity/Schemas/contract.combat.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.combat.v0`)
+  - `id` (stable combat contract ID)
+  - `engagementType`
+  - `forces[]`, optional `waves[]`
+  - `winConditions[]`, optional `telemetryExpectations`
+- Notes: Outcome semantics stay shared; faction art/drama framing stays game-side.
+
+## RoomProfileContract v0
+
+- Producer: Contract-authored room composition data.
+- Consumer: Scenario composition layer (game-side adapters + runner bootstrap).
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Combat_Mining_DataContracts_v0.md`
+  - `puredots/Docs/Canonicity/Schemas/contract.room_profile.v0.schema.json`
+  - `puredots/Docs/Canonicity/Schemas/contract.scenario_envelope.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.room_profile.v0`)
+  - `id`, `tier`, `budgets`
+  - `contractRefs[]` referencing combat/mining/mission/cache contracts
+  - optional `spawnPolicy`
+- Notes: Rooms compose contracts; they do not redefine mining/combat semantics.
+
+## MissionObjectiveContract v0
+
+- Producer: Contract-authored mission objective data.
+- Consumer: Scenario composition and objective resolution systems.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md`
+  - `puredots/Docs/Canonicity/canonical_contracts.v0.json`
+  - `puredots/Docs/Canonicity/Schemas/contract.mission_objective.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.mission_objective.v0`)
+  - `id`, `objectiveType`
+  - `targets[]`
+  - `successConditions[]`, optional `failureConditions[]`
+- Notes: Deterministic objective semantics are shared; local narrative copy remains game-side.
+
+## LootCacheContract v0
+
+- Producer: Contract-authored hidden cache data.
+- Consumer: Scenario composition and spawn/discovery systems.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md`
+  - `puredots/Docs/Canonicity/canonical_contracts.v0.json`
+  - `puredots/Docs/Canonicity/Schemas/contract.loot_cache.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.loot_cache.v0`)
+  - `id`, `cacheType`
+  - `lootTable[]`, optional `locationPolicy`, `discoveryPolicy`, `triggerPolicy`
+- Notes: Reward/risk semantics are shared; VFX/UI representation is adapter-owned.
+
+## EncounterProfileContract v0
+
+- Producer: Contract-authored encounter and boss profile data.
+- Consumer: Scenario composition and combat spawn orchestration.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/Data_Contract_Canon_Sprint_v0.md`
+  - `puredots/Docs/Canonicity/canonical_contracts.v0.json`
+  - `puredots/Docs/Canonicity/Schemas/contract.encounter_profile.v0.schema.json`
+- Schema (high level):
+  - `contractId` (`contract.encounter_profile.v0`)
+  - `id`, `encounterClass`, `factions[]`
+  - `spawnBudget`, optional `bossProfile`, `escalationPolicy`
+- Notes: Encounter semantics remain shared while game-side handles presentation flavor.
+
+## CanonicalContractPayloadRegistry v0
+
+- Producer: PureDOTS canonicity governance.
+- Consumer: Validator gates, scenario composition adapters, shared authoring workflows.
+- Canonical docs/schema:
+  - `puredots/Docs/Canonicity/canonical_contract_payloads.v0.json`
+  - `puredots/Docs/Canonicity/Payloads/*`
+- Schema (high level):
+  - `entries[]` with `payloadId`, `contractId`, `path`, `status`, `purpose`
+- Notes: Payload IDs are canonical references for room/envelope composition and cross-contract linking.
+
 ## Rewind Integration Contract v1
 
 - Producer: All PureDOTS systems

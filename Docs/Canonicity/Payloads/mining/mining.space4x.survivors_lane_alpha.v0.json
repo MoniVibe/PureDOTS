@@ -1,0 +1,49 @@
+{
+  "contractId": "contract.mining.v0",
+  "id": "mining.space4x.survivors_lane_alpha.v0",
+  "objective": "extract",
+  "resourceNodes": [
+    {
+      "id": "node.core",
+      "resourceId": "Minerals",
+      "position": [70, 18],
+      "unitsRemaining": 1450,
+      "gatherRatePerWorker": 12,
+      "maxSimultaneousWorkers": 5
+    },
+    {
+      "id": "node.rare",
+      "resourceId": "RareMetals",
+      "position": [40, 98],
+      "unitsRemaining": 520,
+      "gatherRatePerWorker": 7.8,
+      "maxSimultaneousWorkers": 2
+    }
+  ],
+  "workerGroups": [
+    {
+      "id": "workers.friendly.alpha",
+      "count": 3,
+      "miningEfficiency": 0.83,
+      "speed": 10.3,
+      "cargoCapacity": 108,
+      "affiliation": "friendly"
+    },
+    {
+      "id": "workers.hostile.raider",
+      "count": 1,
+      "miningEfficiency": 0.72,
+      "speed": 10.8,
+      "cargoCapacity": 88,
+      "affiliation": "hostile"
+    }
+  ],
+  "deliveryPolicy": {
+    "preferNearestCarrier": true,
+    "returnThresholdPercent": 0.75
+  },
+  "telemetryExpectations": {
+    "expectMiningYield": true,
+    "expectCarrierPickup": true
+  }
+}

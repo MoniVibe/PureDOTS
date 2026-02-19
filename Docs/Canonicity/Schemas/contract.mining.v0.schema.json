@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.mining.v0.schema.json",
+  "title": "Mining Contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractId",
+    "id",
+    "resourceNodes",
+    "workerGroups"
+  ],
+  "properties": {
+    "contractId": {
+      "const": "contract.mining.v0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^mining\\.[a-z0-9_\\.\\-]+$"
+    },
+    "objective": {
+      "type": "string",
+      "enum": [
+        "extract",
+        "hold_lane",
+        "contest_node"
+      ],
+      "default": "extract"
+    },
+    "resourceNodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/resourceNode"
+      }
+    },
+    "workerGroups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/workerGroup"
+      }
+    },
+    "deliveryPolicy": {
+      "$ref": "#/$defs/deliveryPolicy"
+    },
+    "telemetryExpectations": {
+      "$ref": "#/$defs/miningTelemetry"
+    }
+  },
+  "$defs": {
+    "vec2": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "resourceNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "resourceId",
+        "position",
+        "unitsRemaining",
+        "gatherRatePerWorker",
+        "maxSimultaneousWorkers"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "resourceId": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/vec2"
+        },
+        "unitsRemaining": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gatherRatePerWorker": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maxSimultaneousWorkers": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "workerGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "count",
+        "miningEfficiency",
+        "speed",
+        "cargoCapacity",
+        "affiliation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "miningEfficiency": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cargoCapacity": {
+          "type": "number",
+          "minimum": 0
+        },
+        "affiliation": {
+          "type": "string",
+          "enum": [
+            "friendly",
+            "hostile",
+            "neutral"
+          ]
+        }
+      }
+    },
+    "deliveryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preferNearestCarrier": {
+          "type": "boolean",
+          "default": true
+        },
+        "returnThresholdPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "miningTelemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expectMiningYield": {
+          "type": "boolean"
+        },
+        "expectCarrierPickup": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

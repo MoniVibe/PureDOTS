@@ -1,0 +1,42 @@
+{
+  "contractId": "contract.room_profile.v0",
+  "id": "room.space4x.survivors_opening.v0",
+  "tier": "starter",
+  "budgets": {
+    "threat": 160,
+    "resource": 140,
+    "event": 90
+  },
+  "contractRefs": [
+    {
+      "type": "mining",
+      "id": "mining.space4x.survivors_lane_alpha.v0",
+      "weight": 1
+    },
+    {
+      "type": "combat",
+      "id": "combat.space4x.survivors_intercept_wave.v0",
+      "weight": 1
+    },
+    {
+      "type": "mission",
+      "id": "mission.space4x.escort_civilians_core.v0",
+      "weight": 0.8
+    },
+    {
+      "type": "cache",
+      "id": "cache.space4x.salvage_stash_contested.v0",
+      "weight": 0.5
+    },
+    {
+      "type": "encounter",
+      "id": "encounter.space4x.raider_warlord_intro.v0",
+      "weight": 0.6
+    }
+  ],
+  "spawnPolicy": {
+    "variantCountMin": 2,
+    "variantCountMax": 3,
+    "allowCivilianSpawns": true
+  }
+}

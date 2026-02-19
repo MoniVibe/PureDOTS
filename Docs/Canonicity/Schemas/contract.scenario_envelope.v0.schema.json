@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tri.local/schemas/contract.scenario_envelope.v0.schema.json",
+  "title": "Scenario Contract Envelope v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "scenarioId",
+    "seed",
+    "duration_s",
+    "contracts"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "contract.scenario_envelope.v0"
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "duration_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mining": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "combat": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roomProfiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missionObjectives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lootCaches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "encounters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "roomSequence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/roomSequenceItem"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    }
+  },
+  "$defs": {
+    "roomSequenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roomId",
+        "start_s"
+      ],
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "start_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "seedOffset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time_s",
+        "kind"
+      ],
+      "properties": {
+        "time_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
