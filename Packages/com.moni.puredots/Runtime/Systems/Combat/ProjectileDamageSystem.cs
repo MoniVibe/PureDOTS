@@ -138,11 +138,15 @@ namespace PureDOTS.Systems.Combat
                 byte damageTypeOverride = 255;
 
                 ref var spec = ref FindProjectileSpec(ProjectileCatalog, projectile.ProjectileId);
+                var behaviorArchetype = WeaponBehaviorArchetype.Default;
+                var behaviorProfile = WeaponBehaviorProfiles.Resolve(behaviorArchetype);
                 if (!UnsafeRef.IsNull(ref spec))
                 {
                     damage = spec.Damage.BaseDamage;
                     damageType = DetermineDamageTypeFromSpec(ref spec);
                     damageFlags = DetermineDamageFlagsFromSpec(ref spec);
+                    behaviorArchetype = ResolveBehaviorArchetypeFromSpec(ref spec);
+                    behaviorProfile = WeaponBehaviorProfiles.Resolve(behaviorArchetype);
                 }
 
                 if (HasAmmoCatalog && projectile.AmmoId.Length > 0)
@@ -162,6 +166,15 @@ namespace PureDOTS.Systems.Combat
                     damageType = (DamageType)damageTypeOverride;
                 }
                 damageFlags |= ammoFlags;
+                if (!UnsafeRef.IsNull(ref spec))
+                {
+                    var distanceDamageMultiplier = WeaponBehaviorProfiles.ResolveDistanceDamageMultiplier(
+                        projectile.DistanceTraveled,
+                        spec.Speed,
+                        spec.Lifetime,
+                        behaviorProfile);
+                    damage *= distanceDamageMultiplier;
+                }
 
                 // Create damage event
                 var damageEvent = new DamageEvent
@@ -309,6 +322,18 @@ namespace PureDOTS.Systems.Combat
                 }
 
                 return flags;
+            }
+
+            private static WeaponBehaviorArchetype ResolveBehaviorArchetypeFromSpec(ref ProjectileSpec spec)
+            {
+                var projectileKind = (ProjectileKind)spec.Kind;
+                return projectileKind switch
+                {
+                    ProjectileKind.Beam => WeaponBehaviorArchetype.Energy,
+                    ProjectileKind.Homing => WeaponBehaviorArchetype.GuidedMissile,
+                    ProjectileKind.Ballistic => WeaponBehaviorArchetype.Kinetic,
+                    _ => WeaponBehaviorArchetype.Default
+                };
             }
         }
     }
