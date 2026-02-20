@@ -9,6 +9,18 @@ namespace PureDOTS.Input
     public struct RtsInputSingletonTag : IComponentData { }
 
     /// <summary>
+    /// Shared command plane state used by game-specific camera/order adapters for RTS right-click projection.
+    /// </summary>
+    public struct RtsCommandPlaneState : IComponentData
+    {
+        public float3 PlaneOrigin;
+        public float3 PlaneNormal;
+        public float PlaneHeight;
+        public float3 LastCommandPoint;
+        public byte HasLastCommandPoint;
+    }
+
+    /// <summary>
     /// Selection click event (single-click on world).
     /// </summary>
     [InternalBufferCapacity(8)]
@@ -131,7 +143,6 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 }
-
 
 
 
