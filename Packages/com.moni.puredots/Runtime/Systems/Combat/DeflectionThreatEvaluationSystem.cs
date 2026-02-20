@@ -117,6 +117,7 @@ namespace PureDOTS.Systems.Combat
                     float deflectResistance = 0.3f;
                     float controlResistance = 0.2f;
                     float damageMultiplier = 1f;
+                    var behaviorProfile = WeaponBehaviorProfiles.Resolve(WeaponBehaviorArchetype.Default);
 
                     if (hasCatalog)
                     {
@@ -147,6 +148,15 @@ namespace PureDOTS.Systems.Combat
                                     controlResistance = 0.2f;
                                     break;
                             }
+
+                            var archetype = (ProjectileKind)spec.Kind switch
+                            {
+                                ProjectileKind.Beam => WeaponBehaviorArchetype.Energy,
+                                ProjectileKind.Homing => WeaponBehaviorArchetype.GuidedMissile,
+                                ProjectileKind.Ballistic => WeaponBehaviorArchetype.Kinetic,
+                                _ => WeaponBehaviorArchetype.Default
+                            };
+                            behaviorProfile = WeaponBehaviorProfiles.Resolve(archetype);
                         }
                     }
 
@@ -173,6 +183,7 @@ namespace PureDOTS.Systems.Combat
 
                     dodgeDifficulty = math.saturate(dodgeDifficulty + (1f - approachDot) * 0.1f);
                     deflectResistance = math.saturate(deflectResistance + math.saturate(speed * 0.01f));
+                    deflectResistance = WeaponBehaviorProfiles.ResolveDeflectResistance(deflectResistance, behaviorProfile);
                     controlResistance = math.saturate(controlResistance + math.saturate(speed * 0.005f));
 
                     float threatScore = baseDamage * damageMultiplier * math.rcp(1f + timeToImpact);

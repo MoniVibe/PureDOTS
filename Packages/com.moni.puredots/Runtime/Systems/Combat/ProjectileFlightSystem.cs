@@ -124,6 +124,15 @@ namespace PureDOTS.Systems.Combat
                     return;
                 }
 
+                var behaviorArchetype = (ProjectileKind)spec.Kind switch
+                {
+                    ProjectileKind.Beam => WeaponBehaviorArchetype.Energy,
+                    ProjectileKind.Homing => WeaponBehaviorArchetype.GuidedMissile,
+                    ProjectileKind.Ballistic => WeaponBehaviorArchetype.Kinetic,
+                    _ => WeaponBehaviorArchetype.Default
+                };
+                var behaviorProfile = WeaponBehaviorProfiles.Resolve(behaviorArchetype);
+
                 float speedMultiplier = 1f;
                 float lifetimeMultiplier = 1f;
                 float turnRateMultiplier = 1f;
@@ -202,8 +211,8 @@ namespace PureDOTS.Systems.Combat
 
                 if ((ProjectileKind)spec.Kind == ProjectileKind.Homing && speed > 1e-4f)
                 {
-                    float effectiveTurnRate = spec.TurnRateDeg * turnRateMultiplier;
-                    float effectiveSeekRadius = spec.SeekRadius * seekRadiusMultiplier;
+                    float effectiveTurnRate = WeaponBehaviorProfiles.ResolveTurnRate(spec.TurnRateDeg * turnRateMultiplier, behaviorProfile);
+                    float effectiveSeekRadius = WeaponBehaviorProfiles.ResolveSeekRadius(spec.SeekRadius * seekRadiusMultiplier, behaviorProfile);
                     velocity = ApplyHoming(ref projectile, currentPos, velocity, speed, effectiveTurnRate, effectiveSeekRadius);
                 }
 

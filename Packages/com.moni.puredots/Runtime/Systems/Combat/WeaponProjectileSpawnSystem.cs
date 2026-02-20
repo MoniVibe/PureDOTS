@@ -99,6 +99,11 @@ namespace PureDOTS.Systems.Combat
                     continue;
                 }
 
+                var behaviorArchetype = WeaponBehaviorProfiles.ResolveDefaultArchetype(
+                    (WeaponClass)weaponSpec.Class,
+                    (ProjectileKind)projectileSpec.Kind);
+                var behaviorProfile = WeaponBehaviorProfiles.Resolve(behaviorArchetype);
+
                 if (!TryGetMuzzle(entity, out var muzzlePos, out var muzzleForward))
                 {
                     weaponMount.ValueRW.IsFiring = false;
@@ -163,7 +168,7 @@ namespace PureDOTS.Systems.Combat
 
                 if ((ProjectileKind)projectileSpec.Kind == ProjectileKind.Beam)
                 {
-                    ApplyShotCosts(ref weaponMount.ValueRW, weaponSpec, currentTime);
+                    ApplyShotCosts(ref weaponMount.ValueRW, weaponSpec, behaviorProfile, currentTime);
                     continue;
                 }
 
@@ -171,7 +176,14 @@ namespace PureDOTS.Systems.Combat
                 var burst = math.max(1, weaponSpec.Burst);
                 var spreadRad = math.radians(weaponSpec.SpreadDeg);
 
-                var ammoPerShot = hasMagazine ? math.max(1, magazine.AmmoPerShot) : 0;
+                var ammoPerShot = hasMagazine
+                    ? WeaponBehaviorProfiles.ResolveAmmoPerShot(math.max(1, magazine.AmmoPerShot), behaviorProfile)
+                    : 0;
+
+                if (hasMagazine && ammoPerShot <= 0)
+                {
+                    hasMagazine = false;
+                }
 
                 var ammoId = hasMagazine && magazine.AmmoType.Length > 0
                     ? magazine.AmmoType
@@ -229,7 +241,7 @@ namespace PureDOTS.Systems.Combat
                     shotsFired++;
                 }
 
-                ApplyShotCosts(ref weaponMount.ValueRW, weaponSpec, currentTime);
+                ApplyShotCosts(ref weaponMount.ValueRW, weaponSpec, behaviorProfile, currentTime);
 
                 if (hasMagazine)
                 {
@@ -300,11 +312,16 @@ namespace PureDOTS.Systems.Combat
             return false;
         }
 
-        private static void ApplyShotCosts(ref WeaponMount weaponMount, in WeaponSpec spec, float currentTime)
+        private static void ApplyShotCosts(
+            ref WeaponMount weaponMount,
+            in WeaponSpec spec,
+            in WeaponBehaviorProfile behaviorProfile,
+            float currentTime)
         {
             weaponMount.LastFireTime = currentTime;
             weaponMount.EnergyReserve = math.max(0f, weaponMount.EnergyReserve - spec.EnergyCost);
-            weaponMount.HeatLevel = math.saturate(weaponMount.HeatLevel + spec.HeatCost);
+            var resolvedHeatCost = WeaponBehaviorProfiles.ResolveHeatCost(spec.HeatCost, behaviorProfile);
+            weaponMount.HeatLevel = math.saturate(weaponMount.HeatLevel + resolvedHeatCost);
         }
 
         private static float3 ApplySpread(float3 direction, float spreadRad, ref Unity.Mathematics.Random rng)
