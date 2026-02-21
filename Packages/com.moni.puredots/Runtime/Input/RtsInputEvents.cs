@@ -53,6 +53,11 @@ namespace PureDOTS.Input
         public byte Queue;  // 1 if Shift-held (queue order), 0 if immediate
         public byte Ctrl;   // 1 if Ctrl-held (attack-move modifier), 0 if none
         public byte PlayerId;
+        // Optional world-resolution payload for adapters that pre-resolve the click.
+        public byte HasWorldPoint; // 1 when WorldPoint is valid.
+        public float3 WorldPoint;
+        public byte HasHitEntity; // 1 when HitEntity is valid.
+        public Entity HitEntity;
     }
 
     /// <summary>
@@ -143,7 +148,6 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 }
-
 
 
 
