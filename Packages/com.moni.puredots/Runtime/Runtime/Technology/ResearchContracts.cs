@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Technology
 {
@@ -99,5 +100,24 @@ namespace PureDOTS.Runtime.Technology
         public float GeniusPotential01;
         public ResearchSharingPolicy SharingPolicy;
         public string[] Tags;
+    }
+
+    public static class ResearchTreeHelpers
+    {
+        public static float CalculateResearchCost(
+            in ResearchNodeDefinition node,
+            float missingPrerequisiteRatio01,
+            float unlinkedPenaltyRatio01)
+        {
+            var baseCost = math.max(1f, node.BaseResearchCost);
+            var tierMultiplier = 1f + math.max(0, node.Tier) * 0.35f;
+            var missingPenaltyMultiplier = math.max(1f, node.MissingPrereqPenaltyMultiplier);
+            var unlinkedPenaltyMultiplier = math.max(1f, node.UnlinkedPenaltyMultiplier);
+
+            var missingPenalty = math.lerp(1f, missingPenaltyMultiplier, math.saturate(missingPrerequisiteRatio01));
+            var unlinkedPenalty = math.lerp(1f, unlinkedPenaltyMultiplier, math.saturate(unlinkedPenaltyRatio01));
+
+            return baseCost * tierMultiplier * missingPenalty * unlinkedPenalty;
+        }
     }
 }

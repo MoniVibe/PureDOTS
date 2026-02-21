@@ -312,6 +312,7 @@ namespace PureDOTS.Runtime.Economy.Production
     {
         public float InitialCapitalCredits;
         public float PermitCostCredits;
+        public float ConstructionTimeSeconds;
         public float MaintenanceBudgetPerSecond;
         public float PayrollBudgetPerSecond;
         public float PayrollVariance01;
@@ -334,6 +335,7 @@ namespace PureDOTS.Runtime.Economy.Production
     public struct FacilityStaffingDefinition
     {
         public string DefaultStaffingProfileId;
+        public float PayrollVariance01;
         public FacilityStaffRoleDefinition[] Roles;
     }
 
@@ -349,6 +351,7 @@ namespace PureDOTS.Runtime.Economy.Production
         public string BlueprintId;
         public string[] DefaultLimbIds;
         public string[] DefaultProcessIds;
+        public string DefaultStaffingProfileId;
         public FacilityInvestmentDefinition Investment;
         public FacilityStaffingDefinition Staffing;
         public float ConstructionTimeSeconds;
