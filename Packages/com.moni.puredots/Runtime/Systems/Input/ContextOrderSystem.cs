@@ -43,20 +43,42 @@ namespace PureDOTS.Systems.Input
 
         private void ProcessRightClick(ref SystemState state, RightClickEvent rightClickEvent)
         {
-            // Get camera for raycast
+            Entity hitEntity = rightClickEvent.HasHitEntity != 0 ? rightClickEvent.HitEntity : Entity.Null;
+            float3 hitPosition = rightClickEvent.WorldPoint;
+            bool hasHit = rightClickEvent.HasWorldPoint != 0;
+
+            // Use camera ray as fallback when the event does not carry a fully-resolved target.
             Camera camera = Camera.main;
-            if (camera == null)
+            UnityEngine.Ray ray = default;
+            bool hasRay = camera != null;
+            if (hasRay)
+            {
+                Vector3 screenPos = new Vector3(rightClickEvent.ScreenPos.x, rightClickEvent.ScreenPos.y, 0f);
+                ray = camera.ScreenPointToRay(screenPos);
+            }
+
+            if (hasRay && hitEntity == Entity.Null)
+            {
+                if (RaycastForEntity(ref state, ray, 800f, out var resolvedEntity, out var resolvedPosition))
+                {
+                    hitEntity = resolvedEntity;
+                    if (!hasHit)
+                    {
+                        hasHit = true;
+                        hitPosition = resolvedPosition;
+                    }
+                }
+            }
+
+            if (!hasHit && hasRay)
+            {
+                hasHit = TryProjectOnGroundPlane(ray, 0f, out hitPosition);
+            }
+
+            if (!hasHit)
             {
                 return;
             }
-
-            // Raycast from screen position
-            Vector3 screenPos = new Vector3(rightClickEvent.ScreenPos.x, rightClickEvent.ScreenPos.y, 0f);
-            UnityEngine.Ray ray = camera.ScreenPointToRay(screenPos);
-
-            Entity hitEntity = Entity.Null;
-            float3 hitPosition = float3.zero;
-            bool hasHit = RaycastForEntity(ref state, ray, 800f, out hitEntity, out hitPosition);
 
             // Get all selected entities
             var selectedEntities = new NativeList<Entity>(Allocator.Temp);
@@ -106,6 +128,20 @@ namespace PureDOTS.Systems.Input
             }
 
             selectedEntities.Dispose();
+        }
+
+        private bool TryProjectOnGroundPlane(UnityEngine.Ray ray, float planeY, out float3 position)
+        {
+            position = float3.zero;
+            var plane = new UnityEngine.Plane(Vector3.up, new Vector3(0f, planeY, 0f));
+            if (!plane.Raycast(ray, out float enter))
+            {
+                return false;
+            }
+
+            Vector3 world = ray.GetPoint(enter);
+            position = new float3(world.x, world.y, world.z);
+            return true;
         }
 
         private bool RaycastForEntity(ref SystemState state, UnityEngine.Ray ray, float maxDistance, out Entity entity, out float3 position)

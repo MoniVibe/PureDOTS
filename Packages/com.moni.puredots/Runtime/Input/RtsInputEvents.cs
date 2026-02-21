@@ -53,6 +53,10 @@ namespace PureDOTS.Input
         public byte Queue;  // 1 if Shift-held (queue order), 0 if immediate
         public byte Ctrl;   // 1 if Ctrl-held (attack-move modifier), 0 if none
         public byte PlayerId;
+        public byte HasWorldPoint; // 1 if WorldPoint is already resolved by the emitter
+        public float3 WorldPoint;
+        public byte HasHitEntity;  // 1 if HitEntity is already resolved by the emitter
+        public Entity HitEntity;
     }
 
     /// <summary>
@@ -143,7 +147,6 @@ namespace PureDOTS.Input
         public byte PlayerId;
     }
 }
-
 
 
 
