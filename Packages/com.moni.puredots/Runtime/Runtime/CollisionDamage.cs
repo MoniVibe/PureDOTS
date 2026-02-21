@@ -3,6 +3,15 @@ using Unity.Mathematics;
 
 namespace PureDOTS.Runtime
 {
+    public struct ImpactKinematics
+    {
+        public float3 RelativeVelocity;
+        public float RelativeSpeed;
+        public float ClosingSpeed;
+        public float ReducedMass;
+        public float EstimatedImpulse;
+    }
+
     /// <summary>
     /// Helper class for computing collision damage based on material properties.
     /// Centralizes damage calculation logic so it can be easily tuned or changed later.
@@ -10,6 +19,53 @@ namespace PureDOTS.Runtime
     [BurstCompile]
     public static class CollisionDamage
     {
+        [BurstCompile]
+        public static void ComputeImpactKinematics(
+            in float3 sourceVelocity,
+            float sourceMass,
+            in float3 targetVelocity,
+            float targetMass,
+            in float3 contactNormal,
+            out ImpactKinematics kinematics)
+        {
+            var relativeVelocity = sourceVelocity - targetVelocity;
+            var relativeSpeed = math.length(relativeVelocity);
+
+            var normalLengthSq = math.lengthsq(contactNormal);
+            var normal = normalLengthSq > 0.000001f ? contactNormal / math.sqrt(normalLengthSq) : new float3(0f, 1f, 0f);
+            var closingSpeed = math.abs(math.dot(relativeVelocity, normal));
+
+            var safeSourceMass = math.max(0.0001f, sourceMass);
+            var safeTargetMass = math.max(0.0001f, targetMass);
+            var reducedMass = (safeSourceMass * safeTargetMass) / (safeSourceMass + safeTargetMass);
+
+            kinematics = new ImpactKinematics
+            {
+                RelativeVelocity = relativeVelocity,
+                RelativeSpeed = relativeSpeed,
+                ClosingSpeed = closingSpeed,
+                ReducedMass = reducedMass,
+                EstimatedImpulse = reducedMass * closingSpeed
+            };
+        }
+
+        [BurstCompile]
+        public static float ResolveEffectiveImpulse(float reportedImpulse, in ImpactKinematics kinematics)
+        {
+            return math.max(reportedImpulse, kinematics.EstimatedImpulse);
+        }
+
+        [BurstCompile]
+        public static float ResolveMass(float inverseMass, float fallbackMass)
+        {
+            if (inverseMass > 0.000001f)
+            {
+                return 1f / inverseMass;
+            }
+
+            return math.max(0.0001f, fallbackMass);
+        }
+
         /// <summary>
         /// Computes damage from a collision using material-aware calculation.
         /// </summary>
