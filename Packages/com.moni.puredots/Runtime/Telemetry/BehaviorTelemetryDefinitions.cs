@@ -214,6 +214,6 @@ namespace PureDOTS.Runtime.Telemetry
 
     public static class BehaviorTelemetryMath
     {
-        public static int ToMilli(float value) => (int)Math.Round(value * 1000f);
+        public static int ToMilli(float value) => (int)System.Math.Round(value * 1000f);
     }
 }
