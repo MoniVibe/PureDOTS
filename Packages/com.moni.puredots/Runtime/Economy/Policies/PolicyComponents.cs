@@ -1,16 +1,92 @@
-using Unity.Collections;
 using Unity.Entities;
 
 namespace PureDOTS.Runtime.Economy.Policies
 {
+    public enum TaxProfileSourceMode : byte
+    {
+        None = 0,
+        SocietyAverage = 1,
+        RulerOnly = 2,
+        SocietyAndRulerBlend = 3
+    }
+
     /// <summary>
     /// Tax policy component.
     /// Income brackets, business tax, transaction tax rates.
     /// </summary>
     public struct TaxPolicy : IComponentData
     {
-        public Entity TargetEntity; // Village, Guild, etc.
+        public Entity TargetEntity; // Village, Guild, faction, etc.
+        public Entity RulerEntity;
+        public Entity LeakageSinkEntity;
+
+        public TaxProfileSourceMode ProfileMode;
+        public float SocietyInfluence01;
+        public float RulerInfluence01;
+        public float ProfileElasticity;
+
+        public float BaseIncomeTaxRate;
         public float BusinessProfitTaxRate;
+        public float ExemptionFloor;
+        public float Progressivity;
+        public float ProgressivityIncomeScale;
+        public float MaxEffectiveRate;
+
+        public float BaseCompliance01;
+        public float EnforcementStrength01;
+        public float CorruptionLeakage01;
+    }
+
+    /// <summary>
+    /// Optional progressive tax brackets. Thresholds should be configured in ascending order.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct TaxBracket : IBufferElementData
+    {
+        public float Threshold;
+        public float MarginalRate;
+    }
+
+    /// <summary>
+    /// Per-entity taxable income inputs for current tick.
+    /// </summary>
+    public struct TaxableIncome : IComponentData
+    {
+        public float PersonalIncome;
+        public float BusinessIncome;
+        public float DeductibleAmount;
+        public float ExemptIncome;
+        public uint LastAssessedTick;
+    }
+
+    /// <summary>
+    /// Last tax assessment details for telemetry, audits, and unrest integration.
+    /// </summary>
+    public struct TaxAssessmentState : IComponentData
+    {
+        public float EffectiveRate;
+        public float Compliance01;
+        public float AssessedTax;
+        public float CollectedTax;
+        public float LeakageTax;
+        public float TaxableBase;
+        public uint LastAssessmentTick;
+    }
+
+    /// <summary>
+    /// Runtime aggregate metrics for a tax policy per tick.
+    /// </summary>
+    public struct TaxPolicyRuntimeState : IComponentData
+    {
+        public uint LastUpdateTick;
+        public uint AssessmentCount;
+        public float TotalTaxableBase;
+        public float TotalAssessedTax;
+        public float TotalCollectedTax;
+        public float TotalLeakageTax;
+        public float AverageEffectiveRate;
+        public float AverageCompliance01;
+        public float AverageProfileFactor;
     }
 
     /// <summary>
@@ -75,4 +151,3 @@ namespace PureDOTS.Runtime.Economy.Policies
         public float LegalSeverity;
     }
 }
-
