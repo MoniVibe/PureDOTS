@@ -1,7 +1,7 @@
 using PureDOTS.Runtime.Components;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace PureDOTS.Runtime.Economy.Policies
 {
@@ -34,15 +34,31 @@ namespace PureDOTS.Runtime.Economy.Policies
                 return;
             }
 
-            // Calculate unrest signals
             foreach (var (unrest, entity) in SystemAPI.Query<RefRW<UnrestSignal>>().WithEntityAccess())
             {
-                // Calculate economic stress factors
-                // Tax burden, price spikes, unemployment
-                // Emit unrest events if thresholds exceeded
-                unrest.ValueRW.TaxBurden = 0f; // Placeholder
+                var taxBurden = 0f;
+                var taxSourceCount = 0;
+                foreach (var (taxPolicy, runtimeState) in SystemAPI.Query<RefRO<TaxPolicy>, RefRO<TaxPolicyRuntimeState>>())
+                {
+                    if (taxPolicy.ValueRO.TargetEntity != unrest.ValueRO.TargetEntity)
+                    {
+                        continue;
+                    }
+
+                    var taxableBase = math.max(1e-5f, runtimeState.ValueRO.TotalTaxableBase);
+                    taxBurden += math.saturate(runtimeState.ValueRO.TotalCollectedTax / taxableBase);
+                    taxSourceCount++;
+                }
+
+                unrest.ValueRW.TaxBurden = taxSourceCount > 0
+                    ? math.saturate(taxBurden / taxSourceCount)
+                    : 0f;
                 unrest.ValueRW.PriceSpike = 0f; // Placeholder
                 unrest.ValueRW.Unemployment = 0f; // Placeholder
+                unrest.ValueRW.TotalStress = math.saturate(
+                    (unrest.ValueRW.TaxBurden * 0.5f) +
+                    (unrest.ValueRW.PriceSpike * 0.3f) +
+                    (unrest.ValueRW.Unemployment * 0.2f));
             }
         }
     }
@@ -60,4 +76,3 @@ namespace PureDOTS.Runtime.Economy.Policies
         public float TotalStress;
     }
 }
-
