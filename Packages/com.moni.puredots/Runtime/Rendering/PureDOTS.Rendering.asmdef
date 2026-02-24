@@ -11,6 +11,7 @@
         "Unity.Entities.Graphics",
         "Unity.Rendering",
         "Unity.Rendering.Entities",
+        "PureDOTS.Core",
         "PureDOTS.Runtime"
     ],
     "includePlatforms": [],

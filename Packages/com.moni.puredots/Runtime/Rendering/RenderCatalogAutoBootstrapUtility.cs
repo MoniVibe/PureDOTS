@@ -177,10 +177,10 @@ namespace PureDOTS.Rendering
                 return 0;
             }
 
-            var themes = catalog.Value.Themes;
+            ref var themes = ref catalog.Value.Themes;
             for (int i = 0; i < themes.Length; i++)
             {
-                var theme = themes[i];
+                ref var theme = ref themes[i];
                 if (theme.ThemeId == 0)
                 {
                     return theme.VariantIndices.Length;
