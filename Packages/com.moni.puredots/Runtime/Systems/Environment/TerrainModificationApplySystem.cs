@@ -16,6 +16,8 @@ namespace PureDOTS.Systems.Environment
     [UpdateBefore(typeof(TerrainChangeProcessorSystem))]
     public partial struct TerrainModificationApplySystem : ISystem
     {
+        private EntityQuery _terrainChunkQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -24,6 +26,7 @@ namespace PureDOTS.Systems.Environment
             state.RequireForUpdate<TerrainModificationQueue>();
             state.RequireForUpdate<TerrainVersion>();
             state.RequireForUpdate<TerrainWorldConfig>();
+            _terrainChunkQuery = state.GetEntityQuery(ComponentType.ReadOnly<TerrainChunk>());
         }
 
         [BurstCompile]
@@ -81,7 +84,7 @@ namespace PureDOTS.Systems.Environment
             uint nextVersion = terrainVersion.Value + 1u;
 
             var processed = math.min(requestsCopy.Length, budget.MaxEditsPerTick);
-            using var chunkMap = BuildChunkLookup(ref state);
+            using var chunkMap = BuildChunkLookup(ref state, _terrainChunkQuery);
             for (int i = 0; i < processed; i++)
             {
                 var request = requestsCopy[i];
@@ -292,14 +295,13 @@ namespace PureDOTS.Systems.Environment
             return result.xyz;
         }
 
-        private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state)
+        private static NativeParallelHashMap<TerrainChunkKey, Entity> BuildChunkLookup(ref SystemState state, EntityQuery terrainChunkQuery)
         {
-            var query = state.GetEntityQuery(ComponentType.ReadOnly<TerrainChunk>());
-            var chunkCount = query.CalculateEntityCount();
+            var chunkCount = terrainChunkQuery.CalculateEntityCount();
             var map = new NativeParallelHashMap<TerrainChunkKey, Entity>(math.max(1, chunkCount), Allocator.Temp);
 
-            using var chunkData = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
-            using var chunkEntities = query.ToEntityArray(Allocator.Temp);
+            using var chunkData = terrainChunkQuery.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
+            using var chunkEntities = terrainChunkQuery.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < chunkData.Length; i++)
             {
                 var chunk = chunkData[i];

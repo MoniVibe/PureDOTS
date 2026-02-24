@@ -81,6 +81,8 @@ namespace PureDOTS.Systems
             _registryContinuityLookup = state.GetComponentLookup<RegistryContinuityState>(isReadOnly: true);
             _registryContinuityAlertLookup = state.GetBufferLookup<RegistryContinuityAlert>(isReadOnly: true);
             _sunlightRuntimeLookup = state.GetBufferLookup<SunlightGridRuntimeSample>(isReadOnly: true);
+            _tradeOpportunityQuery = state.GetEntityQuery(ComponentType.ReadOnly<TradeOpportunityState>());
+            _logisticsRegistryQuery = state.GetEntityQuery(ComponentType.ReadOnly<LogisticsRequestRegistry>());
         }
 
         public void OnUpdate(ref SystemState state)
@@ -1105,23 +1107,8 @@ namespace PureDOTS.Systems
         private EntityQuery _tradeOpportunityQuery;
         private EntityQuery _logisticsRegistryQuery;
 
-        private void EnsureQueries(ref SystemState state)
-        {
-            if (_tradeOpportunityQuery == default)
-            {
-                _tradeOpportunityQuery = state.GetEntityQuery(ComponentType.ReadOnly<TradeOpportunityState>());
-            }
-
-            if (_logisticsRegistryQuery == default)
-            {
-                _logisticsRegistryQuery = state.GetEntityQuery(ComponentType.ReadOnly<LogisticsRequestRegistry>());
-            }
-        }
-
         private void UpdateTradeOpportunityDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
         {
-            EnsureQueries(ref state);
-
             debugData.TradeOpportunityCount = 0;
             debugData.TradeOpportunityVersion = 0;
             debugData.TradeOpportunityStateText = default;
@@ -1146,8 +1133,6 @@ namespace PureDOTS.Systems
 
         private void UpdateLogisticsDiagnostics(ref SystemState state, ref DebugDisplayData debugData)
         {
-            EnsureQueries(ref state);
-
             debugData.LogisticsRequestCount = 0;
             debugData.LogisticsPending = 0;
             debugData.LogisticsInProgress = 0;

@@ -15,12 +15,17 @@ namespace PureDOTS.Systems.Environment
     [UpdateAfter(typeof(TerrainModificationApplySystem))]
     public partial struct TerrainDerivedNavCacheSystem : ISystem
     {
+        private EntityQuery _surfaceNavTileQuery;
+        private EntityQuery _undergroundNavChunkQuery;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<TerrainModificationQueue>();
             state.RequireForUpdate<TerrainWorldConfig>();
+            _surfaceNavTileQuery = state.GetEntityQuery(ComponentType.ReadOnly<SurfaceNavTile>());
+            _undergroundNavChunkQuery = state.GetEntityQuery(ComponentType.ReadOnly<UndergroundNavChunk>());
         }
 
         public void OnUpdate(ref SystemState state)
@@ -45,8 +50,8 @@ namespace PureDOTS.Systems.Environment
 
             var config = SystemAPI.GetSingleton<TerrainWorldConfig>();
 
-            using var surfaceLookup = BuildSurfaceTileLookup(ref state);
-            using var undergroundLookup = BuildUndergroundChunkLookup(ref state);
+            using var surfaceLookup = BuildSurfaceTileLookup(_surfaceNavTileQuery);
+            using var undergroundLookup = BuildUndergroundChunkLookup(_undergroundNavChunkQuery);
 
             for (int i = 0; i < dirtyRegions.Length; i++)
             {
@@ -56,14 +61,13 @@ namespace PureDOTS.Systems.Environment
             }
         }
 
-        private static NativeParallelHashMap<int2, Entity> BuildSurfaceTileLookup(ref SystemState state)
+        private static NativeParallelHashMap<int2, Entity> BuildSurfaceTileLookup(EntityQuery surfaceNavTileQuery)
         {
-            var query = state.GetEntityQuery(ComponentType.ReadOnly<SurfaceNavTile>());
-            var count = query.CalculateEntityCount();
+            var count = surfaceNavTileQuery.CalculateEntityCount();
             var map = new NativeParallelHashMap<int2, Entity>(math.max(1, count), Allocator.Temp);
 
-            using var tiles = query.ToComponentDataArray<SurfaceNavTile>(Allocator.Temp);
-            using var entities = query.ToEntityArray(Allocator.Temp);
+            using var tiles = surfaceNavTileQuery.ToComponentDataArray<SurfaceNavTile>(Allocator.Temp);
+            using var entities = surfaceNavTileQuery.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < tiles.Length; i++)
             {
                 map.TryAdd(tiles[i].TileCoord, entities[i]);
@@ -72,14 +76,13 @@ namespace PureDOTS.Systems.Environment
             return map;
         }
 
-        private static NativeParallelHashMap<int3, Entity> BuildUndergroundChunkLookup(ref SystemState state)
+        private static NativeParallelHashMap<int3, Entity> BuildUndergroundChunkLookup(EntityQuery undergroundNavChunkQuery)
         {
-            var query = state.GetEntityQuery(ComponentType.ReadOnly<UndergroundNavChunk>());
-            var count = query.CalculateEntityCount();
+            var count = undergroundNavChunkQuery.CalculateEntityCount();
             var map = new NativeParallelHashMap<int3, Entity>(math.max(1, count), Allocator.Temp);
 
-            using var chunks = query.ToComponentDataArray<UndergroundNavChunk>(Allocator.Temp);
-            using var entities = query.ToEntityArray(Allocator.Temp);
+            using var chunks = undergroundNavChunkQuery.ToComponentDataArray<UndergroundNavChunk>(Allocator.Temp);
+            using var entities = undergroundNavChunkQuery.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < chunks.Length; i++)
             {
                 map.TryAdd(chunks[i].ChunkCoord, entities[i]);

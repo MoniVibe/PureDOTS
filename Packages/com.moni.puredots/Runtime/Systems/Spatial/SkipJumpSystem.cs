@@ -10,18 +10,23 @@ namespace PureDOTS.Systems.Spatial
     /// <summary>
     /// Applies instantaneous skip jumps by relocating entities with SkipJumpRequest.
     /// </summary>
-    [UpdateInGroup(typeof(SpatialSystemGroup))]
+    [UpdateInGroup(typeof(SpatialSystemGroup), OrderFirst = true)]
     [UpdateBefore(typeof(SpatialGridBuildSystem))]
     public partial struct SkipJumpSystem : ISystem
     {
+        private ComponentLookup<SkipJumpState> _skipStateLookup;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
+            _skipStateLookup = state.GetComponentLookup<SkipJumpState>(false);
         }
 
         public void OnUpdate(ref SystemState state)
         {
+            _skipStateLookup.Update(ref state);
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
             {
@@ -34,7 +39,6 @@ namespace PureDOTS.Systems.Spatial
                 return;
             }
 
-            var skipStateLookup = state.GetComponentLookup<SkipJumpState>(false);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (request, transform, entity) in SystemAPI
@@ -66,11 +70,11 @@ namespace PureDOTS.Systems.Spatial
                 transform.ValueRW.Position = destination;
                 ecb.RemoveComponent<SkipJumpRequest>(entity);
 
-                if (skipStateLookup.HasComponent(entity))
+                if (_skipStateLookup.HasComponent(entity))
                 {
-                    var skipState = skipStateLookup[entity];
+                    var skipState = _skipStateLookup[entity];
                     skipState.LastJumpTick = timeState.Tick;
-                    skipStateLookup[entity] = skipState;
+                    _skipStateLookup[entity] = skipState;
                 }
             }
 

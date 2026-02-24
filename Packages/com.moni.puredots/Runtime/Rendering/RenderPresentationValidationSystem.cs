@@ -14,6 +14,7 @@ namespace PureDOTS.Rendering
     {
         private const int ValidationWarmupFrames = 8;
         private const int PersistentMissingFrameThreshold = 120;
+        private const int MaxReportsPerCategory = 8;
 
         private EntityQuery _missingSemanticQuery;
         private EntityQuery _missingPresenterQuery;
@@ -23,6 +24,8 @@ namespace PureDOTS.Rendering
         private int _presentationReadyFrames;
         private int _missingSemanticFrames;
         private int _missingPresenterFrames;
+        private int _reportedSemanticCount;
+        private int _reportedPresenterCount;
 
         public void OnCreate(ref SystemState state)
         {
@@ -97,6 +100,7 @@ namespace PureDOTS.Rendering
                 if (_missingSemanticFrames >= PersistentMissingFrameThreshold)
                 {
                     ReportOnce(ref state, _missingSemanticQuery, ref _reportedSemantic,
+                        ref _reportedSemanticCount,
                         "[RenderPresentationValidation] Entity is missing RenderSemanticKey but has a presenter component.");
                 }
             }
@@ -111,6 +115,7 @@ namespace PureDOTS.Rendering
                 if (_missingPresenterFrames >= PersistentMissingFrameThreshold)
                 {
                     ReportOnce(ref state, _missingPresenterQuery, ref _reportedPresenter,
+                        ref _reportedPresenterCount,
                         "[RenderPresentationValidation] Entity has RenderSemanticKey but no presenter component (Mesh/Sprite/Tracer/Debug).");
                 }
             }
@@ -120,9 +125,13 @@ namespace PureDOTS.Rendering
             ref SystemState state,
             EntityQuery query,
             ref NativeParallelHashSet<ulong> reportedSet,
+            ref int reportedCount,
             string message)
         {
             if (query.IsEmptyIgnoreFilter)
+                return;
+
+            if (reportedCount >= MaxReportsPerCategory)
                 return;
 
             using var chunks = query.ToArchetypeChunkArray(Allocator.Temp);
@@ -134,11 +143,12 @@ namespace PureDOTS.Rendering
                 if (entities.Length == 0)
                     continue;
 
-                var key = ComputeKey(entities[0], chunkIndex);
+                var key = ComputeKey(entities[0]);
                 if (reportedSet.Contains(key))
                     continue;
 
                 reportedSet.Add(key);
+                reportedCount++;
                 var sample = entities[0];
                 var details = string.Empty;
                 if (state.EntityManager.HasComponent<RenderSemanticKey>(sample))
@@ -149,16 +159,30 @@ namespace PureDOTS.Rendering
                 {
                     details += $" RenderKey={state.EntityManager.GetComponentData<RenderKey>(sample).ArchetypeId}";
                 }
-                Debug.LogError($"{message} Example entity: {sample}.{details}");
+                var strictValidation = Application.isBatchMode
+                    || global::System.Environment.GetEnvironmentVariable("PUREDOTS_STRICT_RENDER_VALIDATION") == "1";
+                if (strictValidation)
+                {
+                    Debug.LogError($"{message} Example entity: {sample}.{details}");
+                }
+                else
+                {
+                    Debug.LogWarning($"{message} Example entity: {sample}.{details}");
+                }
+
+                if (reportedCount >= MaxReportsPerCategory)
+                {
+                    Debug.LogWarning("[RenderPresentationValidation] Additional validation errors suppressed for this category.");
+                    break;
+                }
             }
         }
 
-        private static ulong ComputeKey(Entity entity, int chunkIndex)
+        private static ulong ComputeKey(Entity entity)
         {
             var index = (ulong)(uint)entity.Index;
             var version = (ulong)(uint)entity.Version;
-            var chunk = (ulong)(uint)chunkIndex;
-            return (index << 32) ^ version ^ (chunk << 16);
+            return (index << 32) | version;
         }
     }
 }

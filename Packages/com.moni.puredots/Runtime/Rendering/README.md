@@ -18,6 +18,7 @@ Shared, game-agnostic rendering infrastructure for DOTS 1.4. Gameplay code stays
   - `RenderPresentationCatalogBlob` (variants + themed indices)
   - `RenderMeshArray` shared component
   - `RenderCatalogVersion` singleton (incremented whenever the catalog rebuilds)
+- Use `RenderCatalogAutoBootstrapUtility` for game-level runtime init wrappers so catalog recovery logic stays in one shared, game-agnostic path.
 
 ## Systems
 

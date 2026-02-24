@@ -7,13 +7,29 @@ using UnityEngine;
 
 namespace PureDOTS.Systems.Telemetry
 {
+    internal struct SimPhaseProfilerQueries
+    {
+        public EntityQuery ScenarioRunnerTickQuery;
+        public EntityQuery TickTimeStateQuery;
+        public EntityQuery TimeStateQuery;
+        public EntityQuery ProfilerStateQuery;
+
+        public void Initialize(ref SystemState state)
+        {
+            ScenarioRunnerTickQuery = state.GetEntityQuery(ComponentType.ReadOnly<ScenarioRunnerTick>());
+            TickTimeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TickTimeState>());
+            TimeStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<TimeState>());
+            ProfilerStateQuery = state.GetEntityQuery(ComponentType.ReadOnly<SimPhaseProfilerState>());
+        }
+    }
+
     internal static class SimPhaseProfiler
     {
-        public static void BeginPhase(ref SystemState state, SimPhase phase)
+        public static void BeginPhase(ref SystemState state, SimPhase phase, ref SimPhaseProfilerQueries queries)
         {
-            var entity = EnsureProfilerEntity(ref state);
+            var entity = EnsureProfilerEntity(ref state, ref queries);
             var profilerState = state.EntityManager.GetComponentData<SimPhaseProfilerState>(entity);
-            var tick = ResolveTick(ref state);
+            var tick = ResolveTick(ref state, ref queries);
             if (profilerState.Tick != tick)
             {
                 profilerState.ResetForTick(tick);
@@ -25,9 +41,9 @@ namespace PureDOTS.Systems.Telemetry
             state.EntityManager.SetComponentData(entity, startTimes);
         }
 
-        public static void EndPhase(ref SystemState state, SimPhase phase)
+        public static void EndPhase(ref SystemState state, SimPhase phase, ref SimPhaseProfilerQueries queries)
         {
-            var entity = EnsureProfilerEntity(ref state);
+            var entity = EnsureProfilerEntity(ref state, ref queries);
             var startTimes = state.EntityManager.GetComponentData<SimPhaseProfilerPhaseStartTimes>(entity);
             var start = startTimes.GetStart(phase);
             if (start == double.MinValue)
@@ -45,17 +61,17 @@ namespace PureDOTS.Systems.Telemetry
             state.EntityManager.SetComponentData(entity, profilerState);
         }
 
-        private static uint ResolveTick(ref SystemState state)
+        private static uint ResolveTick(ref SystemState state, ref SimPhaseProfilerQueries queries)
         {
-            if (TryGetSingleton(ref state, out ScenarioRunnerTick scenarioTick) && scenarioTick.Tick > 0)
+            if (TryGetSingleton(queries.ScenarioRunnerTickQuery, out ScenarioRunnerTick scenarioTick) && scenarioTick.Tick > 0)
             {
                 return scenarioTick.Tick;
             }
 
-            if (TryGetSingleton(ref state, out TickTimeState tickState))
+            if (TryGetSingleton(queries.TickTimeStateQuery, out TickTimeState tickState))
             {
                 var tick = tickState.Tick;
-                if (TryGetSingleton(ref state, out TimeState timeState) && timeState.Tick > tick)
+                if (TryGetSingleton(queries.TimeStateQuery, out TimeState timeState) && timeState.Tick > tick)
                 {
                     tick = timeState.Tick;
                 }
@@ -72,7 +88,7 @@ namespace PureDOTS.Systems.Telemetry
                 return tick;
             }
 
-            if (TryGetSingleton(ref state, out TimeState legacyTime))
+            if (TryGetSingleton(queries.TimeStateQuery, out TimeState legacyTime))
             {
                 var tick = legacyTime.Tick;
                 if (tick == 0 && Application.isBatchMode)
@@ -102,9 +118,9 @@ namespace PureDOTS.Systems.Telemetry
             return 0u;
         }
 
-        private static Entity EnsureProfilerEntity(ref SystemState state)
+        private static Entity EnsureProfilerEntity(ref SystemState state, ref SimPhaseProfilerQueries queries)
         {
-            if (TryGetSingletonEntity<SimPhaseProfilerState>(ref state, out var entity))
+            if (TryGetSingletonEntity<SimPhaseProfilerState>(queries.ProfilerStateQuery, out var entity))
             {
                 return entity;
             }
@@ -117,162 +133,288 @@ namespace PureDOTS.Systems.Telemetry
             return entity;
         }
 
-        private static bool TryGetSingleton<T>(ref SystemState state, out T value)
+        private static bool TryGetSingleton<T>(EntityQuery query, out T value)
             where T : unmanaged, IComponentData
         {
-            var query = state.GetEntityQuery(ComponentType.ReadOnly<T>());
             return query.TryGetSingleton(out value);
         }
 
-        private static bool TryGetSingletonEntity<T>(ref SystemState state, out Entity entity)
+        private static bool TryGetSingletonEntity<T>(EntityQuery query, out Entity entity)
             where T : unmanaged, IComponentData
         {
-            var query = state.GetEntityQuery(ComponentType.ReadOnly<T>());
             return query.TryGetSingletonEntity<T>(out entity);
         }
     }
 
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     [UpdateBefore(typeof(TimeSystemGroup))]
     public partial struct SimPhaseScenarioApplyStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.ScenarioApply);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.ScenarioApply, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true)]
     [UpdateAfter(typeof(TimeSystemGroup))]
     public partial struct SimPhaseScenarioApplyEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.ScenarioApply);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.ScenarioApply, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(SpatialSystemGroup))]
     public partial struct SimPhaseMovementStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Movement);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Movement, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpatialSystemGroup))]
     public partial struct SimPhaseMovementEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Movement);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Movement, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateBefore(typeof(Unity.Physics.Systems.PhysicsSystemGroup))]
     public partial struct SimPhasePhysicsStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Physics);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Physics, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(Unity.Physics.Systems.PhysicsSystemGroup))]
     public partial struct SimPhasePhysicsEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Physics);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Physics, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(SpatialSystemGroup))]
     [UpdateBefore(typeof(PerceptionSystemGroup))]
     public partial struct SimPhaseSensorsStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Sensors);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Sensors, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(SpatialSystemGroup))]
     [UpdateAfter(typeof(PerceptionSystemGroup))]
     public partial struct SimPhaseSensorsEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Sensors);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Sensors, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateBefore(typeof(InterruptSystemGroup))]
     public partial struct SimPhaseCommsStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Comms);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Comms, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(InterruptSystemGroup))]
     public partial struct SimPhaseCommsEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Comms);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Comms, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateBefore(typeof(VillagerSystemGroup))]
     public partial struct SimPhaseKnowledgeStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Knowledge);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Knowledge, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(VillagerSystemGroup))]
     public partial struct SimPhaseKnowledgeEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Knowledge);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Knowledge, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateBefore(typeof(ResourceSystemGroup))]
     public partial struct SimPhaseEconomyStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Economy);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.Economy, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(GameplaySystemGroup))]
     [UpdateAfter(typeof(ResourceSystemGroup))]
     public partial struct SimPhaseEconomyEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.Economy);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.Economy, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateBefore(typeof(PureDotsPresentationSystemGroup))]
     public partial struct SimPhasePresentationStartSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.BeginPhase(ref state, SimPhase.PresentationBridge);
+            SimPhaseProfiler.BeginPhase(ref state, SimPhase.PresentationBridge, ref _queries);
         }
     }
 
+    [UpdateInGroup(typeof(Unity.Entities.PresentationSystemGroup))]
     [UpdateAfter(typeof(PureDotsPresentationSystemGroup))]
     public partial struct SimPhasePresentationEndSystem : ISystem
     {
+        private SimPhaseProfilerQueries _queries;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _queries.Initialize(ref state);
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            SimPhaseProfiler.EndPhase(ref state, SimPhase.PresentationBridge);
+            SimPhaseProfiler.EndPhase(ref state, SimPhase.PresentationBridge, ref _queries);
         }
     }
 }

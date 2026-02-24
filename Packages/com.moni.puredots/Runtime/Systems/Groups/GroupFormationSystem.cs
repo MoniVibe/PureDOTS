@@ -19,17 +19,22 @@ namespace PureDOTS.Systems.Groups
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct GroupFormationSystem : ISystem
     {
+        private ComponentLookup<FormationMember> _formationMemberLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
             state.RequireForUpdate<RewindState>();
             state.RequireForUpdate<ScenarioState>();
+            _formationMemberLookup = state.GetComponentLookup<FormationMember>(false);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _formationMemberLookup.Update(ref state);
+
             var timeState = SystemAPI.GetSingleton<TimeState>();
             if (timeState.IsPaused)
             {
@@ -53,7 +58,6 @@ namespace PureDOTS.Systems.Groups
             }
 
             // Query groups with FormationState and GroupMember buffer
-            var formationMemberLookup = state.GetComponentLookup<FormationMember>(false);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (formationState, groupMembers, transform, groupEntity) in SystemAPI.Query<
                 RefRO<FormationState>,
@@ -100,13 +104,13 @@ namespace PureDOTS.Systems.Groups
                     float3 targetPosition = anchorPos + worldOffset;
 
                     // Update FormationMember component if it exists
-                    if (formationMemberLookup.HasComponent(memberEntity))
+                    if (_formationMemberLookup.HasComponent(memberEntity))
                     {
-                        var formationMember = formationMemberLookup[memberEntity];
+                        var formationMember = _formationMemberLookup[memberEntity];
                         formationMember.TargetPosition = targetPosition;
                         formationMember.FormationEntity = groupEntity;
                         formationMember.SlotIndex = (byte)i;
-                        formationMemberLookup[memberEntity] = formationMember;
+                        _formationMemberLookup[memberEntity] = formationMember;
                     }
                     else
                     {
