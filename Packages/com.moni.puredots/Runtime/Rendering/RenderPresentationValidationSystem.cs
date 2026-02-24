@@ -13,6 +13,10 @@ namespace PureDOTS.Rendering
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
     public partial struct RenderPresentationValidationSystem : ISystem
     {
+        // NOTE FOR VALIDATOR/NIGHTLY:
+        // This system is intentionally disabled for manual/editor play to avoid noisy false-positive floods
+        // while people iterate on movement/presentation feel. In batch/headless lanes, keep it enabled and
+        // evolve it toward aggregated telemetry (semantic-key buckets, persistence windows, one-line summaries).
         private const int ValidationWarmupFrames = 8;
         private const int PersistentMissingFrameThreshold = 120;
         private const int MaxReportsPerCategory = 8;
@@ -30,6 +34,13 @@ namespace PureDOTS.Rendering
 
         public void OnCreate(ref SystemState state)
         {
+            if (!Application.isBatchMode)
+            {
+                state.Enabled = false;
+                Debug.Log("[RenderPresentationValidation] Disabled for manual/editor lane. Validator/nightly batch lanes can re-enable and tune this for aggregated evidence.");
+                return;
+            }
+
             const EntityQueryOptions queryOptions = EntityQueryOptions.IgnoreComponentEnabledState;
 
             _missingSemanticQuery = state.GetEntityQuery(new EntityQueryDesc
