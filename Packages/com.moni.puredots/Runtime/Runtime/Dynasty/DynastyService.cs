@@ -40,10 +40,35 @@ namespace PureDOTS.Runtime.Dynasty
                 RequiresBloodline = 1,
                 MinLineageStrength = 0.5f
             });
+            ecb.AddComponent(dynastyEntity, new DynastySuccessionPreferences
+            {
+                LineageWeight = 0.4f,
+                WarlikeWeight = 0.2f,
+                MaterialistWeight = 0.15f,
+                IntellectWeight = 0.1f,
+                DiplomacyWeight = 0.1f,
+                SpiritualWeight = 0.05f,
+                WealthWeight = 0.05f,
+                PrestigeWeight = 0.05f,
+                ClaimDisputeThreshold = 0.65f,
+                MeritTieBreak = 0.1f
+            });
+            ecb.AddComponent(dynastyEntity, new DynastyInheritancePolicy
+            {
+                WealthTransferRate = 0.35f,
+                LegacyTransferRate = 0.5f,
+                InheritanceTaxRate = 0.15f,
+                RequiresAcceptance = 0
+            });
+            ecb.AddComponent(dynastyEntity, new DynastyInheritanceState
+            {
+                LastProcessedTick = 0
+            });
 
             // Initialize buffers before appending
             ecb.AddBuffer<DynastyMemberEntry>(dynastyEntity);
             ecb.AddBuffer<DynastyLineage>(dynastyEntity);
+            ecb.AddBuffer<DynastyLegacyEntry>(dynastyEntity);
 
             // Add founder as first member
             TrackLineage(ref ecb, dynastyEntity, founder, Entity.Null, Entity.Null, currentTick, 0);
@@ -194,4 +219,3 @@ namespace PureDOTS.Runtime.Dynasty
         }
     }
 }
-

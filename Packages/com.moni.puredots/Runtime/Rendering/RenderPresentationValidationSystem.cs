@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System;
 using PureDOTS.Runtime.Components;
 using Unity.Collections;
 using Unity.Entities;
@@ -75,6 +76,24 @@ namespace PureDOTS.Rendering
 
         public void OnUpdate(ref SystemState state)
         {
+            // Keep this validator active for automated/headless validation lanes only.
+            // In interactive editor play it can generate high-volume logs that mask
+            // movement feel issues with log-induced hitches.
+            if (!Application.isBatchMode)
+            {
+                return;
+            }
+
+            var disableValidation = global::System.Environment.GetEnvironmentVariable("SPACE4X_DISABLE_RENDER_VALIDATION");
+            if (!string.IsNullOrWhiteSpace(disableValidation) &&
+                (disableValidation.Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                 disableValidation.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                 disableValidation.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+                 disableValidation.Equals("on", StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
             if (!SystemAPI.HasSingleton<PresentationReady>())
             {
                 _presentationReadyFrames = 0;

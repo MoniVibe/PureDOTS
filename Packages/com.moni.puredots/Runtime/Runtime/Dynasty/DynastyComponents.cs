@@ -71,6 +71,22 @@ namespace PureDOTS.Runtime.Dynasty
     }
 
     /// <summary>
+    /// Legacy roster entry for all dynasty members (alive or dead).
+    /// Used for lineage/legacy queries without keeping members alive in the roster.
+    /// </summary>
+    [InternalBufferCapacity(64)]
+    public struct DynastyLegacyEntry : IBufferElementData
+    {
+        public Entity MemberEntity;
+        public DynastyRank Rank;
+        public float LineageStrength;
+        public byte Generation;
+        public byte IsDead;
+        public uint BirthTick;
+        public uint DeathTick;
+    }
+
+    /// <summary>
     /// Dynasty succession rules - how leadership passes through the dynasty.
     /// </summary>
     public struct DynastySuccessionRules : IComponentData
@@ -79,6 +95,42 @@ namespace PureDOTS.Runtime.Dynasty
         public byte AllowFemaleHeirs;
         public byte RequiresBloodline;
         public float MinLineageStrength;
+    }
+
+    /// <summary>
+    /// Succession preferences that weight candidate selection (data-driven ethos).
+    /// </summary>
+    public struct DynastySuccessionPreferences : IComponentData
+    {
+        public float LineageWeight;
+        public float WarlikeWeight;
+        public float MaterialistWeight;
+        public float IntellectWeight;
+        public float DiplomacyWeight;
+        public float SpiritualWeight;
+        public float WealthWeight;
+        public float PrestigeWeight;
+        public float ClaimDisputeThreshold; // 0-1 claim strength for crisis
+        public float MeritTieBreak;         // extra weight for merit when priority ties
+    }
+
+    /// <summary>
+    /// Inheritance policy for dynasty assets and legacies.
+    /// </summary>
+    public struct DynastyInheritancePolicy : IComponentData
+    {
+        public float WealthTransferRate;   // Portion of shared wealth transferred to successor
+        public float LegacyTransferRate;   // Portion of legacy value transferred
+        public float InheritanceTaxRate;   // Tax/fee applied to inheritance
+        public byte RequiresAcceptance;    // Heir can refuse inheritance items
+    }
+
+    /// <summary>
+    /// Tracks inheritance processing for a dynasty.
+    /// </summary>
+    public struct DynastyInheritanceState : IComponentData
+    {
+        public uint LastProcessedTick;
     }
 
     /// <summary>
@@ -92,4 +144,3 @@ namespace PureDOTS.Runtime.Dynasty
         public uint LastUpdatedTick;
     }
 }
-

@@ -1,4 +1,4 @@
-using System;
+using PureDOTS.Runtime.Core;
 using Unity.Entities;
 using UnityEngine;
 
@@ -18,7 +18,7 @@ namespace PureDOTS.Rendering
             ref bool logged,
             bool warnIfCatalogMissing = true)
         {
-            if (!IsRenderingEnabled())
+            if (!RuntimeMode.IsRenderingEnabled)
             {
                 return false;
             }
@@ -177,11 +177,10 @@ namespace PureDOTS.Rendering
                 return 0;
             }
 
-            ref var blob = ref catalog.Value;
-            ref var themes = ref blob.Themes;
+            var themes = catalog.Value.Themes;
             for (int i = 0; i < themes.Length; i++)
             {
-                ref var theme = ref themes[i];
+                var theme = themes[i];
                 if (theme.ThemeId == 0)
                 {
                     return theme.VariantIndices.Length;
@@ -215,26 +214,9 @@ namespace PureDOTS.Rendering
                 return false;
             }
 
-            ref var blob = ref catalog.Blob.Value;
-            variantCount = blob.Variants.Length;
+            variantCount = catalog.Blob.Value.Variants.Length;
             theme0Mappings = GetTheme0MappingCount(catalog.Blob);
             return true;
-        }
-
-        private static bool IsRenderingEnabled()
-        {
-            bool isBatchMode = Application.isBatchMode;
-            bool headless = isBatchMode || EnvIsSet("PUREDOTS_HEADLESS");
-            bool noGraphics = EnvIsSet("PUREDOTS_NOGRAPHICS");
-            bool forceRender = EnvIsSet("PUREDOTS_FORCE_RENDER") || EnvIsSet("PUREDOTS_RENDERING");
-            return forceRender || (!headless && !noGraphics);
-        }
-
-        private static bool EnvIsSet(string key)
-        {
-            var value = global::System.Environment.GetEnvironmentVariable(key);
-            return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string GetLogPrefix(string logPrefix)
