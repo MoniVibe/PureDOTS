@@ -7,6 +7,9 @@ using PureDOTS.Runtime.Succession;
 using PureDOTS.Runtime.Combat;
 using PureDOTS.Runtime.Lifecycle;
 using PureDOTS.Runtime.Social;
+using PureDOTS.Runtime.Stats;
+using PureDOTS.Runtime.Economy.Wealth;
+using Unity.Mathematics;
 
 namespace PureDOTS.Systems.Dynasty
 {
@@ -19,6 +22,15 @@ namespace PureDOTS.Systems.Dynasty
     {
         private ComponentLookup<DynastyMember> _dynastyMemberLookup;
         private ComponentLookup<SuccessionEvent> _successionEventLookup;
+        private ComponentLookup<DynastySuccessionPreferences> _successionPreferencesLookup;
+        private ComponentLookup<SocialStanding> _socialStandingLookup;
+        private ComponentLookup<IndividualStats> _individualStatsLookup;
+        private ComponentLookup<PureDOTS.Runtime.Individual.IndividualStats> _altIndividualStatsLookup;
+        private ComponentLookup<VillagerReputation> _villagerReputationLookup;
+        private ComponentLookup<VillagerWealth> _villagerWealthLookup;
+        private ComponentLookup<PhysiqueFinesseWill> _physiqueLookup;
+        private BufferLookup<DynastyLineage> _dynastyLineageLookup;
+        private ComponentLookup<SuccessionCrisis> _successionCrisisLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -26,6 +38,15 @@ namespace PureDOTS.Systems.Dynasty
             state.RequireForUpdate<TimeState>();
             _dynastyMemberLookup = state.GetComponentLookup<DynastyMember>(true);
             _successionEventLookup = state.GetComponentLookup<SuccessionEvent>(true);
+            _successionPreferencesLookup = state.GetComponentLookup<DynastySuccessionPreferences>(true);
+            _socialStandingLookup = state.GetComponentLookup<SocialStanding>(true);
+            _individualStatsLookup = state.GetComponentLookup<IndividualStats>(true);
+            _altIndividualStatsLookup = state.GetComponentLookup<PureDOTS.Runtime.Individual.IndividualStats>(true);
+            _villagerReputationLookup = state.GetComponentLookup<VillagerReputation>(true);
+            _villagerWealthLookup = state.GetComponentLookup<VillagerWealth>(true);
+            _physiqueLookup = state.GetComponentLookup<PhysiqueFinesseWill>(true);
+            _dynastyLineageLookup = state.GetBufferLookup<DynastyLineage>(true);
+            _successionCrisisLookup = state.GetComponentLookup<SuccessionCrisis>(true);
         }
 
         [BurstCompile]
@@ -36,6 +57,15 @@ namespace PureDOTS.Systems.Dynasty
 
             _dynastyMemberLookup.Update(ref state);
             _successionEventLookup.Update(ref state);
+            _successionPreferencesLookup.Update(ref state);
+            _socialStandingLookup.Update(ref state);
+            _individualStatsLookup.Update(ref state);
+            _altIndividualStatsLookup.Update(ref state);
+            _villagerReputationLookup.Update(ref state);
+            _villagerWealthLookup.Update(ref state);
+            _physiqueLookup.Update(ref state);
+            _dynastyLineageLookup.Update(ref state);
+            _successionCrisisLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
@@ -55,7 +85,16 @@ namespace PureDOTS.Systems.Dynasty
             {
                 Ecb = ecb,
                 CurrentTick = timeState.Tick,
-                DynastyMemberLookup = _dynastyMemberLookup
+                DynastyMemberLookup = _dynastyMemberLookup,
+                SuccessionPreferencesLookup = _successionPreferencesLookup,
+                SocialStandingLookup = _socialStandingLookup,
+                IndividualStatsLookup = _individualStatsLookup,
+                AltIndividualStatsLookup = _altIndividualStatsLookup,
+                VillagerReputationLookup = _villagerReputationLookup,
+                VillagerWealthLookup = _villagerWealthLookup,
+                PhysiqueLookup = _physiqueLookup,
+                DynastyLineageLookup = _dynastyLineageLookup,
+                SuccessionCrisisLookup = _successionCrisisLookup
             };
             successionJob.Run();
         }
@@ -91,17 +130,7 @@ namespace PureDOTS.Systems.Dynasty
                     if (dynastyMember.Rank != DynastyRank.Founder && dynastyMember.Rank != DynastyRank.Heir)
                         continue;
 
-                    // Check if succession event already exists (prevent duplicates)
-                    if (SuccessionEventLookup.HasComponent(dynastyMember.DynastyEntity))
-                    {
-                        var existingEvent = SuccessionEventLookup[dynastyMember.DynastyEntity];
-                        // Skip if already resolved or if it's for the same deceased entity
-                        if (existingEvent.WasSuccessful != 0 || existingEvent.DeceasedEntity == deadEntity)
-                            continue;
-                    }
-
-                    // Mark dynasty for succession processing
-                    Ecb.AddComponent(dynastyMember.DynastyEntity, new SuccessionEvent
+                    var newEvent = new SuccessionEvent
                     {
                         DeceasedEntity = deadEntity,
                         SuccessorEntity = Entity.Null,
@@ -110,7 +139,29 @@ namespace PureDOTS.Systems.Dynasty
                         ResolvedTick = 0,
                         WasContested = 0,
                         WasSuccessful = 0
-                    });
+                    };
+
+                    // Check if succession event already exists (prevent duplicates)
+                    if (SuccessionEventLookup.HasComponent(dynastyMember.DynastyEntity))
+                    {
+                        var existingEvent = SuccessionEventLookup[dynastyMember.DynastyEntity];
+                        if (existingEvent.WasSuccessful == 0)
+                        {
+                            // Unresolved succession already in flight.
+                            if (existingEvent.DeceasedEntity == deadEntity)
+                            {
+                                continue;
+                            }
+                            continue;
+                        }
+
+                        // Overwrite resolved succession with the new event.
+                        Ecb.SetComponent(dynastyMember.DynastyEntity, newEvent);
+                        continue;
+                    }
+
+                    // Mark dynasty for succession processing
+                    Ecb.AddComponent(dynastyMember.DynastyEntity, newEvent);
                 }
             }
         }
@@ -122,12 +173,31 @@ namespace PureDOTS.Systems.Dynasty
             public uint CurrentTick;
             [ReadOnly]
             public ComponentLookup<DynastyMember> DynastyMemberLookup;
+            [ReadOnly]
+            public ComponentLookup<DynastySuccessionPreferences> SuccessionPreferencesLookup;
+            [ReadOnly]
+            public ComponentLookup<SocialStanding> SocialStandingLookup;
+            [ReadOnly]
+            public ComponentLookup<IndividualStats> IndividualStatsLookup;
+            [ReadOnly]
+            public ComponentLookup<PureDOTS.Runtime.Individual.IndividualStats> AltIndividualStatsLookup;
+            [ReadOnly]
+            public ComponentLookup<VillagerReputation> VillagerReputationLookup;
+            [ReadOnly]
+            public ComponentLookup<VillagerWealth> VillagerWealthLookup;
+            [ReadOnly]
+            public ComponentLookup<PhysiqueFinesseWill> PhysiqueLookup;
+            [ReadOnly]
+            public BufferLookup<DynastyLineage> DynastyLineageLookup;
+            [ReadOnly]
+            public ComponentLookup<SuccessionCrisis> SuccessionCrisisLookup;
 
             void Execute(
                 Entity entity,
                 ref DynastyIdentity identity,
                 ref SuccessionEvent successionEvent,
                 in DynastySuccessionRules rules,
+                in DynastySuccessionPreferences preferences,
                 ref DynamicBuffer<DynastyMemberEntry> members)
             {
                 // Skip if already resolved
@@ -157,6 +227,12 @@ namespace PureDOTS.Systems.Dynasty
                 Entity selectedHeir = Entity.Null;
                 float bestSuitability = -1f;
                 byte bestPriority = byte.MaxValue;
+                int strongClaims = 0;
+                float claimSum = 0f;
+                float claimVariance = 0f;
+                int eligibleCandidates = 0;
+
+                byte deceasedGeneration = ResolveGeneration(entity, successionEvent.DeceasedEntity);
                 
                 for (int i = 0; i < members.Length; i++)
                 {
@@ -171,9 +247,26 @@ namespace PureDOTS.Systems.Dynasty
                         continue;
 
                     // Calculate suitability based on succession type
-                    float suitability = member.LineageStrength;
+                    float suitability = CalculateSuitability(member.MemberEntity, member.LineageStrength, preferences);
                     byte priority = (byte)member.Rank;
                     bool isDesignated = member.Rank == DynastyRank.Heir;
+                    byte candidateGeneration = ResolveGeneration(entity, member.MemberEntity);
+                    byte generationalDistance = (byte)math.abs(candidateGeneration - deceasedGeneration);
+                    float legitimacy = math.saturate(member.LineageStrength);
+                    float claim = SuccessionHelpers.CalculateClaimStrength(
+                        isBloodline,
+                        generationalDistance,
+                        legitimacy,
+                        isDesignated);
+
+                    if (claim >= preferences.ClaimDisputeThreshold)
+                    {
+                        strongClaims++;
+                    }
+
+                    claimSum += claim;
+                    claimVariance += claim * claim;
+                    eligibleCandidates++;
 
                     // Apply succession type selection logic
                     bool isCandidate = false;
@@ -182,7 +275,8 @@ namespace PureDOTS.Systems.Dynasty
                         case SuccessionType.Primogeniture:
                         case SuccessionType.Seniority:
                             // Lower priority (rank) = better
-                            if (selectedHeir == Entity.Null || priority < bestPriority)
+                            if (selectedHeir == Entity.Null || priority < bestPriority ||
+                                (priority == bestPriority && suitability > bestSuitability + preferences.MeritTieBreak))
                             {
                                 isCandidate = true;
                                 bestPriority = priority;
@@ -190,7 +284,8 @@ namespace PureDOTS.Systems.Dynasty
                             break;
                         case SuccessionType.Ultimogeniture:
                             // Higher priority = better (youngest)
-                            if (selectedHeir == Entity.Null || priority > bestPriority)
+                            if (selectedHeir == Entity.Null || priority > bestPriority ||
+                                (priority == bestPriority && suitability > bestSuitability + preferences.MeritTieBreak))
                             {
                                 isCandidate = true;
                                 bestPriority = priority;
@@ -229,6 +324,26 @@ namespace PureDOTS.Systems.Dynasty
                         {
                             bestSuitability = suitability;
                         }
+                    }
+                }
+
+                if (eligibleCandidates > 1 && strongClaims > 1)
+                {
+                    successionEvent.WasContested = 1;
+
+                    if (!SuccessionCrisisLookup.HasComponent(entity))
+                    {
+                        float intensity = CalculateCrisisIntensity(eligibleCandidates, claimSum, claimVariance);
+                        Ecb.AddComponent(entity, new SuccessionCrisis
+                        {
+                            SubjectEntity = entity,
+                            ClaimantCount = (byte)math.min(255, strongClaims),
+                            Intensity = intensity,
+                            StartTick = CurrentTick,
+                            DeadlineTick = CurrentTick + 1000,
+                            RequiresVote = (byte)(rules.SuccessionType == SuccessionType.Elective ? 1 : 0),
+                            RequiresCombat = (byte)(rules.SuccessionType == SuccessionType.Meritocratic ? 1 : 0)
+                        });
                     }
                 }
 
@@ -293,6 +408,125 @@ namespace PureDOTS.Systems.Dynasty
                         Ecb.SetComponent(previousHeir, member);
                     }
                 }
+            }
+
+            private byte ResolveGeneration(Entity dynastyEntity, Entity member)
+            {
+                if (!DynastyLineageLookup.HasBuffer(dynastyEntity))
+                {
+                    return 0;
+                }
+
+                var lineage = DynastyLineageLookup[dynastyEntity];
+                for (int i = 0; i < lineage.Length; i++)
+                {
+                    if (lineage[i].MemberEntity == member)
+                    {
+                        return lineage[i].Generation;
+                    }
+                }
+
+                return 0;
+            }
+
+            private float CalculateSuitability(Entity member, float lineageStrength, in DynastySuccessionPreferences preferences)
+            {
+                float warlike = 0.5f;
+                float materialist = 0.5f;
+                float intellect = 0.5f;
+                float diplomacy = 0.5f;
+                float spiritual = 0.5f;
+                float prestige = 0.5f;
+                float wealth = 0.5f;
+
+                if (IndividualStatsLookup.HasComponent(member))
+                {
+                    var stats = IndividualStatsLookup[member];
+                    warlike = math.saturate(((float)stats.Command + (float)stats.Tactics + (float)stats.Resolve) / 300f);
+                    materialist = math.saturate(((float)stats.Logistics + (float)stats.Engineering) / 200f);
+                    intellect = math.saturate(((float)stats.Diplomacy + (float)stats.Engineering) / 200f);
+                    diplomacy = math.saturate((float)stats.Diplomacy / 100f);
+                    if (PhysiqueLookup.HasComponent(member))
+                    {
+                        var physique = PhysiqueLookup[member];
+                        spiritual = math.saturate((float)physique.Will / 10f);
+                    }
+                }
+                else if (AltIndividualStatsLookup.HasComponent(member))
+                {
+                    var stats = AltIndividualStatsLookup[member];
+                    warlike = math.saturate((stats.Physique + stats.Agility) / 20f);
+                    materialist = math.saturate(stats.Intellect / 10f);
+                    intellect = math.saturate(stats.Intellect / 10f);
+                    diplomacy = math.saturate(stats.Social / 10f);
+                    spiritual = math.saturate(stats.Faith / 10f);
+                }
+
+                if (VillagerReputationLookup.HasComponent(member))
+                {
+                    var reputation = VillagerReputationLookup[member];
+                    float gloryScore = math.saturate((reputation.Glory + reputation.Renown) / 200f);
+                    warlike = math.saturate((warlike + gloryScore) * 0.5f);
+
+                    float renownScore = math.saturate((reputation.Renown + reputation.Honor) / 200f);
+                    prestige = math.saturate(math.max(prestige, renownScore));
+                }
+
+                if (VillagerWealthLookup.HasComponent(member))
+                {
+                    var wealthData = VillagerWealthLookup[member];
+                    float wealthTierMax = math.max(1f, (float)WealthTier.UltraHigh);
+                    float wealthTierScore = math.saturate((float)wealthData.Tier / wealthTierMax);
+                    wealth = wealthTierScore;
+                    materialist = math.saturate((materialist + wealthTierScore) * 0.5f);
+                }
+
+                if (SocialStandingLookup.HasComponent(member))
+                {
+                    var standing = SocialStandingLookup[member];
+                    prestige = math.saturate(math.max(prestige, (standing.Reputation + 100) / 200f));
+                }
+
+                float weightSum = preferences.LineageWeight + preferences.WarlikeWeight +
+                                 preferences.MaterialistWeight + preferences.IntellectWeight +
+                                 preferences.DiplomacyWeight + preferences.SpiritualWeight +
+                                 preferences.WealthWeight + preferences.PrestigeWeight;
+
+                if (weightSum <= 0f)
+                {
+                    return lineageStrength;
+                }
+
+                float score = 0f;
+                score += lineageStrength * preferences.LineageWeight;
+                score += warlike * preferences.WarlikeWeight;
+                score += materialist * preferences.MaterialistWeight;
+                score += intellect * preferences.IntellectWeight;
+                score += diplomacy * preferences.DiplomacyWeight;
+                score += spiritual * preferences.SpiritualWeight;
+                score += wealth * preferences.WealthWeight;
+                score += prestige * preferences.PrestigeWeight;
+
+                return math.saturate(score / weightSum);
+            }
+
+            private static float CalculateCrisisIntensity(int candidateCount, float claimSum, float claimVarianceSum)
+            {
+                if (candidateCount <= 1)
+                {
+                    return 0f;
+                }
+
+                float avgClaim = claimSum / math.max(1, candidateCount);
+                float variance = 0f;
+                if (candidateCount > 0)
+                {
+                    variance = (claimVarianceSum / candidateCount) - avgClaim * avgClaim;
+                }
+
+                float countFactor = math.min(1f, candidateCount * 0.2f);
+                float contestedFactor = 1f - math.sqrt(math.max(0f, variance));
+                return math.saturate(countFactor * contestedFactor);
             }
         }
     }
@@ -668,39 +902,19 @@ namespace PureDOTS.Systems.Dynasty
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
                 return;
 
-            var job = new UpdateReputationJob
+            foreach (var (prestige, wealth, members, entity) in SystemAPI
+                .Query<RefRW<DynastyPrestige>, RefRW<PureDOTS.Runtime.Dynasty.DynastyWealth>, DynamicBuffer<DynastyMemberEntry>>()
+                .WithEntityAccess())
             {
-                CurrentTick = timeState.Tick
-            };
-            job.ScheduleParallel();
-        }
-
-        [BurstCompile]
-        partial struct UpdateReputationJob : IJobEntity
-        {
-            public uint CurrentTick;
-
-            void Execute(
-                Entity entity,
-                ref DynastyPrestige prestige,
-                ref DynastyWealth wealth,
-                in DynamicBuffer<DynastyMemberEntry> members)
-            {
-                // Calculate total wealth from members
-                float totalWealth = wealth.TotalWealth;
-                
-                // Calculate average reputation from members
-                // Note: Requires integration with reputation system
-                float averageReputation = prestige.DynastyReputation;
-
-                // Update prestige
+                float totalWealth = wealth.ValueRO.TotalWealth;
+                float averageReputation = prestige.ValueRO.DynastyReputation;
                 DynastyService.UpdateDynastyReputation(
                     entity,
-                    ref prestige,
+                    ref prestige.ValueRW,
                     members,
                     totalWealth,
                     averageReputation,
-                    CurrentTick);
+                    timeState.Tick);
             }
         }
     }
@@ -732,55 +946,34 @@ namespace PureDOTS.Systems.Dynasty
             _villagerWealthLookup.Update(ref state);
             _dynastyWalletLookup.Update(ref state);
 
-            var job = new AggregateDynastyWealthJob
-            {
-                CurrentTick = timeState.Tick,
-                VillagerWealthLookup = _villagerWealthLookup,
-                DynastyWalletLookup = _dynastyWalletLookup
-            };
-            job.ScheduleParallel();
-        }
-
-        [BurstCompile]
-        partial struct AggregateDynastyWealthJob : IJobEntity
-        {
-            public uint CurrentTick;
-            [ReadOnly]
-            public ComponentLookup<PureDOTS.Runtime.Economy.Wealth.VillagerWealth> VillagerWealthLookup;
-            [ReadOnly]
-            public ComponentLookup<PureDOTS.Runtime.Economy.Wealth.DynastyWealth> DynastyWalletLookup;
-
-            void Execute(
-                Entity entity,
-                ref DynastyWealth wealth,
-                in DynamicBuffer<DynastyMemberEntry> members)
+            foreach (var (wealth, members, entity) in SystemAPI
+                .Query<RefRW<PureDOTS.Runtime.Dynasty.DynastyWealth>, DynamicBuffer<DynastyMemberEntry>>()
+                .WithEntityAccess())
             {
                 float totalWealth = 0f;
                 int activeMemberCount = 0;
 
-                // Sum wealth from all active members
                 for (int i = 0; i < members.Length; i++)
                 {
                     var memberEntity = members[i].MemberEntity;
-                    if (memberEntity != Entity.Null && VillagerWealthLookup.HasComponent(memberEntity))
+                    if (memberEntity != Entity.Null && _villagerWealthLookup.HasComponent(memberEntity))
                     {
-                        var memberWealth = VillagerWealthLookup[memberEntity];
+                        var memberWealth = _villagerWealthLookup[memberEntity];
                         totalWealth += memberWealth.Balance;
                         activeMemberCount++;
                     }
                 }
 
-                // Read shared dynasty wallet balance
                 float sharedWealth = 0f;
-                if (DynastyWalletLookup.HasComponent(entity))
+                if (_dynastyWalletLookup.HasComponent(entity))
                 {
-                    sharedWealth = DynastyWalletLookup[entity].Balance;
+                    sharedWealth = _dynastyWalletLookup[entity].Balance;
                 }
 
-                wealth.TotalWealth = totalWealth;
-                wealth.SharedWealth = sharedWealth;
-                wealth.AverageWealth = activeMemberCount > 0 ? totalWealth / activeMemberCount : 0f;
-                wealth.LastUpdatedTick = CurrentTick;
+                wealth.ValueRW.TotalWealth = totalWealth;
+                wealth.ValueRW.SharedWealth = sharedWealth;
+                wealth.ValueRW.AverageWealth = activeMemberCount > 0 ? totalWealth / activeMemberCount : 0f;
+                wealth.ValueRW.LastUpdatedTick = timeState.Tick;
             }
         }
     }

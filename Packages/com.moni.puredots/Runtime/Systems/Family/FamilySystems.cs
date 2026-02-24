@@ -268,6 +268,16 @@ namespace PureDOTS.Systems.Family
                 if (parentA != Entity.Null && FamilyMemberLookup.HasComponent(parentA))
                 {
                     var parentFamily = FamilyMemberLookup[parentA];
+                    if (!FamilyMemberLookup.HasComponent(entity))
+                    {
+                        FamilyService.AddMember(
+                            ref Ecb,
+                            parentFamily.FamilyEntity,
+                            entity,
+                            FamilyRole.Child,
+                            CurrentTick);
+                    }
+
                     FamilyService.AddToFamilyTree(
                         ref Ecb,
                         parentFamily.FamilyEntity,
@@ -279,6 +289,16 @@ namespace PureDOTS.Systems.Family
                 else if (parentB != Entity.Null && FamilyMemberLookup.HasComponent(parentB))
                 {
                     var parentFamily = FamilyMemberLookup[parentB];
+                    if (!FamilyMemberLookup.HasComponent(entity))
+                    {
+                        FamilyService.AddMember(
+                            ref Ecb,
+                            parentFamily.FamilyEntity,
+                            entity,
+                            FamilyRole.Child,
+                            CurrentTick);
+                    }
+
                     FamilyService.AddToFamilyTree(
                         ref Ecb,
                         parentFamily.FamilyEntity,
@@ -383,9 +403,30 @@ namespace PureDOTS.Systems.Family
                 ref DynamicBuffer<FamilyTree> familyTree,
                 in FamilyIdentity identity)
             {
-                // Validate and clean up family tree
-                // Remove entries for deceased members (already handled by ProcessDeathEventsJob)
-                // This job can be extended for relationship recalculation if needed
+                // Ensure founder exists in the tree so legacy tracking can resolve generations.
+                if (identity.FounderEntity != Entity.Null)
+                {
+                    bool hasFounder = false;
+                    for (int i = 0; i < familyTree.Length; i++)
+                    {
+                        if (familyTree[i].MemberEntity == identity.FounderEntity)
+                        {
+                            hasFounder = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasFounder)
+                    {
+                        familyTree.Add(new FamilyTree
+                        {
+                            MemberEntity = identity.FounderEntity,
+                            ParentA = Entity.Null,
+                            ParentB = Entity.Null,
+                            BirthTick = identity.FoundedTick
+                        });
+                    }
+                }
             }
         }
     }
@@ -470,4 +511,3 @@ namespace PureDOTS.Systems.Family
         }
     }
 }
-

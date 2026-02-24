@@ -186,7 +186,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             requestList.Dispose();
         }
 
-        [BurstCompile]
         private void ProcessTaxCollection(
             ref SystemState state,
             TaxCollectionRequest request,
@@ -288,7 +287,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             runtimeAccumulators[request.TaxPolicyEntity] = runtimeAggregate;
         }
 
-        [BurstCompile]
         private void UpsertTaxAssessment(ref SystemState state, Entity taxpayer, TaxAssessmentState assessment)
         {
             if (_taxAssessmentLookup.HasComponent(taxpayer))
@@ -301,7 +299,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             }
         }
 
-        [BurstCompile]
         private bool HasWallet(Entity entity)
         {
             return _villagerWealthLookup.HasComponent(entity)
@@ -312,7 +309,6 @@ namespace PureDOTS.Runtime.Economy.Policies
                    || _villageTreasuryLookup.HasComponent(entity);
         }
 
-        [BurstCompile]
         private static float ResolvePersonalTaxableIncome(
             Entity taxpayer,
             TaxPolicy policy,
@@ -336,7 +332,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.max(0f, gross - deductions - exemption);
         }
 
-        [BurstCompile]
         private static float ResolveBusinessTaxableIncome(
             Entity taxpayer,
             ComponentLookup<TaxableIncome> taxableIncomeLookup,
@@ -356,7 +351,6 @@ namespace PureDOTS.Runtime.Economy.Policies
                 : 0f;
         }
 
-        [BurstCompile]
         private static float ResolveIncomeRate(float taxableIncome, TaxPolicy policy, Entity policyEntity, BufferLookup<TaxBracket> bracketLookup)
         {
             var baseRate = math.max(0f, policy.BaseIncomeTaxRate);
@@ -406,7 +400,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.clamp(baseRate + progressBonus, 0f, maxRate);
         }
 
-        [BurstCompile]
         private static float ResolveProfileFactor(
             TaxPolicy policy,
             NativeParallelHashMap<Entity, ProfileAggregate> societyProfiles,
@@ -449,7 +442,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.clamp(1f + (blendedScore * elasticity), 0.25f, 2f);
         }
 
-        [BurstCompile]
         private static float ResolveCompliance01(
             Entity taxpayer,
             TaxPolicy policy,
@@ -470,7 +462,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.saturate(compliance);
         }
 
-        [BurstCompile]
         private static float ResolveLeakageRate01(
             Entity taxpayer,
             TaxPolicy policy,
@@ -499,7 +490,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.saturate(leakage);
         }
 
-        [BurstCompile]
         private static float ResolveEntityTaxDispositionScore(
             Entity entity,
             ComponentLookup<AlignmentTriplet> alignmentLookup,
@@ -548,7 +538,6 @@ namespace PureDOTS.Runtime.Economy.Policies
             return math.clamp(score / weight, -1f, 1f);
         }
 
-        [BurstCompile]
         private static TaxPolicy ResolvePolicyDefaults(TaxPolicy policy)
         {
             var appearsLegacy = policy.BaseIncomeTaxRate == 0f

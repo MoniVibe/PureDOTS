@@ -86,6 +86,21 @@ namespace PureDOTS.Runtime.Family
     }
 
     /// <summary>
+    /// Legacy roster entry for all family members (alive or dead).
+    /// Used for lineage/legacy queries without keeping members alive in the roster.
+    /// </summary>
+    [InternalBufferCapacity(32)]
+    public struct FamilyLegacyEntry : IBufferElementData
+    {
+        public Entity MemberEntity;
+        public FamilyRole Role;
+        public byte Generation;
+        public byte IsDead;
+        public uint BirthTick;
+        public uint DeathTick;
+    }
+
+    /// <summary>
     /// Family wealth aggregation - tracks family's shared wealth.
     /// </summary>
     public struct FamilyWealth : IComponentData
@@ -115,4 +130,3 @@ namespace PureDOTS.Runtime.Family
         public uint ProcessedTick;
     }
 }
-

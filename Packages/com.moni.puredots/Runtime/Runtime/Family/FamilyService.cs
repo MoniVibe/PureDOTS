@@ -32,9 +32,13 @@ namespace PureDOTS.Runtime.Family
             // Initialize buffers before appending
             ecb.AddBuffer<FamilyMemberEntry>(familyEntity);
             ecb.AddBuffer<FamilyTree>(familyEntity);
+            ecb.AddBuffer<FamilyLegacyEntry>(familyEntity);
 
             // Add founder as first member
             AddMember(ref ecb, familyEntity, founder, FamilyRole.Founder, currentTick);
+
+            // Ensure founder is present in the family tree for legacy tracking
+            AddToFamilyTree(ref ecb, familyEntity, founder, Entity.Null, Entity.Null, currentTick);
 
             return familyEntity;
         }
@@ -282,4 +286,3 @@ namespace PureDOTS.Runtime.Family
         }
     }
 }
-
