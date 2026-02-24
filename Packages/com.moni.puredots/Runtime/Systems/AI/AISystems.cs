@@ -602,7 +602,7 @@ namespace PureDOTS.Systems.AI
                         ? _transformLookup[targetState.TargetEntity].Position
                         : transform.ValueRO.Position;
 
-                    SystemAPI.SetComponent(entity, targetState);
+                    state.EntityManager.SetComponentData(entity, targetState);
                 }
             }
         }
