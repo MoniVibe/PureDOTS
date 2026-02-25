@@ -1,7 +1,8 @@
 using PureDOTS.Runtime.Components;
+using PureDOTS.Runtime.Core;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace PureDOTS.Runtime.Telemetry
 {
@@ -20,6 +21,14 @@ namespace PureDOTS.Runtime.Telemetry
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!RuntimeMode.IsHeadless && !Application.isBatchMode)
+            {
+                // Behavior telemetry is only required for headless proof/export lanes.
+                // Skip bootstrapping in editor/presentation runs to avoid structural churn on dense gameplay archetypes.
+                state.Enabled = false;
+                return;
+            }
+
             if (!SystemAPI.HasSingleton<BehaviorTelemetryConfig>())
             {
                 var configEntity = state.EntityManager.CreateEntity();

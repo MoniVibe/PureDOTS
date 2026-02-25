@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -15,7 +14,6 @@ namespace PureDOTS.Systems.Dynasty
     [UpdateAfter(typeof(DynastySuccessionSystem))]
     public partial struct DynastyInheritanceSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();

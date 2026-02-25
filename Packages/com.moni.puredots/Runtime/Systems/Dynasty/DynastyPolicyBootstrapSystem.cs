@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Entities;
 using PureDOTS.Runtime.Components;
 using PureDOTS.Runtime.Dynasty;
@@ -8,17 +7,14 @@ namespace PureDOTS.Systems.Dynasty
     /// <summary>
     /// Ensures dynasty policy components exist for all dynasties.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct DynastyPolicyBootstrapSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var em = state.EntityManager;

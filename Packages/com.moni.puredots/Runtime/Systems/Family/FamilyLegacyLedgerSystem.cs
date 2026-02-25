@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Components;
@@ -10,7 +9,6 @@ namespace PureDOTS.Systems.Family
     /// <summary>
     /// Maintains a legacy roster of all family members (alive or dead).
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(FamilyTreeUpdateSystem))]
     public partial struct FamilyLegacyLedgerSystem : ISystem
@@ -18,7 +16,6 @@ namespace PureDOTS.Systems.Family
         private ComponentLookup<FamilyMember> _familyMemberLookup;
         private ComponentLookup<DeathState> _deathStateLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -28,7 +25,6 @@ namespace PureDOTS.Systems.Family
             _deathStateLookup = state.GetComponentLookup<DeathState>(true);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)

@@ -83,6 +83,23 @@ Movement policy tags define how entities move through 3D space:
 
 **Baking Result**: This bakes `SpatialGridConfig`, `SpatialGridState`, and spatial grid buffers as singletons.
 
+## Movement Kernel Ownership (Authoritative Writes)
+
+For strict movement authority, add `MovementKernelOwnershipAuthoring` to entities that should be kernel-owned.
+
+What this does:
+- Adds `MovementKernelOwned` + `MovementKernelPose`.
+- Movement kernel captures canonical pose each fixed tick.
+- Late guard detects external transform writes on owned entities and (by default) rolls them back.
+
+Use this when you want to enforce:
+- "movement writes come from movement kernel only" for those entities.
+
+Related runtime contracts:
+- `MovementKernelGuardConfig`
+- `MovementKernelGuardStats`
+- `MovementKernelViolation` buffer
+
 ## Verification Checklist
 
 After baking your SubScene, verify in Play mode:
@@ -143,4 +160,3 @@ Enable `MovementPolicyDebugSystem` to see movement tag counts:
 3. **Configure spatial grid** with proper 3D cell counts (Y dimension > 1) for space games
 4. **Verify baking** by checking Entities Hierarchy after entering Play mode
 5. **Use debug system** to verify movement tag distribution matches expectations
-

@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using PureDOTS.Runtime.Combat;
@@ -10,7 +9,6 @@ namespace PureDOTS.Systems.Dynasty
     /// <summary>
     /// Maintains a legacy roster of all dynasty members (alive or dead).
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(DynastyLineageTrackingSystem))]
     public partial struct DynastyLegacyLedgerSystem : ISystem
@@ -18,7 +16,6 @@ namespace PureDOTS.Systems.Dynasty
         private ComponentLookup<DynastyMember> _dynastyMemberLookup;
         private ComponentLookup<DeathState> _deathStateLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -28,7 +25,6 @@ namespace PureDOTS.Systems.Dynasty
             _deathStateLookup = state.GetComponentLookup<DeathState>(true);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<RewindState>(out var rewindState) || rewindState.Mode != RewindMode.Record)

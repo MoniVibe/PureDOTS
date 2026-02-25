@@ -1,5 +1,4 @@
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -56,13 +55,12 @@ namespace PureDOTS.Runtime.Identity
             _behaviorTuningLookup.Update(ref state);
             _mightMagicAlignmentLookup.Update(ref state);
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
             var entityManager = state.EntityManager;
 
             foreach (var (alignment, entity) in SystemAPI.Query<RefRO<AggregateAlignment>>().WithEntityAccess())
             {
                 var flavor = BuildAggregateFlavor(entity, alignment.ValueRO);
-                UpsertFlavor(entityManager, ref ecb, entity, flavor);
+                UpsertFlavor(entityManager, entity, flavor);
             }
 
             foreach (var (alignment, entity) in SystemAPI.Query<RefRO<EntityAlignment>>().WithEntityAccess())
@@ -73,7 +71,7 @@ namespace PureDOTS.Runtime.Identity
                 }
 
                 var flavor = BuildIdentityFlavor(entity, alignment.ValueRO);
-                UpsertFlavor(entityManager, ref ecb, entity, flavor);
+                UpsertFlavor(entityManager, entity, flavor);
             }
 
             foreach (var (alignment, entity) in SystemAPI.Query<RefRO<IndividualAlignmentTriplet>>()
@@ -81,22 +79,15 @@ namespace PureDOTS.Runtime.Identity
                          .WithEntityAccess())
             {
                 var flavor = BuildIndividualFlavor(entity, alignment.ValueRO);
-                UpsertFlavor(entityManager, ref ecb, entity, flavor);
+                UpsertFlavor(entityManager, entity, flavor);
             }
-
-            ecb.Playback(entityManager);
-            ecb.Dispose();
         }
 
-        private static void UpsertFlavor(EntityManager entityManager, ref EntityCommandBuffer ecb, Entity entity, ArchetypeFlavor flavor)
+        private static void UpsertFlavor(EntityManager entityManager, Entity entity, ArchetypeFlavor flavor)
         {
             if (entityManager.HasComponent<ArchetypeFlavor>(entity))
             {
                 entityManager.SetComponentData(entity, flavor);
-            }
-            else
-            {
-                ecb.AddComponent(entity, flavor);
             }
         }
 

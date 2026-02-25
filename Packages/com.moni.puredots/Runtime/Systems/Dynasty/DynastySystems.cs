@@ -16,7 +16,6 @@ namespace PureDOTS.Systems.Dynasty
     /// <summary>
     /// System that handles dynasty succession when leaders die.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct DynastySuccessionSystem : ISystem
     {
@@ -32,7 +31,6 @@ namespace PureDOTS.Systems.Dynasty
         private BufferLookup<DynastyLineage> _dynastyLineageLookup;
         private ComponentLookup<SuccessionCrisis> _successionCrisisLookup;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<TimeState>();
@@ -49,7 +47,6 @@ namespace PureDOTS.Systems.Dynasty
             _successionCrisisLookup = state.GetComponentLookup<SuccessionCrisis>(true);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!SystemAPI.TryGetSingleton<TimeState>(out var timeState))
@@ -99,7 +96,6 @@ namespace PureDOTS.Systems.Dynasty
             successionJob.Run();
         }
 
-        [BurstCompile]
         partial struct ProcessLeaderDeathsJob : IJobEntity
         {
             public EntityCommandBuffer Ecb;
@@ -166,7 +162,6 @@ namespace PureDOTS.Systems.Dynasty
             }
         }
 
-        [BurstCompile]
         partial struct ProcessSuccessionJob : IJobEntity
         {
             public EntityCommandBuffer Ecb;
