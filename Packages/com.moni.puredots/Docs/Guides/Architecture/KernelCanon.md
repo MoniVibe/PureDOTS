@@ -18,7 +18,7 @@ Status values:
 | Kernel | Scope | Primary Responsibility | Status |
 |---|---|---|---|
 | TimeKernel | shared | tick, fixed-step, pause/speed/rewind, catch-up policy | Migrating |
-| InputKernel | shared | per-tick input snapshot, bindings, action normalization | Migrating |
+| InputKernel | shared | per-tick input snapshot, bindings, action normalization | Scaffolded |
 | OrderKernel | shared | all player/AI intents as deterministic command stream | Proposed |
 | MovementKernel | shared | locomotion intent -> movement state and steering constraints | Scaffolded |
 | PhysicsKernel | shared facade | physics queries/config/contact event normalization | Proposed |
@@ -38,6 +38,10 @@ Status values:
   - `Packages/com.moni.puredots/Runtime/Runtime/UI/UiKernelComponents.cs`
   - `Packages/com.moni.puredots/Runtime/Systems/UI/UiKernelBootstrapSystem.cs`
   - `Packages/com.moni.puredots/Runtime/Systems/UI/UiKernelIntentSystem.cs`
+- Input kernel contracts and systems:
+  - `Packages/com.moni.puredots/Runtime/Input/InputKernelComponents.cs`
+  - `Packages/com.moni.puredots/Runtime/Systems/Input/InputKernelBootstrapSystem.cs`
+  - `Packages/com.moni.puredots/Runtime/Systems/Input/InputKernelSanitizationSystem.cs`
 - Movement kernel contracts and systems:
   - `Packages/com.moni.puredots/Runtime/Runtime/Movement/MovementKernelComponents.cs`
   - `Packages/com.moni.puredots/Runtime/Systems/Movement/MovementKernelBootstrapSystem.cs`
