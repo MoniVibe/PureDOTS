@@ -155,7 +155,7 @@ namespace PureDOTS.Systems
 
             using var systems = GetAllSystems(Allocator.Temp);
             var world = World.Unmanaged;
-            var collectSystemTimings = TryPrepareSystemTimingMetrics(out var telemetryMetrics);
+            var collectSystemTimings = TryPrepareSystemTimingMetrics(out _);
             if (collectSystemTimings)
             {
                 EnsureSystemTimingBuffers();
@@ -199,7 +199,7 @@ namespace PureDOTS.Systems
                 }
             }
 
-            if (collectSystemTimings)
+            if (collectSystemTimings && TryPrepareSystemTimingMetrics(out var telemetryMetrics))
             {
                 EmitSystemTimingMetrics(telemetryMetrics);
             }

@@ -1,4 +1,5 @@
 using PureDOTS.Runtime.Components;
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -356,6 +357,7 @@ namespace PureDOTS.Rendering
         private EntityQuery _missingTracerPresenterQuery;
         private EntityQuery _missingThemeOverrideQuery;
         private uint _lastCatalogVersion;
+        private bool _loggedArchetypeOverflow;
 
         protected override void OnCreate()
         {
@@ -562,13 +564,20 @@ namespace PureDOTS.Rendering
             using var entities = query.ToEntityArray(Allocator.TempJob);
             foreach (var entity in entities)
             {
-                if (EntityManager.HasComponent<T>(entity))
+                try
                 {
-                    EntityManager.SetComponentData(entity, value);
+                    if (EntityManager.HasComponent<T>(entity))
+                    {
+                        EntityManager.SetComponentData(entity, value);
+                    }
+                    else
+                    {
+                        EntityManager.AddComponentData(entity, value);
+                    }
                 }
-                else
+                catch (InvalidOperationException ex) when (IsArchetypeSizeOverflow(ex))
                 {
-                    EntityManager.AddComponentData(entity, value);
+                    LogArchetypeOverflowOnce(typeof(T));
                 }
             }
         }
@@ -582,16 +591,40 @@ namespace PureDOTS.Rendering
             using var entities = query.ToEntityArray(Allocator.TempJob);
             foreach (var entity in entities)
             {
-                if (EntityManager.HasComponent<T>(entity))
+                try
                 {
-                    EntityManager.SetComponentData(entity, value);
+                    if (EntityManager.HasComponent<T>(entity))
+                    {
+                        EntityManager.SetComponentData(entity, value);
+                    }
+                    else
+                    {
+                        EntityManager.AddComponentData(entity, value);
+                    }
+
+                    EntityManager.SetComponentEnabled<T>(entity, false);
                 }
-                else
+                catch (InvalidOperationException ex) when (IsArchetypeSizeOverflow(ex))
                 {
-                    EntityManager.AddComponentData(entity, value);
+                    LogArchetypeOverflowOnce(typeof(T));
                 }
-                EntityManager.SetComponentEnabled<T>(entity, false);
             }
+        }
+
+        private static bool IsArchetypeSizeOverflow(InvalidOperationException ex)
+        {
+            return ex.Message.IndexOf("Entity archetype component data is too large", StringComparison.Ordinal) >= 0;
+        }
+
+        private void LogArchetypeOverflowOnce(Type componentType)
+        {
+            if (_loggedArchetypeOverflow)
+            {
+                return;
+            }
+
+            _loggedArchetypeOverflow = true;
+            Debug.LogWarning($"[RenderVariantResolveSystem] Skipping component attach for oversized archetypes (component={componentType.Name}).");
         }
 
         private static ushort PackPresenterIndex(int defIndex)
