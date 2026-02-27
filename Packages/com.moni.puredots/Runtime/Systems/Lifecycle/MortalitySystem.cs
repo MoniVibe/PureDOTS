@@ -51,7 +51,7 @@ namespace PureDOTS.Systems.Lifecycle
                 DeathEventLookup = _deathEventLookup,
                 Ecb = ecb
             };
-            job.ScheduleParallel();
+            state.Dependency = job.ScheduleParallel(state.Dependency);
         }
 
         [BurstCompile]

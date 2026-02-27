@@ -17,6 +17,7 @@ namespace PureDOTS.Systems.Dynasty
     /// System that handles dynasty succession when leaders die.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(PureDOTS.Systems.Lifecycle.MortalitySystem))]
     public partial struct DynastySuccessionSystem : ISystem
     {
         private ComponentLookup<DynastyMember> _dynastyMemberLookup;
@@ -64,6 +65,10 @@ namespace PureDOTS.Systems.Dynasty
             _dynastyLineageLookup.Update(ref state);
             _successionCrisisLookup.Update(ref state);
 
+            // Succession reads death buffers that may be touched by prior lifecycle jobs this frame.
+            // Force completion to avoid safety contention in mixed Run/Schedule paths.
+            state.Dependency.Complete();
+
             var ecbSingleton = SystemAPI.GetSingletonRW<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
 
@@ -105,7 +110,7 @@ namespace PureDOTS.Systems.Dynasty
             [ReadOnly]
             public ComponentLookup<SuccessionEvent> SuccessionEventLookup;
 
-            void Execute(Entity entity, DynamicBuffer<DeathEvent> deathEvents)
+            void Execute(Entity entity, in DynamicBuffer<DeathEvent> deathEvents)
             {
                 for (int i = 0; i < deathEvents.Length; i++)
                 {

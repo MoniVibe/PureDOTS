@@ -411,9 +411,7 @@ namespace PureDOTS.Systems.Power
                         consumer.Starved = 1;
                         _consumerLookup[entity] = consumer;
 
-                        var requested = consumer.RequestedDraw > 0f
-                            ? math.max(consumer.RequestedDraw, consumer.BaselineDraw)
-                            : math.max(consumer.BaselineDraw, 0f);
+                        var requested = math.max(0f, consumer.RequestedDraw);
                         totalRequested += requested;
                     }
 
@@ -428,9 +426,7 @@ namespace PureDOTS.Systems.Power
                                 continue;
                             }
 
-                            var requested = consumer.RequestedDraw > 0f
-                                ? math.max(consumer.RequestedDraw, consumer.BaselineDraw)
-                                : math.max(consumer.BaselineDraw, 0f);
+                            var requested = math.max(0f, consumer.RequestedDraw);
 
                             var allocation = math.min(requested, availablePower);
                             availablePower -= allocation;

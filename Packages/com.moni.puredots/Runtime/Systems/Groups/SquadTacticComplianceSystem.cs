@@ -131,10 +131,6 @@ namespace PureDOTS.Systems.Groups
                     {
                         ecb.SetComponent(entity, orderIssued);
                     }
-                    else
-                    {
-                        ecb.AddComponent(entity, orderIssued);
-                    }
 
                     if (canEmitActions)
                     {
@@ -232,18 +228,10 @@ namespace PureDOTS.Systems.Groups
                 {
                     ecb.SetComponent(entity, orderOutcome);
                 }
-                else
-                {
-                    ecb.AddComponent(entity, orderOutcome);
-                }
 
                 if (hasEscalation)
                 {
                     ecb.SetComponent(entity, escalation);
-                }
-                else
-                {
-                    ecb.AddComponent(entity, escalation);
                 }
 
                 if (canEmitActions)
