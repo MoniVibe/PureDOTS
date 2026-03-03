@@ -364,14 +364,60 @@ namespace PureDOTS.Input
 
         private void EmitRightClick(Vector2 screenPos, bool shiftDown, bool ctrlDown)
         {
-            var buffer = _em.GetBuffer<RightClickEvent>(_rtsInputEntity);
-            buffer.Add(new RightClickEvent
+            var evt = new RightClickEvent
             {
                 ScreenPos = new float2(screenPos.x, screenPos.y),
                 Queue = (byte)(shiftDown ? 1 : 0),
                 Ctrl = (byte)(ctrlDown ? 1 : 0),
                 PlayerId = 0
-            });
+            };
+
+            if (TryResolveRightClickTarget(screenPos, out var resolvedEntity, out var resolvedPoint))
+            {
+                evt.HasWorldPoint = 1;
+                evt.WorldPoint = resolvedPoint;
+                evt.HasHitEntity = (byte)(resolvedEntity != Entity.Null ? 1 : 0);
+                evt.HitEntity = resolvedEntity;
+            }
+
+            var buffer = _em.GetBuffer<RightClickEvent>(_rtsInputEntity);
+            buffer.Add(evt);
+        }
+
+        private bool TryResolveRightClickTarget(Vector2 screenPos, out Entity hitEntity, out float3 worldPoint)
+        {
+            hitEntity = Entity.Null;
+            worldPoint = float3.zero;
+
+            if (raycastCamera == null)
+            {
+                return false;
+            }
+
+            Ray ray = raycastCamera.ScreenPointToRay(screenPos);
+            if (Physics.Raycast(ray, out RaycastHit hit, 1200f, selectionMask))
+            {
+                worldPoint = hit.point;
+
+                var bridge = hit.collider.GetComponent<IEntityBridge>();
+                if (bridge != null && bridge.TryGetEntity(out var bridged))
+                {
+                    hitEntity = bridged;
+                }
+
+                return true;
+            }
+
+            // Fallback to a stable command plane so move orders never collapse to zero.
+            var plane = new Plane(Vector3.up, Vector3.zero);
+            if (plane.Raycast(ray, out float enter))
+            {
+                Vector3 world = ray.GetPoint(enter);
+                worldPoint = new float3(world.x, world.y, world.z);
+                return true;
+            }
+
+            return false;
         }
 
         private void HandleKeyboard()
